@@ -2529,7 +2529,7 @@ export class OpenShellBackend {
     this.activeTarget(workspace);
     if (this.contextFor(workspace).runtime) return [];
     if (!this.client) throw new Error("no active session");
-    const res = await this.client.permission.request.list().catch(() => null);
+    const res = await this.client.permission.request.list();
     const rows = Array.isArray(res) ? res : ((res as { data?: unknown } | null)?.data ?? []);
     if (!Array.isArray(rows)) return [];
     return rows.flatMap((row): PendingPermissionRequest[] => {

@@ -123,7 +123,7 @@ regressing longer live text.
 | `session.usage.updated` | Records cumulative session token usage (`tokens`) and cost (`cost`) for the addressed session; drives the token-usage popup in the agent header (context-window utilization is computed renderer-side from `tokens.input` vs the active model's `limit.context` delivered by `shell:models`) |
 | `session.usage.recorded` | Same usage snapshot as `session.usage.updated` on the durable legacy stream; handled identically |
 | `todo.updated` | Replaces the addressed session's todo list rendered in the dock above its composer; `todowrite` tool-part input/metadata is also consumed as a beta-protocol fallback |
-| `permission.asked` | Appends a permission card (`action`, `resources`, pending=true) and re-runs permission reconciliation against `shell:list-permissions` |
+| `permission.asked` | Appends a permission card (`action`, `resources`, pending=true); periodic reconciliation confirms pending requests and resolves cards whose requests vanish (for example, when answered in an attached TUI) |
 | `permission.replied` | Marks `data.requestID` resolved, recording `resolvedWith` from `data.reply` |
 
 ## Events forwarded but NOT handled

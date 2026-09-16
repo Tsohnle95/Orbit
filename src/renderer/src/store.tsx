@@ -824,8 +824,11 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const workspaces = new Map<string, WorkspaceIdentity>();
     for (const panel of panels) workspaces.set(panel.workspace.id, panel.workspace);
     const fetched = new Map<string, PendingPermissionRequest[]>();
+    const successfulWorkspaces = new Set<string>();
     await Promise.all([...workspaces.values()].map(async (workspace) => {
-      const requests = await window.openshell.listPermissions(workspace).catch(() => []);
+      const requests = await window.openshell.listPermissions(workspace).catch(() => null);
+      if (!requests) return;
+      successfulWorkspaces.add(workspace.id);
       for (const request of requests) {
         const list = fetched.get(request.sessionID) ?? [];
         list.push(request);
@@ -833,6 +836,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
     }));
     for (const panel of panels) {
+      // A failed permission-list request is not proof that the session has no
+      // pending approvals. Keep the event-backed card until a later poll can
+      // confirm the request is gone.
+      if (!successfulWorkspaces.has(panel.workspace.id)) continue;
       const requests = fetched.get(panel.id) ?? [];
       const liveIDs = new Set(requests.map((request) => request.id));
       updateSessionTranscript(panel.id, (prev) => {
@@ -3324,7 +3331,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           if (automatic && panel) {
             void window.openshell.permissionReply(panel.workspace, requestID, "once", panel.id);
           }
-          void reconcilePermissions();
           break;
         }
         case "permission.replied": {
