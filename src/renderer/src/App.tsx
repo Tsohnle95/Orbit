@@ -283,11 +283,12 @@ function PanelColumn({
     slideLeftRef.current = next;
     if (columnRef.current) columnRef.current.style.left = `${next}px`;
   };
+  const multiPanelMode = freeMove && (sessionChoices?.length ?? 0) > 1;
   const finishSlide = (): void => {
     const left = slideLeftRef.current;
     slideLeftRef.current = null;
     if (left !== null) onSlot((current) => ({ ...current, left }));
-    onManualAdjust?.();
+    if (!multiPanelMode) onManualAdjust?.();
   };
   const exitModeOnRelease = (event: React.MouseEvent): void => {
     event.preventDefault();
@@ -302,7 +303,7 @@ function PanelColumn({
   }
   return (
     <div ref={columnRef} className={`agent-col ${settling ? "settling" : ""} ${slot.left <= leftMin + 0.5 ? "edge-left" : ""}`} style={{ left: `${slot.left}px`, top: `${slot.top}%`, bottom: "auto", width: `${slot.width}px`, height: `${slot.height}%` }}>
-      <AgentPanel session={session} sessionChoices={sessionChoices} defaultSessionID={defaultSessionID} onDefaultSessionChange={onDefaultSessionChange} isAnchor={isAnchor} onFocus={onFocus} onClose={onClose} onResizeLeft={freeMove ? exitModeOnRelease : resizeLeft} onResizeRight={freeMove ? exitModeOnRelease : isAnchor ? undefined : resizeRight} onPanelDrag={freeMove || !isAnchor ? slideBy : undefined} onPanelDragEnd={freeMove || !isAnchor ? finishSlide : undefined} />
+      <AgentPanel session={session} sessionChoices={sessionChoices} defaultSessionID={defaultSessionID} onDefaultSessionChange={onDefaultSessionChange} isAnchor={isAnchor} onFocus={onFocus} onClose={onClose} onResizeLeft={multiPanelMode ? resizeLeft : freeMove ? exitModeOnRelease : resizeLeft} onResizeRight={multiPanelMode ? isAnchor ? undefined : resizeRight : freeMove ? exitModeOnRelease : isAnchor ? undefined : resizeRight} onPanelDrag={freeMove || !isAnchor ? slideBy : undefined} onPanelDragEnd={freeMove || !isAnchor ? finishSlide : undefined} />
     </div>
   );
 }
@@ -366,7 +367,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   }, []);
 
   const prevPanelsRef = useRef<SessionInfo[] | null>(null);
-  const skipPanelSlotMigrationRef = useRef(false);
   const sessionSlotsRef = useRef(new Map<string, PanelSlot>());
   const rememberedSlot = (panel: SessionInfo): PanelSlot | undefined =>
     sessionSlotsRef.current.get(panel.id) ??
@@ -375,10 +375,10 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     const prev = prevPanelsRef.current;
     prevPanelsRef.current = panels;
     if (!prev || prev.length !== panels.length) return;
-    if (skipPanelSlotMigrationRef.current) {
-      skipPanelSlotMigrationRef.current = false;
-      return;
-    }
+    // Changing the selected singleton in normal coding mode is a view swap,
+    // not a workspace replacement. Keep the target's own slot instead of
+    // migrating the previous panel's geometry onto it.
+    if (!inAgentMode && panels.length === 1 && prev[0]?.id !== panels[0]?.id) return;
     for (let index = 0; index < panels.length; index += 1) {
       const before = prev[index];
       const after = panels[index];
@@ -902,18 +902,19 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
                 onDefaultSessionChange={(sessionID) => {
                   const next = agentPanels.find((candidate) => candidate.id === sessionID);
                   if (!next) return;
-                  skipPanelSlotMigrationRef.current = true;
-                  setSlots((current) => ({
-                    ...current,
-                    [next.workspace.id]: {
-                      open: true,
-                      width: AGENT_DEFAULT_W,
-                      left: Math.max(0, areaW - AGENT_DEFAULT_W),
-                      top: 0,
-                      height: 100,
-                      leftAnchored: false
-                    }
-                  }));
+                  if (!inAgentMode) {
+                    setSlots((current) => ({
+                      ...current,
+                      [next.workspace.id]: {
+                        open: true,
+                        width: AGENT_DEFAULT_W,
+                        left: Math.max(0, areaW - AGENT_DEFAULT_W),
+                        top: 0,
+                        height: 100,
+                        leftAnchored: false
+                      }
+                    }));
+                  }
                   setDefaultAgentSessionID(next.id);
                   focusSession(next.id);
                 }}
