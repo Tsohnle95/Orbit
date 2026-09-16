@@ -283,12 +283,11 @@ function PanelColumn({
     slideLeftRef.current = next;
     if (columnRef.current) columnRef.current.style.left = `${next}px`;
   };
-  const multiPanelMode = freeMove && (sessionChoices?.length ?? 0) > 1;
   const finishSlide = (): void => {
     const left = slideLeftRef.current;
     slideLeftRef.current = null;
     if (left !== null) onSlot((current) => ({ ...current, left }));
-    if (!multiPanelMode) onManualAdjust?.();
+    onManualAdjust?.();
   };
   const exitModeOnRelease = (event: React.MouseEvent): void => {
     event.preventDefault();
@@ -303,7 +302,7 @@ function PanelColumn({
   }
   return (
     <div ref={columnRef} className={`agent-col ${settling ? "settling" : ""} ${slot.left <= leftMin + 0.5 ? "edge-left" : ""}`} style={{ left: `${slot.left}px`, top: `${slot.top}%`, bottom: "auto", width: `${slot.width}px`, height: `${slot.height}%` }}>
-      <AgentPanel session={session} sessionChoices={sessionChoices} defaultSessionID={defaultSessionID} onDefaultSessionChange={onDefaultSessionChange} isAnchor={isAnchor} onFocus={onFocus} onClose={onClose} onResizeLeft={multiPanelMode ? resizeLeft : freeMove ? exitModeOnRelease : resizeLeft} onResizeRight={multiPanelMode ? isAnchor ? undefined : resizeRight : freeMove ? exitModeOnRelease : isAnchor ? undefined : resizeRight} onPanelDrag={freeMove || !isAnchor ? slideBy : undefined} onPanelDragEnd={freeMove || !isAnchor ? finishSlide : undefined} />
+      <AgentPanel session={session} sessionChoices={sessionChoices} defaultSessionID={defaultSessionID} onDefaultSessionChange={onDefaultSessionChange} isAnchor={isAnchor} onFocus={onFocus} onClose={onClose} onResizeLeft={freeMove ? exitModeOnRelease : resizeLeft} onResizeRight={freeMove ? exitModeOnRelease : isAnchor ? undefined : resizeRight} onPanelDrag={freeMove || !isAnchor ? slideBy : undefined} onPanelDragEnd={freeMove || !isAnchor ? finishSlide : undefined} />
     </div>
   );
 }
