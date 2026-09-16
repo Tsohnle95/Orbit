@@ -60,6 +60,7 @@ Public methods (all used by IPC):
 | `connect()` | `Service.discover()` → `Service.ensure({command:["opencode2","serve","--service"]})` → `OpenCode.make` |
 | `start()` | Start the SSE event loop if one is not already running; unexpected loop failures are forwarded as structured `global.error` events |
 | `stop()` | Abort and invalidate the active SSE loop lifecycle, then stop every context's fs watcher |
+| `mobileEndpoint()` | Returns the connected OpenCode mobile endpoint credentials when available, otherwise `null` |
 | `onMessage(cb)` | Subscribe to outbound messages; returns unsubscribe |
 | `beginActivation(requestGeneration)` | Accept a renderer user action before native dialog/backend awaits and return a fresh backend generation token |
 | `openSession(directory)` | Accepts a generation, calls `session.create`, and activates a new context (a new concurrent panel); starts the context watcher and emits `{kind:"session"}` |
