@@ -13,7 +13,7 @@ Exposed via `useStore()` (context). State:
 | Slice | Shape | Notes |
 |---|---|---|
 | `session` | `SessionInfo \| null` | the focused session (derived from `panels` + `activeSessionID`); null → Welcome screen on first launch, otherwise an empty IDE whose explorer offers an open-workspace CTA |
-| `panels` | `SessionInfo[]` | open sessions in panel order; each panel streams and renders its own session |
+| `panels` | `SessionInfo[]` | all attached/live sessions in panel order; each panel continues streaming even when normal coding mode renders only the selected default panel |
 | `activeSessions` | `SessionInfo[]` | backend-owned open contexts, reconciled every second independently of visible panels; drives the complete **Open now** inventory |
 | `savedWorkspaces` | `ProjectInfo[]` | Orbit-owned workspace bookmarks persisted in `localStorage` ("orbit.savedWorkspaces"); removing one changes only this list and never touches the filesystem |
 | `panelViews` | `Record<workspaceID, PanelView>` | per-panel scoped projection (`session`, `busy`, `transcript`, `todos`, `sessionUsage`, `models`, `currentModel`, `agents`, `currentAgent`) consumed through `usePanel(workspace)` |
@@ -522,6 +522,14 @@ released at that collapsed position.
   editor unchanged; Vue and Svelte files are not sent to the validators.
 
 ## Entry
+
+Agent Mode renders every eligible attached panel. Normal coding mode derives a
+single selected default panel from that same live set, keeping the other
+sessions attached and functioning in the background. The panel three-dots menu
+selects the normal-mode default and focuses that session's workspace; closing
+the selected session falls back to the first remaining eligible session. This
+selection is renderer layout state and is not restored across application
+launches.
 
 `main.tsx` mounts `<App/>`; `App` renders its own `StoreProvider`. `index.html` is the
 Vite entry. `global.d.ts` types `window.openshell` from the preload API.

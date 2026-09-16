@@ -1103,6 +1103,9 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
 
 export function AgentPanel({
   session,
+  sessionChoices,
+  defaultSessionID,
+  onDefaultSessionChange,
   isAnchor: _isAnchor,
   onFocus,
   onClose,
@@ -1112,6 +1115,9 @@ export function AgentPanel({
   onPanelDragEnd
 }: {
   session?: SessionInfo | null;
+  sessionChoices?: SessionInfo[];
+  defaultSessionID?: string | null;
+  onDefaultSessionChange?: (sessionID: string) => void;
   isAnchor?: boolean;
   onFocus?: () => void;
   onClose?: () => void;
@@ -1251,6 +1257,14 @@ export function AgentPanel({
     setPanelMode("gui");
     savePanelMode(activeSession?.id, "gui");
   };
+
+  const chooseDefaultSession = (sessionID: string): void => {
+    onDefaultSessionChange?.(sessionID);
+    setModeMenuOpen(false);
+  };
+
+  const sessionLabel = (choice: SessionInfo): string =>
+    choice.title ?? choice.directory.split(/[\\/]/).filter(Boolean).pop() ?? choice.agent ?? choice.id;
 
   const handleTuiExit = (exitCode: number | null): void => {
     setPanelMode("gui");
@@ -1488,7 +1502,7 @@ export function AgentPanel({
         <div className="agent-header-actions">
           {usageButton}
           {modeMenuOpen && (
-            <div className="agent-mode-menu" role="menu" aria-label="Agent interface">
+            <div className="agent-mode-menu" role="menu" aria-label="Agent panel options">
               <button
                 role="menuitemradio"
                 aria-checked={panelMode === "gui"}
@@ -1508,12 +1522,31 @@ export function AgentPanel({
                 <span>TUI</span>
                 <small>{tuiAvailable ? "Terminal interface" : "Unavailable"}</small>
               </button>
+              {sessionChoices && sessionChoices.length > 0 && (
+                <>
+                  <div className="agent-mode-menu-divider" />
+                  <div className="agent-mode-menu-heading">Coding mode panel</div>
+                  {sessionChoices.map((choice) => (
+                    <button
+                      key={choice.id}
+                      role="menuitemradio"
+                      aria-checked={defaultSessionID === choice.id}
+                      className={defaultSessionID === choice.id ? "selected" : ""}
+                      title={choice.directory}
+                      onClick={() => chooseDefaultSession(choice.id)}
+                    >
+                      <span>{sessionLabel(choice)}</span>
+                      <small>{choice.directory}</small>
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
           )}
           <button
             className={`icon-btn agent-mode-menu-toggle ${modeMenuOpen ? "open" : ""}`}
-            title="Choose GUI or TUI"
-            aria-label="Choose GUI or TUI"
+            title="Agent panel options"
+            aria-label="Agent panel options"
             aria-expanded={modeMenuOpen}
             onClick={() => setModeMenuOpen((open) => !open)}
           >

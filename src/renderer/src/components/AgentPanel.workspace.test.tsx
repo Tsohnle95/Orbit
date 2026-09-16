@@ -167,7 +167,7 @@ describe("composer workspace continuations", () => {
     } as unknown as Window["openshell"];
     await act(async () => root.render(<AgentPanel />));
 
-    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Choose GUI or TUI"]')!.click());
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Agent panel options"]')!.click());
     const tuiItem = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
       .find((item) => item.textContent?.startsWith("TUI"));
     expect(tuiItem).not.toBeUndefined();
@@ -180,6 +180,29 @@ describe("composer workspace continuations", () => {
     root = createRoot(container);
     await act(async () => root.render(<AgentPanel />));
     expect(container.querySelector(".agent-tui")).not.toBeNull();
+  });
+
+  it("selects the normal-mode panel from the options menu", async () => {
+    const other = session("two", 2);
+    const onDefaultSessionChange = vi.fn();
+    await act(async () => root.render(
+      <AgentPanel
+        session={currentSession}
+        sessionChoices={[currentSession, other]}
+        defaultSessionID={currentSession.id}
+        onDefaultSessionChange={onDefaultSessionChange}
+      />
+    ));
+
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Agent panel options"]')!.click());
+    const item = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
+      .find((candidate) => candidate.textContent?.includes("workspace-2"));
+    expect(item).not.toBeUndefined();
+    expect(item?.getAttribute("aria-checked")).toBe("false");
+    await act(async () => item!.click());
+
+    expect(onDefaultSessionChange).toHaveBeenCalledWith(other.id);
+    expect(container.querySelector('[role="menu"]')).toBeNull();
   });
 
   it("follows resized stream content only until the reader scrolls away", async () => {

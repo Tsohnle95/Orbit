@@ -196,7 +196,7 @@
   top: calc(100% + 7px);
   right: 33px;
   z-index: 90;
-  width: 164px;
+  width: 260px;
   padding: 4px;
   background: var(--bg-elev);
   border: 1px solid var(--border-strong);
@@ -230,12 +230,35 @@
   cursor: pointer;
 }
 
+.agent-mode-menu button > span,
+.agent-mode-menu button > small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .agent-mode-menu button:hover,
 .agent-mode-menu button.selected { background: var(--bg-hover); }
 
 .agent-mode-menu button.disabled { color: var(--text-faint); }
 
 .agent-mode-menu small { color: var(--text-faint); font-size: 10px; }
+
+.agent-mode-menu-divider {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border);
+}
+
+.agent-mode-menu-heading {
+  padding: 6px 8px 3px;
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
 
 .agent-turn-timer {
   display: inline-flex;

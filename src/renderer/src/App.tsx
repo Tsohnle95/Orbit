@@ -197,6 +197,9 @@ interface PanelSlot {
 
 function PanelColumn({
   session,
+  sessionChoices,
+  defaultSessionID,
+  onDefaultSessionChange,
   slot,
   isAnchor,
   freeMove,
@@ -210,6 +213,9 @@ function PanelColumn({
   onManualAdjust
 }: {
   session: SessionInfo;
+  sessionChoices?: SessionInfo[];
+  defaultSessionID?: string | null;
+  onDefaultSessionChange?: (sessionID: string) => void;
   slot: PanelSlot;
   isAnchor: boolean;
   freeMove: boolean;
@@ -296,14 +302,14 @@ function PanelColumn({
   }
   return (
     <div ref={columnRef} className={`agent-col ${settling ? "settling" : ""} ${slot.left <= leftMin + 0.5 ? "edge-left" : ""}`} style={{ left: `${slot.left}px`, top: `${slot.top}%`, bottom: "auto", width: `${slot.width}px`, height: `${slot.height}%` }}>
-      <AgentPanel session={session} isAnchor={isAnchor} onFocus={onFocus} onClose={onClose} onResizeLeft={freeMove ? exitModeOnRelease : resizeLeft} onResizeRight={freeMove ? exitModeOnRelease : isAnchor ? undefined : resizeRight} onPanelDrag={freeMove || !isAnchor ? slideBy : undefined} onPanelDragEnd={freeMove || !isAnchor ? finishSlide : undefined} />
+      <AgentPanel session={session} sessionChoices={sessionChoices} defaultSessionID={defaultSessionID} onDefaultSessionChange={onDefaultSessionChange} isAnchor={isAnchor} onFocus={onFocus} onClose={onClose} onResizeLeft={freeMove ? exitModeOnRelease : resizeLeft} onResizeRight={freeMove ? exitModeOnRelease : isAnchor ? undefined : resizeRight} onPanelDrag={freeMove || !isAnchor ? slideBy : undefined} onPanelDragEnd={freeMove || !isAnchor ? finishSlide : undefined} />
     </div>
   );
 }
 
 function Layout({ children }: { children?: ReactNode }): ReactNode {
   const { session, panels: allPanels, workspaceOnlyPanelIDs, activeSessionID, focusSession, closePanel, selectAddPanel } = useStore();
-  const panels = useMemo(() => {
+  const agentPanels = useMemo(() => {
     const agentPanels = allPanels.filter((panel) => !workspaceOnlyPanelIDs.has(panel.id));
     const active = allPanels.find((panel) => panel.id === activeSessionID);
     if (!active || !workspaceOnlyPanelIDs.has(active.id)) return agentPanels;
@@ -323,12 +329,25 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("appearance");
   const [agentModeActive, setAgentModeActive] = useState(false);
+  const [defaultAgentSessionID, setDefaultAgentSessionID] = useState<string | null>(null);
   const [emptyAgentOpen, setEmptyAgentOpen] = useState(true);
   const [emptyAgentWidth, setEmptyAgentWidth] = useState(280);
   const mainRowRef = useRef<HTMLDivElement>(null);
   const emptyAgentRef = useRef<HTMLDivElement>(null);
   const prevSidebarRef = useRef<{ open: boolean; width: number } | null>(null);
   const inAgentMode = agentModeActive;
+  const defaultPanel = useMemo(
+    () => agentPanels.find((panel) => panel.id === defaultAgentSessionID) ?? agentPanels[0] ?? null,
+    [agentPanels, defaultAgentSessionID]
+  );
+  const panels = inAgentMode ? agentPanels : defaultPanel ? [defaultPanel] : [];
+
+  useEffect(() => {
+    if (defaultAgentSessionID && agentPanels.some((panel) => panel.id === defaultAgentSessionID)) return;
+    const fallback = agentPanels[0] ?? null;
+    setDefaultAgentSessionID(fallback?.id ?? null);
+    if (defaultAgentSessionID && fallback) focusSession(fallback.id);
+  }, [agentPanels, defaultAgentSessionID, focusSession]);
 
   const sideShown = sideOpen ? sideW : 0;
   const fixedPanelChrome = 1 + panels.length;
@@ -347,6 +366,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   }, []);
 
   const prevPanelsRef = useRef<SessionInfo[] | null>(null);
+  const skipPanelSlotMigrationRef = useRef(false);
   const sessionSlotsRef = useRef(new Map<string, PanelSlot>());
   const rememberedSlot = (panel: SessionInfo): PanelSlot | undefined =>
     sessionSlotsRef.current.get(panel.id) ??
@@ -355,6 +375,10 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     const prev = prevPanelsRef.current;
     prevPanelsRef.current = panels;
     if (!prev || prev.length !== panels.length) return;
+    if (skipPanelSlotMigrationRef.current) {
+      skipPanelSlotMigrationRef.current = false;
+      return;
+    }
     for (let index = 0; index < panels.length; index += 1) {
       const before = prev[index];
       const after = panels[index];
@@ -626,13 +650,12 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     });
   };
 
-  const distributeEvenly = useCallback((sideShownAt: number, singleRestore: boolean): void => {
+  const distributeEvenly = useCallback((sideShownAt: number, singleRestore: boolean, targetPanels: SessionInfo[] = panels, modelMode = prevSidebarRef.current !== null): void => {
     setSlots((current) => {
-      const anchorId = panels[0]?.workspace.id ?? null;
-      const modelMode = prevSidebarRef.current !== null;
+      const anchorId = targetPanels[0]?.workspace.id ?? null;
       const openIDs = modelMode
-        ? panels.map((panel) => panel.workspace.id)
-        : panels
+        ? targetPanels.map((panel) => panel.workspace.id)
+        : targetPanels
           .filter((panel) => panel.workspace.id === anchorId || (current[panel.workspace.id]?.open ?? true))
           .map((panel) => panel.workspace.id);
       if (openIDs.length === 0) return current;
@@ -648,7 +671,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       const anchorW = Math.max(AGENT_MIN_W, total - width * (columns - 1));
       const next: Record<string, PanelSlot> = {};
       let boundary = Math.max(0, area - anchorW);
-      for (const [index, panel] of [...panels].reverse().entries()) {
+      for (const [index, panel] of [...targetPanels].reverse().entries()) {
         const id = panel.workspace.id;
         if (id === anchorId || !openIDs.includes(id)) continue;
         boundary -= width;
@@ -679,17 +702,17 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const previousPanelCountRef = useRef(panels.length);
   useEffect(() => {
     if (inAgentMode && panels.length > previousPanelCountRef.current) {
-      distributeEvenly(sideShown, false);
+      distributeEvenly(sideShown, false, agentPanels, true);
     }
     previousPanelCountRef.current = panels.length;
-  }, [distributeEvenly, inAgentMode, panels.length, sideShown]);
+  }, [agentPanels, distributeEvenly, inAgentMode, panels.length, sideShown]);
 
   useLayoutEffect(() => {
-    if (inAgentMode && sideOpen) distributeEvenly(sideW, false);
-  }, [inAgentMode, sideOpen]);
+    if (inAgentMode && sideOpen) distributeEvenly(sideW, false, agentPanels, true);
+  }, [agentPanels, distributeEvenly, inAgentMode, sideOpen, sideW]);
 
   const addModelPanel = (): void => {
-    if (!inAgentMode || panels.length + pendingModelPanels >= 4) return;
+    if (!inAgentMode || agentPanels.length + pendingModelPanels >= 4) return;
     setPendingModelPanels((count) => count + 1);
     void selectAddPanel().finally(() => setPendingModelPanels((count) => Math.max(0, count - 1)));
   };
@@ -700,7 +723,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       setAgentModeActive(true);
       setSettingsOpen(false);
       setSideOpen(false);
-      distributeEvenly(0, false);
+      distributeEvenly(0, false, agentPanels, true);
     } else {
       const prev = prevSidebarRef.current;
       if (!prev) return;
@@ -708,7 +731,8 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       setAgentModeActive(false);
       setSideOpen(prev.open);
       setSideW(prev.width);
-      distributeEvenly(prev.open ? prev.width : 0, true);
+      distributeEvenly(prev.open ? prev.width : 0, true, defaultPanel ? [defaultPanel] : [], false);
+      if (defaultPanel) focusSession(defaultPanel.id);
     }
   };
 
@@ -719,7 +743,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   };
 
   const closeAgentPanel = (panel: SessionInfo): void => {
-    if (panels.length > 1) {
+    if (agentPanels.length > 1) {
       closePanel(panel.id);
       return;
     }
@@ -772,9 +796,9 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             <button
               className="icon-btn"
               data-panel-action="add-model-panel"
-              title={panels.length + pendingModelPanels >= 4 ? "Model panel limit reached (4)" : "Add model panel (choose a folder for the new panel)"}
+              title={agentPanels.length + pendingModelPanels >= 4 ? "Model panel limit reached (4)" : "Add model panel (choose a folder for the new panel)"}
               aria-label="Add model panel"
-              disabled={panels.length + pendingModelPanels >= 4}
+              disabled={agentPanels.length + pendingModelPanels >= 4}
               onClick={addModelPanel}
             >
               <IconAdd />
@@ -873,6 +897,26 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
               <PanelColumn
                 key={panel.workspace.id}
                 session={panel}
+                sessionChoices={agentPanels}
+                defaultSessionID={defaultPanel?.id ?? null}
+                onDefaultSessionChange={(sessionID) => {
+                  const next = agentPanels.find((candidate) => candidate.id === sessionID);
+                  if (!next) return;
+                  skipPanelSlotMigrationRef.current = true;
+                  setSlots((current) => ({
+                    ...current,
+                    [next.workspace.id]: {
+                      open: true,
+                      width: AGENT_DEFAULT_W,
+                      left: Math.max(0, areaW - AGENT_DEFAULT_W),
+                      top: 0,
+                      height: 100,
+                      leftAnchored: false
+                    }
+                  }));
+                  setDefaultAgentSessionID(next.id);
+                  focusSession(next.id);
+                }}
                 slot={s}
                 isAnchor={isAnchor}
                 freeMove={inAgentMode}
