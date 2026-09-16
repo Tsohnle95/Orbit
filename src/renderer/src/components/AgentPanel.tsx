@@ -1104,8 +1104,10 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
 export function AgentPanel({
   session,
   sessionChoices,
-  defaultSessionID,
-  onDefaultSessionChange,
+  visibleSessionIDs,
+  agentPanelLimitReached,
+  agentModeActive,
+  onSessionSelect,
   isAnchor: _isAnchor,
   onFocus,
   onClose,
@@ -1116,8 +1118,10 @@ export function AgentPanel({
 }: {
   session?: SessionInfo | null;
   sessionChoices?: SessionInfo[];
-  defaultSessionID?: string | null;
-  onDefaultSessionChange?: (sessionID: string) => void;
+  visibleSessionIDs?: ReadonlySet<string>;
+  agentPanelLimitReached?: boolean;
+  agentModeActive?: boolean;
+  onSessionSelect?: (sessionID: string) => void | Promise<void>;
   isAnchor?: boolean;
   onFocus?: () => void;
   onClose?: () => void;
@@ -1258,8 +1262,8 @@ export function AgentPanel({
     savePanelMode(activeSession?.id, "gui");
   };
 
-  const chooseDefaultSession = (sessionID: string): void => {
-    onDefaultSessionChange?.(sessionID);
+  const chooseSession = (sessionID: string): void => {
+    void onSessionSelect?.(sessionID);
     setModeMenuOpen(false);
   };
 
@@ -1525,19 +1529,26 @@ export function AgentPanel({
               {sessionChoices && sessionChoices.length > 0 && (
                 <>
                   <div className="agent-mode-menu-divider" />
-                  <div className="agent-mode-menu-heading">Coding mode panel</div>
+                  <div className="agent-mode-menu-heading">Active sessions</div>
                   {sessionChoices.map((choice) => (
-                    <button
-                      key={choice.id}
-                      role="menuitemradio"
-                      aria-checked={defaultSessionID === choice.id}
-                      className={defaultSessionID === choice.id ? "selected" : ""}
-                      title={choice.directory}
-                      onClick={() => chooseDefaultSession(choice.id)}
-                    >
-                      <span>{sessionLabel(choice)}</span>
-                      <small>{choice.directory}</small>
-                    </button>
+                    (() => {
+                      const visible = visibleSessionIDs?.has(choice.id) ?? false;
+                      const disabled = Boolean(agentModeActive && agentPanelLimitReached && !visible);
+                      return (
+                        <button
+                          key={choice.id}
+                          role="menuitemcheckbox"
+                          aria-checked={visible}
+                          className={`${visible ? "selected" : ""} ${disabled ? "disabled" : ""}`}
+                          title={disabled ? "Agent panel limit reached (4)" : choice.directory}
+                          disabled={disabled}
+                          onClick={() => chooseSession(choice.id)}
+                        >
+                          <span>{sessionLabel(choice)}</span>
+                          <small>{disabled ? "Agent panel limit reached" : visible ? (agentModeActive ? "In Agent Mode" : "Current coding workspace") : agentModeActive ? "Add to Agent Mode" : "Switch workspace"}</small>
+                        </button>
+                      );
+                    })()
                   ))}
                 </>
               )}

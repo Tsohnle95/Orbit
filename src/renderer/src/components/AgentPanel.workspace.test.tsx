@@ -184,24 +184,24 @@ describe("composer workspace continuations", () => {
 
   it("selects the normal-mode panel from the options menu", async () => {
     const other = session("two", 2);
-    const onDefaultSessionChange = vi.fn();
+    const onSessionSelect = vi.fn();
     await act(async () => root.render(
       <AgentPanel
         session={currentSession}
         sessionChoices={[currentSession, other]}
-        defaultSessionID={currentSession.id}
-        onDefaultSessionChange={onDefaultSessionChange}
+        visibleSessionIDs={new Set([currentSession.id])}
+        onSessionSelect={onSessionSelect}
       />
     ));
 
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Agent panel options"]')!.click());
-    const item = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
+    const item = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitemcheckbox"]')]
       .find((candidate) => candidate.textContent?.includes("workspace-2"));
     expect(item).not.toBeUndefined();
     expect(item?.getAttribute("aria-checked")).toBe("false");
     await act(async () => item!.click());
 
-    expect(onDefaultSessionChange).toHaveBeenCalledWith(other.id);
+    expect(onSessionSelect).toHaveBeenCalledWith(other.id);
     expect(container.querySelector('[role="menu"]')).toBeNull();
   });
 

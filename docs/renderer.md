@@ -13,7 +13,7 @@ Exposed via `useStore()` (context). State:
 | Slice | Shape | Notes |
 |---|---|---|
 | `session` | `SessionInfo \| null` | the focused session (derived from `panels` + `activeSessionID`); null → Welcome screen on first launch, otherwise an empty IDE whose explorer offers an open-workspace CTA |
-| `panels` | `SessionInfo[]` | all attached/live sessions in panel order; each panel continues streaming even when normal coding mode renders only the selected default panel |
+| `panels` | `SessionInfo[]` | all attached/live sessions in panel order; each panel continues streaming even when normal coding mode renders only the focused coding session |
 | `activeSessions` | `SessionInfo[]` | backend-owned open contexts, reconciled every second independently of visible panels; drives the complete **Open now** inventory |
 | `savedWorkspaces` | `ProjectInfo[]` | Orbit-owned workspace bookmarks persisted in `localStorage` ("orbit.savedWorkspaces"); removing one changes only this list and never touches the filesystem |
 | `panelViews` | `Record<workspaceID, PanelView>` | per-panel scoped projection (`session`, `busy`, `transcript`, `todos`, `sessionUsage`, `models`, `currentModel`, `agents`, `currentAgent`) consumed through `usePanel(workspace)` |
@@ -523,13 +523,14 @@ released at that collapsed position.
 
 ## Entry
 
-Agent Mode renders every eligible attached panel. Normal coding mode derives a
-single selected default panel from that same live set, keeping the other
-sessions attached and functioning in the background. The panel three-dots menu
-selects the normal-mode default and focuses that session's workspace; closing
-the selected session falls back to the first remaining eligible session. This
-selection is renderer layout state and is not restored across application
-launches.
-
 `main.tsx` mounts `<App/>`; `App` renders its own `StoreProvider`. `index.html` is the
 Vite entry. `global.d.ts` types `window.openshell` from the preload API.
+
+Agent Mode is a temporary panel view. Normal coding mode renders only the
+focused coding session. Entering Agent Mode seeds its panel set with that one
+session; additional active sessions are loaded explicitly from the agent
+panel's three-dots menu. Exiting Agent Mode resets the temporary set to the
+currently focused session, while all other active sessions remain available in
+the menu and continue running in the backend. Selecting a hidden session in
+normal mode switches the single coding workspace; selecting one in Agent Mode
+attaches it to the visible panel set and focuses it.

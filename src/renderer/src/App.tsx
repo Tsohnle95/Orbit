@@ -198,8 +198,10 @@ interface PanelSlot {
 function PanelColumn({
   session,
   sessionChoices,
-  defaultSessionID,
-  onDefaultSessionChange,
+  visibleSessionIDs,
+  agentPanelLimitReached,
+  agentModeActive,
+  onSessionSelect,
   slot,
   isAnchor,
   freeMove,
@@ -214,8 +216,10 @@ function PanelColumn({
 }: {
   session: SessionInfo;
   sessionChoices?: SessionInfo[];
-  defaultSessionID?: string | null;
-  onDefaultSessionChange?: (sessionID: string) => void;
+  visibleSessionIDs?: ReadonlySet<string>;
+  agentPanelLimitReached?: boolean;
+  agentModeActive?: boolean;
+  onSessionSelect?: (sessionID: string) => void | Promise<void>;
   slot: PanelSlot;
   isAnchor: boolean;
   freeMove: boolean;
@@ -302,13 +306,23 @@ function PanelColumn({
   }
   return (
     <div ref={columnRef} className={`agent-col ${settling ? "settling" : ""} ${slot.left <= leftMin + 0.5 ? "edge-left" : ""}`} style={{ left: `${slot.left}px`, top: `${slot.top}%`, bottom: "auto", width: `${slot.width}px`, height: `${slot.height}%` }}>
-      <AgentPanel session={session} sessionChoices={sessionChoices} defaultSessionID={defaultSessionID} onDefaultSessionChange={onDefaultSessionChange} isAnchor={isAnchor} onFocus={onFocus} onClose={onClose} onResizeLeft={freeMove ? exitModeOnRelease : resizeLeft} onResizeRight={freeMove ? exitModeOnRelease : isAnchor ? undefined : resizeRight} onPanelDrag={freeMove || !isAnchor ? slideBy : undefined} onPanelDragEnd={freeMove || !isAnchor ? finishSlide : undefined} />
+      <AgentPanel session={session} sessionChoices={sessionChoices} visibleSessionIDs={visibleSessionIDs} agentPanelLimitReached={agentPanelLimitReached} agentModeActive={agentModeActive} onSessionSelect={onSessionSelect} isAnchor={isAnchor} onFocus={onFocus} onClose={onClose} onResizeLeft={freeMove ? exitModeOnRelease : resizeLeft} onResizeRight={freeMove ? exitModeOnRelease : isAnchor ? undefined : resizeRight} onPanelDrag={freeMove || !isAnchor ? slideBy : undefined} onPanelDragEnd={freeMove || !isAnchor ? finishSlide : undefined} />
     </div>
   );
 }
 
 function Layout({ children }: { children?: ReactNode }): ReactNode {
-  const { session, panels: allPanels, workspaceOnlyPanelIDs, activeSessionID, focusSession, closePanel, selectAddPanel } = useStore();
+  const {
+    session,
+    activeSessions,
+    panels: allPanels,
+    workspaceOnlyPanelIDs,
+    activeSessionID,
+    focusSession,
+    closePanel,
+    reopenSession,
+    selectAddPanel
+  } = useStore();
   const agentPanels = useMemo(() => {
     const agentPanels = allPanels.filter((panel) => !workspaceOnlyPanelIDs.has(panel.id));
     const active = allPanels.find((panel) => panel.id === activeSessionID);
@@ -329,25 +343,49 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("appearance");
   const [agentModeActive, setAgentModeActive] = useState(false);
-  const [defaultAgentSessionID, setDefaultAgentSessionID] = useState<string | null>(null);
+  const [agentModePanelIDs, setAgentModePanelIDs] = useState<string[]>([]);
   const [emptyAgentOpen, setEmptyAgentOpen] = useState(true);
   const [emptyAgentWidth, setEmptyAgentWidth] = useState(280);
   const mainRowRef = useRef<HTMLDivElement>(null);
   const emptyAgentRef = useRef<HTMLDivElement>(null);
   const prevSidebarRef = useRef<{ open: boolean; width: number } | null>(null);
   const inAgentMode = agentModeActive;
-  const defaultPanel = useMemo(
-    () => agentPanels.find((panel) => panel.id === defaultAgentSessionID) ?? agentPanels[0] ?? null,
-    [agentPanels, defaultAgentSessionID]
+  const codingPanel = useMemo(
+    () => allPanels.find((panel) => panel.id === activeSessionID) ?? agentPanels[0] ?? null,
+    [activeSessionID, agentPanels, allPanels]
   );
-  const panels = inAgentMode ? agentPanels : defaultPanel ? [defaultPanel] : [];
+  const panels = useMemo(() => {
+    if (!inAgentMode) return codingPanel ? [codingPanel] : [];
+    const attached = new Map(agentPanels.map((panel) => [panel.id, panel]));
+    return agentModePanelIDs
+      .map((id) => attached.get(id))
+      .filter((panel): panel is SessionInfo => Boolean(panel));
+  }, [agentModePanelIDs, agentPanels, codingPanel, inAgentMode]);
+  const sessionChoices = useMemo(() => {
+    const seen = new Set<string>();
+    const choices: SessionInfo[] = [];
+    for (const choice of [...activeSessions, ...allPanels]) {
+      if (seen.has(choice.id)) continue;
+      seen.add(choice.id);
+      choices.push(choice);
+    }
+    return choices;
+  }, [activeSessions, allPanels]);
 
   useEffect(() => {
-    if (defaultAgentSessionID && agentPanels.some((panel) => panel.id === defaultAgentSessionID)) return;
-    const fallback = agentPanels[0] ?? null;
-    setDefaultAgentSessionID(fallback?.id ?? null);
-    if (defaultAgentSessionID && fallback) focusSession(fallback.id);
-  }, [agentPanels, defaultAgentSessionID, focusSession]);
+    if (!inAgentMode) return;
+    setAgentModePanelIDs((current) => {
+      const validIDs = new Set(agentPanels.map((panel) => panel.id));
+      const missingIndex = current.findIndex((id) => !validIDs.has(id));
+      const valid = current.filter((id) => validIDs.has(id));
+      const focused = activeSessionID ? agentPanels.find((panel) => panel.id === activeSessionID) : null;
+      if (missingIndex >= 0 && focused && !valid.includes(focused.id)) {
+        valid.splice(Math.min(missingIndex, valid.length), 0, focused.id);
+      }
+      if (valid.length > 0) return valid;
+      return codingPanel ? [codingPanel.id] : [];
+    });
+  }, [activeSessionID, agentPanels, codingPanel, inAgentMode]);
 
   const sideShown = sideOpen ? sideW : 0;
   const fixedPanelChrome = 1 + panels.length;
@@ -701,48 +739,81 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const previousPanelCountRef = useRef(panels.length);
   useEffect(() => {
     if (inAgentMode && panels.length > previousPanelCountRef.current) {
-      distributeEvenly(sideShown, false, agentPanels, true);
+      distributeEvenly(sideShown, false, panels, true);
     }
     previousPanelCountRef.current = panels.length;
-  }, [agentPanels, distributeEvenly, inAgentMode, panels.length, sideShown]);
+  }, [distributeEvenly, inAgentMode, panels, sideShown]);
 
   useLayoutEffect(() => {
-    if (inAgentMode && sideOpen) distributeEvenly(sideW, false, agentPanels, true);
-  }, [agentPanels, distributeEvenly, inAgentMode, sideOpen, sideW]);
+    if (inAgentMode && sideOpen) distributeEvenly(sideW, false, panels, true);
+  }, [distributeEvenly, inAgentMode, panels, sideOpen, sideW]);
 
   const addModelPanel = (): void => {
-    if (!inAgentMode || agentPanels.length + pendingModelPanels >= 4) return;
+    if (!inAgentMode || panels.length + pendingModelPanels >= 4) return;
     setPendingModelPanels((count) => count + 1);
-    void selectAddPanel().finally(() => setPendingModelPanels((count) => Math.max(0, count - 1)));
+    void selectAddPanel()
+      .then((opened) => {
+        if (!opened) return;
+        setAgentModePanelIDs((current) => current.includes(opened.id) ? current : [...current, opened.id]);
+      })
+      .finally(() => setPendingModelPanels((count) => Math.max(0, count - 1)));
   };
+
+  const selectAgentSession = useCallback(async (sessionID: string): Promise<void> => {
+    const attached = allPanels.find((panel) => panel.id === sessionID);
+    if (!inAgentMode) {
+      if (attached) {
+        focusSession(sessionID);
+      } else {
+        await reopenSession(sessionID);
+      }
+      return;
+    }
+    const opened = attached ?? await reopenSession(sessionID, true);
+    if (!opened) return;
+    if (!panels.some((panel) => panel.id === opened.id) && panels.length >= 4) return;
+    setAgentModePanelIDs((current) => current.includes(opened.id) ? current : [...current, opened.id]);
+    focusSession(opened.id);
+  }, [allPanels, focusSession, inAgentMode, panels, reopenSession]);
 
   const toggleAgentMode = (): void => {
     if (!inAgentMode) {
+      const seed = codingPanel;
+      setAgentModePanelIDs(seed ? [seed.id] : []);
       prevSidebarRef.current = { open: sideOpen, width: sideW };
       setAgentModeActive(true);
       setSettingsOpen(false);
       setSideOpen(false);
-      distributeEvenly(0, false, agentPanels, true);
+      distributeEvenly(0, false, seed ? [seed] : [], true);
     } else {
       const prev = prevSidebarRef.current;
       if (!prev) return;
+      const focused = allPanels.find((panel) => panel.id === activeSessionID) ?? codingPanel;
+      setAgentModePanelIDs(focused ? [focused.id] : []);
       prevSidebarRef.current = null;
       setAgentModeActive(false);
       setSideOpen(prev.open);
       setSideW(prev.width);
-      distributeEvenly(prev.open ? prev.width : 0, true, defaultPanel ? [defaultPanel] : [], false);
-      if (defaultPanel) focusSession(defaultPanel.id);
+      distributeEvenly(prev.open ? prev.width : 0, true, focused ? [focused] : [], false);
+      if (focused) focusSession(focused.id);
     }
   };
 
   const leaveAgentModeForManualAdjustment = (): void => {
     if (!inAgentMode) return;
+    const focused = allPanels.find((panel) => panel.id === activeSessionID) ?? codingPanel;
+    setAgentModePanelIDs(focused ? [focused.id] : []);
     prevSidebarRef.current = null;
     setAgentModeActive(false);
   };
 
   const closeAgentPanel = (panel: SessionInfo): void => {
-    if (agentPanels.length > 1) {
+    if (inAgentMode && panels.length > 1) {
+      setAgentModePanelIDs((current) => current.filter((id) => id !== panel.id));
+      closePanel(panel.id);
+      return;
+    }
+    if (!inAgentMode && agentPanels.length > 1) {
       closePanel(panel.id);
       return;
     }
@@ -795,9 +866,9 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             <button
               className="icon-btn"
               data-panel-action="add-model-panel"
-              title={agentPanels.length + pendingModelPanels >= 4 ? "Model panel limit reached (4)" : "Add model panel (choose a folder for the new panel)"}
+              title={panels.length + pendingModelPanels >= 4 ? "Model panel limit reached (4)" : "Add model panel (choose a folder for the new panel)"}
               aria-label="Add model panel"
-              disabled={agentPanels.length + pendingModelPanels >= 4}
+              disabled={panels.length + pendingModelPanels >= 4}
               onClick={addModelPanel}
             >
               <IconAdd />
@@ -896,27 +967,11 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
               <PanelColumn
                 key={panel.workspace.id}
                 session={panel}
-                sessionChoices={agentPanels}
-                defaultSessionID={defaultPanel?.id ?? null}
-                onDefaultSessionChange={(sessionID) => {
-                  const next = agentPanels.find((candidate) => candidate.id === sessionID);
-                  if (!next) return;
-                  if (!inAgentMode) {
-                    setSlots((current) => ({
-                      ...current,
-                      [next.workspace.id]: {
-                        open: true,
-                        width: AGENT_DEFAULT_W,
-                        left: Math.max(0, areaW - AGENT_DEFAULT_W),
-                        top: 0,
-                        height: 100,
-                        leftAnchored: false
-                      }
-                    }));
-                  }
-                  setDefaultAgentSessionID(next.id);
-                  focusSession(next.id);
-                }}
+                sessionChoices={sessionChoices}
+                visibleSessionIDs={new Set(panels.map((candidate) => candidate.id))}
+                agentPanelLimitReached={inAgentMode && panels.length >= 4}
+                agentModeActive={inAgentMode}
+                onSessionSelect={selectAgentSession}
                 slot={s}
                 isAnchor={isAnchor}
                 freeMove={inAgentMode}

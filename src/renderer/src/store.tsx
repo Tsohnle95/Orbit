@@ -200,7 +200,7 @@ interface Store {
   openSession: (dir: string) => Promise<SessionInfo | null>;
   addModelPanel: (dir: string) => Promise<void>;
   openWorkspacePanel: (dir: string) => Promise<void>;
-  selectAddPanel: () => Promise<void>;
+  selectAddPanel: () => Promise<SessionInfo | null>;
   selectFolder: () => Promise<void>;
   selectFile: () => Promise<void>;
   openFileWorkspace: (file: string) => Promise<SessionInfo | null>;
@@ -1666,17 +1666,17 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     });
   }, [addModelPanel]);
 
-  const selectAddPanel = useCallback(async () => {
+  const selectAddPanel = useCallback(async (): Promise<SessionInfo | null> => {
     const request = ++requestSeqRef.current;
     const activation = activationSeqRef.current;
     try {
       const info = selectedRuntimeID === "opencode"
         ? await window.openshell.selectFolder(request)
         : await window.openshell.selectFolder(request, selectedRuntimeID);
-      if (!info) return;
+      if (!info) return null;
       if (activation !== activationSeqRef.current) {
         await window.openshell.closeSession(info.workspace).catch(() => {});
-        return;
+        return null;
       }
       attachPanel(info);
       userActivatedRef.current = true;
@@ -1690,8 +1690,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       void loadModels(info.workspace);
       void loadAgents(info.workspace);
       void loadSessions();
+      return info;
     } catch (err) {
       toast(err instanceof Error ? err.message : String(err), "error");
+      return null;
     }
   }, [attachPanel, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript, selectedRuntimeID]);
 

@@ -114,11 +114,22 @@ describe("Layout panel sizing", () => {
     return (grid.style.getPropertyValue("--pane-columns") ?? "").split(" ");
   }
 
-  async function enterAgentMode(): Promise<void> {
+  async function enterAgentMode(...sessionsToAdd: string[]): Promise<void> {
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-model-mode"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
+    for (const sessionName of sessionsToAdd) {
+      await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Agent panel options"]')!.click());
+      const choices = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitemcheckbox"]')]
+        .filter((item) => item.getAttribute("aria-checked") !== "true");
+      const choice = choices.find((item) => item.textContent?.includes(sessionName)) ?? choices[0];
+      expect(choice).not.toBeUndefined();
+      await act(async () => {
+        choice!.click();
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+    }
   }
 
   it("keeps session and workspace opening actions out of the titlebar", async () => {
@@ -413,7 +424,7 @@ describe("Layout panel sizing", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    expect(editorRight()).toBeCloseTo(740, 0);
+    expect(editorRight()).toBeCloseTo(280, 0);
     expect(container.querySelector(".app.agent-mode")).toBeNull();
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(1);
   });
@@ -428,7 +439,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two");
 
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(2);
     const cols = gridCols();
@@ -450,7 +461,7 @@ describe("Layout panel sizing", () => {
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(1);
     expect(container.querySelector(".agent-workspace")?.textContent).toContain("repo");
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Agent panel options"]')!.click());
-    const choice = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
+    const choice = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitemcheckbox"]')]
       .find((item) => item.textContent?.includes("two"));
     expect(choice).not.toBeUndefined();
     await act(async () => choice!.click());
@@ -459,7 +470,7 @@ describe("Layout panel sizing", () => {
     expect(container.querySelector(".agent-workspace")?.textContent).toContain("two");
   });
 
-  it("changes the coding-mode default without disturbing Agent Mode geometry", async () => {
+  it("adds an active session without disturbing Agent Mode geometry", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
     await act(async () => {
@@ -471,19 +482,25 @@ describe("Layout panel sizing", () => {
     const beforeLefts = agentLefts();
     const beforeWidths = agentWidths();
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Agent panel options"]')!.click());
-    const choice = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
+    const choice = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitemcheckbox"]')]
       .find((item) => item.textContent?.includes("two"));
     expect(choice).not.toBeUndefined();
     await act(async () => choice!.click());
 
-    expect(agentLefts()).toEqual(beforeLefts);
-    expect(agentWidths()).toEqual(beforeWidths);
+    expect(beforeLefts).toEqual([0]);
+    expect(beforeWidths).toEqual([1480]);
+    expect(agentLefts()).toEqual([0, 740]);
+    expect(agentWidths()).toEqual([740, 740]);
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(2);
 
     await enterAgentMode();
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(1);
     expect(agentWidths()).toEqual([280]);
     expect(agentLefts()).toEqual([969]);
+    expect(container.querySelector(".agent-workspace")?.textContent).toContain("two");
+
+    await enterAgentMode();
+    expect(container.querySelectorAll(".agent-panel")).toHaveLength(1);
     expect(container.querySelector(".agent-workspace")?.textContent).toContain("two");
   });
 
@@ -494,7 +511,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two");
     await act(async () => {
       setWidth(700);
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -514,7 +531,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/three", 3) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two", "three");
 
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(3);
     const cols = gridCols();
@@ -530,7 +547,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two");
 
     const handles = container.querySelectorAll<HTMLElement>(".agent-col .panel-resize-right");
     expect(handles).toHaveLength(2);
@@ -554,7 +571,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two");
 
     const headers = container.querySelectorAll<HTMLElement>(".agent-header");
     expect(headers).toHaveLength(2);
@@ -580,7 +597,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two");
 
     const handles = container.querySelectorAll<HTMLElement>(".agent-col .panel-resize-left");
     expect(handles).toHaveLength(2);
@@ -628,7 +645,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two");
 
     const handles = container.querySelectorAll<HTMLElement>(".agent-col .panel-resize-right");
     await act(async () => {
@@ -651,7 +668,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two");
 
     const handles = container.querySelectorAll<HTMLElement>(".agent-col .panel-resize-left");
     await act(async () => {
@@ -701,7 +718,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two");
 
     const leftHandles = container.querySelectorAll<HTMLElement>(".agent-col .agent-panel .panel-resize-left");
     await act(async () => {
@@ -828,7 +845,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two");
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(2);
 
     const handles = container.querySelectorAll<HTMLElement>(".agent-col .agent-panel .panel-resize-right");
@@ -853,7 +870,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two");
 
     const cols = agentCols();
     expect(cols[0].querySelector(".agent-close")).not.toBeNull();
@@ -873,10 +890,7 @@ describe("Layout panel sizing", () => {
     const modeButton = (): HTMLButtonElement =>
       container.querySelector<HTMLButtonElement>(".codicon-robot")!.closest("button")!;
 
-    await act(async () => {
-      modeButton().click();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    });
+    await enterAgentMode("two");
 
     expect(agentWidths()).toEqual([740, 740]);
     expect(agentLefts()).toEqual([0, 740]);
@@ -900,10 +914,7 @@ describe("Layout panel sizing", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>(".codicon-robot")!.closest("button")!.click();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    });
+    await enterAgentMode("two", "three");
 
     expect(agentWidths()).toEqual([740, 740, 740]);
     expect(agentLefts()).toEqual([0, 0, 740]);
@@ -980,10 +991,7 @@ describe("Layout panel sizing", () => {
     });
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(0);
 
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>(".codicon-robot")!.closest("button")!.click();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    });
+    await enterAgentMode();
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(1);
     expect(agentWidths()[0]).toBeGreaterThan(1000);
   });
@@ -1057,10 +1065,7 @@ describe("Layout panel sizing", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>(".codicon-robot")!.closest("button")!.click();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    });
+    await enterAgentMode("two");
 
     expect(agentWidths()).toEqual([740, 740]);
     expect(agentCols().map((col) => col.style.height)).toEqual(["100%", "100%"]);
@@ -1171,10 +1176,7 @@ describe("Layout panel sizing", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>(".codicon-robot")!.closest("button")!.click();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    });
+    await enterAgentMode("two", "three");
 
     expect(agentCols()).toHaveLength(3);
     expect(agentCols().map((col) => col.style.height)).toEqual(["50%", "50%", "50%"]);
@@ -1197,10 +1199,7 @@ describe("Layout panel sizing", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>(".codicon-robot")!.closest("button")!.click();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    });
+    await enterAgentMode("two");
 
     expect(gridCols()[0]).toBe("0px");
     expect(container.querySelector(".sidebar.collapsed")).toBeNull();
@@ -1218,10 +1217,7 @@ describe("Layout panel sizing", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>(".codicon-robot")!.closest("button")!.click();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    });
+    await enterAgentMode("two", "three", "four");
 
     await act(async () => {
       setWidth(900);
@@ -1240,7 +1236,7 @@ describe("Layout panel sizing", () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    await enterAgentMode();
+    await enterAgentMode("two");
     expect(agentLefts()).toEqual([0, 740]);
     expect(agentCols()[1].classList.contains("edge-left")).toBe(true);
 
