@@ -356,6 +356,82 @@ describe("createStreamPipeline", () => {
     expect(onStreamError).toHaveBeenCalledOnce();
   });
 
+  it("notifies once per outage when retries fail before any event arrives", async () => {
+    const onStreamError = vi.fn();
+    const onStreamFailure = vi.fn();
+    const onReconnect = vi.fn();
+    const subscribe = async (): Promise<AsyncIterable<RawStreamEvent>> => ({
+      [Symbol.asyncIterator](): AsyncIterator<RawStreamEvent> {
+        return { next: async () => { throw new Error("Transport"); } };
+      }
+    });
+    const pipeline = createStreamPipeline({
+      subscribe,
+      onEvents: () => {},
+      onStreamError,
+      onStreamFailure,
+      onReconnect
+    });
+
+    const run = pipeline.run(new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(3_000);
+    pipeline.cleanup();
+    await run;
+
+    // An endpoint that never delivers an event is one outage: report once,
+    // keep every failed attempt visible through the streak, and do not signal
+    // a reconnect. Previously every retry cycle reset the accounting and
+    // re-notified.
+    expect(onStreamError).toHaveBeenCalledTimes(1);
+    expect(onStreamFailure.mock.calls.map((call) => call[0])).toEqual([1, 2, 3, 4]);
+    expect(onReconnect).not.toHaveBeenCalled();
+  });
+
+  it("resets the reported streak when a stream that delivered events drops", async () => {
+    const onStreamError = vi.fn();
+    const onStreamFailure = vi.fn();
+    const onReconnect = vi.fn();
+    let calls = 0;
+    const subscribe = async (signal: AbortSignal): Promise<AsyncIterable<RawStreamEvent>> => {
+      const attempt = calls++;
+      const deliverEvent = attempt === 0 || attempt === 2;
+      return {
+        [Symbol.asyncIterator](): AsyncIterator<RawStreamEvent> {
+          let delivered = false;
+          return {
+            next: async (): Promise<IteratorResult<RawStreamEvent>> => {
+              if (signal.aborted) return { done: true, value: undefined };
+              if (deliverEvent && !delivered) {
+                delivered = true;
+                return { value: textDelta(`a${attempt}`), done: false };
+              }
+              throw new Error("Transport");
+            }
+          };
+        }
+      };
+    };
+    const pipeline = createStreamPipeline({
+      subscribe,
+      onEvents: () => {},
+      onStreamError,
+      onStreamFailure,
+      onReconnect
+    });
+
+    const run = pipeline.run(new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(3_000);
+    pipeline.cleanup();
+    await run;
+
+    // Two live-then-dead cycles are two outages: each one re-notifies, each
+    // live stream is signalled for re-materialization, and a delivered event
+    // restarts the failure streak ([1,2] then [1,2] …).
+    expect(onStreamError).toHaveBeenCalledTimes(2);
+    expect(onStreamFailure.mock.calls.map((call) => call[0]).slice(0, 4)).toEqual([1, 2, 1, 2]);
+    expect(onReconnect).toHaveBeenCalledTimes(2);
+  });
+
   it("reports malformed stream events instead of dropping them", async () => {
     const onStreamError = vi.fn();
     const { subscribe } = createSubscribe([{}]);

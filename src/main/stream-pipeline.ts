@@ -25,6 +25,7 @@ export interface StreamPipelineOptions {
   subscribe: (signal: AbortSignal) => Promise<AsyncIterable<RawStreamEvent>>;
   onEvents: (directory: string, events: RawStreamEvent[]) => void | Promise<void>;
   onStreamError?: (reason: string) => void;
+  onStreamFailure?: (consecutiveFailures: number) => void;
   onReconnect?: () => void;
   onStreamEnd?: () => void;
   heartbeatTimeoutMs?: number;
@@ -147,6 +148,7 @@ export function createStreamPipeline(options: StreamPipelineOptions): StreamPipe
     subscribe,
     onEvents,
     onStreamError,
+    onStreamFailure,
     onReconnect,
     onStreamEnd
   } = options;
@@ -305,12 +307,20 @@ export function createStreamPipeline(options: StreamPipelineOptions): StreamPipe
 
   const runAttempt = async (signal: AbortSignal): Promise<void> => {
     const events = await subscribe(signal);
-    markConnected();
 
+    // `subscribe()` only builds the (lazy) SSE iterable; the stream is
+    // established once it actually delivers. Marking connected earlier would
+    // reset the failure accounting for an endpoint that never talks, so the
+    // outage would never back off, notify once, or trigger recovery.
+    let established = false;
     let yielded = Date.now();
     resetHeartbeat();
 
     for await (const event of events) {
+      if (!established) {
+        established = true;
+        markConnected();
+      }
       resetHeartbeat();
       streamErrorLogged = false;
 
@@ -350,6 +360,10 @@ export function createStreamPipeline(options: StreamPipelineOptions): StreamPipe
             retryDelayMs = 0;
           } else if (!isAbortError(error)) {
             consecutiveFailures += 1;
+            // Every failed attempt reports its streak, not just the first one
+            // per outage (onStreamError is de-duplicated): consumers use this
+            // to decide when the bound endpoint is dead and must be replaced.
+            onStreamFailure?.(consecutiveFailures);
             if (!streamErrorLogged) {
               streamErrorLogged = true;
               console.error("[orbit] stream failed", error);

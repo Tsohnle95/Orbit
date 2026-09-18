@@ -160,9 +160,12 @@ Internals:
   `createStreamPipeline` transport in `src/main/stream-pipeline.ts`: 33ms
   per-directory batched flushing with delta coalescing and snapshot barriers,
   a 30s heartbeat that aborts silent streams without raising a user-facing error, and exponential reconnect
-  backoff (250ms base, ×2, 5s cap). Stream errors drop the client so the next
-  attempt rediscovers the service, and reconnects emit a synthetic
-  `server.connected` so the renderer re-materializes open sessions.
+  backoff (250ms base, ×2, 5s cap). A stream counts as connected once it
+  delivers its first event; failures before that accumulate and report one
+  error per outage. Three consecutive stream failures drop the client so the
+  next attempt rediscovers the service, and a live stream emits a synthetic
+  `server.connected` on reconnect so the renderer re-materializes open
+  sessions.
   `deliverEvents` forwards each event as `{kind:"event", type, data}` and
   runs `handleServerEvent` (see `docs/events.md`); handler failures are emitted
   as session-scoped or global structured errors. Stop/restart serializes

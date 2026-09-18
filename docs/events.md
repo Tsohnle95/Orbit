@@ -39,11 +39,15 @@ a delta arriving after the snapshot never merges into a pre-snapshot delta the
 snapshot already covers. `session.idle` / `session.error` /
 `session.created` / `session.deleted` clear the `session.status` coalescing
 key. A 30s heartbeat aborts a silent stream and reconnects immediately without
-emitting a user-facing error;
-stream failures retry with exponential backoff (250ms base, ×2, 5s cap). The
-backend drops its client and rediscovers the service on stream errors, and
-after a reconnect it emits a synthetic `server.connected` so the renderer
-re-materializes open sessions. The pipeline also emits `server.connected`
+emitting a user-facing error; stream failures retry with exponential backoff
+(250ms base, ×2, 5s cap). A subscription counts as connected only once it
+delivers an event, so an endpoint that never answers keeps accumulating
+failures and reports one user-facing `global.error` per outage instead of one
+per retry cycle. After three consecutive failed attempts the backend drops its
+client and the next attempt re-runs `connect()`, which discovers or ensures a
+live service, so a dead or replaced daemon recovers without an app restart. A
+stream that delivered events emits a synthetic `server.connected` when it
+reconnects so the renderer re-materializes open sessions. The pipeline also emits `server.connected`
 whenever the SSE stream ends cleanly (`onStreamEnd`) or the heartbeat aborts a
 silent stream, so a stream that goes quiet mid-response (server-side stall
 after a large response) still triggers a full re-materialization that recovers

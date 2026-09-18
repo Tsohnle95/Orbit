@@ -660,6 +660,8 @@ export class OpenShellBackend {
 
   private static minSupportedServerBuild = 17577;
 
+  private static streamFailureLimit = 3;
+
   private static serverVersionPredicate(installedVersion: string | null): (version: string) => boolean {
     return serverVersionPredicate(installedVersion, OpenShellBackend.minSupportedServerBuild);
   }
@@ -829,20 +831,9 @@ export class OpenShellBackend {
     const pipeline = createStreamPipeline({
       subscribe: (attemptSignal) => this.subscribeEvents(attemptSignal, generation),
       onEvents: (directory, events) => this.deliverEvents(directory, events, generation),
-      onReconnect: () => {
-        if (!this.streamConnectedOnce) {
-          this.streamConnectedOnce = true;
-          return;
-        }
-        this.emit({ kind: "event", type: "server.connected", data: {} });
-      },
-      onStreamError: (reason) => {
-        this.emit({
-          kind: "event",
-          type: "global.error",
-          data: { error: normalizeFailure(reason, "ORBIT_STREAM_FAILED", "Live event stream failed") }
-        });
-      },
+      onReconnect: () => this.handleStreamReconnect(),
+      onStreamError: (reason) => this.handleStreamError(reason),
+      onStreamFailure: (failures) => this.handleStreamFailure(failures),
       onStreamEnd: () => {
         // The SSE stream ended (cleanly or via heartbeat abort). Emit
         // server.connected so the renderer re-materializes session state
@@ -853,6 +844,41 @@ export class OpenShellBackend {
       }
     });
     await pipeline.run(signal);
+  }
+
+  /** A stream delivered its first event, so it is live: unless this is the
+   *  first connection, ask the renderer to re-materialize open sessions (a
+   *  reconnect may have missed terminal events). The pipeline only calls this
+   *  for streams that actually delivered an event, and it resets its own
+   *  failure streak when it does. */
+  private handleStreamReconnect(): void {
+    if (!this.streamConnectedOnce) {
+      this.streamConnectedOnce = true;
+      return;
+    }
+    this.emit({ kind: "event", type: "server.connected", data: {} });
+  }
+
+  /** One call per failed subscription attempt, carrying the streak length.
+   *  Once the streak reaches the limit the bound client is talking to a dead
+   *  or replaced service; drop it so the next attempt re-runs connect() and
+   *  discovers or ensures a live service instead of retrying the dead
+   *  endpoint until an app restart. A stream that delivers an event resets the
+   *  streak (see stream-pipeline), so transient reconnects never drop it. */
+  private handleStreamFailure(failures: number): void {
+    if (failures >= OpenShellBackend.streamFailureLimit && this.client) {
+      this.client = null;
+    }
+  }
+
+  /** One call per outage episode (the pipeline de-duplicates retries within a
+   *  single outage): surface it so a failed run cannot disappear. */
+  private handleStreamError(reason: string): void {
+    this.emit({
+      kind: "event",
+      type: "global.error",
+      data: { error: normalizeFailure(reason, "ORBIT_STREAM_FAILED", "Live event stream failed") }
+    });
   }
 
   private async subscribeEvents(

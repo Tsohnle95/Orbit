@@ -52,7 +52,8 @@ its work while live diffs of changed files appear in the editor.
    transport (`src/main/stream-pipeline.ts`): 33ms per-directory batched
    flushing with delta coalescing and snapshot barriers, a 30s heartbeat, and
    exponential reconnect backoff; `connect()` is retried every 2s until a
-    client exists.
+   client exists, and three consecutive stream failures release the client so
+   the loop rediscovers or ensures a live service without an app restart.
 
 ## Runtime adapter boundary
 
