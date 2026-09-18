@@ -91,6 +91,13 @@ only when this procedure runs. Run `npm run client:drift` on a weekly cadence â€
 and before adopting any new protocol feature â€” to compare the pin against the
 published `beta`, `next`, and `dev` lines; it exits nonzero when beta is ahead.
 
+The runtime binary is not pinned. On every connect Orbit probes
+`opencode2 --version`, accepts a registered service only when its build matches
+that installed build and clears `minSupportedServerBuild`, and otherwise asks
+`Service.ensure` to terminate the mismatched daemon and spawn the new binary.
+The binary is whatever `PATH` resolves, so upgrading the CLI in a terminal and
+restarting Orbit is enough to move to the new server; no pin change is needed.
+
 When the event contract moves, raise
 `minSupportedServerBuild` in `src/main/opencode.ts` so discovery and
 `Service.ensure` refuse servers too old to speak it; the predicate receives the

@@ -57,7 +57,7 @@ Public methods (all used by IPC):
 
 | Method | Purpose |
 |---|---|
-| `connect()` | `Service.discover()` → `Service.ensure({command:["opencode2","serve","--service"]})` → `OpenCode.make` |
+| `connect()` | Probe `opencode2 --version` → `Service.discover()` / `Service.ensure({command:["opencode2","serve","--service"]})` gated on a matching installed build → `OpenCode.make` |
 | `start()` | Start the SSE event loop if one is not already running; unexpected loop failures are forwarded as structured `global.error` events |
 | `stop()` | Abort and invalidate the active SSE loop lifecycle, then stop every context's fs watcher |
 | `mobileEndpoint()` | Returns the connected OpenCode mobile endpoint credentials when available, otherwise `null` |

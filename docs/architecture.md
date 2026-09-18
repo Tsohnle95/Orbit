@@ -37,11 +37,18 @@ its work while live diffs of changed files appear in the editor.
 
 `OpenShellBackend.connect()` in `src/main/opencode.ts`:
 
-1. `Service.discover()` — finds an already-registered opencode service.
-2. Falls back to `Service.ensure({ command: ["opencode2", "serve", "--service"] })`
-   which spawns the service and waits for it to be ready.
-3. Creates a typed client: `OpenCode.make({ baseUrl, headers })`.
-4. The `runEventLoop()` SSE loop runs through the `createStreamPipeline`
+1. Probes `opencode2 --version` and derives a compatibility predicate: a
+   registered service must match the installed build and clear
+   `minSupportedServerBuild`. A daemon left running from a previous install
+   would otherwise still satisfy the floor, so matching the installed build is
+   what makes an upgrade visible after Orbit restarts.
+2. `Service.discover()` — finds an already-registered opencode service whose
+   version satisfies the predicate.
+3. Falls back to `Service.ensure({ command: ["opencode2", "serve", "--service"] })`,
+   which terminates a version-mismatched daemon, spawns the service, and waits
+   for it to be ready.
+4. Creates a typed client: `OpenCode.make({ baseUrl, headers })`.
+5. The `runEventLoop()` SSE loop runs through the `createStreamPipeline`
    transport (`src/main/stream-pipeline.ts`): 33ms per-directory batched
    flushing with delta coalescing and snapshot barriers, a 30s heartbeat, and
    exponential reconnect backoff; `connect()` is retried every 2s until a

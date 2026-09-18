@@ -539,6 +539,32 @@ export type MutationPhase =
 
 type MutationPhaseHandler = (phase: MutationPhase, source: string, target: string) => void | Promise<void>;
 
+/** Trailing build number of an `opencode2` version string, whether reported by
+ *  `opencode2 --version` ("opencode2 v0.0.0-beta-19242") or by a running
+ *  service ("0.0.0-beta-19242"). Null when no build can be read. */
+export function serverBuild(version: string | null | undefined): number | null {
+  if (!version) return null;
+  const match = /(\d+)\s*$/.exec(version.trim());
+  return match ? Number(match[1]) : null;
+}
+
+/** Accept a running service only when it matches the installed `opencode2`
+ *  build and clears the minimum-build floor. A daemon left running from a
+ *  previous install still satisfies the floor, so without the build match Orbit
+ *  would keep talking to the old server after the CLI is upgraded. When the
+ *  installed build is unknown, accept anything above the floor so Orbit can
+ *  still attach to a compatible external service. */
+export function serverVersionPredicate(
+  installedVersion: string | null,
+  minBuild: number
+): (version: string) => boolean {
+  const installedBuild = serverBuild(installedVersion);
+  return (version) => {
+    const build = serverBuild(version);
+    if (build === null || build < minBuild) return false;
+    return installedBuild === null || build === installedBuild;
+  };
+}
 
 export class OpenShellBackend {
   private client: Client | null = null;
@@ -634,29 +660,34 @@ export class OpenShellBackend {
 
   private static minSupportedServerBuild = 17577;
 
-  private static supportsContract(version: string): boolean {
-    const match = /(\d+)$/.exec(version.trim());
-    const build = match ? Number(match[1]) : null;
-    return build !== null && build >= OpenShellBackend.minSupportedServerBuild;
+  private static serverVersionPredicate(installedVersion: string | null): (version: string) => boolean {
+    return serverVersionPredicate(installedVersion, OpenShellBackend.minSupportedServerBuild);
   }
 
-  private async discoverEndpoint(): Promise<Endpoint | null> {
+  /** Version of the `opencode2` on PATH, or null when it cannot be probed. */
+  private async installedServerVersion(): Promise<string | null> {
+    return new Promise((resolve) => {
+      execFile("opencode2", ["--version"], { timeout: 5000 }, (error, stdout) => {
+        resolve(error ? null : stdout.trim().split("\n")[0]?.trim() || null);
+      });
+    });
+  }
+
+  private async discoverEndpoint(version: (value: string) => boolean): Promise<Endpoint | null> {
     const files = OpenShellBackend.discoverFiles();
     for (const file of files) {
-      const endpoint = await Service.discover({
-        file,
-        version: OpenShellBackend.supportsContract
-      }).catch(() => null);
+      const endpoint = await Service.discover({ file, version }).catch(() => null);
       if (endpoint) return endpoint;
     }
     return null;
   }
 
   async connect(): Promise<boolean> {
+    const version = OpenShellBackend.serverVersionPredicate(await this.installedServerVersion());
     const endpoint =
-      (await Service.discover({ version: OpenShellBackend.supportsContract }).catch(() => null)) ??
-      (await this.discoverEndpoint()) ??
-      (await this.ensureBounded());
+      (await Service.discover({ version }).catch(() => null)) ??
+      (await this.discoverEndpoint(version)) ??
+      (await this.ensureBounded(version));
     if (!endpoint) return false;
     this.endpoint = endpoint;
     this.client = OpenCode.make({
@@ -719,12 +750,12 @@ export class OpenShellBackend {
     return removed;
   }
 
-  private async ensureBounded(): Promise<Endpoint | null> {
+  private async ensureBounded(version: (value: string) => boolean): Promise<Endpoint | null> {
     if (Date.now() - this.lastEnsureAt < this.ensureCooldownMs) return null;
     this.lastEnsureAt = Date.now();
     const attempt = Service.ensure({
       command: ["opencode2", "serve", "--service"],
-      version: OpenShellBackend.supportsContract
+      version
     }).catch(() => null);
     const timeout = sleep(10_000).then(() => null);
     return Promise.race([attempt, timeout]);
