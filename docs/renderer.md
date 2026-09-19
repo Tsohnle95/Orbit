@@ -422,6 +422,12 @@ express a cross-component invariant or non-obvious state contract.
 | `AgentTray` | `AgentTray.tsx` | Collapsed agent-panel affordance and session activity indication |
 | `TerminalTray` | `TerminalTray.tsx` | Integrated terminal tabs backed by main-process `node-pty` |
 
+The terminal tray's server button passes the active workspace-relative HTML
+tab to Vite when available, so nested standalone sites get the correct document
+root. Startup is considered successful only for a reachable non-error page;
+HTTP failures and bounded Vite stderr are shown in the tray instead of the
+generic startup notice. Right-clicking a running server still exposes Stop.
+
 Key cross-component invariants:
 
 - Every panel acts on its own session/workspace identity; background panels keep

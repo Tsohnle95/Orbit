@@ -48,9 +48,9 @@ Implementation / tests:
 |---|---|---|---|---|
 | 1 | Autocorrect, eight-panel layout, editor navigation | complete | targeted renderer/main tests + Node 22 `npm run check` | `4e24c31` |
 | 2 | Explorer file/folder rename | complete | mutation + sidebar/store tests + Node 22 `npm run check` | `3c42aef` |
-| 3 | External rename correlation and open-tab recovery | complete | watcher/store tests + Node 22 `npm run check` | checkpoint pending |
-| 4 | Vite preview diagnosis and robust failure reporting | active | Vite manager/tray tests + live loopback smoke | — |
-| 5 | GUI question event/reconciliation compatibility | pending | event/store/panel tests + runtime smoke where possible | — |
+| 3 | External rename correlation and open-tab recovery | complete | watcher/store tests + Node 22 `npm run check` | `0cd1bee` |
+| 4 | Vite preview diagnosis and robust failure reporting | complete | manager/tray tests + live 404/200 loopback smoke + Node 22 `npm run check` | checkpoint pending |
+| 5 | GUI question event/reconciliation compatibility | active | event/store/panel tests + runtime smoke where possible | — |
 | 6 | Integration review, docs, final supported-Node gate | pending | `npm run check` + focused UI/runtime smoke | — |
 
 ## Validation plan

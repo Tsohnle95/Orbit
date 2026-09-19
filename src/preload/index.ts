@@ -191,8 +191,8 @@ const api = {
   windowView: (view: "landing" | "session"): Promise<void> => ipcRenderer.invoke("shell:window-view", view),
   validateW3c: (path: string, content: string): Promise<W3cDiagnostic[]> =>
     ipcRenderer.invoke("shell:validate-w3c", path, content),
-  viteStart: (workspace: WorkspaceIdentity): Promise<VitePreview> =>
-    ipcRenderer.invoke("shell:vite-start", workspace),
+  viteStart: (workspace: WorkspaceIdentity, entryPath?: string): Promise<VitePreview> =>
+    ipcRenderer.invoke("shell:vite-start", workspace, entryPath),
   viteStop: (workspace: WorkspaceIdentity): Promise<void> =>
     ipcRenderer.invoke("shell:vite-stop", workspace),
   takePendingPaths: (): Promise<string[]> =>

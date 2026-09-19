@@ -164,7 +164,7 @@ export function TerminalTray({
   onClose: () => void;
   onExpand: () => void;
 }): ReactNode {
-  const { session } = useStore();
+  const { session, activePath } = useStore();
   const workspace = session!.workspace;
   const sessionDirectory = session!.directory;
   const [{ terms, activeId }, setTabs] = useState<TerminalTabs>({ terms: [], activeId: null });
@@ -270,11 +270,17 @@ export function TerminalTray({
     if (viteStarting) return;
     setNotice("");
     setViteStarting(true);
-    void window.openshell.viteStart(workspace)
+    const entryPath = activePath && !activePath.startsWith("/") && /\.html?$/i.test(activePath)
+      ? activePath
+      : undefined;
+    const start = entryPath
+      ? window.openshell.viteStart(workspace, entryPath)
+      : window.openshell.viteStart(workspace);
+    void start
       .then((preview) => setViteUrl(preview.url))
-      .catch(() => {
+      .catch((error) => {
         setViteUrl(null);
-        setNotice("Could not start the Vite server");
+        setNotice(error instanceof Error ? error.message : "Could not start the Vite server");
       })
       .finally(() => setViteStarting(false));
   };

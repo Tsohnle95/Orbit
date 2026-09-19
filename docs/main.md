@@ -312,7 +312,7 @@ Internals:
 | `shell:window-view` | `(view: "landing" \| "session") → void` — switches the window between the fixed landing size and the persisted session size (see Window sizing) |
 | `shell:install-app` | `() → {ok, message}`; macOS only — spawns `scripts/install-app.mjs` to build and package the app, then replaces `/Applications/Orbit.app` |
 | `shell:validate-w3c` | `(path, content) → W3cDiagnostic[]`; calls the Nu Html Checker or W3C CSS Validator for HTML and plain CSS paths; preprocessor stylesheets (SCSS, LESS, Sass) return no diagnostics |
-| `shell:vite-start` | `(workspace) → VitePreview` — starts a workspace-rooted Vite dev server on loopback (reuses the running one) and opens its URL in the default browser |
+| `shell:vite-start` | `(workspace, entryPath?) → VitePreview` — starts a loopback Vite dev server and opens its verified URL; an active HTML entry is confined to the workspace and served from its containing directory, otherwise the workspace root is served |
 | `shell:vite-stop` | `(workspace) → void` — stops the workspace's Vite dev server when one is running |
 | `shell:take-pending-paths` | `() → string[]` — drains OS-dropped or launch paths queued before the renderer was ready |
 

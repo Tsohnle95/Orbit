@@ -42,6 +42,7 @@ import {
   absoluteFilePaths,
   confinedPath,
   fileContent,
+  relativePath,
   terminalDimensions,
   terminalId,
   terminalInput,
@@ -964,10 +965,20 @@ function registerIpc(): void {
     return validateWithW3c(path, source);
   });
 
-  handleTrusted("shell:vite-start", async (_e, workspace: WorkspaceIdentity) => {
+  handleTrusted("shell:vite-start", async (_e, workspace: WorkspaceIdentity, requestedEntry?: string) => {
     workspaceId(workspace);
     const directory = await backend.workspaceDirectory(workspace);
-    const preview = await viteServers.start(workspace.id, directory);
+    let serveDirectory = directory;
+    let entry = "";
+    if (requestedEntry !== undefined) {
+      const clean = relativePath(requestedEntry);
+      const absolute = await confinedPath(directory, clean);
+      const stat = await fsp.stat(absolute).catch(() => null);
+      if (!stat?.isFile() || !/\.html?$/i.test(absolute)) throw new Error("the Vite preview target must be an existing HTML file");
+      serveDirectory = path.dirname(absolute);
+      entry = path.basename(absolute).toLowerCase() === "index.html" ? "" : path.basename(absolute);
+    }
+    const preview = await viteServers.start(workspace.id, serveDirectory, entry);
     void shell.openExternal(preview.url);
     return preview;
   });

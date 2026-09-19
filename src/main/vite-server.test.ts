@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { defaultViteDeps, VitePreviewManager, type ViteChild, type ViteManagerDeps } from "./vite-server";
+import { defaultViteDeps, viteHttpError, VitePreviewManager, type ViteChild, type ViteManagerDeps } from "./vite-server";
 
 interface FakeChild extends ViteChild {
   killed: boolean;
@@ -16,6 +16,7 @@ function fakeChild(): FakeChild {
     kill: () => {
       child.killed = true;
     },
+    diagnostics: () => "",
     once: (event, listener) => {
       const list = listeners.get(event) ?? [];
       list.push(listener);
@@ -52,6 +53,14 @@ describe("VitePreviewManager", () => {
     expect(second).toEqual(first);
     expect(deps.launch).toHaveBeenCalledTimes(1);
     expect(children).toHaveLength(1);
+  });
+
+  it("serves the active HTML file and safely encodes its URL", async () => {
+    const { manager, deps } = setup();
+    const preview = await manager.start("ws-1", "/repo/a", "pages/My demo.html");
+
+    expect(preview).toEqual({ url: "http://127.0.0.1:5199/pages/My%20demo.html", port: 5199 });
+    expect(deps.waitReady).toHaveBeenCalledWith(preview.url);
   });
 
   it("restarts the server when the workspace directory changes", async () => {
@@ -100,6 +109,20 @@ describe("VitePreviewManager", () => {
     expect(manager.running("ws-1")).toBeNull();
   });
 
+  it("includes Vite stderr when startup fails", async () => {
+    const child = fakeChild();
+    child.diagnostics = () => "failed to load config: missing-plugin";
+    const { manager } = setup({
+      launch: vi.fn(() => child),
+      waitReady: vi.fn(() => new Promise<void>(() => undefined))
+    });
+    const pending = manager.start("ws-1", "/repo/a");
+    await Promise.resolve();
+    child.fireExit();
+
+    await expect(pending).rejects.toThrow("missing-plugin");
+  });
+
   it("stopAll kills every running server", async () => {
     const { manager, children } = setup();
     await manager.start("ws-1", "/repo/a");
@@ -111,12 +134,20 @@ describe("VitePreviewManager", () => {
   });
 });
 
+describe("viteHttpError", () => {
+  it("accepts successful pages and rejects a false-ready 404 with guidance", () => {
+    expect(viteHttpError("http://127.0.0.1:5199/demo.html", 200)).toBeNull();
+    expect(viteHttpError("http://127.0.0.1:5199/", 404)?.message)
+      .toContain("Open an HTML file and try again");
+  });
+});
+
 describe("defaultViteDeps", () => {
   it("launches Vite as plain node without a second app instance", () => {
-    const seen: Array<{ args: string[]; options: { cwd?: unknown; env?: NodeJS.ProcessEnv } }> = [];
-    const spawnImpl = ((...call: [string, string[], { cwd?: unknown; env?: NodeJS.ProcessEnv }]) => {
+    const seen: Array<{ args: string[]; options: { cwd?: unknown; env?: NodeJS.ProcessEnv; stdio?: unknown } }> = [];
+    const spawnImpl = ((...call: [string, string[], { cwd?: unknown; env?: NodeJS.ProcessEnv; stdio?: unknown }]) => {
       seen.push({ args: call[1], options: call[2] });
-      return fakeChild();
+      return { ...fakeChild(), stderr: null };
     }) as unknown as Parameters<typeof defaultViteDeps>[2];
     const deps = defaultViteDeps("/repo/electron", ["/repo/node_modules/vite/bin/vite.js"], spawnImpl);
     deps.launch("/repo/a", 5199);
@@ -133,5 +164,6 @@ describe("defaultViteDeps", () => {
     ]);
     expect(seen[0].options.cwd).toBe("/repo/a");
     expect(seen[0].options.env?.ELECTRON_RUN_AS_NODE).toBe("1");
+    expect(seen[0].options.stdio).toEqual(["ignore", "ignore", "pipe"]);
   });
 });

@@ -26,7 +26,8 @@ const session: SessionInfo = {
   directory: "/workspace",
   workspace: { id: "11111111-1111-4111-8111-111111111111", generation: 1 }
 };
-vi.mock("../store", () => ({ useStore: () => ({ session }) }));
+let activePath: string | null = null;
+vi.mock("../store", () => ({ useStore: () => ({ session, activePath }) }));
 
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -44,6 +45,7 @@ describe("TerminalTray integration", () => {
     let uuid = 0;
     vi.stubGlobal("crypto", { randomUUID: () => `aaaaaaaa-aaaa-4aaa-8aaa-${String(++uuid).padStart(12, "0")}` });
     writes.mockClear();
+    activePath = null;
     onClose.mockClear();
     window.openshell = {
       onMessage: (callback: (message: BackendMessage) => void) => { listener = callback; return () => {}; },
@@ -129,6 +131,34 @@ describe("TerminalTray integration", () => {
     const button = container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!;
     expect(button.title).toBe("http://127.0.0.1:5199/ — right-click to stop the server");
     expect(button.classList.contains("running")).toBe(true);
+  });
+
+  it("opens the active HTML file through the workspace Vite server", async () => {
+    activePath = "pages/demo.html";
+    await act(async () => root.render(<TerminalTray height={240} snapped={false} onClose={onClose} onExpand={() => {}} />));
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!.click();
+      await flush();
+    });
+
+    expect(window.openshell.viteStart).toHaveBeenCalledWith(session.workspace, "pages/demo.html");
+  });
+
+  it("shows the actionable Vite startup error", async () => {
+    window.openshell = {
+      ...window.openshell,
+      viteStart: vi.fn(async () => {
+        throw new Error("Vite is running, but no page was found at /");
+      })
+    } as unknown as typeof window.openshell;
+    await act(async () => root.render(<TerminalTray height={240} snapped={false} onClose={onClose} onExpand={() => {}} />));
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!.click();
+      await flush();
+    });
+
+    expect(container.querySelector(".terminal-notice")?.textContent)
+      .toBe("Vite is running, but no page was found at /");
   });
 
   it("disables the server button while the server starts", async () => {
