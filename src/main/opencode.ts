@@ -2968,10 +2968,29 @@ export class OpenShellBackend {
       const abs = await confinedPath(root, relativePath(rel));
       const parent = this.relKey(path.dirname(abs), root);
       const target = await confinedPath(root, parent ? `${parent}/${fileName(newName)}` : fileName(newName));
-      const captured = await this.captureDirectMutation(watchContext, abs);
+      if (target === abs) return;
       this.contextFor(workspace);
       const source = await fsp.lstat(abs);
-      if (source.isDirectory()) throw new Error("directory rename is not supported; rename files only");
+      if (source.isDirectory()) {
+        const occupied = await fsp.lstat(target).catch((error: NodeJS.ErrnoException) => {
+          if (error.code === "ENOENT") return null;
+          throw error;
+        });
+        if (occupied) throw new Error(`destination already exists: ${path.basename(target)}`);
+        this.contextFor(workspace);
+        try {
+          await fsp.rename(abs, target);
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          if (code?.includes("EEXIST") || code === "ENOTEMPTY") {
+            throw new Error(`destination already exists: ${path.basename(target)}`);
+          }
+          throw error;
+        }
+        this.contextFor(workspace);
+        return;
+      }
+      const captured = await this.captureDirectMutation(watchContext, abs);
       await this.mutationPhase("rename:source-inspected", abs, target);
       const recovery = await this.createRecoveryTransaction(
         root,

@@ -49,9 +49,13 @@ describe("FileSidebar rename actions", () => {
     vi.unstubAllGlobals();
   });
 
-  it("does not offer rename for directories", () => {
+  it("offers rename for directories", () => {
     act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
 
-    expect([...document.body.querySelectorAll(".ctx-item")].some((button) => button.textContent?.includes("Rename"))).toBe(false);
+    const rename = [...document.body.querySelectorAll<HTMLButtonElement>(".ctx-item")]
+      .find((button) => button.textContent?.includes("Rename"));
+    expect(rename).toBeTruthy();
+    act(() => rename!.click());
+    expect(store.startRename).toHaveBeenCalledWith("folder");
   });
 });

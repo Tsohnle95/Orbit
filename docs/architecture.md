@@ -285,13 +285,14 @@ never purged. This protocol requires recovery and target names to share a
 filesystem. Writes go through Node `fs` in the main process
 (`shell:fs-write`); the opencode2 API has no write
 endpoint — the server sees the change via its own file watching. The
-explorer also supports create/file-rename/delete through `shell:fs-create-*`,
+explorer also supports create/rename/delete through `shell:fs-create-*`,
 `shell:fs-rename`, `shell:fs-delete` (delete moves to Trash). File rename uses
-same-filesystem no-replace hard-link/unlink semantics. Portable Node filesystem
-APIs cannot guarantee no-replace directory rename, so directory rename is
-rejected rather than recursively copying and deleting a potentially changing
-source tree. File rename moves the source into a durable hold before linking the
-no-replace destination. Rollback only links back into an absent source and never
+same-filesystem no-replace hard-link/unlink semantics. Directory rename follows
+the directory-move policy: Orbit rejects an already occupied destination and
+then performs one atomic `fs.rename`, avoiding recursive copy/delete while
+accepting the portable API's destination race limitation. File rename moves the
+source into a durable hold before linking the no-replace destination. Rollback
+only links back into an absent source and never
 unlinks the hold, preserving ambiguity when another process recreates the
 source. These operations run through the same watcher so baselines and the tree
 stay consistent.

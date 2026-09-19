@@ -110,7 +110,7 @@ Public methods (all used by IPC):
 | `createDir(workspace, rel)` | Confined `mkdir` (fails if exists); renderer re-lists after the call |
 | `deletePath(workspace, rel)` | Confined `shell.trashItem`; emits tracked deletion only after success and preserves Trash failures for the renderer |
 | `detachPath(workspace, rel)` | Confined move to the user-level detached store; removes the entry from the workspace without deleting its contents |
-| `renamePath(workspace, rel, newName)` | Confined same-folder no-replace file rename; rejects occupied destinations and directory renames where portable no-replace semantics are unavailable |
+| `renamePath(workspace, rel, newName)` | Confined same-folder rename; files use the durable no-replace recovery protocol, while directories use one atomic `fs.rename` after rejecting an occupied destination (the same portability tradeoff as directory move) |
 | `movePath(workspace, rel, newParent)` | Confined cross-folder move for files and directories via one atomic `fs.rename` (no recovery hold — see architecture); rejects self/descendant, missing, occupied, cross-filesystem, and `.openshell-recovery` source/destination paths; emits a tracked deletion at the source and, for files, an addition at the target |
 | `listRecovery(workspace)` | Lists validated durable recovery artifacts under the addressed workspace's `.openshell-recovery` directory |
 | `openRecovery(workspace, id)` | Opens the validated artifact selected by opaque recovery record id; never accepts a renderer path |

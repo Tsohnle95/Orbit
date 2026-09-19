@@ -46,9 +46,9 @@ Implementation / tests:
 
 | Phase | Scope | Status | Validation | Commit |
 |---|---|---|---|---|
-| 1 | Autocorrect, eight-panel layout, editor navigation | complete | targeted renderer/main tests + Node 22 `npm run check` | checkpoint pending |
-| 2 | Explorer file/folder rename | active | mutation + sidebar/store tests + gate | — |
-| 3 | External rename correlation and open-tab recovery | pending | watcher/store tests + gate | — |
+| 1 | Autocorrect, eight-panel layout, editor navigation | complete | targeted renderer/main tests + Node 22 `npm run check` | `4e24c31` |
+| 2 | Explorer file/folder rename | complete | mutation + sidebar/store tests + Node 22 `npm run check` | checkpoint pending |
+| 3 | External rename correlation and open-tab recovery | active | watcher/store tests + gate | — |
 | 4 | Vite preview diagnosis and robust failure reporting | pending | Vite manager/tray tests + live loopback smoke | — |
 | 5 | GUI question event/reconciliation compatibility | pending | event/store/panel tests + runtime smoke where possible | — |
 | 6 | Integration review, docs, final supported-Node gate | pending | `npm run check` + focused UI/runtime smoke | — |

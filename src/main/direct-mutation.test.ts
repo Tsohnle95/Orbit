@@ -559,7 +559,19 @@ describe("direct mutation observed changes", () => {
     expect(messages.map((message) => message.kind)).toEqual(["recovery"]);
   });
 
-  it("rejects directory rename before creating recovery state", async () => {
+  it("renames a directory without creating file recovery state", async () => {
+    const { backend, root, messages } = await backendFixture();
+    await mkdir(path.join(root, "source"));
+    await writeFile(path.join(root, "source", "value.txt"), "source");
+
+    await backend.renamePath(workspace, "source", "target");
+
+    await expect(readFile(path.join(root, "source", "value.txt"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await readFile(path.join(root, "target", "value.txt"), "utf8")).toBe("source");
+    expect(messages).toEqual([]);
+  });
+
+  it("rejects an occupied directory rename and preserves both directories", async () => {
     const { backend, root, messages } = await backendFixture();
     await mkdir(path.join(root, "source"));
     await mkdir(path.join(root, "target"));
@@ -567,7 +579,7 @@ describe("direct mutation observed changes", () => {
     await writeFile(path.join(root, "target", "value.txt"), "target");
 
     await expect(backend.renamePath(workspace, "source", "target"))
-      .rejects.toThrow("directory rename is not supported; rename files only");
+      .rejects.toThrow("destination already exists: target");
 
     expect(await readFile(path.join(root, "source", "value.txt"), "utf8")).toBe("source");
     expect(await readFile(path.join(root, "target", "value.txt"), "utf8")).toBe("target");

@@ -317,12 +317,10 @@ function ExplorerMenu({ onOpenTerminal }: { onOpenTerminal?: (directory: string)
       {target && !workspaceRoot && (
         <>
           <div className="ctx-sep" />
-          {target.type === "file" && (
-            <button className="ctx-item" onClick={() => startRename(target.path)}>
-              <PencilIcon />
-              Rename…
-            </button>
-          )}
+          <button className="ctx-item" onClick={() => startRename(target.path)}>
+            <PencilIcon />
+            Rename…
+          </button>
           <button className="ctx-item" onClick={() => removeFromWorkspace(target.path)}>
             Remove from Workspace
           </button>

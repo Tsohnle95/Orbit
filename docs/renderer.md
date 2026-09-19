@@ -391,8 +391,9 @@ Key mechanisms:
    session yet) opens them via `openPaths`.
 - **Recovery notice** — unacknowledged records are shown persistently with
   Open and Acknowledge actions. Acknowledge updates manifest metadata and hides
-  the record without deleting bytes. Directories never offer Rename because
-  backend rename is file-only.
+  the record without deleting bytes. Files and directories both offer inline
+  Rename; main applies their distinct mutation policies documented in
+  `docs/architecture.md`.
 
 ## Components (`src/renderer/src/components/`)
 
