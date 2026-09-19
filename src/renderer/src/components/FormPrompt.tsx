@@ -100,12 +100,12 @@ export function FormPrompt({ form, workspace }: { form: PendingFormRequest; work
           disabled={!complete || submitting}
           onClick={() => {
             setSubmitting(true);
-            void store.submitForm(workspace, form.id, answers).finally(() => setSubmitting(false));
+            void store.submitForm(workspace, form.id, answers, form.sessionID).finally(() => setSubmitting(false));
           }}
         >
           Submit
         </button>
-        <button className="btn btn-danger" onClick={() => store.dismissForm(workspace, form.id)}>Dismiss</button>
+        <button className="btn btn-danger" onClick={() => store.dismissForm(workspace, form.id, form.sessionID)}>Dismiss</button>
       </div>
     </div>
   );

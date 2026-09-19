@@ -126,8 +126,8 @@ every panel exposes: the active model (from the trailing assistant's
 reasoning → "thinking", running tool → its tool phrase, editing tools →
 "editing file", otherwise "preparing response"), the fully-synthetic
 message guard, the forming state, `canAbort`, unacknowledged abort flags set
-by `stop()`, the question overlay (questions are not handled by Orbit yet,
-so `pendingQuestions` is always 0), and retry info. `PanelView.activity`,
+by `stop()`, and retry info. Interactive questions use the form dock described
+below rather than the status overlay. `PanelView.activity`,
 `PanelView.assistantStatus`, `PanelView.forming`, `PanelView.activeModel`,
 and `PanelView.streaming` carry these to components; the agent header shows
 the live status beside a green working indicator and the composer's stop
@@ -439,8 +439,12 @@ Key cross-component invariants:
   them: the embedded TUI renders its own prompts in the terminal, and the panel
   dock is GUI-only — rendering it above the TUI asks the same question twice
   (the question skill is the visible case). Pending requests stay in session
-  state regardless, so they appear in the dock when the panel returns to the GUI
-  view.
+  state, include both session-local and location-global forms, and reconcile
+  every three seconds plus stream reconnect so a missed `form.created` event
+  cannot leave the agent waiting without a GUI card. A temporary list failure
+  preserves the existing card. Global replies carry their location context.
+  Pending requests remain in panel state regardless of active surface, so they
+  appear in the dock when the panel returns to the GUI view.
 - Timeline order comes from the authoritative chat/session state; components do
   not invent a second activity history.
 - Workspace-dependent actions remain inert when no workspace is active.

@@ -916,6 +916,7 @@ export class OpenShellBackend {
       };
       const type = typed.type ?? typed.event ?? "unknown";
       const eventData = typed.data ?? typed.properties;
+      let forwardedEvent: RawStreamEvent = evt;
       // The global daemon is shared with external `opencode2` terminal
       // sessions. Interactive prompts for sessions Orbit never opened must
       // not reach the renderer, where they would otherwise be misattributed
@@ -927,9 +928,15 @@ export class OpenShellBackend {
         type === "session.inbox.enqueued" || type === "session.inbox.delivered" ||
         type === "session.inbox.cancelled") {
         const ownerID = eventSessionID(eventData, evt, typed.location);
-        if (!ownerID || !this.contextBySessionID(ownerID)) continue;
+        if (ownerID === "global" && (type === "form.created" || type === "form.replied" || type === "form.cancelled")) {
+          const ownerSessionIDs = await this.sessionIDsAtLocation(typed.location);
+          if (ownerSessionIDs.length === 0) continue;
+          forwardedEvent = { ...evt, orbitSessionIDs: ownerSessionIDs } as RawStreamEvent;
+        } else if (!ownerID || !this.contextBySessionID(ownerID)) {
+          continue;
+        }
       }
-      this.emit({ kind: "event", type, data: evt });
+      this.emit({ kind: "event", type, data: forwardedEvent });
       try {
         await this.handleServerEvent(type, eventData, typed.location);
       } catch (error) {
@@ -972,6 +979,14 @@ export class OpenShellBackend {
   }
 
   private readonly reportedRoots = new Map<string, string>();
+
+  private async sessionIDsAtLocation(location?: { directory?: string }): Promise<string[]> {
+    if (typeof location?.directory !== "string") return [];
+    const reportedRoot = await this.reportedRoot(location.directory);
+    return [...this.contexts.values()]
+      .filter((context) => context.directory === reportedRoot)
+      .map((context) => context.sessionID);
+  }
 
   private async reportedRoot(directory: string): Promise<string> {
     const cached = this.reportedRoots.get(directory);
@@ -2154,23 +2169,53 @@ export class OpenShellBackend {
     const target = this.activeTarget(workspace);
     if (!this.client) throw new Error("no active session");
     this.assertTarget(target);
-    const res = await this.client.form.list({ sessionID: target.sessionID });
-    const arr = Array.isArray(res) ? res : (res as { data?: unknown }).data ?? [];
-    return (arr as Array<Record<string, unknown>>).map(normalizePendingForm).filter((form) => form !== null);
+    const [sessionResult, globalResult] = await Promise.all([
+      this.client.form.list({ sessionID: target.sessionID }),
+      this.client.form.request.list({ location: { directory: target.directory } }).catch(() => null)
+    ]);
+    this.assertTarget(target);
+    const sessionForms = Array.isArray(sessionResult)
+      ? sessionResult
+      : (sessionResult as { data?: unknown }).data ?? [];
+    const globalForms = globalResult && typeof globalResult === "object" && Array.isArray((globalResult as { data?: unknown }).data)
+      ? (globalResult as { data: Array<Record<string, unknown>> }).data.filter((form) => form.sessionID === "global")
+      : [];
+    const normalized = [...sessionForms as Array<Record<string, unknown>>, ...globalForms]
+      .map(normalizePendingForm)
+      .filter((form): form is PendingFormRequest => form !== null);
+    return [...new Map(normalized.map((form) => [form.id, form])).values()];
   }
 
-  async replyForm(workspace: WorkspaceIdentity, formID: string, answers: FormAnswers): Promise<void> {
+  async replyForm(workspace: WorkspaceIdentity, formID: string, answers: FormAnswers, formSessionID?: string): Promise<void> {
     const target = this.activeTarget(workspace);
     if (!this.client) throw new Error("no active session");
     this.assertTarget(target);
-    await this.client.form.reply({ sessionID: target.sessionID, formID, answer: answers });
+    const sessionID = this.formSessionID(target.sessionID, formSessionID);
+    await this.client.form.reply(
+      { sessionID, formID, answer: answers },
+      sessionID === "global" ? this.globalFormRequestOptions(target.directory) : undefined
+    );
   }
 
-  async cancelForm(workspace: WorkspaceIdentity, formID: string): Promise<void> {
+  async cancelForm(workspace: WorkspaceIdentity, formID: string, formSessionID?: string): Promise<void> {
     const target = this.activeTarget(workspace);
     if (!this.client) throw new Error("no active session");
     this.assertTarget(target);
-    await this.client.form.cancel({ sessionID: target.sessionID, formID });
+    const sessionID = this.formSessionID(target.sessionID, formSessionID);
+    await this.client.form.cancel(
+      { sessionID, formID },
+      sessionID === "global" ? this.globalFormRequestOptions(target.directory) : undefined
+    );
+  }
+
+  private formSessionID(activeSessionID: string, requested?: string): string {
+    if (requested === undefined || requested === activeSessionID) return activeSessionID;
+    if (requested === "global") return requested;
+    throw new Error("form does not belong to the active workspace session");
+  }
+
+  private globalFormRequestOptions(directory: string): { headers: Record<string, string> } {
+    return { headers: { "x-opencode-directory": encodeURIComponent(directory) } };
   }
 
   async listCommands(workspace: WorkspaceIdentity): Promise<CommandOption[]> {

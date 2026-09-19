@@ -256,9 +256,9 @@ Internals:
 | `shell:inbox-list` | `(workspace) → SessionInboxEntry[]` |
 | `shell:inbox-cancel` | `(workspace, inboxID) → void` |
 | `shell:inbox-steer` | `(workspace, inboxID) → void` |
-| `shell:forms-list` | `(workspace) → PendingFormRequest[]` |
-| `shell:form-reply` | `(workspace, formID, answers) → void` |
-| `shell:form-cancel` | `(workspace, formID) → void` |
+| `shell:forms-list` | `(workspace) → PendingFormRequest[]` — merges the session's forms with location-global requests |
+| `shell:form-reply` | `(workspace, formID, answers, formSessionID?) → void` — settles only the active session or its location-global form |
+| `shell:form-cancel` | `(workspace, formID, formSessionID?) → void` — cancels only the active session or its location-global form |
 | `shell:provider-oauth-start` | `(workspace, integrationID, methodID) → ProviderOAuthAttempt` |
 | `shell:provider-oauth-poll` | `(workspace, integrationID, attemptID) → ProviderOAuthPoll` |
 | `shell:provider-oauth-complete` | `(workspace, integrationID, attemptID, code?) → void` |

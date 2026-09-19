@@ -670,8 +670,8 @@ function registerIpc(): void {
   handleTrusted("shell:inbox-cancel", async (_e, workspace: WorkspaceIdentity, inboxID: string) => backend.cancelInbox(workspace, inboxID));
   handleTrusted("shell:inbox-steer", async (_e, workspace: WorkspaceIdentity, inboxID: string) => backend.steerInbox(workspace, inboxID));
   handleTrusted("shell:forms-list", async (_e, workspace: WorkspaceIdentity) => backend.listForms(workspace));
-  handleTrusted("shell:form-reply", async (_e, workspace: WorkspaceIdentity, formID: string, answers: FormAnswers) => backend.replyForm(workspace, formID, answers));
-  handleTrusted("shell:form-cancel", async (_e, workspace: WorkspaceIdentity, formID: string) => backend.cancelForm(workspace, formID));
+  handleTrusted("shell:form-reply", async (_e, workspace: WorkspaceIdentity, formID: string, answers: FormAnswers, formSessionID?: string) => backend.replyForm(workspace, formID, answers, formSessionID));
+  handleTrusted("shell:form-cancel", async (_e, workspace: WorkspaceIdentity, formID: string, formSessionID?: string) => backend.cancelForm(workspace, formID, formSessionID));
 
   handleTrusted("shell:commands", async (_e, workspace: WorkspaceIdentity) => {
     workspaceId(workspace);

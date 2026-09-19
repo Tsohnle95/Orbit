@@ -8,14 +8,14 @@ Resolve the seven reported editor, panel, explorer, preview-server, external-ren
 
 ## Acceptance criteria
 
-- [ ] Text entry no longer invokes application spellcheck/autocorrect.
-- [ ] Agent Mode supports and lays out up to eight panels; the ninth is blocked.
-- [ ] Explorer context menus rename both files and folders safely.
-- [ ] Vite preview startup either opens a reachable page or reports the actionable startup failure.
-- [ ] An externally renamed open file follows the new path when the move can be identified; ambiguous deletion remains recoverable without repeated errors.
-- [ ] Command/control plus arrow keys navigate to editor document/line boundaries.
-- [ ] Pending agent questions render and remain actionable in GUI mode, including after missed live events.
-- [ ] Existing workspace identity, no-replace, TUI prompt ownership, and save-conflict invariants remain intact.
+- [x] Text entry no longer invokes application spellcheck/autocorrect.
+- [x] Agent Mode supports and lays out up to eight panels; the ninth is blocked.
+- [x] Explorer context menus rename both files and folders safely.
+- [x] Vite preview startup either opens a reachable page or reports the actionable startup failure.
+- [x] An externally renamed open file follows the new path when the move can be identified; ambiguous deletion remains recoverable without repeated errors.
+- [x] Command/control plus arrow keys navigate to editor document/line boundaries.
+- [x] Pending agent questions render and remain actionable in GUI mode, including after missed live events.
+- [x] Existing workspace identity, no-replace, TUI prompt ownership, and save-conflict invariants remain intact.
 
 ## Relevant context
 
@@ -49,9 +49,9 @@ Implementation / tests:
 | 1 | Autocorrect, eight-panel layout, editor navigation | complete | targeted renderer/main tests + Node 22 `npm run check` | `4e24c31` |
 | 2 | Explorer file/folder rename | complete | mutation + sidebar/store tests + Node 22 `npm run check` | `3c42aef` |
 | 3 | External rename correlation and open-tab recovery | complete | watcher/store tests + Node 22 `npm run check` | `0cd1bee` |
-| 4 | Vite preview diagnosis and robust failure reporting | complete | manager/tray tests + live 404/200 loopback smoke + Node 22 `npm run check` | checkpoint pending |
-| 5 | GUI question event/reconciliation compatibility | active | event/store/panel tests + runtime smoke where possible | — |
-| 6 | Integration review, docs, final supported-Node gate | pending | `npm run check` + focused UI/runtime smoke | — |
+| 4 | Vite preview diagnosis and robust failure reporting | complete | manager/tray tests + live 404/200 loopback smoke + Node 22 `npm run check` | `2f33ced` |
+| 5 | GUI question event/reconciliation compatibility | complete | form API/event/store tests + Node 22 `npm run check` | pending |
+| 6 | Integration review, docs, final supported-Node gate | active | Node 22 `npm run check` passed (748 tests + production build); final Git review pending | — |
 
 ## Validation plan
 
@@ -67,8 +67,7 @@ Implementation / tests:
 
 ## Open risks / blockers
 
-- The active shell is Node 26.7.0; final validation must be rerun with repository-supported Node 22.23.2.
-- Live question reproduction depends on an agent turn reaching the form tool; automated compatibility and reconciliation tests are required even if that smoke is unavailable.
+- Live question reproduction depends on an agent turn reaching the form tool; installed-client contract, event-routing, inventory, and reconciliation behavior are covered by automated tests.
 
 ## Completion
 

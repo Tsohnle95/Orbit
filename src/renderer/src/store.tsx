@@ -241,8 +241,8 @@ interface Store {
   removeQueuedMessage: (workspace: WorkspaceIdentity, messageID: string) => void;
   popQueuedMessage: (workspace: WorkspaceIdentity, messageID: string) => QueuedMessage | null;
   sendQueuedNow: (workspace: WorkspaceIdentity, messageID: string) => Promise<void>;
-  submitForm: (workspace: WorkspaceIdentity, formID: string, answers: FormAnswers) => Promise<void>;
-  dismissForm: (workspace: WorkspaceIdentity, formID: string) => void;
+  submitForm: (workspace: WorkspaceIdentity, formID: string, answers: FormAnswers, formSessionID?: string) => Promise<void>;
+  dismissForm: (workspace: WorkspaceIdentity, formID: string, formSessionID?: string) => void;
   stageRevert: (workspace: WorkspaceIdentity, messageID: string) => Promise<void>;
   commitStagedRevert: (workspace: WorkspaceIdentity) => Promise<void>;
   clearStagedRevert: (workspace: WorkspaceIdentity) => Promise<void>;
@@ -387,7 +387,10 @@ function normalizeStreamEvent(msg: BackendMessage): ChatStreamEvent | null {  if
     id: String(event?.id ?? `${type}-${Date.now()}`),
     type,
     created: Number(event?.created ?? Date.now()),
-    data
+    data,
+    ...(Array.isArray(event?.orbitSessionIDs)
+      ? { ownerSessionIDs: event.orbitSessionIDs.filter((value: unknown): value is string => typeof value === "string") }
+      : {})
   };
 }
 
@@ -1033,14 +1036,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     try {
       const forms = await window.openshell.formsList(panel.workspace);
       setFormsBySession((current) => ({ ...current, [sessionID]: forms }));
-    } catch {
-      setFormsBySession((current) => {
-        if (!(sessionID in current)) return current;
-        const { [sessionID]: _dropped, ...rest } = current;
-        void _dropped;
-        return rest;
-      });
-    }
+    } catch {}
   }, []);
 
   const removeQueuedMessage = useCallback((workspace: WorkspaceIdentity, messageID: string) => {
@@ -1137,7 +1133,12 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     }
   }, [panelForSession, chatStateFor, applyProjection, reconcileStreaming, setTodosFor, setSessionBusy, protectedSessionIDs, toast]);
 
-  const submitForm = useCallback(async (workspace: WorkspaceIdentity, formID: string, answers: FormAnswers): Promise<void> => {
+  const submitForm = useCallback(async (
+    workspace: WorkspaceIdentity,
+    formID: string,
+    answers: FormAnswers,
+    formSessionID?: string
+  ): Promise<void> => {
     const panel = panelFor(workspace);
     if (!panel) return;
     setFormsBySession((current) => ({
@@ -1145,21 +1146,21 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       [panel.id]: (current[panel.id] ?? []).filter((form) => form.id !== formID)
     }));
     try {
-      await window.openshell.formReply(workspace, formID, answers);
+      await window.openshell.formReply(workspace, formID, answers, formSessionID);
     } catch (err) {
       void refreshForms(panel.id);
       if (panelFor(workspace)) toast(err instanceof Error ? err.message : String(err), "error");
     }
   }, [panelFor, refreshForms, toast]);
 
-  const dismissForm = useCallback((workspace: WorkspaceIdentity, formID: string): void => {
+  const dismissForm = useCallback((workspace: WorkspaceIdentity, formID: string, formSessionID?: string): void => {
     const panel = panelFor(workspace);
     if (!panel) return;
     setFormsBySession((current) => ({
       ...current,
       [panel.id]: (current[panel.id] ?? []).filter((form) => form.id !== formID)
     }));
-    window.openshell.formCancel(workspace, formID).catch(() => {});
+    window.openshell.formCancel(workspace, formID, formSessionID).catch(() => {});
   }, [panelFor]);
 
   const sendQueuedNow = useCallback(async (workspace: WorkspaceIdentity, messageID: string): Promise<void> => {
@@ -2931,6 +2932,11 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       const addressedSessionID = typeof data.sessionID === "string"
         ? data.sessionID as string
         : (altSessionID ?? formSessionID);
+      const globalForm = (type === "form.created" || type === "form.replied" || type === "form.cancelled") &&
+        addressedSessionID === "global";
+      const globalFormOwnerIDs = globalForm
+        ? (streamEvent.ownerSessionIDs ?? []).filter((sessionID) => panelForSession(sessionID))
+        : [];
       // The global SSE stream includes external `opencode2` terminal
       // sessions and child/subagent streams. Interactive prompts must never
       // be misattributed to the focused panel: only route forms,
@@ -2941,10 +2947,14 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         type === "permission.asked" || type === "permission.replied" ||
         type === "session.inbox.enqueued" || type === "session.inbox.delivered" ||
         type === "session.inbox.cancelled") &&
-        (!addressedSessionID || !panelForSession(addressedSessionID))) {
+        (globalForm
+          ? globalFormOwnerIDs.length === 0
+          : (!addressedSessionID || !panelForSession(addressedSessionID)))) {
         return;
       }
-      const targetSessionID = addressedSessionID ?? sessionRef.current?.id;
+      const targetSessionID = globalForm
+        ? (globalFormOwnerIDs.includes(sessionRef.current?.id ?? "") ? sessionRef.current!.id : globalFormOwnerIDs[0])
+        : (addressedSessionID ?? sessionRef.current?.id);
       const targetWorkspace = targetSessionID ? workspaceOfSession(targetSessionID) : null;
       const active = Boolean(targetSessionID && targetSessionID === sessionRef.current?.id);
       if (type === "session.inbox.delivered" && targetSessionID && typeof data.inboxID === "string") {
@@ -3005,25 +3015,36 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           const rawForm = (data.form as Record<string, any> | undefined) ?? {};
           const trueSessionID = typeof rawForm.sessionID === "string" ? rawForm.sessionID : targetSessionID;
           const normalized = normalizePendingForm({ ...rawForm, sessionID: trueSessionID });
-          if (normalized && targetSessionID && normalized.sessionID === targetSessionID) {
-            setFormsBySession((current) => ({
-              ...current,
-              [targetSessionID]: [
-                ...(current[targetSessionID] ?? []).filter((form) => form.id !== normalized.id),
-                normalized
-              ]
-            }));
+          const ownerIDs = globalForm ? globalFormOwnerIDs : targetSessionID ? [targetSessionID] : [];
+          if (normalized && ownerIDs.length > 0 && (normalized.sessionID === "global" || normalized.sessionID === targetSessionID)) {
+            setFormsBySession((current) => {
+              const next = { ...current };
+              for (const ownerID of ownerIDs) {
+                next[ownerID] = [
+                  ...(current[ownerID] ?? []).filter((form) => form.id !== normalized.id),
+                  normalized
+                ];
+              }
+              return next;
+            });
           }
           break;
         }
         case "form.replied":
         case "form.cancelled": {
           const formID = typeof data.id === "string" ? data.id : "";
-          if (targetSessionID && formID) {
+          const ownerIDs = globalForm ? globalFormOwnerIDs : targetSessionID ? [targetSessionID] : [];
+          if (ownerIDs.length > 0 && formID) {
             setFormsBySession((current) => {
-              const list = current[targetSessionID];
-              if (!list?.some((form) => form.id === formID)) return current;
-              return { ...current, [targetSessionID]: list.filter((form) => form.id !== formID) };
+              let changed = false;
+              const next = { ...current };
+              for (const ownerID of ownerIDs) {
+                const list = current[ownerID];
+                if (!list?.some((form) => form.id === formID)) continue;
+                changed = true;
+                next[ownerID] = list.filter((form) => form.id !== formID);
+              }
+              return changed ? next : current;
             });
           }
           break;
@@ -3108,7 +3129,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
         case "server.connected":
         case "global.disposed": {
-          for (const panel of panelsRef.current) void materializeSession(panel.id);
+          for (const panel of panelsRef.current) {
+            void materializeSession(panel.id);
+            void refreshForms(panel.id);
+          }
           void reconcilePermissions();
           break;
         }
@@ -3391,6 +3415,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     };
     void tryConnect();
     const permissionTimer = setInterval(() => void reconcilePermissions(), 3000);
+    const formTimer = setInterval(() => {
+      for (const panel of panelsRef.current) void refreshForms(panel.id);
+    }, 3000);
     void window.openshell.takePendingPaths().then((paths) => {
       if (paths.length > 0) void openPaths(paths);
     }).catch(() => {});
@@ -3421,6 +3448,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     return () => {
       cancelled = true;
       clearInterval(permissionTimer);
+      clearInterval(formTimer);
       if (healthTimer !== null) clearTimeout(healthTimer);
       off();
       persistence.cancelAll();
@@ -3451,6 +3479,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     materializeSession,
     refreshSessionUsage,
     reconcilePermissions,
+    refreshForms,
     persistence,
     refreshActiveSessions,
     openPaths,

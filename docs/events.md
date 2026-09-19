@@ -159,8 +159,11 @@ paragraph above) delivers per-directory batches into `deliverEvents` in
 global daemon is shared with external `opencode2` terminal sessions, and
 forwarding those prompts would misattribute them to the focused panel
 (`form.created` carries its session only inside `data.form`, so
-`eventSessionID` also descends into `form`). Child/subagent transcript
-streams still flow; the renderer keeps them in separate stored state.
+`eventSessionID` also descends into `form`). Location-global forms are the
+exception: main canonicalizes the event location, attaches the matching open
+session ids, and forwards the request only when Orbit owns that location.
+Child/subagent transcript streams still flow; the renderer keeps them in
+separate stored state.
 `handleServerEvent` intercepts two types after forwarding:
 
 - `session.tool.called` → `snapshotInputs(context, input)` snapshots structured

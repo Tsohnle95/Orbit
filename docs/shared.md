@@ -34,6 +34,7 @@ Imported everywhere as `@shared/types` (alias in both tsconfigs and
 | `ProviderIntegration` | `{ id, name, keyMethod, credentials, environment, oauth }` | Provider-neutral settings catalog from the active runtime; contains setup metadata and opaque credential labels but never secret values |
 | `ProviderFormField` | `{ key, type, title?, description?, required?, placeholder?, options?, default? }` | Runtime-declared provider setup field rendered beside the write-only API key input |
 | `ProviderCredentialAnswers` | `Record<string, string \| number \| boolean \| string[]>` | Bounded provider-specific setup values sent with a credential connection request |
+| `PendingFormRequest` | `{ id, sessionID, title, fields }` | Interactive agent form; `sessionID` is the owning session or `"global"` for a request scoped to the panel's workspace location |
 | `ReopenedSession` | `{ session, transcript, todos, usage: SessionUsage \| null }` | `openSessionById` result; `usage` is the cumulative `{ cost, tokens }` from `session.get`, also streamed live via `session.usage.updated` |
 | `ExternalOpenResult` | `{ kind: "relative", rel, content } \| { kind: "standalone", path, content }` | `openExternal` result: relative resolves to an in-workspace file (open normally), standalone to an absolute writable file outside the workspace root |
 | `ExternalKind` | `{ kind: "file" \| "directory" \| "missing" }` | `statExternal` result used to route a mixed file/folder drop (files → standalone tabs, folders → imports) |

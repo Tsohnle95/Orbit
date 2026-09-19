@@ -7,6 +7,7 @@ export interface ChatStreamEvent {
   type: string;
   created: number;
   data: Record<string, any>;
+  ownerSessionIDs?: string[];
 }
 
 function errorText(error: unknown, fallbackCode = "ORBIT_RUNTIME_FAILURE", fallbackMessage = "Operation failed"): string {

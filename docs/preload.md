@@ -34,9 +34,9 @@ automatically.
 | `inboxList(workspace)` | `Promise<SessionInboxEntry[]>` — queued entries for the panel's session |
 | `inboxCancel(workspace, inboxID)` | `Promise<void>` — cancels a queued entry |
 | `inboxSteer(workspace, inboxID)` | `Promise<void>` — delivers a queued entry immediately |
-| `formsList(workspace)` | `Promise<PendingFormRequest[]>` — pending agent forms for the panel's session |
-| `formReply(workspace, formID, answers)` | `Promise<void>` — submits answers keyed by field |
-| `formCancel(workspace, formID)` | `Promise<void>` — dismisses a pending form |
+| `formsList(workspace)` | `Promise<PendingFormRequest[]>` — pending session and location-global agent forms for the panel |
+| `formReply(workspace, formID, answers, formSessionID?)` | `Promise<void>` — replies through the form's session or location-global route |
+| `formCancel(workspace, formID, formSessionID?)` | `Promise<void>` — cancels through the form's session or location-global route |
 | `providerOauthStart(workspace, integrationID, methodID)` | `Promise<ProviderOAuthAttempt>` — begins the OAuth flow |
 | `providerOauthPoll(workspace, integrationID, attemptID)` | `Promise<ProviderOAuthPoll>` — pending/complete/failed/expired |
 | `providerOauthComplete(workspace, integrationID, attemptID, code?)` | `Promise<void>` — confirms an attempt (code mode) |
