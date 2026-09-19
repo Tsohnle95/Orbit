@@ -3,6 +3,7 @@ import Editor, { DiffEditor } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { languageForPath } from "../monaco";
 import { wireEmmetKeys } from "../emmet-keys";
+import { wireEditorNavigationKeys } from "../editor-navigation";
 import { clearW3cMarkers } from "../w3c-validation";
 import { useStore } from "../store";
 import { OrbitMark } from "./OrbitMark";
@@ -129,6 +130,7 @@ function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
     editorRef.current = ed;
     registerEditor(tabPath, ed);
     wireEmmetKeys(ed);
+    wireEditorNavigationKeys(ed);
     const model = ed.getModel();
     const latest = tabContentRef.current;
     if (model && model.getValue() !== latest) {

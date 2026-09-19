@@ -44,6 +44,9 @@ export function FormPrompt({ form, workspace }: { form: PendingFormRequest; work
           {field.type === "string" && !field.options && (
             <input
               type="text"
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
               placeholder={field.placeholder}
               value={(answers[field.key] as string) ?? ""}
               onChange={(event) => setValue(field.key, event.target.value)}

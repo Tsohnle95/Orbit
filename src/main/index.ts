@@ -292,6 +292,7 @@ function createWindow(show = true): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      spellcheck: false,
       backgroundThrottling: false,
       additionalArguments: app.isPackaged ? ["--openshell-packaged"] : []
     }

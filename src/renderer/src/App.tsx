@@ -12,6 +12,7 @@ import { OrbitMark } from "./components/OrbitMark";
 import { SettingsPage } from "./components/SettingsPage";
 import { SettingsSidebar, type SettingsSection } from "./components/SettingsSidebar";
 import { ThemeProvider } from "./theme";
+import { agentPanelGrid, MAX_AGENT_PANELS } from "./agent-panels";
 
 const SIDE_MIN_W = 230;
 const SIDE_MAX_W = 520;
@@ -552,8 +553,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       const gridIDs = [...panels].reverse()
         .map((panel) => panel.workspace.id)
         .filter((id) => openIDs.includes(id));
-      const columns = gridIDs.length === 1 ? 1 : 2;
-      const rows = gridIDs.length >= 3 ? 2 : 1;
+      const { columns, rows } = agentPanelGrid(gridIDs.length);
       const base = Math.max(AGENT_MIN_W, Math.floor(avail / columns));
       setSlots((slots) => {
         const next = { ...slots };
@@ -563,8 +563,12 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
           next[id] = {
             ...(next[id] ?? { open: true, width: base, left: 0, top: 0, height: 100 }),
             open: true,
-            width: column === columns - 1 ? Math.max(AGENT_MIN_W, avail - base) : base,
-            left: column === 0 ? 0 : base,
+            width: gridIDs.length === 1
+              ? AGENT_DEFAULT_W
+              : column === columns - 1
+                ? Math.max(AGENT_MIN_W, avail - base * (columns - 1))
+                : base,
+            left: column * base,
             top: row * (100 / rows),
             height: 100 / rows
           };
@@ -702,8 +706,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       const area = Math.max(0, winW - sideShownAt - (sideShownAt > 0 ? 1 : 0));
       const total = modelMode ? area : Math.max(0, winW - fixedPanelChrome - sideShownAt);
       const grid = modelMode && openIDs.length >= 3;
-      const columns = grid ? 2 : openIDs.length;
-      const rows = grid ? 2 : 1;
+      const { columns, rows } = agentPanelGrid(openIDs.length);
       const width = Math.max(AGENT_MIN_W, Math.floor(total / columns));
       const anchorW = Math.max(AGENT_MIN_W, total - width * (columns - 1));
       const next: Record<string, PanelSlot> = {};
@@ -749,7 +752,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   }, [distributeEvenly, inAgentMode, panels, sideOpen, sideW]);
 
   const addModelPanel = (): void => {
-    if (!inAgentMode || panels.length + pendingModelPanels >= 4) return;
+    if (!inAgentMode || panels.length + pendingModelPanels >= MAX_AGENT_PANELS) return;
     setPendingModelPanels((count) => count + 1);
     void selectAddPanel()
       .then((opened) => {
@@ -771,7 +774,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     }
     const opened = attached ?? await reopenSession(sessionID, true);
     if (!opened) return;
-    if (!panels.some((panel) => panel.id === opened.id) && panels.length >= 4) return;
+    if (!panels.some((panel) => panel.id === opened.id) && panels.length >= MAX_AGENT_PANELS) return;
     setAgentModePanelIDs((current) => current.includes(opened.id) ? current : [...current, opened.id]);
     focusSession(opened.id);
   }, [allPanels, focusSession, inAgentMode, panels, reopenSession]);
@@ -866,9 +869,9 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             <button
               className="icon-btn"
               data-panel-action="add-model-panel"
-              title={panels.length + pendingModelPanels >= 4 ? "Model panel limit reached (4)" : "Add model panel (choose a folder for the new panel)"}
+              title={panels.length + pendingModelPanels >= MAX_AGENT_PANELS ? `Model panel limit reached (${MAX_AGENT_PANELS})` : "Add model panel (choose a folder for the new panel)"}
               aria-label="Add model panel"
-              disabled={panels.length + pendingModelPanels >= 4}
+              disabled={panels.length + pendingModelPanels >= MAX_AGENT_PANELS}
               onClick={addModelPanel}
             >
               <IconAdd />
@@ -969,7 +972,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
                 session={panel}
                 sessionChoices={sessionChoices}
                 visibleSessionIDs={new Set(panels.map((candidate) => candidate.id))}
-                agentPanelLimitReached={inAgentMode && panels.length >= 4}
+                agentPanelLimitReached={inAgentMode && panels.length >= MAX_AGENT_PANELS}
                 agentModeActive={inAgentMode}
                 onSessionSelect={selectAgentSession}
                 slot={s}

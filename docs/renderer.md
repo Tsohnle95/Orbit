@@ -486,6 +486,10 @@ released at that collapsed position.
   (`#RRGGBB` or `#RRGGBBAA`), never `rgba()`.
 - `languageForPath()` — extension → Monaco language map (fallback
   `plaintext`).
+- `editor-navigation.ts` binds Command/Control + Arrow Up/Down to the start/end
+  of the document and Command/Control + Arrow Left/Right to the start/end of
+  the current line. These explicit commands keep the native editor navigation
+  behavior stable inside Electron.
 - CSS worker diagnostics stay enabled (the only language worker with a
   working `doValidation`), so CSS files lint inline exactly like VS Code.
   The HTML worker ships no `doValidation`, so HTML files have no built-in
@@ -529,7 +533,8 @@ Vite entry. `global.d.ts` types `window.openshell` from the preload API.
 Agent Mode is a temporary panel view. Normal coding mode renders only the
 focused coding session. Entering Agent Mode seeds its panel set with that one
 session; additional active sessions are loaded explicitly from the agent
-panel's three-dots menu. Exiting Agent Mode resets the temporary set to the
+panel's three-dots menu, up to eight visible panels. Three or more panels use
+a two-row grid that expands from two through four columns. Exiting Agent Mode resets the temporary set to the
 currently focused session, while all other active sessions remain available in
 the menu and continue running in the backend. Selecting a hidden session in
 normal mode switches the single coding workspace; selecting one in Agent Mode

@@ -996,7 +996,7 @@ describe("Layout panel sizing", () => {
     expect(agentWidths()[0]).toBeGreaterThan(1000);
   });
 
-  it("model mode duplicates panels from its add control and stops at four", async () => {
+  it("model mode duplicates panels from its add control and stops at eight", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
@@ -1020,13 +1020,15 @@ describe("Layout panel sizing", () => {
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(2);
     expect(agentWidths()).toEqual([740, 740]);
 
-    await act(async () => {
-      add().click();
-      add().click();
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
-    expect(container.querySelectorAll(".agent-panel")).toHaveLength(4);
-    expect(agentCols().map((col) => col.style.height)).toEqual(["50%", "50%", "50%", "50%"]);
+    for (let index = 0; index < 6; index += 1) {
+      await act(async () => {
+        add().click();
+        await new Promise((resolve) => setTimeout(resolve, 30));
+      });
+    }
+    expect(container.querySelectorAll(".agent-panel")).toHaveLength(8);
+    expect(agentCols().map((col) => col.style.height)).toEqual(Array(8).fill("50%"));
+    expect(agentLefts()).toEqual([0, 0, 370, 370, 740, 740, 1110, 1110]);
     expect(add().disabled).toBe(true);
 
     await act(async () => {

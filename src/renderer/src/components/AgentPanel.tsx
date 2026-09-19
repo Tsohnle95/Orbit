@@ -29,6 +29,7 @@ import {
   IconTerminal
 } from "./icons";
 import { AgentTui } from "./AgentTui";
+import { MAX_AGENT_PANELS } from "../agent-panels";
 
 function useModelGroups(models: ModelOption[]): [string, ModelOption[]][] {
   return useMemo(() => {
@@ -716,6 +717,9 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
         <textarea
           ref={inputRef}
           className="composer-input"
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="off"
           rows={1}
           placeholder="Ask anything"
           value={input}
@@ -1540,7 +1544,7 @@ export function AgentPanel({
                           role="menuitemcheckbox"
                           aria-checked={visible}
                           className={`${visible ? "selected" : ""} ${disabled ? "disabled" : ""}`}
-                          title={disabled ? "Agent panel limit reached (4)" : choice.directory}
+                          title={disabled ? `Agent panel limit reached (${MAX_AGENT_PANELS})` : choice.directory}
                           disabled={disabled}
                           onClick={() => chooseSession(choice.id)}
                         >
