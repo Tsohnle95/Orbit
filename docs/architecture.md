@@ -115,7 +115,7 @@ All backend→renderer message kinds are defined in
   through the main-process transport pipeline (coalesced per directory and
   flushed in 33ms batches). The renderer dispatches on `type`. See
   `docs/events.md` for the full protocol map.
-- `{ kind: "file-update", file: { workspace, sessionID, path, baseline, content, deleted } }` —
+- `{ kind: "file-update", file: { workspace, sessionID, path, movedFrom?, baseline, content, deleted } }` —
   emitted by the generation-bound fs watcher (below).
 - `{ kind: "session", session: { id, directory, workspace } }` — emitted when a
   session context activates (a new concurrent panel).
@@ -223,6 +223,12 @@ metadata changes, then refreshes the effective Git baseline:
   workspace-scoped maps, then feeds every change through a 200ms debounce into
   `onFsChanged`, which compares against `lastKnown`, assigns a baseline if
   missing, and emits identity-bound `file-update` with `{baseline, content}`.
+  Reading an editor file also records its device/inode identity. If a later
+  watcher event finds that identity at exactly one new path and confirms the
+  old path is gone, main emits `movedFrom` on the destination update and
+  suppresses the duplicate late deletion. Equal content is never treated as
+  proof of a move; uncorrelated deletes keep the normal recoverable deleted-file
+  behavior.
   Git metadata events use the same debounce to refresh tracked snapshots;
   files equal to their known baseline, and deleted paths with `exists: false`,
   leave Changes, while files still differing remain listed.

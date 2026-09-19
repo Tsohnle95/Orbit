@@ -236,7 +236,10 @@ tabs, changes, terminals,
 permissions, queues, prompts, and other transient state are not persisted for
 this purpose.
 `file-update` is accepted only when both its session ID and full workspace
-identity match an open panel.
+identity match an open panel. A destination update with `movedFrom` remaps the
+open tab, active path, and pending-save ownership before applying the new disk
+content. Uncorrelated deletion keeps the tab's last content and deleted/conflict
+state so the user can recover or explicitly resolve it.
 
 Key mechanisms:
 

@@ -237,6 +237,7 @@ export interface FileUpdate {
   workspace: WorkspaceIdentity;
   sessionID: string;
   path: string;
+  movedFrom?: string;
   baseline: FileBaseline;
   content: string | null;
   deleted: boolean;

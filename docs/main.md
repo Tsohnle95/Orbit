@@ -211,6 +211,10 @@ Internals:
   root/session/generation/maps and checks `currentWatch` after awaits and
   before map mutation or emission.
 - `emitFileUpdate(context, ...)` — emits identity-bound `{kind:"file-update"}`.
+- Opened workspace files retain their filesystem identity in the watch context.
+  `onFsChanged` correlates an old missing path with a unique destination that
+  has the same identity and emits `movedFrom`; ambiguous or unsupported
+  identities remain ordinary delete/add observations.
 - `relKey(abs)` — absolute → `/`-separated path relative to the session
   dir; `abs(rel)` the inverse. `shouldSkip` filters `SKIP_DIRS` roots.
 - Recovery transactions live under `.openshell-recovery/<timestamp>-<uuid>`.

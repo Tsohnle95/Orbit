@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -249,5 +249,38 @@ describe("readFile", () => {
   it("returns null instead of throwing for deleted files", async () => {
     const { backend } = await fixture();
     expect(await backend.readFile(workspace, "gone.txt")).toBeNull();
+  });
+
+  it("correlates an externally renamed open file by filesystem identity", async () => {
+    const { backend, root, messages } = await fixture();
+    const oldPath = path.join(root, "old.txt");
+    const newPath = path.join(root, "new.txt");
+    await writeFile(oldPath, "hello");
+    expect(await backend.readFile(workspace, "old.txt")).toBe("hello");
+    await rename(oldPath, newPath);
+
+    const context = (backend as unknown as { contexts: Map<string, SessionContext> })
+      .contexts.get(workspace.id)!.watchContext;
+    const onFsChanged = (backend as unknown as {
+      onFsChanged(context: SessionContext["watchContext"], abs: string, event: string): Promise<void>;
+    }).onFsChanged.bind(backend);
+    await onFsChanged(context, newPath, "rename");
+    await onFsChanged(context, oldPath, "rename");
+
+    expect(messages).toEqual([
+      expect.objectContaining({
+        kind: "file-update",
+        file: expect.objectContaining({ path: "old.txt", content: null, deleted: true })
+      }),
+      expect.objectContaining({
+        kind: "file-update",
+        file: expect.objectContaining({
+          path: "new.txt",
+          movedFrom: "old.txt",
+          content: "hello",
+          deleted: false
+        })
+      })
+    ]);
   });
 });

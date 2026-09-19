@@ -513,6 +513,9 @@ interface WatchContext {
   hasGit: boolean | null;
   gitRoot?: string | null;
   timers: Map<string, ReturnType<typeof setTimeout>>;
+  identities?: Map<string, string>;
+  deletedPaths?: Set<string>;
+  recentMoves?: Map<string, number>;
   importing?: number;
   suppressedUntil?: Map<string, number>;
 }
@@ -1400,6 +1403,11 @@ export class OpenShellBackend {
     }
     if (!this.currentWatch(context)) return;
     if (!stat || !stat.isFile()) {
+      const movedUntil = context.recentMoves?.get(abs);
+      if (movedUntil !== undefined) {
+        if (movedUntil > Date.now()) return;
+        context.recentMoves?.delete(abs);
+      }
       if (event === "unlink" || context.lastKnown.has(abs) || context.snapshots.has(abs)) {
         let baseline = context.snapshots.get(abs);
         if (!baseline) {
@@ -1415,6 +1423,7 @@ export class OpenShellBackend {
         if (!this.currentWatch(context)) return;
         context.snapshots.set(abs, baseline);
         context.lastKnown.delete(abs);
+        (context.deletedPaths ??= new Set()).add(abs);
         this.emitFileUpdate(context, abs, null, baseline);
       }
       return;
@@ -1426,7 +1435,33 @@ export class OpenShellBackend {
     } catch {
       return;
     }
-    if (!this.currentWatch(context) || content === context.lastKnown.get(abs)) return;
+    if (!this.currentWatch(context)) return;
+    const identity = this.fileIdentity(stat);
+    const movedFrom = identity ? await this.missingIdentitySource(context, abs, identity) : null;
+    if (!this.currentWatch(context)) return;
+    if (movedFrom && identity) {
+      const oldBaseline = await this.baselineForObservedPath(context, movedFrom);
+      if (!this.currentWatch(context)) return;
+      const targetBaseline = await this.baselineForObservedPath(context, abs);
+      if (!this.currentWatch(context)) return;
+      if (!context.deletedPaths?.has(movedFrom)) {
+        context.snapshots.set(movedFrom, oldBaseline);
+        context.lastKnown.delete(movedFrom);
+        this.emitFileUpdate(context, movedFrom, null, oldBaseline);
+      }
+      context.snapshots.set(abs, targetBaseline);
+      context.lastKnown.set(abs, content);
+      context.identities?.delete(movedFrom);
+      context.identities?.set(abs, identity);
+      context.deletedPaths?.delete(movedFrom);
+      context.deletedPaths?.delete(abs);
+      (context.recentMoves ??= new Map()).set(movedFrom, Date.now() + 2_000);
+      this.emitFileUpdate(context, abs, content, targetBaseline, undefined, this.relKey(movedFrom, context.root));
+      return;
+    }
+    if (identity) (context.identities ??= new Map()).set(abs, identity);
+    context.deletedPaths?.delete(abs);
+    if (content === context.lastKnown.get(abs)) return;
     context.lastKnown.set(abs, content);
     if (!context.snapshots.has(abs)) {
       const git = await this.gitShow(context, this.relKey(abs, context.root));
@@ -1442,7 +1477,8 @@ export class OpenShellBackend {
     abs: string,
     content: string | null,
     baselineOverride?: FileBaseline,
-    write?: FileWriteIdentity
+    write?: FileWriteIdentity,
+    movedFrom?: string
   ): void {
     const baseline =
       baselineOverride !== undefined
@@ -1455,12 +1491,38 @@ export class OpenShellBackend {
         workspace: context.workspace,
         sessionID: context.sessionID,
         path: this.relKey(abs, context.root),
+        ...(movedFrom ? { movedFrom } : {}),
         baseline,
         content,
         deleted: content === null,
         ...(write ? { write } : {})
       }
     });
+  }
+
+  private fileIdentity(stat: Awaited<ReturnType<typeof fsp.stat>>): string | null {
+    if (!Number.isFinite(stat.dev) || !Number.isFinite(stat.ino) || stat.ino <= 0) return null;
+    return `${stat.dev}:${stat.ino}`;
+  }
+
+  private async missingIdentitySource(context: WatchContext, abs: string, identity: string): Promise<string | null> {
+    const candidates = [...(context.identities ?? [])]
+      .filter(([candidate, value]) => candidate !== abs && value === identity)
+      .map(([candidate]) => candidate);
+    const missing: string[] = [];
+    for (const candidate of candidates) {
+      const stat = await fsp.stat(candidate).catch(() => null);
+      if (!this.currentWatch(context)) return null;
+      if (!stat) missing.push(candidate);
+    }
+    return missing.length === 1 ? missing[0] : null;
+  }
+
+  private async baselineForObservedPath(context: WatchContext, abs: string): Promise<FileBaseline> {
+    const established = context.snapshots.get(abs);
+    if (established) return established;
+    const git = await this.gitShow(context, this.relKey(abs, context.root));
+    return observedBaseline(context.hasGit === true, git);
   }
 
   private async captureDirectMutation(context: WatchContext, abs: string): Promise<{
@@ -2634,9 +2696,15 @@ export class OpenShellBackend {
     const root = this.workspaceRoot(workspace);
     const clean = relativePath(rel);
     const abs = await confinedPath(root, clean);
-    this.contextFor(workspace);
+    const context = this.contextFor(workspace);
     const content = await this.readExternalText(abs);
     this.contextFor(workspace);
+    if (content !== null) {
+      const stat = await fsp.stat(abs).catch(() => null);
+      this.contextFor(workspace);
+      const identity = stat?.isFile() ? this.fileIdentity(stat) : null;
+      if (identity) (context.watchContext.identities ??= new Map()).set(abs, identity);
+    }
     return content;
   }
 

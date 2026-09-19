@@ -220,6 +220,55 @@ describe("store workspace continuations", () => {
     expect(listDir).toHaveBeenCalledWith(store.session!.workspace, "lib");
   });
 
+  it("follows a correlated external rename for an open editor tab", async () => {
+    window.openshell = api();
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openFile("src/old.txt"));
+    const workspace = store.session!.workspace;
+
+    await act(async () => {
+      messageHandler!({
+        kind: "file-update",
+        file: {
+          workspace,
+          sessionID: store.session!.id,
+          path: "src/old.txt",
+          baseline: { kind: "known", content: "content" },
+          content: null,
+          deleted: true
+        }
+      });
+      messageHandler!({
+        kind: "file-update",
+        file: {
+          workspace,
+          sessionID: store.session!.id,
+          path: "lib/new.txt",
+          movedFrom: "src/old.txt",
+          baseline: { kind: "known", content: "", exists: false },
+          content: "content",
+          deleted: false
+        }
+      });
+    });
+
+    expect(store.tabs).toEqual([
+      expect.objectContaining({ path: "lib/new.txt", name: "new.txt", content: "content", deleted: false })
+    ]);
+    expect(store.activePath).toBe("lib/new.txt");
+    expect(store.agentFiles.get("src/old.txt")).toEqual({
+      baseline: { kind: "known", content: "content" },
+      content: null,
+      deleted: true
+    });
+    expect(store.agentFiles.get("lib/new.txt")).toEqual({
+      baseline: { kind: "known", content: "", exists: false },
+      content: "content",
+      deleted: false
+    });
+  });
+
   it("removes restored files and created-then-deleted files while retaining deleted tracked files", async () => {
     window.openshell = api();
     await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));

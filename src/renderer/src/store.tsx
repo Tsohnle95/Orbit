@@ -772,9 +772,15 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           : { ...current, [workspaceID]: path });
   }, []);
 
-  const setAgentFilesFor = useCallback((workspaceID: string, next: Map<string, AgentFileState>) => {
-    setAgentFilesByWorkspace((current) =>
-      current[workspaceID] === next ? current : { ...current, [workspaceID]: next });
+  const setAgentFilesFor = useCallback((
+    workspaceID: string,
+    update: Map<string, AgentFileState> | ((prev: Map<string, AgentFileState>) => Map<string, AgentFileState>)
+  ) => {
+    setAgentFilesByWorkspace((current) => {
+      const previous = current[workspaceID] ?? new Map<string, AgentFileState>();
+      const next = typeof update === "function" ? update(previous) : update;
+      return previous === next ? current : { ...current, [workspaceID]: next };
+    });
   }, []);
 
   const setTreeFor = useCallback((workspaceID: string, update: (prev: Record<string, TreeEntry[]>) => Record<string, TreeEntry[]>) => {
@@ -2837,9 +2843,21 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         const f = msg.file!;
         const panel = panelFor(f.workspace);
         if (!panel || f.sessionID !== panel.id) return;
+        if (f.movedFrom && f.movedFrom !== f.path) {
+          persistence.cancelPath(f.workspace, f.movedFrom);
+          const targetAlreadyOpen = (tabsByWorkspaceRef.current[f.workspace.id] ?? [])
+            .some((tab) => tab.path === f.path);
+          if (!targetAlreadyOpen) {
+            setTabsFor(f.workspace.id, (prev) => prev.map((tab) => tab.path === f.movedFrom
+              ? { ...tab, path: f.path, name: f.path.split("/").pop() ?? f.path }
+              : tab));
+            setActivePathByWorkspace((current) => current[f.workspace.id] === f.movedFrom
+              ? { ...current, [f.workspace.id]: f.path }
+              : current);
+          }
+        }
         const origin = persistence.classify(f.workspace, f);
-        setAgentFilesFor(f.workspace.id, (() => {
-          const current = agentFilesByWorkspaceRef.current[f.workspace.id] ?? new Map<string, AgentFileState>();
+        setAgentFilesFor(f.workspace.id, (current) => {
           const next = new Map(current);
           const clean = f.baseline.kind === "known" && (
             (!f.deleted && f.content === f.baseline.content) ||
@@ -2848,7 +2866,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           if (clean) next.delete(f.path);
           else next.set(f.path, { baseline: f.baseline, content: f.content, deleted: f.deleted });
           return next;
-        })());
+        });
         setTabsFor(f.workspace.id, (prev) =>
           prev.map((tab) => {
             if (tab.path !== f.path) return tab;
@@ -2875,9 +2893,15 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
             };
           })
         );
-        const parent = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/")) : "";
+        const parents = new Set([
+          f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/")) : "",
+          ...(f.movedFrom
+            ? [f.movedFrom.includes("/") ? f.movedFrom.slice(0, f.movedFrom.lastIndexOf("/")) : ""]
+            : [])
+        ]);
         const workspaceExpanded = expandedByWorkspaceRef.current[f.workspace.id] ?? new Set<string>();
-        if (parent !== f.path && workspaceExpanded.has(parent)) {
+        for (const parent of parents) {
+          if (parent === f.path || !workspaceExpanded.has(parent)) continue;
           const expected = f.workspace;
           const key = `${expected.id}:${parent}`;
           const existing = treeRefreshTimersRef.current.get(key);
