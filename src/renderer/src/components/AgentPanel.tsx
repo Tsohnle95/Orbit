@@ -945,6 +945,9 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
                   <input
                     className="composer-model-search"
                     type="search"
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="off"
                     value={modelSearch}
                     onChange={(event) => setModelSearch(event.target.value)}
                     placeholder="Search models"
@@ -1014,6 +1017,9 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
                   <input
                     className="composer-model-search"
                     type="search"
+                    spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="off"
                     value={modelSearch}
                     onChange={(event) => setModelSearch(event.target.value)}
                     placeholder="Search models"

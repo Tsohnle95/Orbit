@@ -82,6 +82,9 @@ function fieldControl(
   return (
     <input
       type={field.type === "number" || field.type === "integer" ? "number" : "text"}
+      spellCheck={false}
+      autoCorrect="off"
+      autoCapitalize="off"
       step={field.type === "integer" ? 1 : undefined}
       min={field.minimum}
       max={field.maximum}
@@ -193,7 +196,7 @@ function OAuthFlow({
           {attempt.url && <ExternalLink className="provider-external" href={attempt.url}>Open authorization page</ExternalLink>}
           {attempt.mode === "code" && (
             <label><span>Authorization code</span>
-              <input value={code} onChange={(event) => setCode(event.target.value)} placeholder="Paste the code" autoFocus />
+              <input value={code} spellCheck={false} autoCorrect="off" autoCapitalize="off" onChange={(event) => setCode(event.target.value)} placeholder="Paste the code" autoFocus />
             </label>
           )}
           <div className="provider-form-actions">
@@ -289,8 +292,8 @@ function ProviderCard({
 
       {open && provider.keyMethod ? (
         <form className="provider-key-form" onSubmit={(event) => void submit(event)}>
-          <label><span>{provider.keyMethod.label ?? "API key"}</span><input type="password" autoComplete="off" value={key} onChange={(event) => setKey(event.target.value)} required autoFocus /></label>
-          <label><span>Label <small>optional</small></span><input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Work, personal, team..." /></label>
+          <label><span>{provider.keyMethod.label ?? "API key"}</span><input type="password" autoComplete="off" spellCheck={false} autoCorrect="off" autoCapitalize="off" value={key} onChange={(event) => setKey(event.target.value)} required autoFocus /></label>
+          <label><span>Label <small>optional</small></span><input value={label} spellCheck={false} autoCorrect="off" autoCapitalize="off" onChange={(event) => setLabel(event.target.value)} placeholder="Work, personal, team..." /></label>
           {provider.keyMethod.fields.filter((field) => fieldVisible(field, answers)).map((field) => (
             <label key={field.key}>
               <span>{field.title ?? field.key}{field.required ? " *" : ""}</span>
@@ -380,7 +383,7 @@ export function ProviderSettings({
     <div className="provider-settings">
       <div className="provider-toolbar">
         <div><strong>Bring your own provider</strong><small>Keys are stored by the active agent runtime and are never displayed again.</small></div>
-        <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search providers" aria-label="Search providers" />
+        <input type="search" value={query} spellCheck={false} autoCorrect="off" autoCapitalize="off" onChange={(event) => setQuery(event.target.value)} placeholder="Search providers" aria-label="Search providers" />
       </div>
       {error && <div className="settings-callout provider-error"><strong>Providers unavailable</strong><p>{error}</p></div>}
       {loading && providers.length === 0 ? <div className="settings-empty">Loading provider catalog...</div> : <div className="provider-grid">

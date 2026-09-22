@@ -88,6 +88,25 @@ describe("composer agent menu", () => {
     vi.restoreAllMocks();
   });
 
+  it("disables correction and capitalization in composer text controls", async () => {
+    currentModels = [{ id: "gpt", name: "GPT", providerID: "openai" }];
+    await act(async () => root.render(<Composer />));
+
+    const composer = container.querySelector<HTMLTextAreaElement>(".composer-input")!;
+    expect(composer.getAttribute("spellcheck")).toBe("false");
+    expect(composer.getAttribute("autocorrect")).toBe("off");
+    expect(composer.getAttribute("autocapitalize")).toBe("off");
+
+    const modelButton = container.querySelector<HTMLButtonElement>(
+      'button[title="Change model and response strength"]'
+    )!;
+    await act(async () => modelButton.click());
+    const search = container.querySelector<HTMLInputElement>(".composer-model-search")!;
+    expect(search.getAttribute("spellcheck")).toBe("false");
+    expect(search.getAttribute("autocorrect")).toBe("off");
+    expect(search.getAttribute("autocapitalize")).toBe("off");
+  });
+
   it("reloads agents and shows a hint when the list is empty", async () => {
     await act(async () => root.render(<Composer />));
     const button = container.querySelector<HTMLButtonElement>('button[title="Change agent"]')!;
