@@ -13,9 +13,10 @@ vi.mock("@opencode-ai/client/service", () => ({
   Service: { discover: hoisted.discover, ensure: hoisted.ensure, headers: () => undefined }
 }));
 
-import { OpenShellBackend, serverBuild, serverVersionPredicate } from "./opencode";
+import packageJson from "../../package.json";
+import { MIN_SUPPORTED_SERVER_BUILD, OpenShellBackend, serverBuild, serverVersionPredicate } from "./opencode";
 
-const MIN_BUILD = 17577;
+const MIN_BUILD = MIN_SUPPORTED_SERVER_BUILD;
 
 describe("serverBuild", () => {
   it("reads the trailing build from installed and service version strings", () => {
@@ -28,6 +29,10 @@ describe("serverBuild", () => {
 });
 
 describe("serverVersionPredicate", () => {
+  it("keeps the server compatibility floor aligned with the pinned client contract", () => {
+    expect(serverBuild(packageJson.dependencies["@opencode-ai/client"])).toBe(MIN_BUILD);
+  });
+
   it("rejects a stale running service and accepts the installed build", () => {
     const accept = serverVersionPredicate("opencode2 v0.0.0-beta-19242", MIN_BUILD);
     expect(accept("0.0.0-beta-19242")).toBe(true);
@@ -38,7 +43,7 @@ describe("serverVersionPredicate", () => {
   it("falls back to the floor when the installed build is unknown", () => {
     const accept = serverVersionPredicate(null, MIN_BUILD);
     expect(accept("0.0.0-beta-19242")).toBe(true);
-    expect(accept("0.0.0-beta-17577")).toBe(true);
+    expect(accept("0.0.0-beta-19241")).toBe(false);
     expect(accept("0.0.0-beta-17000")).toBe(false);
   });
 });

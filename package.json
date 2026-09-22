@@ -26,7 +26,7 @@
   "dependencies": {
     "@fontsource/cormorant-garamond": "^5.3.0",
     "@monaco-editor/react": "^4.7.0",
-    "@opencode-ai/client": "0.0.0-beta-18138",
+    "@opencode-ai/client": "0.0.0-beta-19242",
     "@vscode/codicons": "^0.0.46-24",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",

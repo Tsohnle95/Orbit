@@ -551,6 +551,8 @@ export function serverBuild(version: string | null | undefined): number | null {
   return match ? Number(match[1]) : null;
 }
 
+export const MIN_SUPPORTED_SERVER_BUILD = 19242;
+
 /** Accept a running service only when it matches the installed `opencode2`
  *  build and clears the minimum-build floor. A daemon left running from a
  *  previous install still satisfies the floor, so without the build match Orbit
@@ -661,7 +663,7 @@ export class OpenShellBackend {
     return [desktop];
   }
 
-  private static minSupportedServerBuild = 17577;
+  private static minSupportedServerBuild = MIN_SUPPORTED_SERVER_BUILD;
 
   private static streamFailureLimit = 3;
 
