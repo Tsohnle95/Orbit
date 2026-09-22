@@ -1,6 +1,8 @@
 import { spawn as nodeSpawn } from "node:child_process";
 import { get } from "node:http";
 import { createServer } from "node:net";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import type { VitePreview } from "@shared/types";
 
 export type { VitePreview };
@@ -21,6 +23,22 @@ export const VITE_FIRST_PORT = 5199;
 const VITE_PORT_ATTEMPTS = 20;
 const VITE_READY_TIMEOUT_MS = 15000;
 const VITE_READY_POLL_MS = 150;
+
+export function resolveViteCommand(
+  appPath: string,
+  moduleDirectory: string,
+  electronPath = process.execPath,
+  platform = process.platform,
+  exists: (file: string) => boolean = existsSync
+): { command: string; prefix: string[] } {
+  const candidates = [
+    path.join(appPath, "node_modules", "vite", "bin", "vite.js"),
+    path.resolve(moduleDirectory, "../../node_modules/vite/bin/vite.js")
+  ];
+  const bin = candidates.find(exists);
+  if (bin) return { command: electronPath, prefix: [bin] };
+  return { command: platform === "win32" ? "npx.cmd" : "npx", prefix: ["vite"] };
+}
 
 export function viteHttpError(url: string, status: number): Error | null {
   if (status >= 200 && status < 400) return null;

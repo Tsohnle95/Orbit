@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { defaultViteDeps, viteHttpError, VitePreviewManager, type ViteChild, type ViteManagerDeps } from "./vite-server";
+import { defaultViteDeps, resolveViteCommand, viteHttpError, VitePreviewManager, type ViteChild, type ViteManagerDeps } from "./vite-server";
 
 interface FakeChild extends ViteChild {
   killed: boolean;
@@ -165,5 +165,21 @@ describe("defaultViteDeps", () => {
     expect(seen[0].options.cwd).toBe("/repo/a");
     expect(seen[0].options.env?.ELECTRON_RUN_AS_NODE).toBe("1");
     expect(seen[0].options.stdio).toEqual(["ignore", "ignore", "pipe"]);
+  });
+});
+
+describe("resolveViteCommand", () => {
+  it("finds Vite beside the repository build used by the installed live launcher", () => {
+    const repositoryBin = "/repo/node_modules/vite/bin/vite.js";
+    expect(resolveViteCommand("/Applications/Orbit.app/Contents/Resources/app", "/repo/out/main", "/electron", "darwin", (file) => file === repositoryBin))
+      .toEqual({ command: "/electron", prefix: [repositoryBin] });
+  });
+
+  it("prefers a Vite bundled beside the packaged app and falls back to npx", () => {
+    const packagedBin = "/app/node_modules/vite/bin/vite.js";
+    expect(resolveViteCommand("/app", "/app/out/main", "/electron", "darwin", (file) => file === packagedBin))
+      .toEqual({ command: "/electron", prefix: [packagedBin] });
+    expect(resolveViteCommand("/app", "/app/out/main", "/electron", "win32", () => false))
+      .toEqual({ command: "npx.cmd", prefix: ["vite"] });
   });
 });

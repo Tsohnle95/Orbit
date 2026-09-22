@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { OpenShellBackend } from "./opencode";
 import { TerminalManager } from "./terminal";
 import { MobileServer } from "./mobile-server";
-import { defaultViteDeps, VitePreviewManager } from "./vite-server";
+import { defaultViteDeps, resolveViteCommand, VitePreviewManager } from "./vite-server";
 import { collectLaunchPaths, PendingOpenPaths } from "./open-paths";
 import {
   applicationUrl,
@@ -73,11 +73,7 @@ applyExecPath();
 const backend = new OpenShellBackend();
 const terminals = new TerminalManager();
 const mobileServer = new MobileServer();
-const viteCommand = (() => {
-  const bin = path.join(app.getAppPath(), "node_modules", "vite", "bin", "vite.js");
-  if (existsSync(bin)) return { command: process.execPath, prefix: [bin] };
-  return { command: process.platform === "win32" ? "npx.cmd" : "npx", prefix: ["vite"] };
-})();
+const viteCommand = resolveViteCommand(app.getAppPath(), __dirname);
 const viteServers = new VitePreviewManager(defaultViteDeps(viteCommand.command, viteCommand.prefix));
 let win: BrowserWindow | null = null;
 let trustedLocation: TrustedApplicationLocation | null = null;
