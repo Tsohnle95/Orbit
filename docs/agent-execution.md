@@ -135,6 +135,71 @@ unless they help the task. Consider:
 When uncertain between two modes, start with the lighter mode only if the
 escalation rules below can safely catch a mistake early.
 
+
+## Implementation decisions and causal verification
+
+### Before choosing an implementation
+
+Use the investigation depth appropriate to the selected execution mode.
+
+1. Establish the requested outcome and the relevant current behavior.
+2. Separate verified facts from assumptions and unresolved questions.
+3. Identify the existing owner of the behavior and the contracts that must
+   remain valid.
+4. Consider materially different implementation approaches when they exist.
+   Prefer the approach that satisfies the outcome with the least unnecessary
+   complexity, duplication, coupling, and regression risk.
+5. Identify the evidence needed to verify the selected approach before
+   making the change.
+
+Do not manufacture alternative designs when one established implementation
+path is clearly appropriate. Do not replace existing abstractions merely
+because another approach is possible.
+
+For consequential decisions, record the selected approach and its rationale
+in the existing FEATURE plan or PROJECT task file. PATCH work does not need
+a separate design record.
+
+### Debugging and fault isolation
+
+For a reported malfunction:
+
+1. Establish the expected behavior and reproduce the failure when feasible.
+   Capture the relevant error, failing test, log, or observable behavior.
+2. Trace the actual failing execution path through the relevant components.
+   Distinguish the observed failure from hypotheses about its cause.
+3. When the cause is uncertain, perform the smallest useful diagnostic
+   experiment that distinguishes between plausible explanations.
+4. Implement a correction supported by the evidence. Preserve existing
+   behavior outside the intended scope.
+5. Add or update a regression test when a reliable automated test can
+   reproduce the defect.
+6. Repeat the original failure scenario after the fix. Run the relevant
+   automated and integration checks before reporting completion.
+
+When the original failure cannot be reproduced, explicitly identify the
+remaining uncertainty. Do not claim that a suspected cause has been proven
+or that an unexercised behavior is fixed.
+
+Avoid speculative fixes and repeated modifications to the same area without
+new diagnostic evidence. Use the existing replan/escalation rules when the
+current approach is not converging.
+
+### Verification strategy
+
+Choose verification from the actual acceptance criteria and the affected
+execution path, not merely from the availability of existing tests.
+
+Prefer automated regression checks for repeatable behavior and direct
+integration or platform checks for behavior that unit tests cannot exercise.
+
+A successful compile, passing unrelated tests, or absence of logged errors
+does not independently prove that the requested behavior works.
+
+Report which acceptance criteria were directly verified, which were only
+partially exercised, and which could not be verified in the available
+environment.
+
 ## Replan / escalation triggers
 
 Stop patching and revise the mental model or task plan when any of these occurs:

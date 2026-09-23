@@ -124,6 +124,28 @@ Do not create a spec, design document, subagent hierarchy, or persistent plan
 when direct execution is sufficient. Planning exists to reduce implementation
 risk, not as mandatory ceremony.
 
+
+### Implementation decision gate
+
+Before editing, establish the intended observable outcome, the relevant
+existing behavior, and the smallest coherent change that could achieve it.
+
+For bug fixes, reproduce or otherwise establish the failure before changing
+code when feasible. Distinguish observed behavior from suspected causes.
+Do not modify code solely because it appears suspicious.
+
+Prefer solutions that preserve existing architectural boundaries, contracts,
+and ownership. Avoid adding abstractions, dependencies, or unrelated changes
+without a demonstrated need.
+
+Identify how the requested behavior will be verified before implementing it.
+Use the narrowest meaningful check while iterating, then apply the required
+completion gates. Passing unrelated checks does not establish behavioral
+correctness.
+
+Apply these rules proportionally in every execution mode. Simple changes
+require no additional planning artifact.
+
 ## Architecture in one paragraph
 
 The Electron **main process** owns runtime adapters and is the only process that
