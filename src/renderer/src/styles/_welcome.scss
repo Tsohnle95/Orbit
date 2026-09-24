@@ -102,6 +102,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 .welcome .sd-sh {
   display: flex;
@@ -119,7 +120,19 @@
   flex: 1;
   min-width: 0;
   width: auto;
+  border-bottom: 0;
 }
+.welcome .sd-sh-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border: 0;
+  background: none;
+  padding: 9px 0;
+  color: var(--text-faint);
+}
+.welcome .sd-sh-chevron .chev { transition: transform 0.15s ease; }
 .welcome .sd-sh-label {
   font-size: 9.5px;
   letter-spacing: 0.14em;
@@ -140,6 +153,7 @@
   font-weight: 600;
 }
 .welcome .sd-sec.is-closed .sd-sh .chev { transform: rotate(-90deg); }
+.welcome .sd-sec.is-closed .sd-sh-chevron .chev { transform: rotate(-90deg); }
 .welcome .sd-sec.is-closed .sd-body { display: none; }
 .welcome .sd-sh.style-dotcap::before {
   content: "";

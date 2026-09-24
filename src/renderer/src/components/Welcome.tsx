@@ -173,16 +173,26 @@ export function Welcome(): ReactNode {
                 >
                   <span className="sd-sh-label">Workspaces</span>
                   <span className="sd-cnt">{groups.length}</span>
-                  <Chev />
                 </button>
+                {!closedSecs.workspaces && (
+                  <button
+                    className="sd-wg-new"
+                    type="button"
+                    title="Add a workspace"
+                    aria-label="Add a workspace"
+                    onClick={() => void saveWorkspace()}
+                  >
+                    <PlusIcon />
+                  </button>
+                )}
                 <button
-                  className="sd-wg-new"
+                  className="sd-sh-chevron"
                   type="button"
-                  title="Add a workspace"
-                  aria-label="Add a workspace"
-                  onClick={() => void saveWorkspace()}
+                  aria-label={`${closedSecs.workspaces ? "Expand" : "Collapse"} Workspaces`}
+                  aria-expanded={!closedSecs.workspaces}
+                  onClick={() => toggleSec("workspaces")}
                 >
-                  <PlusIcon />
+                  <Chev />
                 </button>
               </div>
               <div className="sd-body">
