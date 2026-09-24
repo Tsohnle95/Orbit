@@ -80,7 +80,7 @@ export function Welcome(): ReactNode {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const [closedSecs, setClosedSecs] = useState<Record<string, boolean>>({ recent: true, workspaces: false });
+  const [closedSecs, setClosedSecs] = useState<Record<string, boolean>>({ recent: true, workspaces: true });
 
   useEffect(() => {
     void Promise.all([
@@ -98,7 +98,7 @@ export function Welcome(): ReactNode {
   const groups = workspaceGroups(runtimeSessions, savedWorkspaces);
 
   const toggleGroup = (key: string): void =>
-    setOpenGroups((current) => ({ ...current, [key]: !(current[key] ?? true) }));
+    setOpenGroups((current) => ({ ...current, [key]: !(current[key] ?? false) }));
 
   const toggleSec = (key: string): void =>
     setClosedSecs((current) => ({ ...current, [key]: !(current[key] ?? false) }));
@@ -202,8 +202,8 @@ export function Welcome(): ReactNode {
                   </div>
                 )}
                 {!loading &&
-                  groups.map((group, groupIndex) => {
-                    const open = openGroups[group.directory] ?? (groups.length === 1 || groupIndex === 0);
+                  groups.map((group) => {
+                    const open = openGroups[group.directory] ?? false;
                     return (
                       <div className={`sd-grp${open ? " is-open" : ""}`} key={group.directory}>
                         <div className="sd-wgh-wrap">
