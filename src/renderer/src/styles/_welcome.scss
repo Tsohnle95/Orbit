@@ -98,6 +98,11 @@
 }
 
 .welcome .sd-sec + .sd-sec { margin-top: 6px; }
+.welcome .sd-sh-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .welcome .sd-sh {
   display: flex;
   align-items: center;
@@ -109,6 +114,11 @@
   padding: 9px 0;
   color: var(--text-faint);
   text-align: left;
+}
+.welcome .sd-sh-row .sd-sh {
+  flex: 1;
+  min-width: 0;
+  width: auto;
 }
 .welcome .sd-sh-label {
   font-size: 9.5px;

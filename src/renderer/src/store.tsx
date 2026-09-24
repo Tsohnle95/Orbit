@@ -558,6 +558,14 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     ? (panels.find((panel) => panel.workspace.id === activeWorkspaceID) ?? null)
     : null;
 
+  const rememberWorkspace = useCallback((directory: string): void => {
+    if (!directory) return;
+    const saved = { directory, name: workspaceName(directory) };
+    setSavedWorkspaces((current) =>
+      current.some((workspace) => workspace.directory === directory) ? current : [...current, saved]
+    );
+  }, []);
+
   useEffect(() => {
     if (!session) return;
     setHiddenPathsByWorkspace((current) => ({ ...current, [session.workspace.id]: new Set() }));
@@ -1215,13 +1223,14 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     }
   }, [panelFor, popQueuedMessage, updateSessionTranscript, toast, refreshInbox, commitQueue]);
 
-  const attachPanel = useCallback((info: SessionInfo): void => {
+  const attachPanel = useCallback((info: SessionInfo, saveWorkspace = true): void => {
+    if (saveWorkspace) rememberWorkspace(info.directory);
     panelsRef.current = panelsRef.current.some((panel) => panel.id === info.id)
       ? panelsRef.current.map((panel) => (panel.id === info.id ? info : panel))
       : [...panelsRef.current, info];
     setPanels(panelsRef.current);
     addActiveSession(info);
-  }, [addActiveSession]);
+  }, [addActiveSession, rememberWorkspace]);
 
   const hydrateTranscript = useCallback(
     async (sessionID: string): Promise<void> => {
@@ -1559,6 +1568,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const replacePanel = useCallback((workspace: WorkspaceIdentity, info: SessionInfo): boolean => {
     const index = panelsRef.current.findIndex((panel) => sameWorkspace(panel.workspace, workspace));
     if (index === -1) return false;
+    rememberWorkspace(info.directory);
     // Detach without teardown (see detachPanel): the replaced session keeps
     // its backend context and Open now entry so it stays jumpable; only an
     // explicit close ends it.
@@ -1577,7 +1587,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     setActiveSessionID(info.id);
     addActiveSession(info);
     return true;
-  }, [addActiveSession, ejectPanelFromView]);
+  }, [addActiveSession, ejectPanelFromView, rememberWorkspace]);
 
   const swapPanelTo = useCallback((workspace: WorkspaceIdentity, info: SessionInfo): void => {
     if (!replacePanel(workspace, info)) {
@@ -1807,7 +1817,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           return null;
         }
         if (silent) {
-          attachPanel(reopened.session);
+          attachPanel(reopened.session, false);
         } else if (targetWorkspace) {
           if (!replacePanel(targetWorkspace, reopened.session)) {
             await window.openshell.closeSession(reopened.session.workspace).catch(() => {});

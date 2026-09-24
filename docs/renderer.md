@@ -15,7 +15,7 @@ Exposed via `useStore()` (context). State:
 | `session` | `SessionInfo \| null` | the focused session (derived from `panels` + `activeSessionID`); null → Welcome screen on first launch, otherwise an empty IDE whose explorer offers an open-workspace CTA |
 | `panels` | `SessionInfo[]` | all attached/live sessions in panel order; each panel continues streaming even when normal coding mode renders only the focused coding session |
 | `activeSessions` | `SessionInfo[]` | backend-owned open contexts, reconciled every second independently of visible panels; drives the complete **Open now** inventory |
-| `savedWorkspaces` | `ProjectInfo[]` | Orbit-owned workspace bookmarks persisted in `localStorage` ("orbit.savedWorkspaces"); removing one changes only this list and never touches the filesystem |
+| `savedWorkspaces` | `ProjectInfo[]` | Orbit-owned workspace bookmarks persisted in `localStorage` ("orbit.savedWorkspaces"); the Welcome screen can add one directly, and user-initiated opens, attachments, and swaps bookmark their workspace automatically; removing one changes only this list and never touches the filesystem |
 | `panelViews` | `Record<workspaceID, PanelView>` | per-panel scoped projection (`session`, `busy`, `transcript`, `todos`, `sessionUsage`, `models`, `currentModel`, `agents`, `currentAgent`) consumed through `usePanel(workspace)` |
 | `activeSessionID` | `string \| null` | focused session id; the editor, sidebar, tree, and terminal tray bind to the focused panel while every panel keeps streaming |
 | `connected` | `boolean` | from `health()` on mount |
@@ -154,7 +154,9 @@ loop — idle-transition dispatch, abort window, retry backoff — was retired:
 the server performs all of that by holding and delivering inbox entries.
 
 Actions: `openSession` / `selectFolder` (replace the current panels with one fresh
-panel), `addModelPanel(dir)` (explicit model-mode addition to a directory),
+panel and automatically save its directory as a workspace), `saveWorkspace`
+(bookmark a directory from the native folder picker), `addModelPanel(dir)`
+(explicit model-mode addition to a directory and bookmark it),
 `selectAddPanel` (model-mode addition from the native folder picker, so each
 new panel can target a different project), `selectFile` / `openFileWorkspace`
 (open a single file as a true single-file workspace: replace the panels with a

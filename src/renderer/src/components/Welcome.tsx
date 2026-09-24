@@ -19,7 +19,6 @@ function formatWhen(ts: number): string {
 }
 
 const LIVE_WINDOW_MS = 60 * 60 * 1000;
-const MAX_WORKSPACE_KIDS = 4;
 
 function Chev(): ReactNode {
   return (
@@ -77,11 +76,11 @@ function workspaceGroups(sessions: SessionSummary[], projects: ProjectInfo[]): W
 }
 
 export function Welcome(): ReactNode {
-  const { selectFolder, openPaths, openSession, reopenSession, selectedRuntimeID, savedWorkspaces } = useStore();
+  const { selectFolder, openPaths, reopenSession, selectedRuntimeID, savedWorkspaces, saveWorkspace } = useStore();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const [closedSecs, setClosedSecs] = useState<Record<string, boolean>>({ recent: true, workspaces: true });
+  const [closedSecs, setClosedSecs] = useState<Record<string, boolean>>({ recent: true, workspaces: false });
 
   useEffect(() => {
     void Promise.all([
@@ -165,11 +164,27 @@ export function Welcome(): ReactNode {
             </div>
 
             <div className={`sd-sec${closedSecs.workspaces ? " is-closed" : ""}`}>
-              <button className="sd-sh style-dotcap" type="button" onClick={() => toggleSec("workspaces")}>
-                <span className="sd-sh-label">Workspaces</span>
-                <span className="sd-cnt">{groups.length}</span>
-                <Chev />
-              </button>
+              <div className="sd-sh-row">
+                <button
+                  className="sd-sh style-dotcap"
+                  type="button"
+                  aria-expanded={!closedSecs.workspaces}
+                  onClick={() => toggleSec("workspaces")}
+                >
+                  <span className="sd-sh-label">Workspaces</span>
+                  <span className="sd-cnt">{groups.length}</span>
+                  <Chev />
+                </button>
+                <button
+                  className="sd-wg-new"
+                  type="button"
+                  title="Add a workspace"
+                  aria-label="Add a workspace"
+                  onClick={() => void saveWorkspace()}
+                >
+                  <PlusIcon />
+                </button>
+              </div>
               <div className="sd-body">
                 {!loading && groups.length === 0 && (
                   <div className="sessions-empty" style={{ padding: "8px 2px", fontSize: 11.5, color: "var(--text-faint)" }}>
@@ -178,24 +193,21 @@ export function Welcome(): ReactNode {
                 )}
                 {!loading &&
                   groups.map((group, groupIndex) => {
-                    const open = openGroups[group.directory] ?? (groups.length === 1 || groupIndex === 1);
+                    const open = openGroups[group.directory] ?? (groups.length === 1 || groupIndex === 0);
                     return (
                       <div className={`sd-grp${open ? " is-open" : ""}`} key={group.directory}>
                         <div className="sd-wgh-wrap">
-                          <button className="sd-wgh" type="button" onClick={() => toggleGroup(group.directory)} title={group.directory}>
+                          <button
+                            className="sd-wgh"
+                            type="button"
+                            aria-expanded={open}
+                            onClick={() => toggleGroup(group.directory)}
+                            title={group.directory}
+                          >
                             <Chev />
                             <FolderGlyph />
                             <span className="sd-wgname">{group.name}</span>
                             <span className="sd-wgcnt">{group.sessions.length}</span>
-                          </button>
-                          <button
-                            className="sd-wg-new"
-                            type="button"
-                            title={`New session in ${group.name}`}
-                            aria-label={`New session in ${group.name}`}
-                            onClick={() => void openSession(group.directory)}
-                          >
-                            <PlusIcon />
                           </button>
                         </div>
                         <div className="sd-kids-wrap">
@@ -205,7 +217,7 @@ export function Welcome(): ReactNode {
                             </div>
                           ) : (
                             <ul className="rows sd-kids">
-                              {group.sessions.slice(0, MAX_WORKSPACE_KIDS).map((session) => (
+                              {group.sessions.map((session) => (
                                 <li key={session.id} className={`row${isLive(session) ? " is-live" : ""}`}>
                                   <button
                                     className="rowlink"
