@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#171624" />
+    <title>Orbit — Agent development environment</title>
+    <link rel="stylesheet" href="landing.css" />
+  </head>
+  <body class="full-page theme-workbench">
+    <header class="site-nav">
+      <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◉</span><span>orbit</span></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-optional" href="#features">Features</a>
+        <a class="nav-optional" href="workbench.html">Workbench</a>
+        <a class="nav-optional" href="agents.html">Agent mode</a>
+        <a class="nav-optional" href="focus.html">Quiet focus</a>
+        <a class="nav-cta" href="#directions">Design directions <span aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+
+    <main class="page-shell">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-dot"></span> Agent development environment · in progress</p>
+          <h1>Your code and your agents, <em>in one workspace.</em></h1>
+          <p>Orbit brings a VS Code–style editor, your open repository, an integrated terminal, and coding agents into the same desktop environment.</p>
+          <div class="hero-actions">
+            <a class="action action-primary" href="workbench.html">Explore the workbench <span aria-hidden="true">→</span></a>
+            <a class="action action-secondary" href="agents.html">See agent mode</a>
+          </div>
+          <div class="hero-meta"><span>Monaco editor</span><span>OpenCode V2 runtime</span><span>Desktop workspace</span></div>
+        </div>
+        <figure class="app-capture">
+          <div class="capture-bar"><span class="capture-label">Orbit workbench screenshot</span><span>Editor · terminal · agent · repository: orbit</span></div>
+          <img src="assets/orbit-workbench-reference.png" alt="Orbit screenshot showing a VS Code-style workbench with repository explorer, Monaco editor, terminal, and a repo-aware agent panel." width="1375" height="779" />
+          <figcaption><span>Reference for the workbench redesign in progress.</span><span>The eight-panel arrangement is a design direction in progress.</span></figcaption>
+        </figure>
+      </section>
+
+      <section class="proof-rail" aria-label="Orbit workspace surfaces">
+        <div class="proof-item"><strong>Editor</strong><span>Monaco, file tree, open tabs</span></div>
+        <div class="proof-item"><strong>Agent</strong><span>Starts in the active repository</span></div>
+        <div class="proof-item"><strong>Changes</strong><span>Review observed file edits</span></div>
+        <div class="proof-item"><strong>Terminal</strong><span>Run commands in the workspace</span></div>
+      </section>
+
+      <section class="page-section" id="features">
+        <div class="section-heading">
+          <div><p class="section-kicker">One place for the whole coding loop</p><h2>Stay close to the code while the agent works.</h2></div>
+          <p>Orbit keeps repository navigation, editing, agent progress, and change review within one workspace. Move from a prompt to the files it touched without losing your place.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card"><span class="feature-index">01 / EDIT</span><h3>Monaco at the center</h3><p>Read and edit repository files in the familiar VS Code–style workbench, with tabs, language support, and a navigable file tree.</p><div class="feature-tags"><span>MONACO</span><span>FILES</span><span>TABS</span></div></article>
+          <article class="feature-card"><span class="feature-index">02 / ASK</span><h3>The agent starts in your repo</h3><p>Open a workspace and the default agent panel is already attached to that project. The editor, prompt, and terminal share the active workspace context.</p><div class="feature-tags"><span>WORKSPACE CONTEXT</span><span>SESSION PANEL</span></div></article>
+          <article class="feature-card"><span class="feature-index">03 / REVIEW</span><h3>See what changed</h3><p>Orbit watches the active workspace and surfaces observed file changes in the Changes view, with per-file diff review in the editor.</p><div class="feature-tags"><span>LIVE CHANGES</span><span>DIFFS</span></div></article>
+          <article class="feature-card"><span class="feature-index">04 / RUN</span><h3>A terminal in the same place</h3><p>Use the integrated terminal with the workspace as its working directory. Keep terminal sessions available alongside the editor and agent.</p><div class="feature-tags"><span>TERMINAL</span><span>LOCAL DEV LOOP</span></div></article>
+          <article class="feature-card"><span class="feature-index">05 / CONTINUE</span><h3>Sessions keep their own thread</h3><p>Work across concurrent sessions with separate transcripts and panel state, so a follow-up stays connected to the session that owns it.</p><div class="feature-tags"><span>SESSIONS</span><span>STREAMING</span></div></article>
+          <article class="feature-card"><span class="feature-index">06 / CONFIGURE</span><h3>Choose how Orbit runs</h3><p>Switch available agents and models, review provider usage, manage plugins and skills, and tune Orbit’s appearance from Settings.</p><div class="feature-tags"><span>MODELS</span><span>PLUGINS</span><span>THEMES</span></div></article>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="section-heading">
+          <div><p class="section-kicker">Start · work · review</p><h2>A development loop with less context switching.</h2></div>
+          <p>Orbit is designed around the repo you opened. Each step stays visible in the desktop workspace, from the first question to reviewing the resulting diff.</p>
+        </div>
+        <div class="workflow-grid">
+          <article class="workflow-step"><span class="step-number">01</span><h3>Open a repository</h3><p>Choose the project folder. Orbit opens the file tree and places the agent alongside the workspace you selected.</p></article>
+          <article class="workflow-step"><span class="step-number">02</span><h3>Ask and iterate</h3><p>Send a request, follow the streamed response, attach relevant files, and queue or steer follow-up work from the same panel.</p></article>
+          <article class="workflow-step"><span class="step-number">03</span><h3>Inspect the work</h3><p>Use Changes to see observed edits, inspect file diffs, and return to the editor or terminal to keep moving.</p></article>
+        </div>
+      </section>
+
+      <section class="page-section split-section">
+        <div class="split-copy"><p class="section-kicker">Agent mode · design direction</p><h2>Bring more work into view when one panel isn’t enough.</h2><p>Agent mode is the fast overview for parallel work. The direction here is to grow the current panel into a focused grid of up to eight agents, with the selected task still connected to its repo and editor.</p><ul class="check-list"><li>Keep separate agent tasks visible at once.</li><li>Spot active, waiting, and finished work at a glance.</li><li>Follow one panel back into its files and change review.</li></ul><p class="concept-disclaimer">In progress: the eight-panel layout is a product concept, not a screenshot of current Orbit behavior.</p></div>
+        <div class="agent-concept" aria-label="Agent mode concept with eight possible panels">
+          <div><p class="agent-number">08</p><p class="agent-number-label">panels in the design direction</p></div>
+          <div><h3>One overview. Eight places to focus.</h3><p>Use the slots as independent lines of investigation: trace a route, map tests, inspect a component, review docs, check types, follow events, examine diffs, and summarize the result.</p><div class="agent-slots" aria-hidden="true"><span>01</span><span>02</span><span>03</span><span>04</span><span>05</span><span>06</span><span>07</span><span>08</span></div><span class="capture-label">Concept · agent mode</span></div>
+        </div>
+      </section>
+
+      <section class="page-section" id="directions">
+        <div class="section-heading"><div><p class="section-kicker">Three design directions</p><h2>One workspace, three ways in.</h2></div><p>Each page takes the supplied workbench screenshot as its visual anchor, then focuses on a different part of the Orbit story.</p></div>
+        <div class="direction-grid">
+          <article class="direction-card"><figure class="app-capture"><div class="capture-bar"><span class="capture-label">Orbit screen reference</span><span>Editor + agent</span></div><img src="assets/orbit-workbench-reference.png" alt="Orbit workbench reference screenshot." loading="lazy" width="1375" height="779" /></figure><span class="section-kicker">01 / WORKBENCH</span><h3>Repository first</h3><p>Focused around the editor, local repository, terminal, and agent handoff.</p><a class="text-link" href="workbench.html">Explore the workbench →</a></article>
+          <article class="direction-card"><figure class="app-capture"><div class="capture-bar"><span class="capture-label">Orbit screen reference</span><span>Agent mode</span></div><img src="assets/orbit-workbench-reference.png" alt="Orbit workbench reference screenshot." loading="lazy" width="1375" height="779" /></figure><span class="section-kicker">02 / AGENT MODE</span><h3>Parallel work</h3><p>A deeper story about up to eight agent panels as the concept develops.</p><a class="text-link" href="agents.html">Explore agent mode →</a></article>
+          <article class="direction-card"><figure class="app-capture"><div class="capture-bar"><span class="capture-label">Orbit screen reference</span><span>Workspace overview</span></div><img src="assets/orbit-workbench-reference.png" alt="Orbit workbench reference screenshot." loading="lazy" width="1375" height="779" /></figure><span class="section-kicker">03 / QUIET FOCUS</span><h3>Room for the details</h3><p>A spacious product story with the same indigo surfaces and lavender cues.</p><a class="text-link" href="focus.html">Explore Quiet focus →</a></article>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="section-heading"><div><p class="section-kicker">Built around the real app</p><h2>What’s in Orbit today.</h2></div><p>These pages describe the current desktop app separately from the in-progress eight-panel design direction.</p></div>
+        <div class="topic-list">
+          <article class="topic-row"><span class="topic-number">A</span><div><h3>OpenCode V2 sessions</h3><p>Orbit currently routes coding sessions through its OpenCode V2 integration, with per-session agent, model, and provider usage controls.</p></div></article>
+          <article class="topic-row"><span class="topic-number">B</span><div><h3>Prompt and session controls</h3><p>Send follow-ups, queue work, attach files, and respond to tool permission requests or structured prompts in context.</p></div></article>
+          <article class="topic-row"><span class="topic-number">C</span><div><h3>Workspace appearance</h3><p>Choose Kitty Glass, Paper Editorial, or Original from the app’s appearance settings.</p></div></article>
+          <article class="topic-row"><span class="topic-number">D</span><div><h3>Extensions and shortcuts</h3><p>Manage installed plugins and skills, and use available slash commands from the agent workflow.</p></div></article>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="section-heading"><div><p class="section-kicker">Common questions</p><h2>Clear about what’s shipped and what’s next.</h2></div><p>Orbit is an active project. The mockups keep the in-progress direction visible without presenting it as finished behavior.</p></div>
+        <div class="faq-list">
+          <details><summary>Is the screenshot a concept image?</summary><p>No. The Orbit workbench screenshot is shown without generated UI or recoloring. The website layout and eight-panel visualization are design mockups.</p></details>
+          <details><summary>Does Orbit support eight simultaneous agent panels today?</summary><p>The eight-panel capacity is the design direction for Agent mode and is still in progress. The screenshot shows the current Orbit app, not a fabricated eight-panel screen.</p></details>
+          <details><summary>Which agent runtime is shown?</summary><p>The current Orbit app uses OpenCode V2. The mockups focus on Orbit’s editor, repository context, live changes, terminal, and agent workflow.</p></details>
+          <details><summary>Can I compare a more spacious direction?</summary><p>Quiet focus gives the feature story more room while keeping the workbench’s indigo and lavender visual language.</p></details>
+        </div>
+      </section>
+
+      <section class="bottom-cta"><div><h2>Make room for the work.</h2><p>Orbit is still taking shape. These pages explore how its editor and agent workflows can come together.</p></div><a class="action action-primary" href="agents.html">Explore agent mode <span aria-hidden="true">→</span></a></section>
+    </main>
+
+    <footer class="site-footer"><a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◉</span><span>orbit</span></a><span>Agent development environment · Design mockups</span><div class="footer-links"><a href="workbench.html">Workbench</a><a href="agents.html">Agent mode</a><a href="focus.html">Quiet focus</a></div></footer>
+  </body>
+</html>

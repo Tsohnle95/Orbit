@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#171624" />
+    <title>Agent mode — Orbit</title>
+    <link rel="stylesheet" href="landing.css" />
+  </head>
+  <body class="full-page theme-agent">
+    <header class="site-nav">
+      <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◉</span><span>orbit</span></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-optional" href="index.html">Overview</a>
+        <a class="nav-optional" href="workbench.html">Workbench</a>
+        <a class="nav-optional" href="focus.html">Quiet focus</a>
+        <a class="nav-cta" href="#agent-direction">Up to 8 panels <span aria-hidden="true">↓</span></a>
+      </nav>
+    </header>
+    <main class="page-shell">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-dot"></span> 02 / Parallel work direction</p>
+          <h1>More agents in view. <em>Your repo stays the center.</em></h1>
+          <p>Agent mode turns the workspace into a shared overview for parallel coding sessions. Follow progress, choose where to focus, and keep the path back to code short.</p>
+          <div class="hero-actions"><a class="action action-primary" href="#agent-direction">Explore the eight-panel idea <span aria-hidden="true">↓</span></a><a class="action action-secondary" href="workbench.html">See the workbench</a></div>
+          <div class="hero-meta"><span>Workbench redesign reference</span><span>Agent mode in progress</span><span>Up to eight panels · concept</span></div>
+        </div>
+        <figure class="app-capture"><div class="capture-bar"><span class="capture-label">Orbit workbench screenshot</span><span>One agent panel · repository: orbit</span></div><img src="assets/orbit-workbench-reference.png" alt="Orbit screenshot showing Monaco and one repo-aware agent panel, alongside the explorer and terminal." width="1375" height="779" /><figcaption><span>The Orbit screenshot shows one agent panel.</span><span>The eight-panel grid below is a design concept.</span></figcaption></figure>
+      </section>
+      <section class="proof-rail" aria-label="Agent mode design goals"><div class="proof-item"><strong>Up to 8</strong><span>Visible panels in the direction</span></div><div class="proof-item"><strong>One focus</strong><span>Follow a selected session</span></div><div class="proof-item"><strong>Repo aware</strong><span>Each task stays contextual</span></div><div class="proof-item"><strong>Reviewable</strong><span>Return to code and diffs</span></div></section>
+
+      <section class="page-section" id="agent-direction">
+        <div class="section-heading"><div><p class="section-kicker">The direction · up to eight</p><h2>A better overview for work that can happen in parallel.</h2></div><p>Agent mode is a current Orbit view, and the multi-panel capacity is still being worked on. This page shows the product direction without pretending the current app already renders this grid.</p></div>
+        <div class="agent-concept">
+          <div><p class="agent-number">08</p><p class="agent-number-label">agent panels in the concept</p></div>
+          <div><h3>Eight slots for distinct lines of work.</h3><p>Divide a larger task into investigations you can follow independently. The goal is to see which sessions are moving, which need attention, and which result is ready for review.</p><div class="agent-slots" aria-label="Conceptual panel indices"><span>01</span><span>02</span><span>03</span><span>04</span><span>05</span><span>06</span><span>07</span><span>08</span></div><span class="capture-label">Concept layout · not a current app screenshot</span></div>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="section-heading"><div><p class="section-kicker">Design goals</p><h2>Keep parallel work legible.</h2></div><p>The control surface should answer three quick questions: what is each agent doing, where is it working, and how do I inspect the result?</p></div>
+        <div class="feature-grid">
+          <article class="feature-card"><span class="feature-index">01 / ORIENT</span><h3>Scan sessions together</h3><p>Show the task and a concise progress summary for each session so the overview stays readable as work expands.</p><div class="feature-tags"><span>SESSION OVERVIEW</span></div></article>
+          <article class="feature-card"><span class="feature-index">02 / FOCUS</span><h3>Follow the chosen panel</h3><p>Select an agent to bring its transcript, active workspace, and relevant file into the primary work area.</p><div class="feature-tags"><span>FOCUSED SESSION</span><span>MONACO</span></div></article>
+          <article class="feature-card"><span class="feature-index">03 / REVIEW</span><h3>Compare what changed</h3><p>Keep the existing Changes and diff workflow close so a finished task moves naturally into code review.</p><div class="feature-tags"><span>CHANGES</span><span>DIFFS</span></div></article>
+          <article class="feature-card"><span class="feature-index">04 / CONTROL</span><h3>Know what needs attention</h3><p>Make waiting sessions, permission requests, and follow-up questions visible without burying the working agent.</p><div class="feature-tags"><span>QUEUE</span><span>PERMISSIONS</span></div></article>
+          <article class="feature-card"><span class="feature-index">05 / CONTEXT</span><h3>Preserve each repo link</h3><p>Keep the path, session identity, and terminal association clear while moving between parallel tasks.</p><div class="feature-tags"><span>WORKSPACE</span><span>SESSION IDENTITY</span></div></article>
+          <article class="feature-card"><span class="feature-index">06 / RETURN</span><h3>Go back to a familiar editor</h3><p>Leave the broad overview and return to a focused Monaco-plus-agent layout when the next step needs attention to detail.</p><div class="feature-tags"><span>EDITOR VIEW</span><span>AGENT PANEL</span></div></article>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="section-heading"><div><p class="section-kicker">A possible task split</p><h2>One goal, several focused passes.</h2></div><p>The labels below are example ways to divide a repository task. They describe the concept and are not sessions shown in the app screenshot.</p></div>
+        <div class="topic-list">
+          <article class="topic-row"><span class="topic-number">01</span><div><h3>Trace the request path</h3><p>Follow a user action through renderer state, IPC, and runtime traffic.</p></div></article>
+          <article class="topic-row"><span class="topic-number">02</span><div><h3>Map the relevant tests</h3><p>Identify existing coverage and the key gaps around a requested change.</p></div></article>
+          <article class="topic-row"><span class="topic-number">03</span><div><h3>Inspect the owning UI</h3><p>Connect the component behavior to its state owner and style rules.</p></div></article>
+          <article class="topic-row"><span class="topic-number">04</span><div><h3>Check shared contracts</h3><p>Review the types and preload surface that keep process boundaries aligned.</p></div></article>
+          <article class="topic-row"><span class="topic-number">05</span><div><h3>Follow stream events</h3><p>Check event ownership and the session transcript projection.</p></div></article>
+          <article class="topic-row"><span class="topic-number">06</span><div><h3>Review file changes</h3><p>Inspect the workspace diff and identify which files need attention.</p></div></article>
+          <article class="topic-row"><span class="topic-number">07</span><div><h3>Check the docs</h3><p>Find the canonical module guidance for the affected behavior.</p></div></article>
+          <article class="topic-row"><span class="topic-number">08</span><div><h3>Summarize the result</h3><p>Bring the independent findings back together for a clear next step.</p></div></article>
+        </div>
+      </section>
+
+      <section class="page-section split-section">
+        <div class="split-copy"><p class="section-kicker">Built from today’s app</p><h2>Agent mode has a real starting point.</h2><p>The current Orbit app already has an Agent mode layout and can add model panels. The captured screen shows that existing workbench state: a repository, Monaco editor, and live agent panel. The expanded eight-panel view is the next design step.</p><ul class="check-list"><li>Use the real session stream and transcript as the source of progress.</li><li>Keep the selected agent’s repository and editor context visible.</li><li>Continue to use Changes and diff review for workspace edits.</li><li>Keep current one-panel workflows clear while expanding the overview.</li></ul></div>
+        <aside class="context-card"><span class="context-label">WORKBENCH SCREENSHOT REFERENCE</span><div class="context-path">orbit / src/main/opencode.ts</div><div class="context-state"><span>Monaco editor</span><span>Agent panel</span><span>OpenCode V2</span><span>local workspace</span></div><blockquote>The screenshot anchors the workbench direction; the eight-panel concept below is a separate design mockup.</blockquote></aside>
+      </section>
+
+      <section class="page-section">
+        <div class="section-heading"><div><p class="section-kicker">Common questions</p><h2>Agent mode, clearly scoped.</h2></div><p>A parallel overview should make the product’s current behavior and its next step easy to tell apart.</p></div>
+        <div class="faq-list"><details><summary>Does Orbit already show eight agent panels?</summary><p>No. Up to eight panels is the design direction and is still in progress. The supplied screenshot shows the workbench with one agent panel.</p></details><details><summary>Will each panel have its own repository?</summary><p>The concept keeps every panel tied to its own session and workspace context. Exact panel and workspace behavior remains part of the design work.</p></details><details><summary>Can I still focus on one agent?</summary><p>That is a core design goal: choose a panel and return to its conversation, code, and changes without losing the wider overview.</p></details><details><summary>Which features are current today?</summary><p>Orbit currently supports the Monaco workbench, repository-aware agent panel, session streaming, Changes and diff review, terminal, and Agent mode. The maximum of eight panels is the developing part.</p></details></div>
+      </section>
+      <section class="bottom-cta"><div><h2>Start with the workbench.</h2><p>See the focused editor and agent experience this direction grows from.</p></div><a class="action action-primary" href="workbench.html">Explore the workbench <span aria-hidden="true">→</span></a></section>
+    </main>
+    <footer class="site-footer"><a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">◉</span><span>orbit</span></a><span>Agent mode concept · app reference + in-progress direction</span><div class="footer-links"><a href="index.html">Overview</a><a href="workbench.html">Workbench</a><a href="focus.html">Quiet focus</a></div></footer>
+  </body>
+</html>
