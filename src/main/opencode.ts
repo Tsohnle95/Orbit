@@ -1028,19 +1028,27 @@ export class OpenShellBackend {
       // not reach the renderer, where they would otherwise be misattributed
       // to the focused panel. (Child/subagent transcript streams still flow;
       // the renderer keeps them in separate stored state.)
-      if (type === "form.created" || type === "form.replied" || type === "form.cancelled" ||
-        type === "permission.asked" || type === "permission.replied" ||
-        type === "permission.v2.asked" || type === "permission.v2.replied" ||
-        type === "session.inbox.enqueued" || type === "session.inbox.delivered" ||
-        type === "session.inbox.cancelled") {
+      if (type === "form.created" || type === "form.replied" || type === "form.cancelled") {
         const ownerID = eventSessionID(eventData, evt, typed.location);
-        if (ownerID === "global" && (type === "form.created" || type === "form.replied" || type === "form.cancelled")) {
+        if (!ownerID || !this.contextBySessionID(ownerID)) {
+          // A form can be raised by a session Orbit never opened: a delegated
+          // child session, a location-scoped "global" form, or an external
+          // `opencode` TUI sharing the directory. Route it to the panels for
+          // that location so the prompt is answerable in the GUI rather than
+          // living only in the terminal. Sessions outside every open
+          // workspace still have no matching location and are dropped.
           const ownerSessionIDs = await this.sessionIDsAtLocation(typed.location);
           if (ownerSessionIDs.length === 0) continue;
           forwardedEvent = { ...evt, orbitSessionIDs: ownerSessionIDs } as RawStreamEvent;
-        } else if (!ownerID || !this.contextBySessionID(ownerID)) {
-          continue;
         }
+      } else if (
+        type === "permission.asked" || type === "permission.replied" ||
+        type === "permission.v2.asked" || type === "permission.v2.replied" ||
+        type === "session.inbox.enqueued" || type === "session.inbox.delivered" ||
+        type === "session.inbox.cancelled"
+      ) {
+        const ownerID = eventSessionID(eventData, evt, typed.location);
+        if (!ownerID || !this.contextBySessionID(ownerID)) continue;
       }
       this.emit({ kind: "event", type, data: forwardedEvent });
       try {
@@ -2284,10 +2292,13 @@ export class OpenShellBackend {
     const sessionForms = Array.isArray(sessionResult)
       ? sessionResult
       : (sessionResult as { data?: unknown }).data ?? [];
-    const globalForms = globalResult && typeof globalResult === "object" && Array.isArray((globalResult as { data?: unknown }).data)
-      ? (globalResult as { data: Array<Record<string, unknown>> }).data.filter((form) => form.sessionID === "global")
+    // `form.list` is location-scoped and returns every pending form for the
+    // directory, including ones owned by child or external sessions. Include
+    // them so reconciliation keeps event-delivered prompts visible.
+    const locationForms = globalResult && typeof globalResult === "object" && Array.isArray((globalResult as { data?: unknown }).data)
+      ? (globalResult as { data: Array<Record<string, unknown>> }).data
       : [];
-    const normalized = [...sessionForms as Array<Record<string, unknown>>, ...globalForms]
+    const normalized = [...sessionForms as Array<Record<string, unknown>>, ...locationForms]
       .map(normalizePendingForm)
       .filter((form): form is PendingFormRequest => form !== null);
     return [...new Map(normalized.map((form) => [form.id, form])).values()];
@@ -2297,7 +2308,7 @@ export class OpenShellBackend {
     const target = this.activeTarget(workspace);
     if (!this.client) throw new Error("no active session");
     this.assertTarget(target);
-    const sessionID = this.formSessionID(target.sessionID, formSessionID);
+    const sessionID = await this.formSessionID(target, formSessionID);
     await this.client.session.form.reply(
       { sessionID, formID, answer: answers },
       sessionID === "global" ? this.globalFormRequestOptions(target.directory) : undefined
@@ -2308,16 +2319,28 @@ export class OpenShellBackend {
     const target = this.activeTarget(workspace);
     if (!this.client) throw new Error("no active session");
     this.assertTarget(target);
-    const sessionID = this.formSessionID(target.sessionID, formSessionID);
+    const sessionID = await this.formSessionID(target, formSessionID);
     await this.client.session.form.cancel(
       { sessionID, formID },
       sessionID === "global" ? this.globalFormRequestOptions(target.directory) : undefined
     );
   }
 
-  private formSessionID(activeSessionID: string, requested?: string): string {
-    if (requested === undefined || requested === activeSessionID) return activeSessionID;
+  /** Resolve the session a form reply/cancel should target. A form surfaced to
+   *  this workspace's panel may belong to the active session, a location-global
+   *  form, or another session at the same directory (a delegated child or an
+   *  external `opencode` TUI). Any other session is rejected so a renderer
+   *  cannot reach across workspaces. */
+  private async formSessionID(target: ActiveWorkspaceTarget, requested?: string): Promise<string> {
+    if (requested === undefined || requested === target.sessionID) return target.sessionID;
     if (requested === "global") return requested;
+    const listed = await this.client?.form
+      .list({ location: { directory: target.directory } })
+      .catch(() => null);
+    const forms = listed && typeof listed === "object" && Array.isArray((listed as { data?: unknown }).data)
+      ? (listed as { data: Array<{ sessionID?: unknown }> }).data
+      : [];
+    if (forms.some((form) => form.sessionID === requested)) return requested;
     throw new Error("form does not belong to the active workspace session");
   }
 

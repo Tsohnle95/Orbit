@@ -9,7 +9,7 @@ vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
 vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
 import { LatestGeneration } from "@shared/generation";
-import type { FileBaseline, WorkspaceIdentity } from "@shared/types";
+import type { BackendMessage, FileBaseline, WorkspaceIdentity } from "@shared/types";
 import { OpenShellBackend, type SessionContext } from "./opencode";
 
 const workspace: WorkspaceIdentity = { id: "11111111-1111-4111-8111-111111111111", generation: 1 };
@@ -63,11 +63,38 @@ function fixture() {
     client: typeof client;
     contexts: Map<string, SessionContext>;
     primary: string | null;
+    eventLoop: { current: () => boolean };
   };
   state.client = client;
   state.contexts = new Map([[workspace.id, context]]);
   state.primary = workspace.id;
-  return { backend, client };
+  state.eventLoop = { current: () => true };
+  const messages: BackendMessage[] = [];
+  backend.onMessage((message) => messages.push(message as BackendMessage));
+  return { backend, client, messages };
+}
+
+function deliver(backend: OpenShellBackend, directory: string, events: unknown[]): Promise<void> {
+  return (backend as unknown as {
+    deliverEvents: (directory: string, events: unknown[], generation: number) => Promise<void>;
+  }).deliverEvents(directory, events, 1);
+}
+
+function externalFormEvent(directory: string): unknown {
+  return {
+    id: "evt_ext",
+    created: Date.now(),
+    type: "form.created",
+    location: { directory },
+    data: {
+      form: {
+        id: "frm_external",
+        sessionID: "external-session",
+        title: "Questions",
+        fields: [{ key: "q", type: "string" }]
+      }
+    }
+  };
 }
 
 describe("backend forms", () => {
@@ -105,5 +132,58 @@ describe("backend forms", () => {
     await expect(backend.replyForm(workspace, "frm_other", {}, "other-session"))
       .rejects.toThrow("form does not belong");
     expect(client.session.form.reply).not.toHaveBeenCalled();
+  });
+
+  it("merges location forms owned by other sessions at the workspace", async () => {
+    const { backend, client } = fixture();
+    client.form.list.mockResolvedValueOnce({
+      location: { directory: "/workspace" },
+      data: [{
+        id: "frm_external",
+        sessionID: "external-session",
+        title: "TUI question",
+        fields: [{ key: "q", type: "string" }]
+      }]
+    });
+
+    await expect(backend.listForms(workspace)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "frm_session", sessionID: "session" }),
+        expect.objectContaining({ id: "frm_external", sessionID: "external-session" })
+      ])
+    );
+  });
+
+  it("replies to a form owned by another session at the same location", async () => {
+    const { backend, client } = fixture();
+    client.form.list.mockResolvedValueOnce({
+      location: { directory: "/workspace" },
+      data: [{ id: "frm_external", sessionID: "external-session", title: "TUI question", fields: [{ key: "q", type: "string" }] }]
+    });
+
+    await backend.replyForm(workspace, "frm_external", { q: "yes" }, "external-session");
+
+    expect(client.session.form.reply).toHaveBeenCalledWith(
+      { sessionID: "external-session", formID: "frm_external", answer: { q: "yes" } },
+      undefined
+    );
+  });
+
+  it("forwards external-session forms to the panels open at that location", async () => {
+    const { backend, messages } = fixture();
+
+    await deliver(backend, "/workspace", [externalFormEvent("/workspace")]);
+
+    const forms = messages.filter((message) => message.kind === "event" && message.type === "form.created");
+    expect(forms).toHaveLength(1);
+    expect((forms[0] as { data: { orbitSessionIDs?: string[] } }).data.orbitSessionIDs).toEqual(["session"]);
+  });
+
+  it("drops forms from sessions outside every open workspace", async () => {
+    const { backend, messages } = fixture();
+
+    await deliver(backend, "/elsewhere", [externalFormEvent("/elsewhere")]);
+
+    expect(messages.filter((message) => message.kind === "event" && message.type === "form.created")).toHaveLength(0);
   });
 });

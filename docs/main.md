@@ -86,12 +86,12 @@ Public methods (all used by IPC):
 | `listInbox(workspace)` | Lists the active session's queued user entries via `session.inbox.list` |
 | `cancelInbox(workspace, inboxID)` | Cancels a queued inbox entry via `session.inbox.cancel` |
 | `steerInbox(workspace, inboxID)` | Delivers a queued entry immediately via the V2 `session.inbox.update` with `delivery: "steer"` |
-| `listForms(workspace)` | Lists pending agent forms via `session.form.list` for the active session and the location-global `form.list` |
+| `listForms(workspace)` | Lists pending agent forms via `session.form.list` for the active session and the location-scoped `form.list`, which also returns forms owned by child or external sessions at that directory |
 | `stageRevert(workspace, messageID, files)` | Stages a revert of the active session back to a message via `session.revert.stage`; `files` restores file snapshots; returns `{messageID, partID?, snapshot?}` |
 | `commitRevert(workspace)` | Applies the staged revert via `session.revert.commit` |
 | `clearRevert(workspace)` | Discards the staged revert via `session.revert.clear` |
-| `replyForm(workspace, formID, answers)` | Submits field answers via `session.form.reply` |
-| `cancelForm(workspace, formID)` | Cancels a pending form via `session.form.cancel` |
+| `replyForm(workspace, formID, answers, formSessionID?)` | Submits field answers via `session.form.reply`; a requested session must be the active session, a location-global form, or a form listed for the workspace directory |
+| `cancelForm(workspace, formID, formSessionID?)` | Cancels a pending form via `session.form.cancel`; same session resolution as `replyForm` |
 | `startProviderOAuth(workspace, integrationID, methodID)` | Starts an OAuth attempt via `integration.oauth.connect` and returns attempt URL/mode |
 | `pollProviderOAuth(workspace, integrationID, attemptID)` | Reads attempt status via `integration.oauth.status` |
 | `completeProviderOAuth(workspace, integrationID, attemptID, code?)` | Finishes an attempt via `integration.oauth.complete`, optionally with a pasted code |
@@ -262,9 +262,9 @@ Internals:
 | `shell:inbox-list` | `(workspace) → SessionInboxEntry[]` |
 | `shell:inbox-cancel` | `(workspace, inboxID) → void` |
 | `shell:inbox-steer` | `(workspace, inboxID) → void` |
-| `shell:forms-list` | `(workspace) → PendingFormRequest[]` — merges the session's forms with location-global requests |
-| `shell:form-reply` | `(workspace, formID, answers, formSessionID?) → void` — settles only the active session or its location-global form |
-| `shell:form-cancel` | `(workspace, formID, formSessionID?) → void` — cancels only the active session or its location-global form |
+| `shell:forms-list` | `(workspace) → PendingFormRequest[]` — merges the session's forms with the location-scoped requests, including forms owned by child or external sessions at the directory |
+| `shell:form-reply` | `(workspace, formID, answers, formSessionID?) → void` — settles the active session, a location-global form, or another form listed for the workspace directory |
+| `shell:form-cancel` | `(workspace, formID, formSessionID?) → void` — cancels the active session, a location-global form, or another form listed for the workspace directory |
 | `shell:provider-oauth-start` | `(workspace, integrationID, methodID) → ProviderOAuthAttempt` |
 | `shell:provider-oauth-poll` | `(workspace, integrationID, attemptID) → ProviderOAuthPoll` |
 | `shell:provider-oauth-complete` | `(workspace, integrationID, attemptID, code?) → void` |

@@ -441,10 +441,14 @@ Key cross-component invariants:
   them: the embedded TUI renders its own prompts in the terminal, and the panel
   dock is GUI-only — rendering it above the TUI asks the same question twice
   (the question skill is the visible case). Pending requests stay in session
-  state, include both session-local and location-global forms, and reconcile
-  every three seconds plus stream reconnect so a missed `form.created` event
-  cannot leave the agent waiting without a GUI card. A temporary list failure
-  preserves the existing card. Global replies carry their location context.
+  state and reconcile every three seconds plus stream reconnect so a missed
+  `form.created` event cannot leave the agent waiting without a GUI card. A
+  form whose owner is not an open session is routed to the panels open at the
+  event's location using main's `orbitSessionIDs`, so a location-global form, a
+  delegated child, or an external `opencode` TUI question surfaces in the GUI;
+  the form keeps its true session id and replies carry it so the answer reaches
+  the owning session. A temporary list failure preserves the existing card.
+  Replies carry the form's session (or location) context.
   Pending requests remain in panel state regardless of active surface, so they
   appear in the dock when the panel returns to the GUI view.
 - Timeline order comes from the authoritative chat/session state; components do

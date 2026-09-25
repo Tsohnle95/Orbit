@@ -117,6 +117,36 @@ describe("renderer form prompts", () => {
     expect(formReply).toHaveBeenCalledWith(panel.workspace, "frm_global", { choice: "A" }, "global");
   });
 
+  it("surfaces an external session form routed by location and replies to that session", async () => {
+    const formReply = vi.fn(async () => {});
+    window.openshell = api(async () => [], formReply);
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    const panel = store.panels[0];
+    const external: PendingFormRequest = {
+      id: "frm_external",
+      sessionID: "external-session",
+      title: "TUI question",
+      fields: [{ key: "q", type: "string", required: true }]
+    };
+
+    await act(async () => messageHandler!({
+      kind: "event",
+      type: "form.created",
+      data: {
+        id: "evt_external",
+        type: "form.created",
+        created: Date.now(),
+        orbitSessionIDs: [panel.id],
+        data: { form: external }
+      }
+    }));
+    expect(store.panelViews[panel.workspace.id].pendingForms).toEqual([external]);
+
+    await act(async () => store.submitForm(panel.workspace, "frm_external", { q: "A" }, "external-session"));
+    expect(formReply).toHaveBeenCalledWith(panel.workspace, "frm_external", { q: "A" }, "external-session");
+  });
+
   it("keeps an event-backed question visible when reconciliation temporarily fails", async () => {
     const formsList = vi.fn<OpenShellApi["formsList"]>(async () => []);
     window.openshell = api(formsList);

@@ -76,7 +76,7 @@ regressing longer live text.
 | `session.inbox.enqueued` | Buffers user/synthetic inbox items as an internal `pending-input` keyed by `inboxID`; user entries also join the session's queued-chip list; it does not create a visible chat row |
 | `session.inbox.delivered` | Materializes the buffered input as the canonical user/synthetic timeline entry, reconciles an optimistic local user message by text, and drops the entry from the queued-chip list |
 | `session.inbox.cancelled` | Discards the buffered input by `inboxID` and drops the entry from the queued-chip list without removing a delivered chat message |
-| `form.created` | Normalizes the incoming form and shows it as a dock card above the composer for the addressed session |
+| `form.created` | Normalizes the incoming form and shows it as a dock card above the composer for the addressed session; a form main attributes to the panel's location (see below) is shown for the owning panels while retaining the form's true session id for replies |
 | `form.replied` | Removes the answered form's dock card |
 | `form.cancelled` | Removes the cancelled form's dock card |
 | `session.execution.started` | Authoritatively marks both the chat session and composer busy; activity is shown by the agent header rather than a transcript status bubble |
@@ -159,9 +159,15 @@ paragraph above) delivers per-directory batches into `deliverEvents` in
 global daemon is shared with external `opencode` terminal sessions, and
 forwarding those prompts would misattribute them to the focused panel
 (`form.created` carries its session only inside `data.form`, so
-`eventSessionID` also descends into `form`). Location-global forms are the
-exception: main canonicalizes the event location, attaches the matching open
-session ids, and forwards the request only when Orbit owns that location.
+`eventSessionID` also descends into `form`). Forms are the exception: when a
+form's owner is not an open context (a delegated child, a location-global
+form, or an external `opencode` TUI sharing the directory), main canonicalizes
+the event location, attaches the open session ids for that location as
+`orbitSessionIDs`, and forwards it only when Orbit owns that location. The
+renderer routes the request to the panels open there while preserving the
+form's true session id, so the prompt is answerable in the GUI and the reply
+reaches the owning session. Forms from sessions outside every open workspace
+are dropped. Permissions and inbox items keep the strict owner check.
 Child/subagent transcript streams still flow; the renderer keeps them in
 separate stored state.
 `handleServerEvent` intercepts two types after forwarding:

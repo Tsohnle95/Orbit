@@ -2945,28 +2945,32 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       const addressedSessionID = typeof data.sessionID === "string"
         ? data.sessionID as string
         : (altSessionID ?? formSessionID);
-      const globalForm = (type === "form.created" || type === "form.replied" || type === "form.cancelled") &&
-        addressedSessionID === "global";
-      const globalFormOwnerIDs = globalForm
+      const formEvent = type === "form.created" || type === "form.replied" || type === "form.cancelled";
+      // Main attaches `orbitSessionIDs` when a form belongs to a session Orbit
+      // does not own directly (a location-global form, a delegated child, or an
+      // external `opencode` TUI sharing the directory). Route those to the open
+      // panels for the location; keep the form's true sessionID so replies and
+      // cancels reach the owning session.
+      const locationFormOwnerIDs = formEvent
         ? (streamEvent.ownerSessionIDs ?? []).filter((sessionID) => panelForSession(sessionID))
         : [];
+      const locationForm = formEvent && locationFormOwnerIDs.length > 0;
       // The global SSE stream includes external `opencode` terminal
       // sessions and child/subagent streams. Interactive prompts must never
       // be misattributed to the focused panel: only route forms,
-      // permissions, and inbox items for sessions Orbit has open. Transcript
-      // deltas for foreign child sessions still flow into their own stored
-      // state so task cards can replay them on open.
-      if ((type === "form.created" || type === "form.replied" || type === "form.cancelled" ||
+      // permissions, and inbox items for sessions Orbit has open, unless a
+      // form was explicitly attributed to this location by main.
+      if ((formEvent ||
         type === "permission.asked" || type === "permission.replied" ||
         type === "session.inbox.enqueued" || type === "session.inbox.delivered" ||
         type === "session.inbox.cancelled") &&
-        (globalForm
-          ? globalFormOwnerIDs.length === 0
+        (locationForm
+          ? false
           : (!addressedSessionID || !panelForSession(addressedSessionID)))) {
         return;
       }
-      const targetSessionID = globalForm
-        ? (globalFormOwnerIDs.includes(sessionRef.current?.id ?? "") ? sessionRef.current!.id : globalFormOwnerIDs[0])
+      const targetSessionID = locationForm
+        ? (locationFormOwnerIDs.includes(sessionRef.current?.id ?? "") ? sessionRef.current!.id : locationFormOwnerIDs[0])
         : (addressedSessionID ?? sessionRef.current?.id);
       const targetWorkspace = targetSessionID ? workspaceOfSession(targetSessionID) : null;
       const active = Boolean(targetSessionID && targetSessionID === sessionRef.current?.id);
@@ -3028,8 +3032,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           const rawForm = (data.form as Record<string, any> | undefined) ?? {};
           const trueSessionID = typeof rawForm.sessionID === "string" ? rawForm.sessionID : targetSessionID;
           const normalized = normalizePendingForm({ ...rawForm, sessionID: trueSessionID });
-          const ownerIDs = globalForm ? globalFormOwnerIDs : targetSessionID ? [targetSessionID] : [];
-          if (normalized && ownerIDs.length > 0 && (normalized.sessionID === "global" || normalized.sessionID === targetSessionID)) {
+          const ownerIDs = locationForm ? locationFormOwnerIDs : targetSessionID ? [targetSessionID] : [];
+          if (normalized && ownerIDs.length > 0 &&
+              (locationForm || normalized.sessionID === "global" || normalized.sessionID === targetSessionID)) {
             setFormsBySession((current) => {
               const next = { ...current };
               for (const ownerID of ownerIDs) {
@@ -3046,7 +3051,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         case "form.replied":
         case "form.cancelled": {
           const formID = typeof data.id === "string" ? data.id : "";
-          const ownerIDs = globalForm ? globalFormOwnerIDs : targetSessionID ? [targetSessionID] : [];
+          const ownerIDs = locationForm ? locationFormOwnerIDs : targetSessionID ? [targetSessionID] : [];
           if (ownerIDs.length > 0 && formID) {
             setFormsBySession((current) => {
               let changed = false;
