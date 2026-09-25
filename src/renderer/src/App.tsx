@@ -340,7 +340,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   );
   const [terminalRequest, setTerminalRequest] = useState<{ id: number; directory: string } | null>(null);
   const [winW, setWinW] = useState(() => window.innerWidth);
-  const [sideTab, setSideTab] = useState<SidebarTab>("sessions");
+  const [sideTab, setSideTab] = useState<SidebarTab>("files");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("appearance");
   const [agentModeActive, setAgentModeActive] = useState(false);
@@ -397,6 +397,20 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     if (allPanels.length > 0 && wasOpenWorkspacesRef.current === 0) setSideW(SIDE_MIN_W);
     wasOpenWorkspacesRef.current = allPanels.length;
   }, [allPanels.length]);
+
+  // Opening or dropping a workspace lands the user on the file tree rather
+  // than the session switcher. Track workspace identities rather than panel
+  // count so subagent panels in an already-open workspace do not steal focus.
+  const seenWorkspacesRef = useRef<Set<string>>(new Set<string>());
+  useEffect(() => {
+    let opened = false;
+    for (const panel of allPanels) {
+      if (seenWorkspacesRef.current.has(panel.workspace.id)) continue;
+      seenWorkspacesRef.current.add(panel.workspace.id);
+      opened = true;
+    }
+    if (opened) setSideTab("files");
+  }, [allPanels]);
 
   useEffect(() => {
     const onResize = (): void => setWinW(window.innerWidth);

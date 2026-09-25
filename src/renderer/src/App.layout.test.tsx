@@ -75,6 +75,11 @@ function setWidth(value: number): void {
   window.dispatchEvent(new Event("resize"));
 }
 
+function sideTab(container: HTMLElement, title: string): HTMLButtonElement {
+  return [...container.querySelectorAll<HTMLButtonElement>(".side-tab")]
+    .find((tab) => tab.textContent === title)!;
+}
+
 describe("Layout panel sizing", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -139,6 +144,27 @@ describe("Layout panel sizing", () => {
     expect(container.querySelector('[title^="Sessions"]')).toBeNull();
     expect(container.querySelector('[title="Open another workspace"]')).toBeNull();
     expect(container.querySelector('[title="Open a single file"]')).toBeNull();
+  });
+
+  it("lands on the Files sidebar tab and returns to it when a workspace opens", async () => {
+    await act(async () => root.render(<App />));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 30)));
+
+    expect(sideTab(container, "Files").className).toContain("active");
+    expect(sideTab(container, "Sessions").className).not.toContain("active");
+
+    await act(async () => {
+      sideTab(container, "Sessions").click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(sideTab(container, "Sessions").className).toContain("active");
+
+    await act(async () => {
+      dispatch({ kind: "session", session: info("/fresh", 5) });
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    expect(sideTab(container, "Files").className).toContain("active");
+    expect(sideTab(container, "Sessions").className).not.toContain("active");
   });
 
   it("toggles the sidebar from the titlebar button without leaving a collapsed strip", async () => {
@@ -1255,7 +1281,9 @@ describe("Layout panel sizing", () => {
 
   it("stays in the IDE with an open-workspace CTA after closing the last session", async () => {
     await act(async () => root.render(<App />));
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    // Let the startup restore populate the open-session list before switching
+    // away from the default Files tab.
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 80)));
 
     expect(container.querySelector(".app")).not.toBeNull();
     expect(container.querySelector(".welcome")).toBeNull();
@@ -1264,7 +1292,10 @@ describe("Layout panel sizing", () => {
       const sessionsTab = [...container.querySelectorAll<HTMLButtonElement>(".side-tab")]
         .find((tab) => tab.textContent === "Sessions")!;
       sessionsTab.click();
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    });
+
+    await act(async () => {
       const openNow = [...container.querySelectorAll<HTMLButtonElement>(".section-toggle")]
         .find((button) => button.textContent?.includes("Open now"))!;
       // Open now auto-opens when it has entries; the toggle only collapses.

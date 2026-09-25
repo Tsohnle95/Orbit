@@ -411,7 +411,7 @@ express a cross-component invariant or non-obvious state contract.
 |---|---|---|
 | `App` | `App.tsx` | Top-level session/editor/sidebar/agent/terminal layout; panel geometry and focus routing |
 | `Welcome` | `Welcome.tsx` | Landing view, recent sessions/workspaces, initial folder/file open |
-| `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation, Changes, Explorer, filesystem actions, terminal context actions |
+| `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation (defaults to Files when a workspace opens), Changes, Explorer, filesystem actions, terminal context actions |
 | `SettingsSidebar` | `SettingsSidebar.tsx` | Settings navigation |
 | `SettingsPage` | `SettingsPage.tsx` | Appearance, plugins, providers, safety, voice, model/runtime sync, mobile, and about surfaces |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
