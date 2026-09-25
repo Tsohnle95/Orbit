@@ -101,8 +101,10 @@ automatically.
 | `setAppearance(appearance)` | `Promise<void>` — reports the active theme's native appearance (`"dark"` for Original and Kitty Glass, `"light"` for Paper) so window vibrancy and native chrome stay on the theme's side of light/dark |
 | `installApp()` | `Promise<{ok: boolean, message: string}>` — macOS-only: builds the packaged app and installs it to `/Applications`; `ok` false with a message on failure |
 | `validateW3c(path, content)` | `Promise<W3cDiagnostic[]>` — validates HTML/CSS source through the W3C services |
-| `viteStart(workspace, entryPath?)` | `Promise<VitePreview>` — serves a confined active HTML file from its containing directory, or the workspace root when omitted, and opens the verified loopback URL in the default browser |
-| `viteStop(workspace)` | `Promise<void>` — stops the workspace's Vite dev server when one is running |
+| `viteToggle(workspace, entryPath?)` | `Promise<ViteToggleResult>` — starts the loopback Vite dev server for the resolved page (a confined active HTML file's directory, or the workspace root, falling back to the shallowest HTML page) and opens it, or stops the server already running for that same target |
+| `viteServers()` | `Promise<ViteServerInfo[]>` — lists every running Vite dev server across workspaces (id, workspace, directory, entry, URL, port) |
+| `viteStop(serverID)` | `Promise<void>` — stops one Vite dev server by its opaque id |
+| `viteStopAll()` | `Promise<void>` — stops every running Vite dev server |
 | `takePendingPaths()` | `Promise<string[]>` — drains OS-dropped or launch paths queued before the renderer was ready |
 
 All are `ipcRenderer.invoke` wrappers over the `shell:*` channels

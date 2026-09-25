@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { defaultViteDeps, findHtmlEntry, resolveViteCommand, viteHttpError, VitePreviewManager, type ViteChild, type ViteManagerDeps } from "./vite-server";
+import { defaultViteDeps, findHtmlEntry, resolveViteCommand, viteHttpError, viteServerKey, VitePreviewManager, type ViteChild, type ViteManagerDeps } from "./vite-server";
 
 interface FakeChild extends ViteChild {
   killed: boolean;
@@ -47,12 +47,12 @@ function setup(deps?: Partial<ViteManagerDeps>): { manager: VitePreviewManager; 
 describe("VitePreviewManager", () => {
   it("starts a loopback server and reuses it for the same workspace directory", async () => {
     const { manager, deps, children } = setup();
-    const first = await manager.start("ws-1", "/repo/a");
+    const first = await manager.start("k1", "ws-1", "/repo/a");
     expect(first).toEqual({ url: "http://127.0.0.1:5199/", port: 5199 });
     expect(deps.launch).toHaveBeenCalledTimes(1);
     expect(deps.launch).toHaveBeenCalledWith("/repo/a", 5199);
 
-    const second = await manager.start("ws-1", "/repo/a");
+    const second = await manager.start("k1", "ws-1", "/repo/a");
     expect(second).toEqual(first);
     expect(deps.launch).toHaveBeenCalledTimes(1);
     expect(children).toHaveLength(1);
@@ -60,40 +60,63 @@ describe("VitePreviewManager", () => {
 
   it("serves the active HTML file and safely encodes its URL", async () => {
     const { manager, deps } = setup();
-    const preview = await manager.start("ws-1", "/repo/a", "pages/My demo.html");
+    const preview = await manager.start("k1", "ws-1", "/repo/a", "pages/My demo.html");
 
     expect(preview).toEqual({ url: "http://127.0.0.1:5199/pages/My%20demo.html", port: 5199 });
     expect(deps.waitReady).toHaveBeenCalledWith(preview.url);
   });
 
-  it("restarts the server when the workspace directory changes", async () => {
+  it("restarts the server when the same key changes directory", async () => {
     const { manager, deps, children } = setup();
-    await manager.start("ws-1", "/repo/a");
-    await manager.start("ws-1", "/repo/b");
+    await manager.start("k1", "ws-1", "/repo/a");
+    await manager.start("k1", "ws-1", "/repo/b");
     expect(deps.launch).toHaveBeenCalledTimes(2);
     expect(children[0].killed).toBe(true);
     expect(children[1].killed).toBe(false);
+  });
+
+  it("runs a separate server per page target in one workspace", async () => {
+    const { manager, deps, children } = setup();
+    await manager.start("k-docs", "ws-1", "/repo/docs", "");
+    await manager.start("k-a", "ws-1", "/repo/a", "a.html");
+    await manager.start("k-b", "ws-1", "/repo/b", "b.html");
+    expect(deps.launch).toHaveBeenCalledTimes(3);
+    expect(manager.list().map((server) => server.entry)).toEqual(["a.html", "b.html", ""]);
+    const ids = manager.list().map((server) => server.id);
+    expect(ids).toEqual(["k-a", "k-b", "k-docs"]);
+    expect(manager.list()[0]).toMatchObject({ workspaceId: "ws-1", port: 5199 });
+    expect(children.filter((child) => child.killed)).toHaveLength(0);
+  });
+
+  it("stopWorkspace only stops that workspace's servers", async () => {
+    const { manager, children } = setup();
+    await manager.start("k1", "ws-1", "/repo/a");
+    await manager.start("k2", "ws-1", "/repo/b");
+    await manager.start("k3", "ws-2", "/repo/c");
+    manager.stopWorkspace("ws-1");
+    expect(children.map((child) => child.killed)).toEqual([true, true, false]);
+    expect(manager.list().map((server) => server.id)).toEqual(["k3"]);
   });
 
   it("stop kills the server and unknown keys are a no-op", async () => {
     const { manager, deps, children } = setup();
     manager.stop("missing");
     expect(deps.launch).not.toHaveBeenCalled();
-    await manager.start("ws-1", "/repo/a");
-    manager.stop("ws-1");
+    await manager.start("k1", "ws-1", "/repo/a");
+    manager.stop("k1");
     expect(children[0].killed).toBe(true);
-    expect(manager.running("ws-1")).toBeNull();
+    expect(manager.running("k1")).toBeNull();
   });
 
   it("a failed readiness check stops the server and throws", async () => {
-    const { manager, deps, children } = setup({
+    const { manager, children } = setup({
       waitReady: vi.fn(async () => {
         throw new Error("never ready");
       })
     });
-    await expect(manager.start("ws-1", "/repo/a")).rejects.toThrow("never ready");
+    await expect(manager.start("k1", "ws-1", "/repo/a")).rejects.toThrow("never ready");
     expect(children[0].killed).toBe(true);
-    expect(manager.running("ws-1")).toBeNull();
+    expect(manager.running("k1")).toBeNull();
   });
 
   it("an early server exit cleans up and throws", async () => {
@@ -105,11 +128,11 @@ describe("VitePreviewManager", () => {
       }),
       waitReady: vi.fn(() => new Promise<void>(() => undefined))
     });
-    const pending = manager.start("ws-1", "/repo/a");
+    const pending = manager.start("k1", "ws-1", "/repo/a");
     await Promise.resolve();
     child.fireExit();
     await expect(pending).rejects.toThrow("exited before becoming ready");
-    expect(manager.running("ws-1")).toBeNull();
+    expect(manager.running("k1")).toBeNull();
   });
 
   it("includes Vite stderr when startup fails", async () => {
@@ -119,7 +142,7 @@ describe("VitePreviewManager", () => {
       launch: vi.fn(() => child),
       waitReady: vi.fn(() => new Promise<void>(() => undefined))
     });
-    const pending = manager.start("ws-1", "/repo/a");
+    const pending = manager.start("k1", "ws-1", "/repo/a");
     await Promise.resolve();
     child.fireExit();
 
@@ -128,12 +151,20 @@ describe("VitePreviewManager", () => {
 
   it("stopAll kills every running server", async () => {
     const { manager, children } = setup();
-    await manager.start("ws-1", "/repo/a");
-    await manager.start("ws-2", "/repo/b");
+    await manager.start("k1", "ws-1", "/repo/a");
+    await manager.start("k2", "ws-2", "/repo/b");
     await manager.stopAll();
     expect(children.map((child) => child.killed)).toEqual([true, true]);
-    expect(manager.running("ws-1")).toBeNull();
-    expect(manager.running("ws-2")).toBeNull();
+    expect(manager.running("k1")).toBeNull();
+    expect(manager.running("k2")).toBeNull();
+  });
+});
+
+describe("viteServerKey", () => {
+  it("distinguishes workspace, directory, and entry", () => {
+    expect(viteServerKey("ws", "/repo", "")).not.toBe(viteServerKey("ws", "/repo", "a.html"));
+    expect(viteServerKey("ws", "/repo", "a.html")).not.toBe(viteServerKey("ws", "/other", "a.html"));
+    expect(viteServerKey("ws", "/repo", "a.html")).toBe(viteServerKey("ws", "/repo", "a.html"));
   });
 });
 

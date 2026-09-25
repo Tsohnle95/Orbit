@@ -37,7 +37,8 @@ import type {
   SessionSelection,
   SessionSummary,
   SessionTranscript,
-  VitePreview,
+  ViteServerInfo,
+  ViteToggleResult,
   W3cDiagnostic,
   WorkspaceIdentity
 } from "@shared/types";
@@ -195,10 +196,14 @@ const api = {
   setAppearance: (appearance: "dark" | "light"): Promise<void> => ipcRenderer.invoke("shell:set-appearance", appearance),
   validateW3c: (path: string, content: string): Promise<W3cDiagnostic[]> =>
     ipcRenderer.invoke("shell:validate-w3c", path, content),
-  viteStart: (workspace: WorkspaceIdentity, entryPath?: string): Promise<VitePreview> =>
-    ipcRenderer.invoke("shell:vite-start", workspace, entryPath),
-  viteStop: (workspace: WorkspaceIdentity): Promise<void> =>
-    ipcRenderer.invoke("shell:vite-stop", workspace),
+  viteToggle: (workspace: WorkspaceIdentity, entryPath?: string): Promise<ViteToggleResult> =>
+    ipcRenderer.invoke("shell:vite-toggle", workspace, entryPath),
+  viteServers: (): Promise<ViteServerInfo[]> =>
+    ipcRenderer.invoke("shell:vite-servers"),
+  viteStop: (serverID: string): Promise<void> =>
+    ipcRenderer.invoke("shell:vite-stop", serverID),
+  viteStopAll: (): Promise<void> =>
+    ipcRenderer.invoke("shell:vite-stop-all"),
   takePendingPaths: (): Promise<string[]> =>
     ipcRenderer.invoke("shell:take-pending-paths")
 };

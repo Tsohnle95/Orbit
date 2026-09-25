@@ -4,6 +4,7 @@ import { useStore } from "../store";
 import { type ThemeId, useTheme } from "../theme";
 import { OrbitMark } from "./OrbitMark";
 import { ProviderSettings } from "./ProviderSettings";
+import { ServerSettings } from "./ServerSettings";
 import type { SettingsSection } from "./SettingsSidebar";
 
 const themes: Array<{ id: ThemeId; name: string; description: string; colors: string[] }> = [
@@ -34,6 +35,7 @@ const sectionCopy: Record<SettingsSection, { title: string; description: string 
   safety: { title: "Safety", description: "Set permission and follow-up defaults for agent behavior." },
   voice: { title: "Voice", description: "Configure voice input preferences and review availability." },
   model: { title: "Model", description: "Choose the model used by the current workspace." },
+  servers: { title: "Servers", description: "See and stop the Vite preview servers running in this app." },
   mobile: { title: "Mobile Setup", description: "Prepare secure access to Orbit from another device." },
   about: { title: "About", description: "Version and product information for this installation." }
 };
@@ -261,6 +263,8 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
         </div>
         {openCodeFeedback && <p className="settings-action-feedback" role="status" aria-live="polite">{openCodeFeedback}</p>}
       </section>}
+
+      {section === "servers" && <ServerSettings />}
 
       {section === "mobile" && <section className="settings-section">
         <div className="settings-callout"><strong>Mobile access is on while Orbit is open.</strong><p>Orbit runs the mobile server for as long as this app is open, and stops it when you quit. Sessions are shared: pick up a conversation on the phone where you left off on desktop, and start new ones from either. On your phone, connect to this Mac's Tailscale address at port 3011 (for example <code>http://100.x.y.z:3011</code>) using your mobile password. If the phone can't connect, make sure Orbit is running.</p></div>

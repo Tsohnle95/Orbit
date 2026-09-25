@@ -423,12 +423,18 @@ express a cross-component invariant or non-obvious state contract.
 | `OpenCodeTodoDock` | `OpenCodeTodoDock.tsx` | Structured todo/checklist state near the composer |
 | `AgentTray` | `AgentTray.tsx` | Collapsed agent-panel affordance and session activity indication |
 | `TerminalTray` | `TerminalTray.tsx` | Integrated terminal tabs backed by main-process `node-pty` |
+| `ServerSettings` | `ServerSettings.tsx` | Settings inventory of active Vite preview servers with per-server and stop-all controls |
 
 The terminal tray's server button passes the active workspace-relative HTML
 tab to Vite when available, so nested standalone sites get the correct document
 root. Startup is considered successful only for a reachable non-error page;
 HTTP failures and bounded Vite stderr are shown in the tray instead of the
-generic startup notice. Right-clicking a running server still exposes Stop.
+generic startup notice. Each workspace/page target runs its own preview server:
+clicking the button toggles the server for the current page, and right-clicking
+lists every running server for the workspace with per-server Stop (plus Stop all
+when several run). The Settings **Servers** tab lists every running server
+across workspaces with Stop and Stop all, and main stops all preview servers
+when the app quits.
 
 Key cross-component invariants:
 

@@ -89,7 +89,7 @@ describe("SettingsPage", () => {
     act(() => root.render(<SettingsSidebar section="appearance" onSectionChange={onSectionChange} />));
 
     const labels = [...container.querySelectorAll<HTMLButtonElement>(".settings-nav-item")].map((button) => button.textContent);
-    expect(labels).toEqual(["Appearance", "Plugins", "Providers", "Safety", "Voice", "Model", "Mobile Setup", "About"]);
+    expect(labels).toEqual(["Appearance", "Plugins", "Providers", "Safety", "Voice", "Model", "Servers", "Mobile Setup", "About"]);
     expect(container.querySelector<HTMLButtonElement>(".settings-nav-item:last-child")?.textContent).toBe("About");
 
     act(() => container.querySelectorAll<HTMLButtonElement>(".settings-nav-item")[5].click());

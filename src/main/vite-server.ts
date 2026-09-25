@@ -4,9 +4,9 @@ import { createServer } from "node:net";
 import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import type { VitePreview } from "@shared/types";
+import type { VitePreview, ViteServerInfo } from "@shared/types";
 
-export type { VitePreview };
+export type { VitePreview, ViteServerInfo };
 
 export interface ViteChild {
   kill: () => void;
@@ -158,10 +158,20 @@ export function defaultViteDeps(command: string, prefixArgs: string[], spawnImpl
   };
 }
 
+/**
+ * A server is identified by the workspace and the exact page it serves, so one
+ * workspace can run several concurrent previews for different HTML entries.
+ */
+export function viteServerKey(workspaceId: string, directory: string, entry: string): string {
+  return JSON.stringify([workspaceId, directory, entry]);
+}
+
 interface RunningServer {
   child: ViteChild;
   preview: VitePreview;
+  workspaceId: string;
   directory: string;
+  entry: string;
 }
 
 export class VitePreviewManager {
@@ -174,9 +184,9 @@ export class VitePreviewManager {
     return entry ? entry.preview : null;
   }
 
-  async start(key: string, directory: string, entryPath = ""): Promise<VitePreview> {
+  async start(key: string, workspaceId: string, directory: string, entryPath = ""): Promise<VitePreview> {
     const existing = this.servers.get(key);
-    if (existing && existing.directory === directory) {
+    if (existing && existing.directory === directory && existing.entry === entryPath) {
       existing.preview = this.preview(existing.preview.port, entryPath);
       try {
         await this.deps.waitReady(existing.preview.url);
@@ -195,7 +205,7 @@ export class VitePreviewManager {
     const earlyExit = new Promise<never>((_, reject) => {
       rejectExit = reject;
     });
-    const entry: RunningServer = { child, preview, directory };
+    const entry: RunningServer = { child, preview, workspaceId, directory, entry: entryPath };
     child.once("exit", (code, signal) => {
       if (this.servers.get(key) === entry) this.servers.delete(key);
       const reason = code !== undefined && code !== null ? ` with code ${code}` : signal ? ` from ${signal}` : "";
@@ -210,6 +220,25 @@ export class VitePreviewManager {
       throw new Error(this.withDiagnostics(message, child));
     }
     return entry.preview;
+  }
+
+  list(): ViteServerInfo[] {
+    return [...this.servers.entries()]
+      .map(([id, server]) => ({
+        id,
+        workspaceId: server.workspaceId,
+        directory: server.directory,
+        entry: server.entry,
+        url: server.preview.url,
+        port: server.preview.port
+      }))
+      .sort((a, b) => a.directory.localeCompare(b.directory) || a.entry.localeCompare(b.entry));
+  }
+
+  stopWorkspace(workspaceId: string): void {
+    for (const [key, server] of [...this.servers.entries()]) {
+      if (server.workspaceId === workspaceId) this.stop(key);
+    }
   }
 
   private preview(port: number, entryPath: string): VitePreview {

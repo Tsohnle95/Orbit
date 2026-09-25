@@ -48,6 +48,22 @@ export interface VitePreview {
   port: number;
 }
 
+export interface ViteServerInfo {
+  id: string;
+  workspaceId: string;
+  /** Absolute serve root. */
+  directory: string;
+  /** Entry relative to `directory`; an empty entry serves the folder's index.html. */
+  entry: string;
+  url: string;
+  port: number;
+}
+
+export interface ViteToggleResult {
+  running: boolean;
+  server?: ViteServerInfo;
+}
+
 export interface SessionSummary {
   id: string;
   runtimeID?: RuntimeID;

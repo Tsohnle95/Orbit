@@ -1,7 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BackendMessage, SessionInfo } from "@shared/types";
+import type { BackendMessage, SessionInfo, ViteServerInfo, ViteToggleResult } from "@shared/types";
 import { TerminalTray } from "./TerminalTray";
 
 const writes = vi.hoisted(() => vi.fn());
@@ -28,6 +28,17 @@ const session: SessionInfo = {
 };
 let activePath: string | null = null;
 vi.mock("../store", () => ({ useStore: () => ({ session, activePath }) }));
+
+function viteServer(entry: string, directory = "/workspace"): ViteServerInfo {
+  return {
+    id: JSON.stringify([session.workspace.id, directory, entry]),
+    workspaceId: session.workspace.id,
+    directory,
+    entry,
+    url: entry ? `http://127.0.0.1:5199/${entry}` : "http://127.0.0.1:5199/",
+    port: 5199
+  };
+}
 
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -56,7 +67,10 @@ describe("TerminalTray integration", () => {
       terminalStop: vi.fn(async () => {}),
       terminalResize: vi.fn(async () => {}),
       terminalInput: vi.fn(async () => {}),
-      viteStart: vi.fn(async () => ({ url: "http://127.0.0.1:5199/", port: 5199 }))
+      viteToggle: vi.fn(async () => ({ running: true, server: viteServer("") })),
+      viteServers: vi.fn(async () => [] as ViteServerInfo[]),
+      viteStop: vi.fn(async () => {}),
+      viteStopAll: vi.fn(async () => {})
     } as unknown as typeof window.openshell;
     container = document.createElement("div");
     document.body.append(container);
@@ -120,16 +134,20 @@ describe("TerminalTray integration", () => {
     expect(button.title).toBe("Serve this workspace with Vite and open it in a browser");
   });
 
-  it("serves the panel workspace when the server button is clicked", async () => {
+  it("starts a server for the panel workspace when the server button is clicked", async () => {
+    window.openshell = {
+      ...window.openshell,
+      viteServers: vi.fn(async () => [viteServer("")])
+    } as unknown as typeof window.openshell;
     await act(async () => root.render(<TerminalTray height={240} snapped={false} onClose={onClose} onExpand={() => {}} />));
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!.click();
       await flush();
     });
 
-    expect(window.openshell.viteStart).toHaveBeenCalledWith(session.workspace);
+    expect(window.openshell.viteToggle).toHaveBeenCalledWith(session.workspace);
     const button = container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!;
-    expect(button.title).toBe("http://127.0.0.1:5199/ — right-click to stop the server");
+    expect(button.title).toBe("http://127.0.0.1:5199/ — click to stop, right-click to manage");
     expect(button.classList.contains("running")).toBe(true);
   });
 
@@ -141,13 +159,39 @@ describe("TerminalTray integration", () => {
       await flush();
     });
 
-    expect(window.openshell.viteStart).toHaveBeenCalledWith(session.workspace, "pages/demo.html");
+    expect(window.openshell.viteToggle).toHaveBeenCalledWith(session.workspace, "pages/demo.html");
+  });
+
+  it("stops the current page server when the running button is clicked again", async () => {
+    const running = [viteServer("")];
+    window.openshell = {
+      ...window.openshell,
+      viteServers: vi.fn(async () => [...running]),
+      viteToggle: vi.fn(async () => {
+        running.length = 0;
+        return { running: false };
+      })
+    } as unknown as typeof window.openshell;
+
+    await act(async () => root.render(<TerminalTray height={240} snapped={false} onClose={onClose} onExpand={() => {}} />));
+    await act(async () => { await flush(); });
+    const button = container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!;
+    expect(button.classList.contains("running")).toBe(true);
+
+    await act(async () => {
+      button.click();
+      await flush();
+    });
+
+    expect(window.openshell.viteToggle).toHaveBeenCalledWith(session.workspace);
+    expect(button.classList.contains("running")).toBe(false);
+    expect(container.querySelector(".terminal-notice")?.textContent).toBe("Vite server stopped");
   });
 
   it("shows the actionable Vite startup error", async () => {
     window.openshell = {
       ...window.openshell,
-      viteStart: vi.fn(async () => {
+      viteToggle: vi.fn(async () => {
         throw new Error("Vite is running, but no page was found at /");
       })
     } as unknown as typeof window.openshell;
@@ -162,11 +206,11 @@ describe("TerminalTray integration", () => {
   });
 
   it("disables the server button while the server starts", async () => {
-    let resolveStart!: (preview: { url: string; port: number }) => void;
-    const pending = new Promise<{ url: string; port: number }>((resolve) => { resolveStart = resolve; });
+    let resolveToggle!: (result: ViteToggleResult) => void;
+    const pending = new Promise<ViteToggleResult>((resolve) => { resolveToggle = resolve; });
     window.openshell = {
       ...window.openshell,
-      viteStart: vi.fn(() => pending)
+      viteToggle: vi.fn(() => pending)
     } as unknown as typeof window.openshell;
 
     await act(async () => root.render(<TerminalTray height={240} snapped={false} onClose={onClose} onExpand={() => {}} />));
@@ -175,7 +219,7 @@ describe("TerminalTray integration", () => {
     expect(button.disabled).toBe(true);
 
     await act(async () => {
-      resolveStart({ url: "http://127.0.0.1:5199/", port: 5199 });
+      resolveToggle({ running: true, server: viteServer("") });
       await pending;
       await flush();
     });
@@ -186,15 +230,12 @@ describe("TerminalTray integration", () => {
     const viteStop = vi.fn(async () => {});
     window.openshell = {
       ...window.openshell,
+      viteServers: vi.fn(async () => [viteServer("", "/workspace/docs")]),
       viteStop
     } as unknown as typeof window.openshell;
 
     await act(async () => root.render(<TerminalTray height={240} snapped={false} onClose={onClose} onExpand={() => {}} />));
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!.click();
-      await flush();
-    });
-
+    await act(async () => { await flush(); });
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!
         .dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
@@ -202,21 +243,23 @@ describe("TerminalTray integration", () => {
     });
 
     expect(viteStop).not.toHaveBeenCalled();
-    expect(container.querySelector('[data-testid="vite-menu"]')?.textContent).toBe("Stop Vite server");
+    expect(container.querySelector('[data-testid="vite-menu"]')?.textContent).toBe("Stop docs/index.html");
   });
 
-  it("stops the workspace server from the menu item", async () => {
-    const viteStop = vi.fn(async () => {});
+  it("stops the specific server from the menu item", async () => {
+    const server = viteServer("", "/workspace/docs");
+    const running = [server];
+    const viteStop = vi.fn(async (serverID: string) => {
+      running.splice(running.findIndex((item) => item.id === serverID), 1);
+    });
     window.openshell = {
       ...window.openshell,
+      viteServers: vi.fn(async () => [...running]),
       viteStop
     } as unknown as typeof window.openshell;
 
     await act(async () => root.render(<TerminalTray height={240} snapped={false} onClose={onClose} onExpand={() => {}} />));
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!.click();
-      await flush();
-    });
+    await act(async () => { await flush(); });
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!
         .dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
@@ -228,11 +271,39 @@ describe("TerminalTray integration", () => {
       await flush();
     });
 
-    expect(viteStop).toHaveBeenCalledWith(session.workspace);
+    expect(viteStop).toHaveBeenCalledWith(server.id);
     expect(container.querySelector('[data-testid="vite-menu"]')).toBeNull();
     const button = container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!;
     expect(button.classList.contains("running")).toBe(false);
     expect(button.title).toBe("Serve this workspace with Vite and open it in a browser");
+  });
+
+  it("stops every server from the menu when more than one is running", async () => {
+    const servers = [viteServer("a.html"), viteServer("", "/workspace/docs")];
+    const viteStopAll = vi.fn(async () => { servers.length = 0; });
+    window.openshell = {
+      ...window.openshell,
+      viteServers: vi.fn(async () => [...servers]),
+      viteStopAll
+    } as unknown as typeof window.openshell;
+
+    await act(async () => root.render(<TerminalTray height={240} snapped={false} onClose={onClose} onExpand={() => {}} />));
+    await act(async () => { await flush(); });
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')!
+        .dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+      await flush();
+    });
+
+    const stopAll = [...container.querySelectorAll<HTMLButtonElement>('[data-testid="vite-menu"] button')]
+      .find((button) => button.textContent === "Stop all servers")!;
+    await act(async () => {
+      stopAll.click();
+      await flush();
+    });
+
+    expect(viteStopAll).toHaveBeenCalledOnce();
+    expect(container.querySelector<HTMLButtonElement>('[data-testid="vite-btn"]')?.classList.contains("running")).toBe(false);
   });
 
   it("shows no menu on right-click when no server is running", async () => {

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { IconCloudDownload, IconDashboard, IconEye, IconMic, IconRobot, IconShield, IconSymbolEvent } from "./icons";
+import { IconCloudDownload, IconDashboard, IconEye, IconMic, IconRobot, IconServer, IconShield, IconSymbolEvent } from "./icons";
 
 export type SettingsSection =
   | "appearance"
@@ -8,6 +8,7 @@ export type SettingsSection =
   | "safety"
   | "voice"
   | "model"
+  | "servers"
   | "mobile"
   | "about";
 
@@ -18,6 +19,7 @@ const primarySections: Array<{ id: SettingsSection; label: string; icon: ReactNo
   { id: "safety", label: "Safety", icon: <IconShield /> },
   { id: "voice", label: "Voice", icon: <IconMic /> },
   { id: "model", label: "Model", icon: <IconRobot /> },
+  { id: "servers", label: "Servers", icon: <IconServer /> },
   { id: "mobile", label: "Mobile Setup", icon: <IconDashboard /> },
   { id: "about", label: "About", icon: <IconDashboard /> }
 ];

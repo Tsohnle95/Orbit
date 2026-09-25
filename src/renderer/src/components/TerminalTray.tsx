@@ -5,8 +5,23 @@ import "@xterm/xterm/css/xterm.css";
 import { useStore } from "../store";
 import { useOptionalTheme } from "../theme";
 import { IconAdd, IconChevronDown, IconChevronUp, IconServer } from "./icons";
-import type { WorkspaceIdentity } from "@shared/types";
+import type { ViteServerInfo, WorkspaceIdentity } from "@shared/types";
 import { PendingTerminalOutput, removeTerminal, terminalDirectoryCommand, type TerminalTabs } from "../terminal-state";
+
+function relativeServerDirectory(root: string, directory: string): string {
+  const base = root.replace(/[\\/]+$/, "");
+  if (directory === base) return "";
+  if (directory.startsWith(`${base}/`) || directory.startsWith(`${base}\\`)) {
+    return directory.slice(base.length + 1).split(/[\\/]/).join("/");
+  }
+  return directory;
+}
+
+function viteServerLabel(server: ViteServerInfo, root: string): string {
+  const relative = relativeServerDirectory(root, server.directory);
+  const entry = server.entry || "index.html";
+  return relative ? `${relative}/${entry}` : entry;
+}
 
 const THEME = {
   background: "#121317",
@@ -170,7 +185,7 @@ export function TerminalTray({
   const [{ terms, activeId }, setTabs] = useState<TerminalTabs>({ terms: [], activeId: null });
   const [notice, setNotice] = useState("");
   const [viteStarting, setViteStarting] = useState(false);
-  const [viteUrl, setViteUrl] = useState<string | null>(null);
+  const [viteServers, setViteServers] = useState<ViteServerInfo[]>([]);
   const [viteMenu, setViteMenu] = useState<{ x: number; y: number } | null>(null);
   const counterRef = useRef(0);
   const bootTokenRef = useRef(0);
@@ -207,9 +222,22 @@ export function TerminalTray({
 
   useEffect(() => {
     setViteStarting(false);
-    setViteUrl(null);
+    setViteServers([]);
     setViteMenu(null);
   }, [workspace.id]);
+
+  const refreshServers = useCallback(async (): Promise<void> => {
+    try {
+      const running = await window.openshell.viteServers();
+      setViteServers(running.filter((server) => server.workspaceId === workspace.id));
+    } catch {
+      setViteServers([]);
+    }
+  }, [workspace.id]);
+
+  useEffect(() => {
+    void refreshServers();
+  }, [refreshServers]);
 
   const createTerminal = useCallback(async (directory = ""): Promise<void> => {
     setNotice("");
@@ -273,22 +301,29 @@ export function TerminalTray({
     const entryPath = activePath && !activePath.startsWith("/") && /\.html?$/i.test(activePath)
       ? activePath
       : undefined;
-    const start = entryPath
-      ? window.openshell.viteStart(workspace, entryPath)
-      : window.openshell.viteStart(workspace);
-    void start
-      .then((preview) => setViteUrl(preview.url))
+    const toggle = entryPath
+      ? window.openshell.viteToggle(workspace, entryPath)
+      : window.openshell.viteToggle(workspace);
+    void toggle
+      .then(async (result) => {
+        if (!result.running) setNotice("Vite server stopped");
+        await refreshServers();
+      })
       .catch((error) => {
-        setViteUrl(null);
         setNotice(error instanceof Error ? error.message : "Could not start the Vite server");
       })
       .finally(() => setViteStarting(false));
   };
 
-  const stopVite = (): void => {
-    if (!viteUrl) return;
-    void window.openshell.viteStop(workspace)
-      .then(() => setViteUrl(null))
+  const stopVite = (serverID: string): void => {
+    void window.openshell.viteStop(serverID)
+      .then(() => refreshServers())
+      .catch(() => {});
+  };
+
+  const stopAllVite = (): void => {
+    void window.openshell.viteStopAll()
+      .then(() => refreshServers())
       .catch(() => {});
   };
 
@@ -336,13 +371,19 @@ export function TerminalTray({
           <IconAdd />
         </button>
         <button
-          className={`terminal-add${viteUrl ? " running" : ""}`}
-          title={viteStarting ? "Starting the Vite server…" : viteUrl ? `${viteUrl} — right-click to stop the server` : "Serve this workspace with Vite and open it in a browser"}
+          className={`terminal-add${viteServers.length > 0 ? " running" : ""}`}
+          title={viteStarting
+            ? "Starting the Vite server…"
+            : viteServers.length === 1
+              ? `${viteServers[0].url} — click to stop, right-click to manage`
+              : viteServers.length > 1
+                ? `${viteServers.length} Vite servers running — click to toggle this page, right-click to manage`
+                : "Serve this workspace with Vite and open it in a browser"}
           disabled={viteStarting}
           data-testid="vite-btn"
           onClick={() => openVite()}
           onContextMenu={(e) => {
-            if (!viteUrl) return;
+            if (viteServers.length === 0) return;
             e.preventDefault();
             setViteMenu({ x: e.clientX, y: e.clientY });
           }}
@@ -379,15 +420,29 @@ export function TerminalTray({
             }}
           />
           <div className="ctx-menu above" style={{ left: viteMenu.x, top: viteMenu.y }} data-testid="vite-menu">
-            <button
-              className="ctx-item"
-              onClick={() => {
-                setViteMenu(null);
-                stopVite();
-              }}
-            >
-              Stop Vite server
-            </button>
+            {viteServers.map((server) => (
+              <button
+                key={server.id}
+                className="ctx-item"
+                onClick={() => {
+                  setViteMenu(null);
+                  stopVite(server.id);
+                }}
+              >
+                Stop {viteServerLabel(server, sessionDirectory)}
+              </button>
+            ))}
+            {viteServers.length > 1 && (
+              <button
+                className="ctx-item"
+                onClick={() => {
+                  setViteMenu(null);
+                  stopAllVite();
+                }}
+              >
+                Stop all servers
+              </button>
+            )}
           </div>
         </>
       )}

@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { OpenShellBackend } from "./opencode";
 import { TerminalManager } from "./terminal";
 import { MobileServer } from "./mobile-server";
-import { defaultViteDeps, findHtmlEntry, resolveViteCommand, VitePreviewManager } from "./vite-server";
+import { defaultViteDeps, findHtmlEntry, resolveViteCommand, viteServerKey, VitePreviewManager } from "./vite-server";
 import { collectLaunchPaths, PendingOpenPaths } from "./open-paths";
 import {
   applicationUrl,
@@ -35,6 +35,8 @@ import type {
   FormAnswers,
   PromptDelivery,
   PromptFile,
+  ViteServerInfo,
+  ViteToggleResult,
   WorkspaceIdentity
 } from "@shared/types";
 import {
@@ -553,6 +555,31 @@ function handleTrusted<Args extends unknown[], Result>(
   });
 }
 
+function viteEntry(fileName: string): string {
+  return fileName.toLowerCase() === "index.html" ? "" : fileName;
+}
+
+/**
+ * Resolve which folder and page a Vite toggle should serve for a workspace:
+ * an explicit confined HTML entry when the renderer supplies one, otherwise the
+ * workspace root, or the shallowest HTML page when the root has no index.html.
+ */
+async function resolveViteTarget(workspace: WorkspaceIdentity, requestedEntry?: string): Promise<{ directory: string; entry: string }> {
+  const directory = await backend.workspaceDirectory(workspace);
+  if (requestedEntry !== undefined) {
+    const absolute = await confinedPath(directory, relativePath(requestedEntry));
+    const stat = await fsp.stat(absolute).catch(() => null);
+    if (!stat?.isFile() || !/\.html?$/i.test(absolute)) throw new Error("the Vite preview target must be an existing HTML file");
+    return { directory: path.dirname(absolute), entry: viteEntry(path.basename(absolute)) };
+  }
+  const rootIndex = await fsp.stat(path.join(directory, "index.html")).catch(() => null);
+  if (!rootIndex?.isFile()) {
+    const found = await findHtmlEntry(directory);
+    if (found) return { directory: path.dirname(found), entry: viteEntry(path.basename(found)) };
+  }
+  return { directory, entry: "" };
+}
+
 function registerIpc(): void {
   handleTrusted("shell:select-folder", async (e, requestGeneration: number, requestedRuntimeID?: unknown) => {
     const generation = backend.beginActivation(activationGeneration(requestGeneration));
@@ -627,7 +654,7 @@ function registerIpc(): void {
 
   handleTrusted("shell:close-session", async (_e, workspace: WorkspaceIdentity) => {
     workspaceId(workspace);
-    viteServers.stop(workspace.id);
+    viteServers.stopWorkspace(workspace.id);
     return backend.closeSession(workspace);
   });
 
@@ -972,40 +999,31 @@ function registerIpc(): void {
     return validateWithW3c(path, source);
   });
 
-  handleTrusted("shell:vite-start", async (_e, workspace: WorkspaceIdentity, requestedEntry?: string) => {
+  handleTrusted("shell:vite-toggle", async (_e, workspace: WorkspaceIdentity, requestedEntry?: string): Promise<ViteToggleResult> => {
     workspaceId(workspace);
-    const directory = await backend.workspaceDirectory(workspace);
-    let serveDirectory = directory;
-    let entry = "";
-    if (requestedEntry !== undefined) {
-      const clean = relativePath(requestedEntry);
-      const absolute = await confinedPath(directory, clean);
-      const stat = await fsp.stat(absolute).catch(() => null);
-      if (!stat?.isFile() || !/\.html?$/i.test(absolute)) throw new Error("the Vite preview target must be an existing HTML file");
-      serveDirectory = path.dirname(absolute);
-      entry = path.basename(absolute).toLowerCase() === "index.html" ? "" : path.basename(absolute);
-    } else {
-      // A workspace root without index.html would otherwise 404 on `/` and
-      // tear the server down. Fall back to the shallowest HTML page so a
-      // static/docs folder still serves something useful.
-      const rootIndex = await fsp.stat(path.join(directory, "index.html")).catch(() => null);
-      if (!rootIndex?.isFile()) {
-        const found = await findHtmlEntry(directory);
-        if (found) {
-          serveDirectory = path.dirname(found);
-          entry = path.basename(found).toLowerCase() === "index.html" ? "" : path.basename(found);
-        }
-      }
+    const target = await resolveViteTarget(workspace, requestedEntry);
+    const id = viteServerKey(workspace.id, target.directory, target.entry);
+    if (viteServers.running(id)) {
+      viteServers.stop(id);
+      return { running: false };
     }
-    const preview = await viteServers.start(workspace.id, serveDirectory, entry);
+    const preview = await viteServers.start(id, workspace.id, target.directory, target.entry);
     void shell.openExternal(preview.url);
-    return preview;
+    return {
+      running: true,
+      server: { id, workspaceId: workspace.id, directory: target.directory, entry: target.entry, url: preview.url, port: preview.port }
+    };
   });
 
-  handleTrusted("shell:vite-stop", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    await backend.workspaceDirectory(workspace);
-    viteServers.stop(workspace.id);
+  handleTrusted("shell:vite-servers", (): ViteServerInfo[] => viteServers.list());
+
+  handleTrusted("shell:vite-stop", (_e, serverID: unknown) => {
+    if (typeof serverID !== "string" || !serverID) throw new Error("invalid Vite server id");
+    viteServers.stop(serverID);
+  });
+
+  handleTrusted("shell:vite-stop-all", async () => {
+    await viteServers.stopAll();
   });
 
   handleTrusted("shell:take-pending-paths", () => pendingOpenPaths.take());
