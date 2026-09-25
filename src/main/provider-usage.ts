@@ -121,7 +121,9 @@ function providerKeyForAccountUrl(url: string | undefined): string | null {
 function providerKeyForCredentialId(id: string): string | null {
   if (id === "openai") return "openai";
   if (id === "opencode-go") return "opencode-go";
-  if (id === "command-code") return "command-code";
+  // Command Code ships as a community plugin; plugin releases have registered
+  // both `commandcode` and `command-code` as the auth provider id.
+  if (id === "command-code" || id === "commandcode") return "command-code";
   return null;
 }
 
@@ -794,7 +796,7 @@ function commandCodeCredits(raw: CommandCodeCredits | null): ProviderUsageCredit
 async function fetchCommandCode(entry: OAuthEntry): Promise<ProviderUsageResult> {
   const displayName = "Command Code";
   if (!entry.access) {
-    return errorResult("command-code", displayName, "missing_oauth", `${displayName} is not authenticated. Set COMMAND_CODE_API_KEY or run: opencode auth login`);
+    return errorResult("command-code", displayName, "missing_oauth", `${displayName} is not authenticated. Set COMMANDCODE_API_KEY or run: opencode auth login`);
   }
 
   const headers: Record<string, string> = {
@@ -842,7 +844,7 @@ async function fetchCommandCode(entry: OAuthEntry): Promise<ProviderUsageResult>
 
 interface ProviderSpec {
   fetch: (entry: OAuthEntry) => Promise<ProviderUsageResult>;
-  envKey?: string;
+  envKeys?: string[];
 }
 
 const PROVIDERS: Record<string, ProviderSpec> = {
@@ -850,8 +852,16 @@ const PROVIDERS: Record<string, ProviderSpec> = {
   anthropic: { fetch: fetchClaude },
   "github-copilot": { fetch: fetchCopilot },
   "opencode-go": { fetch: fetchOpencodeGo },
-  "command-code": { fetch: fetchCommandCode, envKey: "COMMAND_CODE_API_KEY" }
+  "command-code": { fetch: fetchCommandCode, envKeys: ["COMMANDCODE_API_KEY", "COMMAND_CODE_API_KEY"] }
 };
+
+function envEntryFor(spec: ProviderSpec): OAuthEntry | null {
+  for (const name of spec.envKeys ?? []) {
+    const value = process.env[name];
+    if (value) return { type: "oauth", access: value };
+  }
+  return null;
+}
 
 const SNAPSHOT_MAX_AGE_MS = 15 * 60 * 1000;
 
@@ -897,9 +907,7 @@ export async function fetchProviderUsage(): Promise<ProviderUsageResult[]> {
   const auth = await readOAuthEntries();
   const results: ProviderUsageResult[] = [];
   for (const [provider, spec] of Object.entries(PROVIDERS)) {
-    const entry = auth[provider] ?? (spec.envKey && process.env[spec.envKey]
-      ? { type: "oauth", access: process.env[spec.envKey] }
-      : null);
+    const entry = auth[provider] ?? envEntryFor(spec);
     if (!entry) {
       const fallback = snapshotByProvider.get(provider);
       if (fallback) results.push(fallback);

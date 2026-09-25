@@ -5,8 +5,8 @@ vi.mock("electron", () => ({
   app: { getPath: () => "/tmp" },
   shell: { trashItem: vi.fn(), openPath: vi.fn() }
 }));
-vi.mock("@opencode-ai/client", () => ({ OpenCode: { make: vi.fn() } }));
-vi.mock("@opencode-ai/client/service", () => ({ Service: {} }));
+vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
+vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
 import { LatestGeneration } from "@shared/generation";
 import type { FileBaseline, WorkspaceIdentity } from "@shared/types";
@@ -18,26 +18,28 @@ function fixture() {
   const backend = new OpenShellBackend();
   const directory = "/workspace";
   const client = {
+    session: {
+      form: {
+        list: vi.fn(async () => [{
+          id: "frm_session",
+          sessionID: "session",
+          title: "Session question",
+          fields: [{ key: "answer", type: "string" }]
+        }]),
+        reply: vi.fn(async () => {}),
+        cancel: vi.fn(async () => {})
+      }
+    },
     form: {
-      list: vi.fn(async () => [{
-        id: "frm_session",
-        sessionID: "session",
-        title: "Session question",
-        fields: [{ key: "answer", type: "string" }]
-      }]),
-      request: {
-        list: vi.fn(async () => ({
-          location: { directory },
-          data: [{
-            id: "frm_global",
-            sessionID: "global",
-            title: "Global question",
-            fields: [{ key: "choice", type: "boolean" }]
-          }]
-        }))
-      },
-      reply: vi.fn(async () => {}),
-      cancel: vi.fn(async () => {})
+      list: vi.fn(async () => ({
+        location: { directory },
+        data: [{
+          id: "frm_global",
+          sessionID: "global",
+          title: "Global question",
+          fields: [{ key: "choice", type: "boolean" }]
+        }]
+      }))
     }
   };
   const context: SessionContext = {
@@ -76,7 +78,8 @@ describe("backend forms", () => {
       expect.objectContaining({ id: "frm_session", sessionID: "session" }),
       expect.objectContaining({ id: "frm_global", sessionID: "global" })
     ]);
-    expect(client.form.request.list).toHaveBeenCalledWith({ location: { directory: "/workspace" } });
+    expect(client.session.form.list).toHaveBeenCalledWith({ sessionID: "session" });
+    expect(client.form.list).toHaveBeenCalledWith({ location: { directory: "/workspace" } });
   });
 
   it("answers and cancels global forms with their location context", async () => {
@@ -86,11 +89,11 @@ describe("backend forms", () => {
     await backend.cancelForm(workspace, "frm_global", "global");
 
     const requestOptions = { headers: { "x-opencode-directory": "%2Fworkspace" } };
-    expect(client.form.reply).toHaveBeenCalledWith(
+    expect(client.session.form.reply).toHaveBeenCalledWith(
       { sessionID: "global", formID: "frm_global", answer: { choice: true } },
       requestOptions
     );
-    expect(client.form.cancel).toHaveBeenCalledWith(
+    expect(client.session.form.cancel).toHaveBeenCalledWith(
       { sessionID: "global", formID: "frm_global" },
       requestOptions
     );
@@ -101,6 +104,6 @@ describe("backend forms", () => {
 
     await expect(backend.replyForm(workspace, "frm_other", {}, "other-session"))
       .rejects.toThrow("form does not belong");
-    expect(client.form.reply).not.toHaveBeenCalled();
+    expect(client.session.form.reply).not.toHaveBeenCalled();
   });
 });

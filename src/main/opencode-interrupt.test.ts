@@ -4,8 +4,8 @@ import { LatestGeneration } from "@shared/generation";
 import type { WorkspaceIdentity } from "@shared/types";
 
 vi.mock("electron", () => ({ shell: { trashItem: vi.fn(), openPath: vi.fn() } }));
-vi.mock("@opencode-ai/client", () => ({ OpenCode: { make: vi.fn() } }));
-vi.mock("@opencode-ai/client/service", () => ({ Service: {} }));
+vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
+vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
 import { OpenShellBackend, type SessionContext } from "./opencode";
 

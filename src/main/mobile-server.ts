@@ -6,7 +6,7 @@ import path from "node:path";
 /**
  * Attaches the Orbit mobile server to the desktop app's lifecycle.
  *
- * While Orbit is open the mobile server (opencode2 backend + Orbit web server)
+ * While Orbit is open the mobile server (OpenCode backend + Orbit web server)
  * runs, so the Orbit mobile app connects over the tailnet. When Orbit quits —
  * or is force-killed — the server stops. This mirrors OpenChamber, where the
  * desktop process is the server.

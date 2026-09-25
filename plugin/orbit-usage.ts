@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { Plugin } from "@opencode-ai/plugin"
+import { Plugin } from "@opencode/plugin"
 
 type UsageWindow = {
   id: string
@@ -59,7 +59,7 @@ function snapshotPath(): string {
   return path.join(data, "opencode", "orbit-usage.json")
 }
 
-async function resolvedToken(ctx, integrationID): Promise<string | null> {
+async function resolvedToken(ctx: Plugin.Context, integrationID: string): Promise<string | null> {
   try {
     const connection = await ctx.integration.connection.active(integrationID)
     if (!connection) return null

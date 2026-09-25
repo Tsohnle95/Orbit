@@ -91,7 +91,7 @@ automatically.
 | `state()` | `Promise<SessionInfo \| null>` — the most recently activated session |
 | `sessionSelection(workspace)` | `Promise<SessionSelection \| null>` |
 | `providerUsage()` | `Promise<ProviderUsageResult[]>` |
-| `providerIntegrations(workspace)` | `Promise<ProviderIntegration[]>` — provider-neutral catalog and secret-free connection state supplied by the active runtime adapter |
+| `providerIntegrations(workspace)` | `Promise<ProviderIntegration[]>` — supported-provider catalog (OpenCode Go, Command Code, OpenAI) and secret-free connection state supplied by the active runtime adapter |
 | `connectProviderKey(workspace, integrationID, key, label, answers)` | `Promise<void>` — sends a write-only key and provider-specific form answers; the key is never returned to the renderer |
 | `removeProviderCredential(workspace, credentialID)` | `Promise<void>` — removes one stored credential by opaque id |
 | `health()` | `Promise<boolean>` |

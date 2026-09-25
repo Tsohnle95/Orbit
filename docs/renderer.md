@@ -59,7 +59,7 @@ transcript directly. The transcript the UI reads is a projection
 transcript via `reduceChatStream` in `chat-stream.ts`. Full part snapshots
 carry dedupe bookkeeping so a trailing delta already included in a snapshot
 is not applied twice (exact suffix match only — deltas are otherwise
-concatenated verbatim like opencode2's own reducer), finished tool cards
+concatenated verbatim like OpenCode's own reducer), finished tool cards
 cannot regress, and history hydration (`hydrateChatState`) never shrinks
 longer live text. Parts render in arrival order: each insert stamps a `seq`
 counter, projection sorts by it, and the timeline groups consecutive
@@ -474,7 +474,7 @@ that arrives before the PTY is registered is dropped by the terminal manager,
 which would leave the TUI drawing only the spawn-default rows.
 Agent TUI input uses the same terminal message stream and ownership checks, but
 starts the active runtime command through `agentTuiStart` in the panel's
-workspace directory. OpenCode uses `opencode2 --session <session-id>`; the
+workspace directory. OpenCode uses `opencode --session <session-id>`; the
 DeepSeek profile remains unavailable until its TUI command is supported.
 The persisted Kitty Glass appearance profile applies its transparent xterm
 background, Kitty-inspired palette, and Fira Code fallback to the embedded TUI,

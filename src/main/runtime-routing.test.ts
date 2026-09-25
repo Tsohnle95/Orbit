@@ -6,8 +6,8 @@ import type { RuntimeAdapter } from "./runtimes/runtime-adapter";
 import { RuntimeSessionIndex } from "./runtimes/runtime-session-index";
 
 vi.mock("electron", () => ({ shell: { trashItem: vi.fn(), openPath: vi.fn() } }));
-vi.mock("@opencode-ai/client", () => ({ OpenCode: { make: vi.fn() } }));
-vi.mock("@opencode-ai/client/service", () => ({ Service: {} }));
+vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
+vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
 import { OpenShellBackend } from "./opencode";
 

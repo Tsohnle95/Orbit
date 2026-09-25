@@ -3,7 +3,7 @@ import { tuiCommandForRuntime } from "./tui-command";
 
 describe("runtime TUI commands", () => {
   it("resumes OpenCode sessions", () => {
-    expect(tuiCommandForRuntime("opencode", "session-1")).toEqual({ command: "opencode2", args: ["--session", "session-1"] });
+    expect(tuiCommandForRuntime("opencode", "session-1")).toEqual({ command: "opencode", args: ["--session", "session-1"] });
   });
 
   it("resumes DeepSeek sessions through the TUI profile", () => {

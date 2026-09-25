@@ -46,7 +46,7 @@ to keep the code in focus.
 | Integrated PTY terminal | Prompt queue, attachments, and `@` context | W3C HTML/CSS validation |
 
 Orbit is an Electron, React, and Monaco application with a versioned runtime
-adapter boundary. It supports [`opencode2`](https://opencode.ai/v2) and the
+adapter boundary. It supports [`opencode`](https://opencode.ai/v2) and the
 DeepSeek Harness `dsh` CLI; each adapter declares its capabilities so the UI
 does not offer unsupported controls. The Electron main process owns all runtime
 and filesystem access; the renderer receives a narrow preload API and normalized
@@ -57,7 +57,7 @@ live events.
 ### Requirements
 
 - Node 22.23.2 or later within the Node 22 release line
-- [`opencode2`](https://opencode.ai/v2) on your `PATH`, or an OpenCode service
+- [`opencode`](https://opencode.ai/v2) on your `PATH`, or an OpenCode service
   already running, and/or `dsh` for DeepSeek Harness sessions
 - macOS for the most complete and validated experience
 

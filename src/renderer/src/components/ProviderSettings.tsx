@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type {
   ProviderCredentialAnswers,
   ProviderCredentialValue,
@@ -9,39 +9,6 @@ import type {
   WorkspaceIdentity
 } from "@shared/types";
 import { ExternalLink } from "./ExternalLink";
-
-const POPULAR_PROVIDER_IDS = [
-  "anthropic",
-  "openai",
-  "opencode",
-  "google",
-  "openrouter",
-  "deepseek",
-  "xai",
-  "groq",
-  "mistral",
-  "alibaba",
-  "amazon-bedrock",
-  "azure",
-  "cohere",
-  "perplexity",
-  "togetherai",
-  "fireworks-ai",
-  "cerebras",
-  "huggingface",
-  "nvidia",
-  "zai"
-] as const;
-
-const PROVIDER_LABELS: Record<string, string> = {
-  alibaba: "Qwen / Alibaba",
-  google: "Google Gemini",
-  zai: "Z.AI / GLM"
-};
-
-function providerName(provider: ProviderIntegration): string {
-  return PROVIDER_LABELS[provider.id] ?? provider.name;
-}
 
 function initialAnswers(fields: ProviderFormField[]): ProviderCredentialAnswers {
   return Object.fromEntries(fields.flatMap((field) => field.default === undefined ? [] : [[field.key, field.default]]));
@@ -237,7 +204,7 @@ function ProviderCard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const connected = provider.credentials.length > 0 || provider.environment.connected.length > 0;
-  const displayName = providerName(provider);
+  const displayName = provider.name;
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
@@ -334,8 +301,6 @@ export function ProviderSettings({
   refreshModels: () => Promise<void>;
 }): ReactNode {
   const [providers, setProviders] = useState<ProviderIntegration[]>([]);
-  const [query, setQuery] = useState("");
-  const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef(0);
@@ -366,15 +331,6 @@ export function ProviderSettings({
     void refresh();
   }, [workspace?.id, workspace?.generation]);
 
-  const visible = useMemo(() => {
-    const rank = new Map<string, number>(POPULAR_PROVIDER_IDS.map((id, index) => [id, index]));
-    const normalized = query.trim().toLowerCase();
-    return providers
-      .filter((provider) => normalized
-        ? providerName(provider).toLowerCase().includes(normalized) || provider.id.toLowerCase().includes(normalized)
-        : showAll || rank.has(provider.id) || provider.credentials.length > 0 || provider.environment.connected.length > 0)
-      .sort((a, b) => (rank.get(a.id) ?? 1000) - (rank.get(b.id) ?? 1000) || a.name.localeCompare(b.name));
-  }, [providers, query, showAll]);
   const usageByProvider = new Map(usage.map((item) => [item.provider, item]));
 
   if (!workspace) return <div className="settings-empty">Open a workspace to connect model providers.</div>;
@@ -383,14 +339,12 @@ export function ProviderSettings({
     <div className="provider-settings">
       <div className="provider-toolbar">
         <div><strong>Bring your own provider</strong><small>Keys are stored by the active agent runtime and are never displayed again.</small></div>
-        <input type="search" value={query} spellCheck={false} autoCorrect="off" autoCapitalize="off" onChange={(event) => setQuery(event.target.value)} placeholder="Search providers" aria-label="Search providers" />
       </div>
       {error && <div className="settings-callout provider-error"><strong>Providers unavailable</strong><p>{error}</p></div>}
-      {loading && providers.length === 0 ? <div className="settings-empty">Loading provider catalog...</div> : <div className="provider-grid">
-        {visible.map((provider) => <ProviderCard key={provider.id} provider={provider} usage={usageByProvider.get(provider.id)} workspace={workspace} refresh={refresh} refreshModels={refreshModels} />)}
+      {loading && providers.length === 0 ? <div className="settings-empty">Loading providers...</div> : <div className="provider-grid">
+        {providers.map((provider) => <ProviderCard key={provider.id} provider={provider} usage={usageByProvider.get(provider.id)} workspace={workspace} refresh={refresh} refreshModels={refreshModels} />)}
       </div>}
-      {!query && providers.length > visible.length && <button className="provider-show-all" onClick={() => setShowAll((current) => !current)}>{showAll ? "Show featured providers" : `Browse all ${providers.length} providers`}</button>}
-      {!loading && visible.length === 0 && <div className="settings-empty">No providers match your search.</div>}
+      {!loading && providers.length === 0 && <div className="settings-empty">No providers are available for this runtime.</div>}
     </div>
   );
 }

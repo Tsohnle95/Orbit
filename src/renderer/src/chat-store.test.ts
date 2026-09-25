@@ -655,7 +655,7 @@ describe("tool part id aliasing", () => {
   });
 });
 
-describe("opencode2 TUI streaming parity", () => {
+describe("OpenCode TUI streaming parity", () => {
   it("concatenates deltas verbatim without stripping repeated characters", () => {
     const draft = state();
     applyChatEvent(draft, "s", event("start", "session.step.started", { sessionID: "s", assistantMessageID: "msg_1" }));

@@ -3,7 +3,7 @@
 > **Document role:** canonical owner for cross-process architecture and durable architectural invariants. Module docs may summarize or route here but should not redefine these invariants.
 
 Orbit is an Electron app built with **electron-vite** (three build
-targets: `main`, `preload`, `renderer`). It is a GUI for the opencode2
+targets: `main`, `preload`, `renderer`). It is a GUI for the OpenCode
 agent: you open a repository, send a prompt, and watch the agent stream
 its work while live diffs of changed files appear in the editor.
 
@@ -14,8 +14,8 @@ its work while live diffs of changed files appear in the editor.
 │ Electron MAIN (src/main/index.ts)                           │
 │  • creates the BrowserWindow                                │
 │  • owns OpenShellBackend (src/main/opencode.ts)             │
-│  • registers shell:* IPC handlers                            │
-│  • is the ONLY process that talks to opencode2              │
+│  • registers shell:* IPC handlers                           │
+│  • is the ONLY process that talks to OpenCode               │
 └──────────────┬───────────────────────────┬──────────────────┘
                │ ipcRenderer.invoke()      │ webContents.send()
                │ (renderer → main)         │ (main → renderer)
@@ -27,7 +27,7 @@ its work while live diffs of changed files appear in the editor.
 └──────────────────────────┘   └─────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│ opencode2 service (spawned via Service.ensure or existing)  │
+│ OpenCode V2 service (spawned via Service.ensure or existing)│
 │  • SSE event stream (client.event.subscribe)                │
 │  • REST: session/file/model/project/permission endpoints    │
 └─────────────────────────────────────────────────────────────┘
@@ -37,14 +37,13 @@ its work while live diffs of changed files appear in the editor.
 
 `OpenShellBackend.connect()` in `src/main/opencode.ts`:
 
-1. Probes `opencode2 --version` and derives a compatibility predicate: a
-   registered service must match the installed build and clear
-   `minSupportedServerBuild`. A daemon left running from a previous install
-   would otherwise still satisfy the floor, so matching the installed build is
-   what makes an upgrade visible after Orbit restarts.
+1. Probes `opencode --version` and derives a V2 compatibility predicate
+   (`MIN_SUPPORTED_SERVER_MAJOR = 2`): a registered service must report the
+   same V2 major line, so V1 and legacy beta daemons are refused instead of
+   being served with an incompatible protocol.
 2. `Service.discover()` — finds an already-registered opencode service whose
    version satisfies the predicate.
-3. Falls back to `Service.ensure({ command: ["opencode2", "serve", "--service"] })`,
+3. Falls back to `Service.ensure({ command: ["opencode", "serve", "--service"] })`,
    which terminates a version-mismatched daemon, spawns the service, and waits
    for it to be ready.
 4. Creates a typed client: `OpenCode.make({ baseUrl, headers })`.
@@ -111,7 +110,7 @@ native session. UI controls are hidden when their manifest capability is false.
 All backend→renderer message kinds are defined in
 `src/shared/types.ts` (`BackendMessage`):
 
-- `{ kind: "event", type, data }` — every opencode2 SSE event forwarded
+- `{ kind: "event", type, data }` — every OpenCode SSE event forwarded
   through the main-process transport pipeline (coalesced per directory and
   flushed in 33ms batches). The renderer dispatches on `type`. See
   `docs/events.md` for the full protocol map.
@@ -289,7 +288,7 @@ best-effort retention purge that removes settled transactions (`complete`,
 (`source-held`, `held-validated`) older than 7 days; fresh transactions are
 never purged. This protocol requires recovery and target names to share a
 filesystem. Writes go through Node `fs` in the main process
-(`shell:fs-write`); the opencode2 API has no write
+(`shell:fs-write`); the OpenCode API has no write
 endpoint — the server sees the change via its own file watching. The
 explorer also supports create/rename/delete through `shell:fs-create-*`,
 `shell:fs-rename`, `shell:fs-delete` (delete moves to Trash). File rename uses
@@ -344,10 +343,11 @@ from `client.model.default()` per panel and updated live by
 Switching calls `client.session.switchModel({ sessionID, model })`, including
 `model.variant` when a model exposes response-strength variants.
 Provider settings are adapter-backed rather than OpenCode-specific UI. The
-current adapter maps `integration.list` into secret-free shared types and sends
-write-only keys through `integration.connect.key`; credential changes refresh
-the workspace model catalog. A featured top-20 ordering is renderer-only, while
-search exposes every integration supplied by the active runtime.
+current adapter filters `integration.list` down to Orbit's supported provider
+set (`opencode-go`, `command-code`/`commandcode`, `openai`) and maps the
+survivors into secret-free shared types; write-only keys go through
+`integration.connect.key`, and credential changes refresh the workspace model
+catalog. Connect and OAuth flows reject integrations outside that set.
 Agents come from `client.agent.list()`; the selection is updated live by
 `session.agent.selected` and switched via
 `client.session.switchAgent({ sessionID, agent })`. Both choices are
@@ -382,7 +382,7 @@ Linux, and Windows CI.
 
 An agent panel can switch from GUI to TUI from its header mode pill. The main
 process resolves the active session's runtime command and starts it with the
-session directory as cwd; OpenCode launches `opencode2 --session <session-id>`.
+session directory as cwd; OpenCode launches `opencode --session <session-id>`.
 The renderer keeps the TUI inside the panel with xterm.js and reuses the
 terminal data, resize, ownership, and cleanup paths. DeepSeek advertises no TUI
 capability until a supported profile is available. The Kitty Glass appearance
@@ -395,10 +395,10 @@ light system appearance.
 
 ## Permissions
 
-When opencode2 needs approval it emits `permission.asked`. The renderer
+When OpenCode needs approval it emits `permission.asked`. The renderer
 shows a card with the action and resources and three buttons; the reply
 (`once` | `always` | `reject`) goes through
-`client.permission.reply({ sessionID, requestID, reply })`.
+`client.permission.reply({ sessionID, requestID, decision })`.
 
 ## Key constraints
 

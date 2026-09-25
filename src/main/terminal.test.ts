@@ -58,11 +58,11 @@ describe("TerminalManager capability ownership", () => {
     const pty = { onData: () => ({ dispose() {} }), onExit: () => ({ dispose() {} }), write() {}, resize() {}, kill() {} } as unknown as IPty;
     const spawnPty = vi.fn(() => pty);
     const manager = new TerminalManager(spawnPty as never);
-    const command: TerminalCommand = { command: "opencode2", args: ["--session", "session-1"] };
+    const command: TerminalCommand = { command: "opencode", args: ["--session", "session-1"] };
 
     await manager.start("term-11111111-1111-4111-8111-111111111111", "/tmp", workspace, command);
 
-    expect(spawnPty).toHaveBeenCalledWith("opencode2", ["--session", "session-1"], expect.objectContaining({ cwd: "/tmp" }));
+    expect(spawnPty).toHaveBeenCalledWith("opencode", ["--session", "session-1"], expect.objectContaining({ cwd: "/tmp" }));
   });
 
   it("stopAll kills, waits for exits, then detaches callbacks", async () => {

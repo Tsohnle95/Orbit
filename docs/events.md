@@ -1,8 +1,8 @@
-# opencode2 Event Protocol
+# OpenCode Event Protocol
 
 > **Document role:** canonical owner for the normalized runtime event protocol, renderer handling inventory, and event-specific semantics.
 
-The main process subscribes to the opencode2 SSE stream
+The main process subscribes to the OpenCode V2 SSE stream
 (`client.event.subscribe()`) through a transport pipeline
 (`src/main/stream-pipeline.ts`) and forwards **every** event to the renderer
 as `{ kind: "event", type, data }` (`BackendMessage`). The renderer dispatch
@@ -156,7 +156,7 @@ paragraph above) delivers per-directory batches into `deliverEvents` in
 `src/main/opencode.ts`, which forwards each event and then runs
 `handleServerEvent`. `deliverEvents` drops interactive prompts (`form.*`,
 `permission.*`, `session.inbox.*`) for sessions Orbit never opened: the
-global daemon is shared with external `opencode2` terminal sessions, and
+global daemon is shared with external `opencode` terminal sessions, and
 forwarding those prompts would misattribute them to the focused panel
 (`form.created` carries its session only inside `data.form`, so
 `eventSessionID` also descends into `form`). Location-global forms are the

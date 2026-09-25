@@ -3,9 +3,9 @@
 > **Document role:** canonical owner for main-process implementation ownership, backend behavior, and the `shell:*` IPC inventory.
 
 `src/main/index.ts` (window + IPC wiring) and
-`src/main/opencode.ts` (the `OpenShellBackend` — all opencode2 traffic).
+`src/main/opencode.ts` (the `OpenShellBackend` — all OpenCode traffic).
 
-`src/main/opencode.ts` is the only file that imports `@opencode-ai/client`.
+`src/main/opencode.ts` is the only file that imports `@opencode/client`.
 Provider usage is a separate main-process integration with provider APIs in
 `src/main/provider-usage.ts`.
 
@@ -57,7 +57,7 @@ Public methods (all used by IPC):
 
 | Method | Purpose |
 |---|---|
-| `connect()` | Probe `opencode2 --version` → `Service.discover()` / `Service.ensure({command:["opencode2","serve","--service"]})` gated on a matching installed build → `OpenCode.make` |
+| `connect()` | Probe `opencode --version` → V2 predicate (`MIN_SUPPORTED_SERVER_MAJOR = 2`) → `Service.discover()` / `Service.ensure({command:["opencode","serve","--service"]})` → `OpenCode.make` |
 | `start()` | Start the SSE event loop if one is not already running; unexpected loop failures are forwarded as structured `global.error` events |
 | `stop()` | Abort and invalidate the active SSE loop lifecycle, then stop every context's fs watcher |
 | `mobileEndpoint()` | Returns the connected OpenCode mobile endpoint credentials when available, otherwise `null` |
@@ -82,13 +82,13 @@ Public methods (all used by IPC):
 | `prompt(workspace, text, files?, delivery?)` | Captures and verifies the context around attachment awaits, then calls `session.prompt`; `delivery` forwards `queue`/`steer` for native inbox queuing; IPC failures are normalized to a stable code and message before returning to the renderer |
 | `listInbox(workspace)` | Lists the active session's queued user entries via `session.inbox.list` |
 | `cancelInbox(workspace, inboxID)` | Cancels a queued inbox entry via `session.inbox.cancel` |
-| `steerInbox(workspace, inboxID)` | Delivers a queued entry immediately via `session.inbox.steer` |
-| `listForms(workspace)` | Lists pending agent forms for the active session via `form.list` |
+| `steerInbox(workspace, inboxID)` | Delivers a queued entry immediately via the V2 `session.inbox.update` with `delivery: "steer"` |
+| `listForms(workspace)` | Lists pending agent forms via `session.form.list` for the active session and the location-global `form.list` |
 | `stageRevert(workspace, messageID, files)` | Stages a revert of the active session back to a message via `session.revert.stage`; `files` restores file snapshots; returns `{messageID, partID?, snapshot?}` |
 | `commitRevert(workspace)` | Applies the staged revert via `session.revert.commit` |
 | `clearRevert(workspace)` | Discards the staged revert via `session.revert.clear` |
-| `replyForm(workspace, formID, answers)` | Submits field answers via `form.reply` |
-| `cancelForm(workspace, formID)` | Cancels a pending form via `form.cancel` |
+| `replyForm(workspace, formID, answers)` | Submits field answers via `session.form.reply` |
+| `cancelForm(workspace, formID)` | Cancels a pending form via `session.form.cancel` |
 | `startProviderOAuth(workspace, integrationID, methodID)` | Starts an OAuth attempt via `integration.oauth.connect` and returns attempt URL/mode |
 | `pollProviderOAuth(workspace, integrationID, attemptID)` | Reads attempt status via `integration.oauth.status` |
 | `completeProviderOAuth(workspace, integrationID, attemptID, code?)` | Finishes an attempt via `integration.oauth.complete`, optionally with a pasted code |
@@ -100,7 +100,7 @@ Public methods (all used by IPC):
 | `runCommand(workspace, name, args?)` | Routes built-ins (`/compact`/`/compress` → `session.compact`), otherwise captures and verifies the context around skill lookup and command mutation |
 | `searchFiles(workspace, query)` | `file.find({location, query, type: "file"})` → `ReferenceOption[]`; `rel` is the path relative to the session directory, `path` is absolute for prompt attachment |
 | `interrupt(workspace)` | Interrupts the captured session and rejects stale completion |
-| `replyPermission(workspace, requestID, reply, sessionID)` | Replies only when the supplied session is the captured context session |
+| `replyPermission(workspace, requestID, reply, sessionID)` | Replies only when the supplied session is the captured context session; sends the V2 `decision` field |
 | `listPermissions(workspace)` | `permission.request.list()` → `PendingPermissionRequest[]` (`id`, `sessionID`, `action`, `resources`) for every pending request on the service |
 | `listDir(workspace, rel)` | Validates the context and confinement, then reads the directory directly from the filesystem (`fs.readdir`) with trailing slashes stripped |
 | `revealInFileManager(workspace, rel)` | Validates the context, confinement, and current file or folder, then asks the operating system's native file manager to reveal it |
@@ -119,7 +119,7 @@ Public methods (all used by IPC):
 | `listModels(workspace)` | `model.list` (location = session dir), filters `enabled`, maps to `{id, providerID, name, variants, limit?}` (`limit.context` = the model's context-window size) |
 | `listProviderIntegrations(workspace)` | `integration.list` (location = session dir), maps runtime-supported key forms, OAuth labels, environment names, and secret-free credential labels into `ProviderIntegration[]` |
 | `connectProviderKey(workspace, integrationID, key, label, answers)` | Sends one bounded write-only key plus provider-specific form answers to `integration.connect.key`; no secret is returned or logged |
-| `removeProviderCredential(workspace, credentialID)` | Removes an opaque runtime credential through `credential.remove`; environment connections remain externally managed |
+| `removeProviderCredential(workspace, credentialID)` | Removes an opaque runtime credential through the credential-id-only `credential.remove`; environment connections remain externally managed |
 | `modelDefault(workspace)` | `model.default`, maps the same |
 | `switchModel(workspace, id, providerID, variant?)` | Switches only the captured context session, then persists the selection |
 | `listAgents(workspace)` | `agent.list` (location = session dir), maps to `{id, name}` |
@@ -144,8 +144,9 @@ utilization), and Command Code's `api.commandcode.ai` `/alpha/whoami` +
 `/alpha/billing/credits` (5h and weekly rate-limit windows plus
 monthly/purchased/free credit balances; org accounts resolve their
 `org.id` before querying credits). Command Code also falls back to the
-`COMMAND_CODE_API_KEY` environment variable when no auth-store credential
-exists, so config-file providers (`apiKey: "{env:COMMAND_CODE_API_KEY}"`)
+`COMMANDCODE_API_KEY` environment variable (the legacy `COMMAND_CODE_API_KEY`
+spelling is accepted too) when no auth-store credential
+exists, so config-file providers (`apiKey: "{env:COMMANDCODE_API_KEY}"`)
 work without an auth login. Tokens never leave the main process; the
 renderer only receives normalized provider snapshots. Each refresh prefers a
 new live response and falls back per provider to a plugin snapshot younger
@@ -305,7 +306,7 @@ Internals:
 | `shell:session-revert-commit` | `(workspace) → void` — applies the staged revert |
 | `shell:session-revert-clear` | `(workspace) → void` — discards the staged revert |
 | `shell:provider-usage` | `() → ProviderUsageResult[]` |
-| `shell:provider-integrations` | `(workspace) → ProviderIntegration[]` — runtime-supported provider catalog and secret-free connection metadata |
+| `shell:provider-integrations` | `(workspace) → ProviderIntegration[]` — the runtime provider catalog filtered to Orbit's supported providers (OpenCode Go, Command Code, OpenAI) with secret-free connection metadata |
 | `shell:provider-key-connect` | `(workspace, integrationID, key, label, answers) → void` — validates and forwards a write-only provider key and bounded form answers |
 | `shell:provider-credential-remove` | `(workspace, credentialID) → void` — removes a stored credential by opaque id |
 | `shell:health` | `() → boolean` |

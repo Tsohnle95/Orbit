@@ -24,6 +24,7 @@ function mockGoUsage(): void {
 describe("provider usage from opencode store", () => {
   beforeEach(() => {
     vi.stubEnv("COMMAND_CODE_API_KEY", "");
+    vi.stubEnv("COMMANDCODE_API_KEY", "");
   });
 
   afterEach(async () => {
@@ -222,6 +223,44 @@ describe("provider usage from opencode store", () => {
     expect(cc?.snapshot?.windows.map((window) => window.label)).toEqual(["5h"]);
     expect(fetchMock.mock.calls[0][1]).toEqual(
       expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer env-cc-token" }) })
+    );
+  });
+
+  it("recognizes the plugin's commandcode credential id", async () => {
+    mockDbRows([], [{ integration_id: "commandcode", value: "plugin-token", active: 1 }]);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ org: { id: "org-123" } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        credits: { monthlyCredits: 10, purchasedCredits: 0, freeCredits: 0 }
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const results = await fetchProviderUsage();
+    const cc = results.find((result) => result.provider === "command-code");
+    expect(cc).toBeDefined();
+    expect(cc?.status).toBe("ok");
+    expect(cc?.snapshot?.credits).toMatchObject({ label: "Command Code Credits", total: 10 });
+    expect(fetchMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer plugin-token" }) })
+    );
+  });
+
+  it("uses COMMANDCODE_API_KEY when no auth-store credential exists", async () => {
+    mockDbRows([], []);
+    vi.stubEnv("COMMANDCODE_API_KEY", "env-plugin-token");
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        windowLimits: { fiveHour: { used: 5, cap: 100, resetAt: 1787000000 } },
+        credits: {}
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const results = await fetchProviderUsage();
+    const cc = results.find((result) => result.provider === "command-code");
+    expect(cc?.status).toBe("ok");
+    expect(fetchMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer env-plugin-token" }) })
     );
   });
 

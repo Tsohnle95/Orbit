@@ -13,10 +13,10 @@ vi.mock("electron", () => ({
     openPath: async () => ""
   }
 }));
-vi.mock("@opencode-ai/client", () => ({
+vi.mock("@opencode/client", () => ({
   OpenCode: { make: vi.fn() }
 }));
-vi.mock("@opencode-ai/client/service", () => ({
+vi.mock("@opencode/client/service", () => ({
   Service: {}
 }));
 

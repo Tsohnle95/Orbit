@@ -9,7 +9,7 @@ export default defineConfig({
         "@shared": resolve(__dirname, "src/shared")
       }
     },
-    plugins: [externalizeDepsPlugin({ exclude: ["@opencode-ai/client"] })]
+    plugins: [externalizeDepsPlugin({ exclude: ["@opencode/client"] })]
   },
   preload: {
     plugins: [externalizeDepsPlugin()]

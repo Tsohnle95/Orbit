@@ -6,8 +6,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import { shell } from "electron";
-import { OpenCode } from "@opencode-ai/client";
-import { Service, type Endpoint } from "@opencode-ai/client/service";
+import { OpenCode } from "@opencode/client";
+import { Service, type Endpoint } from "@opencode/client/service";
 import { LatestGeneration, sameWorkspace } from "@shared/generation";
 import type {
   AssistantPartView,
@@ -542,32 +542,28 @@ export type MutationPhase =
 
 type MutationPhaseHandler = (phase: MutationPhase, source: string, target: string) => void | Promise<void>;
 
-/** Trailing build number of an `opencode2` version string, whether reported by
- *  `opencode2 --version` ("opencode2 v0.0.0-beta-19242") or by a running
- *  service ("0.0.0-beta-19242"). Null when no build can be read. */
-export function serverBuild(version: string | null | undefined): number | null {
+/** Parse the semantic-version major from an OpenCode CLI or service version. */
+export function serverMajor(version: string | null | undefined): number | null {
   if (!version) return null;
-  const match = /(\d+)\s*$/.exec(version.trim());
+  const match = /(?:^|[^\d])v?(\d+)\.\d+\.\d+(?=$|[^\d])/.exec(version.trim());
   return match ? Number(match[1]) : null;
 }
 
-export const MIN_SUPPORTED_SERVER_BUILD = 19242;
+export const MIN_SUPPORTED_SERVER_MAJOR = 2;
 
-/** Accept a running service only when it matches the installed `opencode2`
- *  build and clears the minimum-build floor. A daemon left running from a
- *  previous install still satisfies the floor, so without the build match Orbit
- *  would keep talking to the old server after the CLI is upgraded. When the
- *  installed build is unknown, accept anything above the floor so Orbit can
- *  still attach to a compatible external service. */
-export function serverVersionPredicate(
-  installedVersion: string | null,
-  minBuild: number
-): (version: string) => boolean {
-  const installedBuild = serverBuild(installedVersion);
+/** Providers Orbit surfaces in Settings, in display order. Every other
+ *  integration the runtime catalog reports stays hidden. Command Code ships as
+ *  a community plugin and plugin releases have registered both `commandcode`
+ *  and `command-code` as the auth provider id, so both are accepted. */
+export const SUPPORTED_PROVIDER_IDS = ["opencode-go", "command-code", "commandcode", "openai"];
+
+/** Keep the V2 API contract boundary: allow V2 patch/minor updates, but never
+ *  connect this client to V1 or legacy beta services. */
+export function serverVersionPredicate(installedVersion: string | null): (version: string) => boolean {
+  const installedMajor = serverMajor(installedVersion);
   return (version) => {
-    const build = serverBuild(version);
-    if (build === null || build < minBuild) return false;
-    return installedBuild === null || build === installedBuild;
+    if (serverMajor(version) !== MIN_SUPPORTED_SERVER_MAJOR) return false;
+    return installedMajor === null || installedMajor === MIN_SUPPORTED_SERVER_MAJOR;
   };
 }
 
@@ -663,18 +659,16 @@ export class OpenShellBackend {
     return [desktop];
   }
 
-  private static minSupportedServerBuild = MIN_SUPPORTED_SERVER_BUILD;
-
   private static streamFailureLimit = 3;
 
   private static serverVersionPredicate(installedVersion: string | null): (version: string) => boolean {
-    return serverVersionPredicate(installedVersion, OpenShellBackend.minSupportedServerBuild);
+    return serverVersionPredicate(installedVersion);
   }
 
-  /** Version of the `opencode2` on PATH, or null when it cannot be probed. */
+  /** Version of the V2 `opencode` on PATH, or null when it cannot be probed. */
   private async installedServerVersion(): Promise<string | null> {
     return new Promise((resolve) => {
-      execFile("opencode2", ["--version"], { timeout: 5000 }, (error, stdout) => {
+      execFile("opencode", ["--version"], { timeout: 5000 }, (error, stdout) => {
         resolve(error ? null : stdout.trim().split("\n")[0]?.trim() || null);
       });
     });
@@ -761,7 +755,7 @@ export class OpenShellBackend {
     if (Date.now() - this.lastEnsureAt < this.ensureCooldownMs) return null;
     this.lastEnsureAt = Date.now();
     const attempt = Service.ensure({
-      command: ["opencode2", "serve", "--service"],
+      command: ["opencode", "serve", "--service"],
       version
     }).catch(() => null);
     const timeout = sleep(10_000).then(() => null);
@@ -919,7 +913,7 @@ export class OpenShellBackend {
       const type = typed.type ?? typed.event ?? "unknown";
       const eventData = typed.data ?? typed.properties;
       let forwardedEvent: RawStreamEvent = evt;
-      // The global daemon is shared with external `opencode2` terminal
+      // The global daemon is shared with external `opencode` terminal
       // sessions. Interactive prompts for sessions Orbit never opened must
       // not reach the renderer, where they would otherwise be misattributed
       // to the focused panel. (Child/subagent transcript streams still flow;
@@ -2024,16 +2018,17 @@ export class OpenShellBackend {
         resolve({ available: !error, version: error ? null : stdout.trim().split("\n")[0] || null }));
     });
     const [opencode, deepseek] = await Promise.all([
-      probe("opencode2"),
+      probe("opencode"),
       probe("dsh")
     ]);
+    const opencodeCompatible = opencode.available && serverVersionPredicate(opencode.version)(opencode.version ?? "");
     return [
       {
         protocolVersion: 1,
         id: "opencode",
         name: "OpenCode",
         version: opencode.version,
-        available: Boolean(this.client) || opencode.available,
+        available: Boolean(this.client) || opencodeCompatible,
         capabilities: {
           attachments: true,
           commands: true,
@@ -2044,7 +2039,7 @@ export class OpenShellBackend {
           sessionFork: true,
           sessionResume: true,
           steering: false,
-          tui: opencode.available
+          tui: opencodeCompatible
         }
       },
       {
@@ -2165,15 +2160,15 @@ export class OpenShellBackend {
     const target = this.activeTarget(workspace);
     if (!this.client) throw new Error("no active session");
     this.assertTarget(target);
-    await this.client.session.inbox.steer({ sessionID: target.sessionID, inboxID });
+    await this.client.session.inbox.update({ sessionID: target.sessionID, inboxID, delivery: "steer" });
   }
   async listForms(workspace: WorkspaceIdentity): Promise<PendingFormRequest[]> {
     const target = this.activeTarget(workspace);
     if (!this.client) throw new Error("no active session");
     this.assertTarget(target);
     const [sessionResult, globalResult] = await Promise.all([
-      this.client.form.list({ sessionID: target.sessionID }),
-      this.client.form.request.list({ location: { directory: target.directory } }).catch(() => null)
+      this.client.session.form.list({ sessionID: target.sessionID }),
+      this.client.form.list({ location: { directory: target.directory } }).catch(() => null)
     ]);
     this.assertTarget(target);
     const sessionForms = Array.isArray(sessionResult)
@@ -2193,7 +2188,7 @@ export class OpenShellBackend {
     if (!this.client) throw new Error("no active session");
     this.assertTarget(target);
     const sessionID = this.formSessionID(target.sessionID, formSessionID);
-    await this.client.form.reply(
+    await this.client.session.form.reply(
       { sessionID, formID, answer: answers },
       sessionID === "global" ? this.globalFormRequestOptions(target.directory) : undefined
     );
@@ -2204,7 +2199,7 @@ export class OpenShellBackend {
     if (!this.client) throw new Error("no active session");
     this.assertTarget(target);
     const sessionID = this.formSessionID(target.sessionID, formSessionID);
-    await this.client.form.cancel(
+    await this.client.session.form.cancel(
       { sessionID, formID },
       sessionID === "global" ? this.globalFormRequestOptions(target.directory) : undefined
     );
@@ -2265,17 +2260,19 @@ export class OpenShellBackend {
       .catch(() => []);
     this.assertTarget(target);
     const skillArr = Array.isArray(skills) ? skills : (skills as { data?: unknown }).data ?? [];
-    const isSkill = (skillArr as { id?: string; name?: string }[]).some(
+    const selectedSkill = (skillArr as { id?: string; name?: string }[]).find(
       (s) => s.name === name || s.id === name
     );
-    if (isSkill) {
-      await this.client.session.skill({ sessionID: target.sessionID, skill: name });
+    if (selectedSkill) {
+      const id = selectedSkill.id ?? selectedSkill.name;
+      if (!id) throw new Error("skill has no identifier");
+      await this.client.session.skill({ sessionID: target.sessionID, id });
       this.assertTarget(target);
       return;
     }
     await this.client.session.command({
       sessionID: target.sessionID,
-      command: name,
+      name,
       text: args ?? ""
     });
     this.assertTarget(target);
@@ -2359,7 +2356,7 @@ export class OpenShellBackend {
     const res = await this.client.integration.list({ location: { directory: target.directory } });
     this.assertTarget(target);
     const rows = Array.isArray(res) ? res : (res as { data?: unknown }).data ?? [];
-    return (rows as Array<{
+    const catalog = rows as Array<{
       id?: string;
       name?: string;
       methods?: Array<{
@@ -2370,7 +2367,8 @@ export class OpenShellBackend {
         form?: Array<Record<string, unknown>>;
       }>;
       connections?: Array<{ type?: string; id?: string; label?: string; name?: string }>;
-    }>).map((row) => {
+    }>;
+    return SUPPORTED_PROVIDER_IDS.flatMap((id) => catalog.filter((row) => row.id === id)).map((row) => {
       const methods = row.methods ?? [];
       const keyMethod = methods.find((method) => method.type === "key");
       const fields = (keyMethod?.form ?? []).flatMap((field): ProviderFormField[] => {
@@ -2427,7 +2425,7 @@ export class OpenShellBackend {
           ? [{ id: method.id, label: method.label ?? "OAuth" }]
           : [])
       };
-    }).filter((row) => row.id);
+    });
   }
 
   async connectProviderKey(
@@ -2439,6 +2437,7 @@ export class OpenShellBackend {
   ): Promise<void> {
     const target = this.activeTarget(workspace);
     if (this.contextFor(workspace).runtime) throw new Error("DeepSeek Harness provider setup is not supported yet");
+    if (!SUPPORTED_PROVIDER_IDS.includes(integrationID)) throw new Error(`${integrationID} is not a supported provider`);
     if (!this.client) throw new Error("no active session");
     await this.client.integration.connect.key({
       integrationID,
@@ -2453,6 +2452,7 @@ export class OpenShellBackend {
   async startProviderOAuth(workspace: WorkspaceIdentity, integrationID: string, methodID: string): Promise<ProviderOAuthAttempt> {
     const target = this.activeTarget(workspace);
     if (this.contextFor(workspace).runtime) throw new Error("DeepSeek Harness provider setup is not supported yet");
+    if (!SUPPORTED_PROVIDER_IDS.includes(integrationID)) throw new Error(`${integrationID} is not a supported provider`);
     if (!this.client) throw new Error("no active session");
     const res = await this.client.integration.oauth.connect({
       integrationID,
@@ -2597,7 +2597,7 @@ export class OpenShellBackend {
     const target = this.activeTarget(workspace);
     if (this.contextFor(workspace).runtime) throw new Error("DeepSeek Harness provider setup is not supported yet");
     if (!this.client) throw new Error("no active session");
-    await this.client.credential.remove({ credentialID, location: { directory: target.directory } });
+    await this.client.credential.remove({ credentialID });
     this.assertTarget(target);
   }
 
@@ -2686,7 +2686,7 @@ export class OpenShellBackend {
     await this.client.permission.reply({
       sessionID: target.sessionID,
       requestID,
-      reply
+      decision: reply
     });
     this.assertTarget(target);
   }

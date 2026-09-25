@@ -8,43 +8,34 @@ const hoisted = vi.hoisted(() => ({
 }));
 
 vi.mock("electron", () => ({ shell: { trashItem: vi.fn(), openPath: vi.fn() } }));
-vi.mock("@opencode-ai/client", () => ({ OpenCode: { make: hoisted.openCodeMake } }));
-vi.mock("@opencode-ai/client/service", () => ({
+vi.mock("@opencode/client", () => ({ OpenCode: { make: hoisted.openCodeMake } }));
+vi.mock("@opencode/client/service", () => ({
   Service: { discover: hoisted.discover, ensure: hoisted.ensure, headers: () => undefined }
 }));
 
 import packageJson from "../../package.json";
-import { MIN_SUPPORTED_SERVER_BUILD, OpenShellBackend, serverBuild, serverVersionPredicate } from "./opencode";
-
-const MIN_BUILD = MIN_SUPPORTED_SERVER_BUILD;
-
-describe("serverBuild", () => {
-  it("reads the trailing build from installed and service version strings", () => {
-    expect(serverBuild("opencode2 v0.0.0-beta-19242")).toBe(19242);
-    expect(serverBuild("0.0.0-beta-19242")).toBe(19242);
-    expect(serverBuild(undefined)).toBeNull();
-    expect(serverBuild("")).toBeNull();
-    expect(serverBuild("no-build")).toBeNull();
-  });
-});
+import { OpenShellBackend, serverVersionPredicate } from "./opencode";
 
 describe("serverVersionPredicate", () => {
-  it("keeps the server compatibility floor aligned with the pinned client contract", () => {
-    expect(serverBuild(packageJson.dependencies["@opencode-ai/client"])).toBe(MIN_BUILD);
+  it("accepts the pinned V2 SDK's service version", () => {
+    const sdkVersion = packageJson.dependencies["@opencode/client"];
+    expect(serverVersionPredicate(`opencode v${sdkVersion}`)(sdkVersion)).toBe(true);
   });
 
-  it("rejects a stale running service and accepts the installed build", () => {
-    const accept = serverVersionPredicate("opencode2 v0.0.0-beta-19242", MIN_BUILD);
-    expect(accept("0.0.0-beta-19242")).toBe(true);
-    expect(accept("0.0.0-beta-18138")).toBe(false);
-    expect(accept("0.0.0-beta-17000")).toBe(false);
+  it("accepts compatible V2 services and rejects V1 and legacy beta versions", () => {
+    const accept = serverVersionPredicate("opencode v2.0.15");
+    expect(accept("2.0.15")).toBe(true);
+    expect(accept("2.0.16")).toBe(true);
+    expect(accept("2.1.0")).toBe(true);
+    expect(accept("1.18.32")).toBe(false);
+    expect(accept("0.0.0-beta-19242")).toBe(false);
+    expect(accept("not-a-version")).toBe(false);
   });
 
-  it("falls back to the floor when the installed build is unknown", () => {
-    const accept = serverVersionPredicate(null, MIN_BUILD);
-    expect(accept("0.0.0-beta-19242")).toBe(true);
-    expect(accept("0.0.0-beta-19241")).toBe(false);
-    expect(accept("0.0.0-beta-17000")).toBe(false);
+  it("rejects incompatible services when the installed CLI version is unknown", () => {
+    const accept = serverVersionPredicate(null);
+    expect(accept("2.0.15")).toBe(true);
+    expect(accept("1.18.32")).toBe(false);
   });
 });
 
@@ -61,30 +52,29 @@ describe("OpenShellBackend.connect", () => {
     hoisted.openCodeMake.mockReturnValue({ session: { list: vi.fn(async () => []) } });
   });
 
-  it("reuses a running service that matches the installed binary", async () => {
+  it("reuses a running V2 service", async () => {
     const endpoint = { url: "http://127.0.0.1:1", auth: undefined };
     hoisted.discover.mockResolvedValue(endpoint);
     const backend = new OpenShellBackend();
-    stubInstalledVersion(backend, "opencode2 v0.0.0-beta-19242");
+    stubInstalledVersion(backend, "opencode v2.0.15");
 
     await expect(backend.connect()).resolves.toBe(true);
 
     const options = hoisted.discover.mock.calls[0][0] as { version: (value: string) => boolean };
-    expect(options.version("0.0.0-beta-19242")).toBe(true);
-    expect(options.version("0.0.0-beta-18138")).toBe(false);
+    expect(options.version("2.0.15")).toBe(true);
+    expect(options.version("2.1.0")).toBe(true);
+    expect(options.version("1.18.32")).toBe(false);
     expect(hoisted.ensure).not.toHaveBeenCalled();
   });
 
-  it("replaces a stale daemon by ensuring the installed binary's build", async () => {
-    const staleVersion = "0.0.0-beta-18138";
-    // Model the SDK's discover contract: reject a registered service whose
-    // version fails the predicate instead of handing back the stale daemon.
+  it("replaces an incompatible legacy daemon by ensuring the V2 service", async () => {
+    const legacyVersion = "0.0.0-beta-19242";
     hoisted.discover.mockImplementation(async (options: { version: (value: string) => boolean }) =>
-      options.version(staleVersion) ? { url: "http://127.0.0.1:1", auth: undefined } : undefined
+      options.version(legacyVersion) ? { url: "http://127.0.0.1:1", auth: undefined } : undefined
     );
     hoisted.ensure.mockResolvedValue({ url: "http://127.0.0.1:2", auth: undefined });
     const backend = new OpenShellBackend();
-    stubInstalledVersion(backend, "opencode2 v0.0.0-beta-19242");
+    stubInstalledVersion(backend, "opencode v2.0.15");
 
     await expect(backend.connect()).resolves.toBe(true);
 
@@ -93,8 +83,8 @@ describe("OpenShellBackend.connect", () => {
       command: string[];
       version: (value: string) => boolean;
     };
-    expect(options.command).toEqual(["opencode2", "serve", "--service"]);
-    expect(options.version("0.0.0-beta-19242")).toBe(true);
-    expect(options.version(staleVersion)).toBe(false);
+    expect(options.command).toEqual(["opencode", "serve", "--service"]);
+    expect(options.version("2.0.15")).toBe(true);
+    expect(options.version(legacyVersion)).toBe(false);
   });
 });

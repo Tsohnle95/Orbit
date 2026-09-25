@@ -6,8 +6,8 @@ vi.mock("electron", () => ({
   app: { getPath: () => tmpdir() },
   shell: { trashItem: vi.fn() }
 }));
-vi.mock("@opencode-ai/client", () => ({ OpenCode: { make: vi.fn() } }));
-vi.mock("@opencode-ai/client/service", () => ({ Service: {} }));
+vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
+vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
 import { MAX_RETAINED_OUTPUT_CHARS } from "@shared/retention";
 import { replayTranscript } from "./opencode";

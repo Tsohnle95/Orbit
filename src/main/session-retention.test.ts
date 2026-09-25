@@ -8,8 +8,8 @@ vi.mock("electron", () => ({
   app: { getPath: () => tmpdir() },
   shell: { trashItem: vi.fn(), openPath: async () => "" }
 }));
-vi.mock("@opencode-ai/client", () => ({ OpenCode: { make: vi.fn() } }));
-vi.mock("@opencode-ai/client/service", () => ({ Service: {} }));
+vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
+vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
 import { SESSION_RETENTION_MS } from "@shared/retention";
 import { OpenShellBackend } from "./opencode";

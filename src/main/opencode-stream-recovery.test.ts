@@ -2,8 +2,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("electron", () => ({ shell: { trashItem: vi.fn(), openPath: vi.fn() } }));
-vi.mock("@opencode-ai/client", () => ({ OpenCode: { make: vi.fn() } }));
-vi.mock("@opencode-ai/client/service", () => ({
+vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
+vi.mock("@opencode/client/service", () => ({
   Service: { discover: vi.fn(), ensure: vi.fn(), headers: () => undefined }
 }));
 

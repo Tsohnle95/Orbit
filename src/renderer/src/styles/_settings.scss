@@ -163,8 +163,6 @@
 .provider-toolbar > div { display: grid; gap: 3px; }
 .provider-toolbar strong { font-size: 13px; }
 .provider-toolbar small { color: var(--text-faint); font-size: 10.5px; }
-.provider-toolbar input { width: min(280px, 42%); padding: 9px 12px; color: var(--text); background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: var(--radius-full); outline: none; }
-.provider-toolbar input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
 .provider-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .provider-card { display: flex; min-width: 0; flex-direction: column; padding: 14px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); }
 .provider-card.connected { border-color: color-mix(in srgb, var(--green) 45%, var(--border)); }
@@ -178,7 +176,7 @@
 .provider-connections > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 9px; background: var(--bg-inset); border-radius: var(--radius-md); font-size: 10.5px; }
 .provider-connections span { display: flex; align-items: center; gap: 7px; }
 .provider-connections i { width: 6px; height: 6px; background: var(--green); border-radius: 50%; }
-.provider-connections button, .provider-card-footer button, .provider-form-actions button, .provider-show-all { color: var(--text-dim); background: transparent; border: 1px solid var(--border-strong); border-radius: var(--radius-full); cursor: pointer; }
+.provider-connections button, .provider-card-footer button, .provider-form-actions button { color: var(--text-dim); background: transparent; border: 1px solid var(--border-strong); border-radius: var(--radius-full); cursor: pointer; }
 .provider-connections button { padding: 3px 7px; font-size: 9px; }
 .provider-note { margin: 9px 0 0; color: var(--text-faint); font-size: 10px; }
 .provider-card-footer { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 14px; }
@@ -195,7 +193,6 @@
 .provider-form-actions button { padding: 6px 10px; }
 .provider-form-actions button.primary { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 700; }
 .provider-error { margin: 8px 0 0; color: var(--red) !important; font-size: 10.5px; }
-.provider-show-all { justify-self: center; padding: 7px 13px; }
 
 .settings-select {
   max-width: min(360px, 52%);
@@ -230,7 +227,5 @@
   .settings-close { grid-column: 1 / -1; justify-self: start; }
   .theme-grid { grid-template-columns: 1fr; margin-left: 0; }
   .settings-list { margin-left: 0; }
-  .provider-toolbar { align-items: stretch; flex-direction: column; }
-  .provider-toolbar input { width: 100%; }
   .provider-grid { grid-template-columns: 1fr; }
 }

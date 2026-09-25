@@ -3,7 +3,7 @@ import path from "node:path";
 
 // GUI-launched macOS/Linux apps inherit a minimal PATH from the window server
 // (macOS launches them with `/usr/bin:/bin:/usr/sbin:/sbin`), so user-installed
-// runtimes like `opencode2` (~/.local/bin) are invisible to `execFile` probes
+// runtimes like `opencode` (~/.opencode/bin) are invisible to `execFile` probes
 // and `node-pty` spawns even though the app's own service connection works.
 // Augment PATH with the conventional user tool directories so runtime probing,
 // the OpenCode service fallback, the embedded TUI, and the terminal tray all

@@ -11,9 +11,9 @@ and verified in real sessions.
 - Node 22.23.2 and npm. `.node-version`, `package.json` engines, and CI select
   the supported Node 22 range starting at 22.23.2, which satisfies the full
   locked dependency graph.
-- `opencode2` on PATH (checked with `which opencode2`). The app connects
+- `opencode` V2 on PATH (checked with `which opencode`). The app connects
   via `Service.discover()` and falls back to spawning
-  `opencode2 serve --service` itself, so a service is not strictly
+  `opencode serve --service` itself, so a service is not strictly
   required to be running beforehand.
 
 ## Running
@@ -27,6 +27,7 @@ npm run build:compile # compile only -> out/ (no launch)
 npm run pack     # build + package a real macOS app -> release/mac/Orbit.app
 npm run install-app # build + package + install Orbit.app into /Applications (macOS)
 npm run check    # typecheck, tests, docs check, and compile-only build
+npm run smoke:opencode # isolated V2 service + session/event smoke (temp HOME)
 npm start        # launch the existing production build with electron-vite preview
 ```
 
@@ -84,27 +85,28 @@ implementation and does not need that helper.
 
 ## Updating the OpenCode client
 
-`@opencode-ai/client` is pinned to an exact prerelease. The pinned contract and
-the installed `opencode2` binary drift independently: the binary is whatever is
-on PATH (or an already-running service), while the compile-time contract moves
-only when this procedure runs. Run `npm run client:drift` on a weekly cadence —
-and before adopting any new protocol feature — to compare the pin against the
-published `beta`, `next`, and `dev` lines; it exits nonzero when beta is ahead.
+`@opencode/client` is pinned to an exact stable V2 release. The pinned contract
+and the installed `opencode` binary drift independently: the binary is whatever
+is on PATH (or an already-running service), while the compile-time contract
+moves only when this procedure runs. Run `npm run client:drift` on a weekly
+cadence — and before adopting any new protocol feature — to compare the pin
+against the published `latest` tag; it exits nonzero when a newer stable
+release exists.
 
 The runtime binary is not pinned. On every connect Orbit probes
-`opencode2 --version`, accepts a registered service only when its build matches
-that installed build and clears `minSupportedServerBuild`, and otherwise asks
+`opencode --version`, accepts a registered service only when it reports the
+same V2 major line (`MIN_SUPPORTED_SERVER_MAJOR = 2`), and otherwise asks
 `Service.ensure` to terminate the mismatched daemon and spawn the new binary.
 The binary is whatever `PATH` resolves, so upgrading the CLI in a terminal and
 restarting Orbit is enough to move to the new server; no pin change is needed.
 
-When the event contract moves, raise
-`minSupportedServerBuild` in `src/main/opencode.ts` so discovery and
+When the event contract moves to a new V2 major line, raise
+`MIN_SUPPORTED_SERVER_MAJOR` in `src/main/opencode.ts` so discovery and
 `Service.ensure` refuse servers too old to speak it; the predicate receives the
 service's reported version string. Update it only in an explicit dependency
 commit:
 
-1. Run `npm install --save-exact @opencode-ai/client@<version>` on the supported
+1. Run `npm install --save-exact @opencode/client@<version>` on the supported
    Node version and review that the lockfile changes only the intended client,
    protocol, schema, and necessary transitive packages.
 2. Review generated client method signatures used by `src/main/opencode.ts`
@@ -114,7 +116,9 @@ commit:
    fixtures in the main and renderer tests. Add or update captured protocol
    fixtures for every changed event shape, including handled and intentionally
    ignored events.
-4. Run `npm run check` and `npm run test:platform`. Exercise the human GUI smoke
+4. Run `npm run check` and `npm run test:platform`; run `npm run smoke:opencode`
+   to exercise discovery, session create/read/delete, and the event stream
+   against the installed CLI in an isolated HOME. Exercise the human GUI smoke
    checklist when service or streaming behavior changed.
 
 ## Usage data plugin (prototype)
@@ -166,13 +170,13 @@ median or jsdom timing as a cross-machine browser benchmark.
 
 ## Smoke test checklist
 
-1. `which opencode2` — binary present.
+1. `which opencode` — binary present.
 2. `npm run build` (compiles then launches) with output captured to a log:
    `nohup npm run build > /tmp/orbit-smoke.log 2>&1 &`
 3. After ~10s check the log for `[orbit]` console.error lines
    (`[orbit] event loop error:` means the SSE subscription failed).
 4. Verify the backend spawned its service:
-   `pgrep -fl "opencode2 serve"` and
+   `pgrep -fl "opencode serve"` and
    `lsof -nP -iTCP -sTCP:LISTEN | grep -i opencode`.
 5. On macOS, verify the Electron window is alive:
    `pgrep -f "Orbit.app/Contents/MacOS/Electron"`. Use Task Manager or the
@@ -244,14 +248,16 @@ Caveat: `npm start` (electron-vite preview) does NOT forward
 `--remote-debugging-port`; use `npx electron .` on the built output, or
 `npm run dev` and attach to its window.
 
-## Probing the opencode2 service directly
+## Probing the OpenCode service directly
 
 The service speaks JSON HTTP on a localhost port. Useful when the client
 call "should work" but something fails — probe the raw API.
 
-- Port: `lsof -nP -iTCP -sTCP:LISTEN | grep opencode2` (the `opencode2
+- Port: `lsof -nP -iTCP -sTCP:LISTEN | grep opencode` (the `opencode
   serve --service` process).
-- Registration file: `~/.config/opencode/service.json` holds `password`.
+- Registration file: `${XDG_STATE_HOME:-~/.local/state}/opencode/service.json`
+  holds `password`; the macOS desktop app also registers at
+  `~/Library/Application Support/ai.opencode.desktop/opencode/service.json`.
 - Auth: HTTP Basic, username `opencode`:
   `Authorization: "Basic " + btoa("opencode:" + password)`.
 - Endpoints: `GET /api/model`, `GET /api/model/default`,
@@ -260,12 +266,22 @@ call "should work" but something fails — probe the raw API.
   `location[directory]=/Users/ty/orbit`. A JSON-stringified
   `location={"directory":...}` is rejected with
   `Expected object | undefined, got string at ["location"]`. The
-  `@opencode-ai/client` does this correctly itself
+  `@opencode/client` does this correctly itself
   (`appendQuery` in its generated code) — this only bites hand-rolled
   requests.
 
-The client package can't be imported directly in plain Node ESM (it
-emits extensionless imports for a bundler); probe with `fetch` instead.
+The V2 client package is importable from plain Node ESM (it emits explicit
+`.js` specifiers), so scripted probes can use the SDK directly; raw `fetch`
+against the routes above remains the quickest manual check.
+
+The managed service binds one configured port (default 49374; change it with
+`opencode service set port <port>`, which writes
+`${XDG_CONFIG_HOME:-~/.config}/opencode/service.json`). A second isolated
+service therefore needs its own port — `npm run smoke:opencode` allocates a
+free loopback port and runs with a temporary HOME, so it never disturbs the
+user's running daemon. The V2 install also keeps an `opencode2` compatibility
+shim next to `opencode`; older clients that still spawn
+`opencode2 serve --service` reach the same daemon through it.
 
 ## Known quirks worth remembering
 

@@ -9,8 +9,8 @@ vi.mock("electron", () => ({
   app: { getPath: () => tmpdir() },
   shell: { trashItem: vi.fn() }
 }));
-vi.mock("@opencode-ai/client", () => ({ OpenCode: { make: vi.fn() } }));
-vi.mock("@opencode-ai/client/service", () => ({ Service: {} }));
+vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
+vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
 import { OpenShellBackend, type SessionContext } from "./opencode";
 import type { WorkspaceIdentity } from "@shared/types";
@@ -109,32 +109,59 @@ describe("workspace-scoped backend queries", () => {
     }]);
   });
 
-  it("maps runtime integrations without exposing credential secrets", async () => {
-    const client = { integration: { list: vi.fn(async () => ({ data: [{
-      id: "azure",
-      name: "Azure",
-      methods: [
-        { type: "key", label: "API key", form: [{ key: "resourceName", type: "string", title: "Resource", required: true }] },
-        { type: "env", names: ["AZURE_API_KEY"] },
-        { id: "login", type: "oauth", label: "Sign in" }
-      ],
-      connections: [
-        { type: "credential", id: "credential-1", label: "work" },
-        { type: "env", name: "AZURE_API_KEY" }
-      ]
-    }] })) } };
+  it("maps only supported runtime integrations without exposing credential secrets", async () => {
+    const client = { integration: { list: vi.fn(async () => ({ data: [
+      {
+        id: "azure",
+        name: "Azure",
+        methods: [{ type: "key", label: "API key" }],
+        connections: []
+      },
+      {
+        id: "openai",
+        name: "OpenAI",
+        methods: [
+          { type: "key" },
+          { type: "env", names: ["OPENAI_API_KEY"] },
+          { id: "chatgpt-browser", type: "oauth", label: "ChatGPT Pro/Plus (browser)" }
+        ],
+        connections: [
+          { type: "credential", id: "credential-1", label: "work" },
+          { type: "env", name: "OPENAI_API_KEY" }
+        ]
+      },
+      {
+        id: "opencode-go",
+        name: "OpenCode Go",
+        methods: [
+          { type: "key", label: "API key", form: [{ key: "org", type: "string", title: "Organization", required: true }] },
+          { type: "env", names: ["OPENCODE_API_KEY"] }
+        ],
+        connections: []
+      }
+    ] })) } };
     const backend = new OpenShellBackend();
     const workspace = { id: "11111111-1111-4111-8111-111111111111", generation: 1 };
     install(backend, workspace, "/workspace", client);
 
-    expect(await backend.listProviderIntegrations(workspace)).toEqual([{
-      id: "azure",
-      name: "Azure",
-      keyMethod: { label: "API key", fields: [{ key: "resourceName", type: "string", title: "Resource", required: true }] },
-      credentials: [{ id: "credential-1", label: "work" }],
-      environment: { names: ["AZURE_API_KEY"], connected: ["AZURE_API_KEY"] },
-      oauth: [{ id: "login", label: "Sign in" }]
-    }]);
+    expect(await backend.listProviderIntegrations(workspace)).toEqual([
+      {
+        id: "opencode-go",
+        name: "OpenCode Go",
+        keyMethod: { label: "API key", fields: [{ key: "org", type: "string", title: "Organization", required: true }] },
+        credentials: [],
+        environment: { names: ["OPENCODE_API_KEY"], connected: [] },
+        oauth: []
+      },
+      {
+        id: "openai",
+        name: "OpenAI",
+        keyMethod: { fields: [] },
+        credentials: [{ id: "credential-1", label: "work" }],
+        environment: { names: ["OPENAI_API_KEY"], connected: ["OPENAI_API_KEY"] },
+        oauth: [{ id: "chatgpt-browser", label: "ChatGPT Pro/Plus (browser)" }]
+      }
+    ]);
     expect(client.integration.list).toHaveBeenCalledWith({ location: { directory: "/workspace" } });
   });
 
@@ -149,17 +176,55 @@ describe("workspace-scoped backend queries", () => {
     const workspace = { id: "11111111-1111-4111-8111-111111111111", generation: 1 };
     install(backend, workspace, "/workspace", client);
 
-    await backend.connectProviderKey(workspace, "azure", "secret", "work", { resourceName: "models" });
+    await backend.connectProviderKey(workspace, "opencode-go", "secret", "work", { org: "my-org" });
     await backend.removeProviderCredential(workspace, "credential-1");
 
     expect(connect).toHaveBeenCalledWith({
-      integrationID: "azure",
+      integrationID: "opencode-go",
       location: { directory: "/workspace" },
       key: "secret",
       label: "work",
-      answer: { resourceName: "models" }
+      answer: { org: "my-org" }
     });
-    expect(remove).toHaveBeenCalledWith({ credentialID: "credential-1", location: { directory: "/workspace" } });
+    expect(remove).toHaveBeenCalledWith({ credentialID: "credential-1" });
+  });
+
+  it("rejects connect and OAuth for providers outside the supported set", async () => {
+    const connect = vi.fn(async () => undefined);
+    const oauthConnect = vi.fn(async () => ({ data: {} }));
+    const client = {
+      integration: { connect: { key: connect }, oauth: { connect: oauthConnect } }
+    };
+    const backend = new OpenShellBackend();
+    const workspace = { id: "11111111-1111-4111-8111-111111111111", generation: 1 };
+    install(backend, workspace, "/workspace", client);
+
+    await expect(backend.connectProviderKey(workspace, "azure", "secret", undefined, {})).rejects.toThrow("azure is not a supported provider");
+    await expect(backend.startProviderOAuth(workspace, "anthropic", "oauth")).rejects.toThrow("anthropic is not a supported provider");
+    expect(connect).not.toHaveBeenCalled();
+    expect(oauthConnect).not.toHaveBeenCalled();
+  });
+
+  it("steers queued inbox items with V2 delivery updates", async () => {
+    const update = vi.fn(async () => undefined);
+    const backend = new OpenShellBackend();
+    const workspace = { id: "11111111-1111-4111-8111-111111111111", generation: 1 };
+    install(backend, workspace, "/workspace", { session: { inbox: { update } } });
+
+    await backend.steerInbox(workspace, "inbox-1");
+
+    expect(update).toHaveBeenCalledWith({ sessionID: "session-1", inboxID: "inbox-1", delivery: "steer" });
+  });
+
+  it("replies to V2 permission requests with a decision", async () => {
+    const reply = vi.fn(async () => undefined);
+    const backend = new OpenShellBackend();
+    const workspace = { id: "11111111-1111-4111-8111-111111111111", generation: 1 };
+    install(backend, workspace, "/workspace", { permission: { reply } });
+
+    await backend.replyPermission(workspace, "request-1", "once", "session-1");
+
+    expect(reply).toHaveBeenCalledWith({ sessionID: "session-1", requestID: "request-1", decision: "once" });
   });
 });
 
@@ -198,6 +263,34 @@ describe("built-in commands and prompt files", () => {
     expect(client.session.compact).toHaveBeenCalledWith({ sessionID: "session-1" });
     expect(client.session.command).not.toHaveBeenCalled();
     expect(client.session.skill).not.toHaveBeenCalled();
+  });
+
+  it("routes project commands with the V2 name field", async () => {
+    const command = vi.fn(async () => undefined);
+    const backend = new OpenShellBackend();
+    const workspace = { id: "11111111-1111-4111-8111-111111111111", generation: 1 };
+    install(backend, workspace, "/workspace", {
+      session: { command },
+      skill: { list: vi.fn(async () => []) }
+    });
+
+    await backend.runCommand(workspace, "project-command", "some args");
+
+    expect(command).toHaveBeenCalledWith({ sessionID: "session-1", name: "project-command", text: "some args" });
+  });
+
+  it("routes selected skills by V2 skill id, not display name", async () => {
+    const skill = vi.fn(async () => undefined);
+    const backend = new OpenShellBackend();
+    const workspace = { id: "11111111-1111-4111-8111-111111111111", generation: 1 };
+    install(backend, workspace, "/workspace", {
+      session: { skill },
+      skill: { list: vi.fn(async () => [{ id: "format-code", name: "Format Code" }]) }
+    });
+
+    await backend.runCommand(workspace, "Format Code");
+
+    expect(skill).toHaveBeenCalledWith({ sessionID: "session-1", id: "format-code" });
   });
 
   it("rejects a built-in compaction after workspace activation", async () => {

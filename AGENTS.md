@@ -24,7 +24,7 @@ npm run check          # canonical verification gate
 npm start              # run the existing production build
 ```
 
-`opencode2` must be on PATH (or an opencode service already running) for
+`opencode` must be on PATH (or an opencode service already running) for
 OpenCode sessions. `dsh` must be on PATH for DeepSeek Harness sessions.
 
 ## Context discipline

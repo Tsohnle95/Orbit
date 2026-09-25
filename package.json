@@ -21,12 +21,13 @@
     "docs:check": "node scripts/check-docs.mjs",
     "generate-icons": "electron scripts/generate-icons.mjs",
     "client:drift": "node scripts/check-client-drift.mjs",
+    "smoke:opencode": "node scripts/opencode-v2-smoke.mjs",
     "check": "npm run typecheck && npm test && npm run docs:check && npm run build:compile"
   },
   "dependencies": {
     "@fontsource/cormorant-garamond": "^5.3.0",
     "@monaco-editor/react": "^4.7.0",
-    "@opencode-ai/client": "0.0.0-beta-19242",
+    "@opencode/client": "2.0.16",
     "@vscode/codicons": "^0.0.46-24",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",

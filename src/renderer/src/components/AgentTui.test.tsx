@@ -140,10 +140,10 @@ describe("AgentTui", () => {
   });
 
   it("returns a failed TUI launch to the GUI with an error", async () => {
-    start.mockRejectedValueOnce(new Error("opencode2 was not found"));
+    start.mockRejectedValueOnce(new Error("opencode was not found"));
     const { AgentTui } = await import("./AgentTui");
     await act(async () => root.render(<ThemeProvider><AgentTui workspace={workspace} onExit={onExit} onError={onError} /></ThemeProvider>));
 
-    expect(onError).toHaveBeenCalledWith("opencode2 was not found");
+    expect(onError).toHaveBeenCalledWith("opencode was not found");
   });
 });

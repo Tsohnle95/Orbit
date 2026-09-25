@@ -2947,7 +2947,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       const globalFormOwnerIDs = globalForm
         ? (streamEvent.ownerSessionIDs ?? []).filter((sessionID) => panelForSession(sessionID))
         : [];
-      // The global SSE stream includes external `opencode2` terminal
+      // The global SSE stream includes external `opencode` terminal
       // sessions and child/subagent streams. Interactive prompts must never
       // be misattributed to the focused panel: only route forms,
       // permissions, and inbox items for sessions Orbit has open. Transcript

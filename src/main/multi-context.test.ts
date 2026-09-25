@@ -8,8 +8,8 @@ vi.mock("electron", () => ({
   app: { getPath: () => tmpdir() },
   shell: { trashItem: vi.fn(), openPath: async () => "" }
 }));
-vi.mock("@opencode-ai/client", () => ({ OpenCode: { make: vi.fn() } }));
-vi.mock("@opencode-ai/client/service", () => ({ Service: {} }));
+vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
+vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
 import { OpenShellBackend } from "./opencode";
 import type { BackendMessage, WorkspaceIdentity } from "@shared/types";

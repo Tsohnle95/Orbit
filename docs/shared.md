@@ -12,7 +12,7 @@ Imported everywhere as `@shared/types` (alias in both tsconfigs and
 |---|---|---|
 | `RuntimeCapabilities` | `{ attachments, commands, models, agents, permissions, providerCredentials, sessionFork, sessionResume, steering, tui }` | Runtime-declared feature availability; `tui` controls whether the agent panel offers its embedded terminal interface |
 | `WorkspaceIdentity` | `{ id, generation }` | Opaque immutable UUID plus monotonic generation minted for one session context; capability calls must echo both; reused while a session stays open so file-updates and editor state keep routing to the same workspace |
-| `SessionInfo` | `{ id, directory, workspace, parentID?, title?, agent? }` | An open opencode2 session (one per panel), immutable workspace identity, and parent/child navigation metadata |
+| `SessionInfo` | `{ id, directory, workspace, parentID?, title?, agent? }` | An open OpenCode session (one per panel), immutable workspace identity, and parent/child navigation metadata |
 | `SessionSummary` | `{ id, title, directory, updatedAt, parentID?, agent? }` | Recent-session graph used by Welcome and task/subagent links |
 | `TreeEntry` | `{ path, type: "file" \| "directory" }` | Explorer tree nodes; `path` is `/`-relative, no trailing slash |
 | `RecoveryRecord` | `{ id, artifact, originalPath, recoveryPath, createdAt, acknowledged, reason }` | Actionable durable save/rename artifact; acknowledgment does not remove bytes |

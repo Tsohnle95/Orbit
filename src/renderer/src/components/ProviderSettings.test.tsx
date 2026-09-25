@@ -14,15 +14,15 @@ const openai: ProviderIntegration = {
   environment: { names: ["OPENAI_API_KEY"], connected: [] },
   oauth: [{ id: "oauth", label: "ChatGPT Pro/Plus" }]
 };
-const azure: ProviderIntegration = {
-  id: "azure",
-  name: "Azure",
+const opencodeGo: ProviderIntegration = {
+  id: "opencode-go",
+  name: "OpenCode Go",
   keyMethod: {
     label: "API key",
-    fields: [{ key: "resourceName", type: "string", title: "Resource name", required: true }]
+    fields: [{ key: "org", type: "string", title: "Organization", required: true }]
   },
   credentials: [],
-  environment: { names: ["AZURE_API_KEY"], connected: [] },
+  environment: { names: ["OPENCODE_API_KEY"], connected: [] },
   oauth: []
 };
 
@@ -54,9 +54,9 @@ describe("ProviderSettings", () => {
   });
 
   it("connects a provider key with provider-specific fields and never redisplays the secret", async () => {
-    const connected = { ...azure, credentials: [{ id: "credential-1", label: "work" }] };
+    const connected = { ...opencodeGo, credentials: [{ id: "credential-1", label: "work" }] };
     const providerIntegrations = vi.fn()
-      .mockResolvedValueOnce([openai, azure])
+      .mockResolvedValueOnce([openai, opencodeGo])
       .mockResolvedValueOnce([openai, connected]);
     const connectProviderKey = vi.fn().mockResolvedValue(undefined);
     const refreshModels = vi.fn().mockResolvedValue(undefined);
@@ -64,37 +64,35 @@ describe("ProviderSettings", () => {
 
     await act(async () => root.render(<ProviderSettings workspace={workspace} usage={[]} refreshModels={refreshModels} />));
     await act(async () => {});
-    const azureCard = [...container.querySelectorAll<HTMLElement>(".provider-card")].find((card) => card.textContent?.includes("Azure"))!;
-    act(() => [...azureCard.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Add key")!.click());
-    const inputs = azureCard.querySelectorAll<HTMLInputElement>("input");
+    const card = [...container.querySelectorAll<HTMLElement>(".provider-card")].find((item) => item.textContent?.includes("OpenCode Go"))!;
+    act(() => [...card.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Add key")!.click());
+    const inputs = card.querySelectorAll<HTMLInputElement>("input");
     act(() => {
-      type(inputs[0], "azure-secret");
+      type(inputs[0], "go-secret");
       type(inputs[1], "work");
-      type(inputs[2], "my-models");
+      type(inputs[2], "my-org");
     });
-    await act(async () => azureCard.querySelector<HTMLFormElement>("form")!.requestSubmit());
+    await act(async () => card.querySelector<HTMLFormElement>("form")!.requestSubmit());
 
-    expect(connectProviderKey).toHaveBeenCalledWith(workspace, "azure", "azure-secret", "work", { resourceName: "my-models" });
+    expect(connectProviderKey).toHaveBeenCalledWith(workspace, "opencode-go", "go-secret", "work", { org: "my-org" });
     expect(refreshModels).toHaveBeenCalled();
     expect(container.textContent).toContain("Connected");
-    expect(container.textContent).not.toContain("azure-secret");
+    expect(container.textContent).not.toContain("go-secret");
   });
 
-  it("searches the full runtime catalog and removes opaque credentials", async () => {
+  it("renders every runtime-reported provider with no catalog browsing and removes opaque credentials", async () => {
     const connected = { ...openai, credentials: [{ id: "credential-1", label: "default" }] };
-    const providerIntegrations = vi.fn().mockResolvedValue([connected, azure]);
+    const providerIntegrations = vi.fn().mockResolvedValue([connected, opencodeGo]);
     const removeProviderCredential = vi.fn().mockResolvedValue(undefined);
     window.openshell = { ...previousApi, providerIntegrations, removeProviderCredential };
     vi.spyOn(window, "confirm").mockReturnValue(true);
 
     await act(async () => root.render(<ProviderSettings workspace={workspace} usage={[]} refreshModels={async () => {}} />));
     await act(async () => {});
-    const search = container.querySelector<HTMLInputElement>("[aria-label='Search providers']")!;
-    act(() => {
-      type(search, "openai");
-    });
     expect(container.textContent).toContain("OpenAI");
-    expect(container.textContent).not.toContain("Azure");
+    expect(container.textContent).toContain("OpenCode Go");
+    expect(container.querySelector("[aria-label='Search providers']")).toBeNull();
+    expect(container.textContent).not.toContain("Browse all");
 
     await act(async () => [...container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Remove")!.click());
     expect(removeProviderCredential).toHaveBeenCalledWith(workspace, "credential-1");
