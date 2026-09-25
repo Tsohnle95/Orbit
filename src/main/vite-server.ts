@@ -2,6 +2,7 @@ import { spawn as nodeSpawn } from "node:child_process";
 import { get } from "node:http";
 import { createServer } from "node:net";
 import { existsSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import path from "node:path";
 import type { VitePreview } from "@shared/types";
 
@@ -49,6 +50,40 @@ export function viteHttpError(url: string, status: number): Error | null {
     );
   }
   return new Error(`Vite returned HTTP ${status} while loading ${pathname}`);
+}
+
+const HTML_ENTRY_IGNORES = new Set(["node_modules", ".git"]);
+const HTML_ENTRY_MAX_DEPTH = 6;
+
+/**
+ * Find the shallowest HTML page under a workspace so the preview can serve a
+ * directory that has no root index.html. Dependency/VCS/hidden directories are
+ * skipped and symlinks are never followed, so the entry stays inside the
+ * workspace. `index.html` wins over any other page at the same or shallower
+ * depth.
+ */
+export async function findHtmlEntry(root: string): Promise<string | null> {
+  let fallback: string | null = null;
+  let level = [root];
+  for (let depth = 0; depth <= HTML_ENTRY_MAX_DEPTH && level.length > 0; depth += 1) {
+    const directories: string[] = [];
+    for (const directory of level) {
+      const entries = await readdir(directory, { withFileTypes: true }).catch(() => null);
+      if (!entries) continue;
+      for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+        if (entry.name.startsWith(".") || HTML_ENTRY_IGNORES.has(entry.name)) continue;
+        const absolute = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+          directories.push(absolute);
+        } else if (entry.isFile() && /\.html?$/i.test(entry.name)) {
+          if (entry.name.toLowerCase() === "index.html") return absolute;
+          fallback ??= absolute;
+        }
+      }
+    }
+    level = directories;
+  }
+  return fallback;
 }
 
 export function probeFreePort(firstPort: number): Promise<number> {

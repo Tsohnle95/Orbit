@@ -1,5 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-import { defaultViteDeps, resolveViteCommand, viteHttpError, VitePreviewManager, type ViteChild, type ViteManagerDeps } from "./vite-server";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { defaultViteDeps, findHtmlEntry, resolveViteCommand, viteHttpError, VitePreviewManager, type ViteChild, type ViteManagerDeps } from "./vite-server";
 
 interface FakeChild extends ViteChild {
   killed: boolean;
@@ -139,6 +142,53 @@ describe("viteHttpError", () => {
     expect(viteHttpError("http://127.0.0.1:5199/demo.html", 200)).toBeNull();
     expect(viteHttpError("http://127.0.0.1:5199/", 404)?.message)
       .toContain("Open an HTML file and try again");
+  });
+});
+
+describe("findHtmlEntry", () => {
+  const roots: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  });
+
+  async function tree(files: Record<string, string>): Promise<string> {
+    const root = await mkdtemp(path.join(tmpdir(), "orbit-vite-"));
+    roots.push(root);
+    for (const [relative, content] of Object.entries(files)) {
+      const absolute = path.join(root, relative);
+      await mkdir(path.dirname(absolute), { recursive: true });
+      await writeFile(absolute, content);
+    }
+    return root;
+  }
+
+  it("returns null when the workspace has no page", async () => {
+    const root = await tree({ "readme.md": "# hi", "src/main.ts": "export {}" });
+    expect(await findHtmlEntry(root)).toBeNull();
+  });
+
+  it("prefers a root index.html", async () => {
+    const root = await tree({ "index.html": "<html></html>", "docs/index.html": "<html></html>" });
+    expect(await findHtmlEntry(root)).toBe(path.join(root, "index.html"));
+  });
+
+  it("finds a nested index.html and skips dependency directories", async () => {
+    const root = await tree({
+      "node_modules/pkg/index.html": "<html></html>",
+      "docs/index.html": "<html></html>"
+    });
+    expect(await findHtmlEntry(root)).toBe(path.join(root, "docs", "index.html"));
+  });
+
+  it("prefers any index.html over a shallower non-index page", async () => {
+    const root = await tree({ "about.html": "<html></html>", "docs/index.html": "<html></html>" });
+    expect(await findHtmlEntry(root)).toBe(path.join(root, "docs", "index.html"));
+  });
+
+  it("falls back to the shallowest HTML file when no index exists", async () => {
+    const root = await tree({ "site/about.html": "<html></html>", "deep/nested/page.html": "<html></html>" });
+    expect(await findHtmlEntry(root)).toBe(path.join(root, "site", "about.html"));
   });
 });
 

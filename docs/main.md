@@ -319,7 +319,7 @@ Internals:
 | `shell:set-appearance` | `(appearance: "dark" \| "light") → void` — sets `nativeTheme.themeSource` so window vibrancy and native chrome follow the active theme (dark for Original and Kitty Glass, light for Paper); the renderer reports it on boot and on every theme change |
 | `shell:install-app` | `() → {ok, message}`; macOS only — spawns `scripts/install-app.mjs` to build and package the app, then replaces `/Applications/Orbit.app` |
 | `shell:validate-w3c` | `(path, content) → W3cDiagnostic[]`; calls the Nu Html Checker or W3C CSS Validator for HTML and plain CSS paths; preprocessor stylesheets (SCSS, LESS, Sass) return no diagnostics |
-| `shell:vite-start` | `(workspace, entryPath?) → VitePreview` — starts a loopback Vite dev server and opens its verified URL; an active HTML entry is confined to the workspace and served from its containing directory, otherwise the workspace root is served; Vite resolves from either a self-contained package or the repository backing the installed live launcher |
+| `shell:vite-start` | `(workspace, entryPath?) → VitePreview` — starts a loopback Vite dev server and opens its verified URL; an active HTML entry is confined to the workspace and served from its containing directory; otherwise the root is served, or, when the root has no index.html, the shallowest HTML page in the workspace (skipping dependencies/VCS) is served from its folder; Vite resolves from either a self-contained package or the repository backing the installed live launcher |
 | `shell:vite-stop` | `(workspace) → void` — stops the workspace's Vite dev server when one is running |
 | `shell:take-pending-paths` | `() → string[]` — drains OS-dropped or launch paths queued before the renderer was ready |
 

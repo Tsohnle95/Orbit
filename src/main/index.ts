@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { OpenShellBackend } from "./opencode";
 import { TerminalManager } from "./terminal";
 import { MobileServer } from "./mobile-server";
-import { defaultViteDeps, resolveViteCommand, VitePreviewManager } from "./vite-server";
+import { defaultViteDeps, findHtmlEntry, resolveViteCommand, VitePreviewManager } from "./vite-server";
 import { collectLaunchPaths, PendingOpenPaths } from "./open-paths";
 import {
   applicationUrl,
@@ -984,6 +984,18 @@ function registerIpc(): void {
       if (!stat?.isFile() || !/\.html?$/i.test(absolute)) throw new Error("the Vite preview target must be an existing HTML file");
       serveDirectory = path.dirname(absolute);
       entry = path.basename(absolute).toLowerCase() === "index.html" ? "" : path.basename(absolute);
+    } else {
+      // A workspace root without index.html would otherwise 404 on `/` and
+      // tear the server down. Fall back to the shallowest HTML page so a
+      // static/docs folder still serves something useful.
+      const rootIndex = await fsp.stat(path.join(directory, "index.html")).catch(() => null);
+      if (!rootIndex?.isFile()) {
+        const found = await findHtmlEntry(directory);
+        if (found) {
+          serveDirectory = path.dirname(found);
+          entry = path.basename(found).toLowerCase() === "index.html" ? "" : path.basename(found);
+        }
+      }
     }
     const preview = await viteServers.start(workspace.id, serveDirectory, entry);
     void shell.openExternal(preview.url);
