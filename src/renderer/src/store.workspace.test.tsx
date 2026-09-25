@@ -378,7 +378,7 @@ describe("store workspace continuations", () => {
     await act(async () => startup.resolve([info("/restored", 2)]));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
-    expect(openSessionById).toHaveBeenCalledWith("session-2", expect.any(Number), "opencode");
+    expect(openSessionById).toHaveBeenCalledWith("session-2", expect.any(Number));
     expect(store.panels.map((panel) => panel.directory).sort()).toEqual(["/chosen", "/restored"]);
     expect(store.session?.directory).toBe("/chosen");
   });
@@ -434,7 +434,7 @@ describe("store workspace continuations", () => {
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
     expect(openSessionById.mock.calls.map((call) => call[0])).toEqual(["session-7"]);
-    expect(openSessionById.mock.calls.map((call) => call[2])).toEqual(["deepseek"]);
+    expect(openSessionById.mock.calls.map((call) => call[2])).toEqual([undefined]);
     expect(store.panels.map((panel) => panel.id)).toEqual(["session-7"]);
     expect(store.session?.id).toBe("session-7");
     expect(window.localStorage.getItem("orbit.sessionLayout")).toBeNull();
@@ -461,7 +461,7 @@ describe("store workspace continuations", () => {
 
     await act(async () => health.resolve(true));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
-    expect(openSessionById).toHaveBeenCalledWith("session-1", expect.any(Number), "opencode");
+    expect(openSessionById).toHaveBeenCalledWith("session-1", expect.any(Number));
     expect(store.session?.id).toBe("session-1");
   });
 

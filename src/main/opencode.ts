@@ -90,7 +90,6 @@ import {
 } from "./workspace-security";
 import { resolvePtyDirectory } from "./pty-directory";
 import type { RuntimeAdapter } from "./runtimes/runtime-adapter";
-import { DeepSeekRuntimeAdapter } from "./runtimes/deepseek/deepseek-adapter";
 import { tuiCommandForRuntime } from "./tui-command";
 import type { TerminalCommand } from "./terminal";
 import { RuntimeSessionIndex } from "./runtimes/runtime-session-index";
@@ -597,8 +596,7 @@ export class OpenShellBackend {
 
   constructor(
     private readonly mutationPhase: MutationPhaseHandler = () => {},
-    private readonly runtimeFactory: (runtimeID: RuntimeID, directory: string) => RuntimeAdapter = (_runtimeID, directory) =>
-      new DeepSeekRuntimeAdapter({ directory }),
+    private readonly runtimeFactory?: (runtimeID: RuntimeID, directory: string) => RuntimeAdapter,
     private readonly runtimeSessionIndex = new RuntimeSessionIndex()
   ) {}
 
@@ -1793,8 +1791,10 @@ export class OpenShellBackend {
       throw new Error("invalid activation generation");
     }
     if (runtimeID === "deepseek") {
+      const runtimeFactory = this.runtimeFactory;
+      if (!runtimeFactory) throw new Error("DeepSeek Harness runtime is disabled");
       const runtimeDirectory = await canonicalWorkspaceRoot(directory);
-      const runtime = this.runtimeFactory(runtimeID, runtimeDirectory);
+      const runtime = runtimeFactory(runtimeID, runtimeDirectory);
       if (!(await runtime.connect())) throw new Error("DeepSeek Harness is not available");
       const draft = await runtime.createSession(runtimeDirectory);
       this.runtimeAdapters.set(draft.id, runtime);
@@ -1837,7 +1837,9 @@ export class OpenShellBackend {
   async listSessions(): Promise<SessionSummary[]> {
     const persistedRuntimeSummaries = await this.runtimeSessionIndex.list();
     const liveRuntimeSummaries = (await Promise.all([...new Set(this.runtimeAdapters.values())].map((runtime) => runtime.listSessions().catch(() => [])))).flat();
-    const runtimeSummaries = [...new Map([...persistedRuntimeSummaries, ...liveRuntimeSummaries].map((summary) => [summary.id, summary])).values()];
+    const runtimeSummaries = [...new Map([...persistedRuntimeSummaries, ...liveRuntimeSummaries]
+      .filter((summary) => summary.runtimeID !== "deepseek")
+      .map((summary) => [summary.id, summary])).values()];
     if (!this.client) return runtimeSummaries.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 30);
     const summaries: SessionSummary[] = [];
     let cursor: string | undefined;
@@ -1939,7 +1941,9 @@ export class OpenShellBackend {
     }
     if (nativeRuntimeID === "deepseek") {
       if (!runtime && persistedRuntime) {
-        runtime = this.runtimeFactory("deepseek", persistedRuntime.directory);
+        const runtimeFactory = this.runtimeFactory;
+        if (!runtimeFactory) throw new Error("DeepSeek Harness runtime is disabled");
+        runtime = runtimeFactory("deepseek", persistedRuntime.directory);
         if (!(await runtime.connect())) throw new Error("DeepSeek Harness is not available");
         this.runtimeAdapters.set(sessionID, runtime);
         this.startRuntimeSubscription(sessionID, runtime);
@@ -2135,10 +2139,7 @@ export class OpenShellBackend {
       execFile(command, args, { timeout: 5000 }, (error, stdout) =>
         resolve({ available: !error, version: error ? null : stdout.trim().split("\n")[0] || null }));
     });
-    const [opencode, deepseek] = await Promise.all([
-      probe("opencode"),
-      probe("dsh")
-    ]);
+    const opencode = await probe("opencode");
     const opencodeCompatible = opencode.available && serverVersionPredicate(opencode.version)(opencode.version ?? "");
     return [
       {
@@ -2158,25 +2159,6 @@ export class OpenShellBackend {
           sessionResume: true,
           steering: false,
           tui: opencodeCompatible
-        }
-      },
-      {
-        protocolVersion: 1,
-        id: "deepseek",
-        name: "DeepSeek Harness",
-        version: deepseek.version,
-        available: deepseek.available,
-        capabilities: {
-          attachments: false,
-          commands: false,
-          models: true,
-          agents: false,
-          permissions: false,
-          providerCredentials: false,
-          sessionFork: false,
-          sessionResume: true,
-          steering: true,
-          tui: false
         }
       }
     ];

@@ -54,6 +54,27 @@ function adapter(directory: string): RuntimeAdapter {
 }
 
 describe("runtime routing", () => {
+  it("keeps DeepSeek disabled in the application backend", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "orbit-disabled-runtime-"));
+    roots.push(directory);
+    const runtimeIndex = new RuntimeSessionIndex(path.join(directory, "runtime-sessions.json"));
+    await runtimeIndex.put({
+      id: "legacy-deepseek-session",
+      runtimeID: "deepseek",
+      title: "Legacy session",
+      directory,
+      updatedAt: Date.now()
+    });
+    const backend = new OpenShellBackend(() => {}, undefined, runtimeIndex);
+
+    await expect(backend.openSession(directory, 1, "deepseek")).rejects.toThrow("DeepSeek Harness runtime is disabled");
+    await expect(backend.listSessions()).resolves.toEqual([]);
+    await expect(backend.runtimeManifests()).resolves.toEqual([
+      expect.objectContaining({ id: "opencode" })
+    ]);
+    await backend.stop();
+  });
+
   it("keeps workspace services in core and routes agent operations by session runtime", async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), "orbit-runtime-"));
     roots.push(directory);

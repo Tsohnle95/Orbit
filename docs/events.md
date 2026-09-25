@@ -13,13 +13,11 @@ and busy-state store, so every open panel streams independently: child and
 subagent streams keep flowing while the user works in another panel, and
 model/agent selections land on the panel that owns the session.
 
-DeepSeek mux and host WebSockets enter the same renderer vocabulary through
-the runtime adapter. `assistant/chunk` block starts, deltas, and ends become
-the corresponding `session.text.*`, `session.reasoning.*`, and
-`session.tool.input.*` events. Final Assistant and Tool records reconcile via
-`message.*` and `session.tool.*`; retries remove the failed partial before
-publishing `session.retry.scheduled`. Prompt submission never drives a history
-polling loop, so pushed events are the live authority for both runtimes.
+OpenCode is the only event producer registered by the production app. The
+dormant DeepSeek adapter source still contains a mapping for its mux and host
+WebSocket records into this vocabulary, but the backend does not register or
+start it. Prompt submission never drives a history polling loop, so OpenCode's
+pushed events are the live authority.
 
 Failure records use the shared `{code, message, details?}` shape from
 `src/shared/errors.ts`. Missing provider/runtime codes receive a stable `ORBIT_*`

@@ -59,51 +59,17 @@ its work while live diffs of changed files appear in the editor.
 The normalized adapter contract starts in
 `src/main/runtimes/runtime-adapter.ts`. `RuntimeManifest` uses Orbit
 protocol version 1, a stable runtime id, runtime version, availability, and an
-explicit capability bitmap. Session records carry `runtimeID`; its optional
-shape is the migration path for OpenCode sessions created before runtime
-identity existed, which resolve to OpenCode when they enter the runtime
-manager.
+explicit capability bitmap. OpenCode V2 is the only runtime registered or
+selectable by the app. The Settings page reports its capability manifest but
+does not expose runtime choice.
 
-The first non-OpenCode implementation is the built-in DeepSeek Harness adapter
-under `src/main/runtimes/deepseek/`. It targets the verified `dsh` rc.7 native
-contract: correlated request/response envelopes over loopback HTTP and the
-independent mux and host WebSocket downlinks required by `dsh web`. The carrier accepts only unauthenticated
-loopback HTTP URLs, sends an explicit loopback Host authority, refuses
-redirects and non-JSON/HTML RPC responses, bounds response/frame sizes, checks
-every echoed `rpcId`, and preserves native business error codes. The two WebSocket
-streams reconnect independently and replayed frames are deduplicated by
-`rpcId`. The adapter can launch `dsh web --host 127.0.0.1 --port 0 --no-open`
-in a workspace, reads only its explicit startup URL line, and terminates the
-owned process on shutdown.
-
-DeepSeek history is projected from its provider-neutral `user/message`,
-`assistant/message`, `tool/call`, `tool/result`, and `todo/write` records into
-the shared transcript. Live `step/*`, `assistant/chunk`, `assistant/message`,
-`tool/*`, and `llm/retry` records enter the same ordered streaming vocabulary
-used by OpenCode. Text, reasoning, and tool arguments append through the
-shared renderer store while final records authoritatively reconcile streamed
-parts. Native Tool call/result views remain attached as provider metadata so
-the timeline can honor terminal, read, search, web, and diff intent without
-inferring a weaker approximation. Code-dispatch start/result records remain
-nested beneath their root call and use the same themed Tool renderer at every
-depth. Prompt submission does not poll or repeatedly
-hydrate history; snapshots are reserved for open, materialization, and
-reconnect recovery. Its manifest currently advertises only implemented
-features: model selection and session resume. Attachments, commands, steering,
-agent presets, approval responses, provider credential editing, and forking
-remain disabled until their normalized adapter methods and UI paths exist.
-Renderer IPC carries only runtime manifests, selected runtime ids, and the
-existing normalized session operations; native DeepSeek envelopes and service
-URLs remain main-process-only.
-
-Runtime selection is persisted in renderer preferences and passed through the
-folder/session-open boundary. Each active workspace context retains its
-adapter and `runtimeID`; workspace watching, editing, recovery, and terminals
-stay in core while prompts, history, interruption, models, and event streams
-route to the selected adapter. DeepSeek session id/directory/runtime mappings
-are atomically persisted in the main-process runtime session index, allowing a
-cold app restart to launch `dsh web` in the correct workspace and reopen the
-native session. UI controls are hidden when their manifest capability is false.
+The DeepSeek Harness implementation under `src/main/runtimes/deepseek/` is
+retained as dormant source for possible later reactivation. The production
+backend does not register its factory, probe `dsh`, or surface DeepSeek session
+records in recents; attempts to open a DeepSeek runtime are rejected. Legacy
+`runtimeID` fields remain optional in shared session types so older persisted
+records can still be read without making DeepSeek an active runtime. New
+sessions are created through OpenCode V2.
 
 ## Message flow
 
@@ -384,8 +350,8 @@ An agent panel can switch from GUI to TUI from its header mode pill. The main
 process resolves the active session's runtime command and starts it with the
 session directory as cwd; OpenCode launches `opencode --session <session-id>`.
 The renderer keeps the TUI inside the panel with xterm.js and reuses the
-terminal data, resize, ownership, and cleanup paths. DeepSeek advertises no TUI
-capability until a supported profile is available. The Kitty Glass appearance
+terminal data, resize, ownership, and cleanup paths. Only OpenCode is currently
+available to panels; the dormant DeepSeek adapter has no TUI path. The Kitty Glass appearance
 profile uses the same embedded terminal with alpha surfaces, native macOS
 under-window vibrancy, and Kitty-inspired colors; it does not open an external
 terminal window. The renderer reports the active theme's native appearance to

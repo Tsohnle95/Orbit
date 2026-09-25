@@ -324,9 +324,9 @@ Key mechanisms:
   background panel focuses that panel first, and permission replies address
   the owning session.
 
-- **Runtime-neutral transcript presentation** — `OpenCodeTimeline.tsx` retains
-  its historical filename while rendering the shared OpenCode and DeepSeek
-  stream. User messages use the subtle right-aligned layer bubble and final
+- **Runtime-neutral transcript presentation** — `OpenCodeTimeline.tsx` renders
+  the shared transcript shape; dormant DeepSeek metadata rendering remains in
+  source, but the production app only opens OpenCode sessions. User messages use the subtle right-aligned layer bubble and final
   assistant markdown remains flat. Reasoning and tool calls form one calm work
   log with a shared vertical rail, uniform markers, and compact disclosures;
   final prose remains visually separate from that log. Each native step keeps a
@@ -346,7 +346,8 @@ Key mechanisms:
   A minimal inline working item exists only until the first concrete stream node
   arrives; no footer mirrors active reasoning or tools. Adjacent read/glob/grep/list
   parts remain individually visible across assistant messages; recursive
-  DeepSeek code dispatches stay nested beneath their root call; task calls use
+  dormant DeepSeek code-dispatch metadata stays nested beneath its root call;
+  task calls use
   OpenCode's agent-colored delegation card and todo writes are hidden from the
   transcript in favor of the live prompt-dock checklist; edit/patch parts with
   `metadata.files` render a dedicated diff card (full path, +/− stat chips,
@@ -413,7 +414,7 @@ express a cross-component invariant or non-obvious state contract.
 | `Welcome` | `Welcome.tsx` | Landing view, recent sessions/workspaces, initial folder/file open |
 | `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation (defaults to Files when a workspace opens), Changes, Explorer, filesystem actions, terminal context actions |
 | `SettingsSidebar` | `SettingsSidebar.tsx` | Settings navigation |
-| `SettingsPage` | `SettingsPage.tsx` | Appearance, plugins, providers, safety, voice, model/runtime sync, mobile, and about surfaces |
+| `SettingsPage` | `SettingsPage.tsx` | Appearance, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and about surfaces |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
 | `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
 | `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs, save/conflict UI, editor validation entry points |
@@ -485,7 +486,7 @@ which would leave the TUI drawing only the spawn-default rows.
 Agent TUI input uses the same terminal message stream and ownership checks, but
 starts the active runtime command through `agentTuiStart` in the panel's
 workspace directory. OpenCode uses `opencode --session <session-id>`; the
-DeepSeek profile remains unavailable until its TUI command is supported.
+dormant DeepSeek runtime is not available to panels.
 The persisted Kitty Glass appearance profile applies its transparent xterm
 background, Kitty-inspired palette, and Fira Code fallback to the embedded TUI,
 so the terminal shares the panel's glass instead of adding its own dark layer.

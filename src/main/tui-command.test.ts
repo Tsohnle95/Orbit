@@ -6,8 +6,8 @@ describe("runtime TUI commands", () => {
     expect(tuiCommandForRuntime("opencode", "session-1")).toEqual({ command: "opencode", args: ["--session", "session-1"] });
   });
 
-  it("resumes DeepSeek sessions through the TUI profile", () => {
-    expect(tuiCommandForRuntime("deepseek", "session-2")).toEqual({ command: "dsh", args: ["--profile", "tui", "--resume", "session-2"] });
+  it("rejects DeepSeek TUI sessions while that runtime is disabled", () => {
+    expect(() => tuiCommandForRuntime("deepseek", "session-2")).toThrow("TUI is not supported");
   });
 
   it("rejects unknown runtimes", () => {

@@ -76,7 +76,7 @@ function workspaceGroups(sessions: SessionSummary[], projects: ProjectInfo[]): W
 }
 
 export function Welcome(): ReactNode {
-  const { selectFolder, openPaths, reopenSession, selectedRuntimeID, savedWorkspaces, saveWorkspace } = useStore();
+  const { selectFolder, openPaths, reopenSession, savedWorkspaces, saveWorkspace } = useStore();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -91,11 +91,8 @@ export function Welcome(): ReactNode {
     ]).finally(() => setLoading(false));
   }, []);
 
-  const runtimeSessions = sessions
-    .filter((session) => (session.runtimeID ?? "opencode") === selectedRuntimeID)
-    .sort((left, right) => right.updatedAt - left.updatedAt);
-  const recentSessions = runtimeSessions.slice(0, 3);
-  const groups = workspaceGroups(runtimeSessions, savedWorkspaces);
+  const recentSessions = [...sessions].sort((left, right) => right.updatedAt - left.updatedAt).slice(0, 3);
+  const groups = workspaceGroups(sessions, savedWorkspaces);
 
   const toggleGroup = (key: string): void =>
     setOpenGroups((current) => ({ ...current, [key]: !(current[key] ?? false) }));

@@ -3,8 +3,8 @@
 Orbit is a VS Code-style desktop GUI for coding agents: an Electron + React +
 Monaco app that opens a repository, routes prompts through capability-aware
 runtime adapters, streams agent progress, and shows live per-file diffs of
-workspace changes observed during the active session. Built-in runtime support
-currently covers OpenCode and DeepSeek Harness.
+workspace changes observed during the active session. OpenCode V2 is the only
+runtime enabled in the app; the DeepSeek Harness adapter remains dormant source.
 
 Read this file first. Then use progressive disclosure: route to only the
 module documentation and source needed for the task. The docs are designed to
@@ -25,7 +25,7 @@ npm start              # run the existing production build
 ```
 
 `opencode` must be on PATH (or an opencode service already running) for
-OpenCode sessions. `dsh` must be on PATH for DeepSeek Harness sessions.
+OpenCode sessions.
 
 ## Context discipline
 
@@ -48,7 +48,7 @@ re-open information already established in the current task context.
 |---|---|---|
 | Main process | `src/main/index.ts` | Window, IPC handlers, backend wiring |
 | Backend | `src/main/opencode.ts` | Runtime routing, session state, fs watching, baselines, OpenCode traffic |
-| Runtime adapters | `src/main/runtimes/` | Adapter contract, capability manifests, durable runtime identity, DeepSeek transport |
+| Runtime adapters | `src/main/runtimes/` | Adapter contract, capability manifests, durable runtime identity, dormant DeepSeek transport |
 | Stream transport | `src/main/stream-pipeline.ts` | SSE batching, delta coalescing, snapshot barriers, heartbeat, reconnect |
 | Provider usage | `src/main/provider-usage.ts` | Provider plan/rate-limit data |
 | Terminal | `src/main/terminal.ts` | `node-pty` manager for terminal tray and embedded agent TUI |
@@ -148,15 +148,13 @@ require no additional planning artifact.
 
 ## Architecture in one paragraph
 
-The Electron **main process** owns runtime adapters and is the only process that
-talks to OpenCode or DeepSeek Harness. OpenCode uses its discovered service and
-coalesced SSE pipeline; DeepSeek launches workspace-local `dsh web`, uses
-correlated loopback HTTP RPC plus independent WebSocket downlinks, and maps
-verified native records to normalized runtime events. Every session retains its
-runtime id and capability manifest. The **renderer** keeps UI state and the
-authoritative per-session chat projection. Main watches the repo and streams
-baseline/content updates so the Changes/Diff UI reflects observed workspace
-changes while preserving process and trust boundaries.
+The Electron **main process** owns the active OpenCode V2 connection and is the
+only process that talks to OpenCode. The DeepSeek Harness implementation is
+retained under `src/main/runtimes/deepseek/` but is not registered, probed, or
+selectable by the app. The **renderer** keeps UI state and the authoritative
+per-session chat projection. Main watches the repo and streams baseline/content
+updates so the Changes/Diff UI reflects observed workspace changes while
+preserving process and trust boundaries.
 
 ## Conventions
 
@@ -170,8 +168,8 @@ changes while preserving process and trust boundaries.
   imported as `@shared/types`.
 - IPC channels are named `shell:*`; shared backend message shapes live in
   `src/shared/types.ts`.
-- OpenCode SDK calls remain isolated in `src/main/opencode.ts`; DeepSeek-native
-  traffic remains isolated under `src/main/runtimes/deepseek/`.
+- OpenCode SDK calls remain isolated in `src/main/opencode.ts`; dormant
+  DeepSeek-native code remains isolated under `src/main/runtimes/deepseek/`.
 - Tree paths are session-relative, `/`-separated, with no trailing slash.
 - `out/`, `node_modules/`, and `*.tsbuildinfo` are gitignored.
 

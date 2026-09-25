@@ -5,14 +5,19 @@ import { ThemeProvider } from "../theme";
 import { SettingsPage } from "./SettingsPage";
 import { SettingsSidebar } from "./SettingsSidebar";
 
+type MockModel = { id: string; providerID: string; name: string };
+type MockSession = { directory: string; workspace: { id: string; generation: number } };
+
 const store = {
-  session: null,
-  models: [],
-  currentModel: null,
+  session: null as MockSession | null,
+  runtimes: [],
+  models: [] as MockModel[],
+  currentModel: null as MockModel | null,
   switchModel: vi.fn(),
   providerUsage: [],
   refreshProviderUsage: vi.fn(),
   loadModels: vi.fn(),
+  refreshRuntimes: vi.fn(async () => []),
   approvalMode: "ask",
   toggleApprovalMode: vi.fn(),
   wordWrap: false,
@@ -94,5 +99,23 @@ describe("SettingsPage", () => {
 
     act(() => container.querySelectorAll<HTMLButtonElement>(".settings-nav-item")[5].click());
     expect(onSectionChange).toHaveBeenCalledWith("model");
+  });
+
+  it("keeps default model settings and removes runtime selection", async () => {
+    const workspace = { id: "workspace-1", generation: 1 };
+    store.session = { directory: "/repo", workspace };
+    store.models = [{ id: "model-1", providerID: "provider-1", name: "Model One" }];
+    store.currentModel = store.models[0];
+
+    await act(async () => root.render(<ThemeProvider><SettingsPage section="model" onClose={() => {}} /></ThemeProvider>));
+
+    expect(container.textContent).toContain("Default model");
+    expect(container.textContent).not.toContain("Agent runtime");
+    expect(store.loadModels).toHaveBeenCalledWith(workspace);
+    expect(container.querySelector<HTMLSelectElement>(".settings-list-row select")?.value).toBe("provider-1:model-1");
+
+    store.session = null;
+    store.models = [];
+    store.currentModel = null;
   });
 });

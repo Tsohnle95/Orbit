@@ -28,7 +28,6 @@ import type {
   ProviderUsageResult,
   ProjectInfo,
   RecoveryRecord,
-  RuntimeID,
   RuntimeManifest,
   SessionInboxEntry,
   SessionInfo,
@@ -160,8 +159,6 @@ interface Store {
   connected: boolean;
   runtimes: RuntimeManifest[];
   refreshRuntimes: () => Promise<RuntimeManifest[]>;
-  selectedRuntimeID: RuntimeID;
-  setSelectedRuntimeID: (runtimeID: RuntimeID) => void;
   busy: boolean;
   todos: TodoItem[];
   transcript: TranscriptItem[];
@@ -503,9 +500,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const [activeSessionID, setActiveSessionID] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [runtimes, setRuntimes] = useState<RuntimeManifest[]>([]);
-  const [selectedRuntimeID, setSelectedRuntimeIDState] = useState<RuntimeID>(() =>
-    window.localStorage.getItem("runtimeID") === "deepseek" ? "deepseek" : "opencode"
-  );
   const [busyBySession, setBusyBySession] = useState<Record<string, boolean>>({});
   const [todosByWorkspace, setTodosByWorkspace] = useState<Record<string, TodoItem[]>>({});
   const [transcriptsBySession, setTranscriptsBySession] = useState<Record<string, TranscriptItem[]>>({});
@@ -573,6 +567,11 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   }, [session?.directory, session?.workspace.id]);
   useEffect(() => {
     try {
+      window.localStorage.removeItem("runtimeID");
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
       window.localStorage.setItem("compactionBaseline", JSON.stringify(compactionBaselineBySession));
     } catch {}
   }, [compactionBaselineBySession]);
@@ -598,19 +597,11 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const agents = session ? agentsByWorkspace[session.workspace.id] ?? [] : [];
   const currentAgent = session ? currentAgentByWorkspace[session.workspace.id] ?? null : null;
 
-  const setSelectedRuntimeID = useCallback((runtimeID: RuntimeID): void => {
-    setSelectedRuntimeIDState(runtimeID);
-    window.localStorage.setItem("runtimeID", runtimeID);
-  }, []);
-
   const refreshRuntimes = useCallback(async (): Promise<RuntimeManifest[]> => {
     const items = await window.openshell.runtimes();
     setRuntimes(items);
-    if (!items.some((item) => item.id === selectedRuntimeID && item.available)) {
-      setSelectedRuntimeID("opencode");
-    }
     return items;
-  }, [selectedRuntimeID, setSelectedRuntimeID]);
+  }, []);
 
   useEffect(() => {
     void refreshRuntimes().catch(() => setRuntimes([]));
@@ -1439,7 +1430,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       setAvailableModels(list);
       setCurrentModelByWorkspace((prev) => {
         const current = prev[target.id] ?? null;
-        const pick = selection?.model ?? current ?? def;
+        const pick = selection?.model ?? def ?? current;
         if (!pick) return prev;
         const match = list.find((m) => m.id === pick.id && m.providerID === pick.providerID);
         const next = match ? { ...match, ...(pick.variant ? { variant: pick.variant } : {}) } : pick;
@@ -1611,9 +1602,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       const request = ++requestSeqRef.current;
       const activation = ++activationSeqRef.current;
       try {
-        const info = selectedRuntimeID === "opencode"
-          ? await window.openshell.openSession(dir, request)
-          : await window.openshell.openSession(dir, request, selectedRuntimeID);
+        const info = await window.openshell.openSession(dir, request);
         if (activation !== activationSeqRef.current) {
           await window.openshell.closeSession(info.workspace).catch(() => {});
           return null;
@@ -1637,7 +1626,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         return null;
       }
     },
-    [replacePanels, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript, selectedRuntimeID]
+    [replacePanels, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]
   );
 
   const addModelPanel = useCallback(
@@ -1645,9 +1634,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       const request = ++requestSeqRef.current;
       const activation = activationSeqRef.current;
       try {
-        const info = selectedRuntimeID === "opencode"
-          ? await window.openshell.openSession(dir, request)
-          : await window.openshell.openSession(dir, request, selectedRuntimeID);
+        const info = await window.openshell.openSession(dir, request);
         if (activation !== activationSeqRef.current) {
           await window.openshell.closeSession(info.workspace).catch(() => {});
           return;
@@ -1679,7 +1666,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         toast(err instanceof Error ? err.message : String(err), "error");
       }
     },
-    [attachPanel, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript, selectedRuntimeID]
+    [attachPanel, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]
   );
 
   const openWorkspacePanel = useCallback(async (dir: string): Promise<void> => {
@@ -1697,9 +1684,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const request = ++requestSeqRef.current;
     const activation = activationSeqRef.current;
     try {
-      const info = selectedRuntimeID === "opencode"
-        ? await window.openshell.selectFolder(request)
-        : await window.openshell.selectFolder(request, selectedRuntimeID);
+      const info = await window.openshell.selectFolder(request);
       if (!info) return null;
       if (activation !== activationSeqRef.current) {
         await window.openshell.closeSession(info.workspace).catch(() => {});
@@ -1722,7 +1707,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       toast(err instanceof Error ? err.message : String(err), "error");
       return null;
     }
-  }, [attachPanel, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript, selectedRuntimeID]);
+  }, [attachPanel, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]);
 
   const swapPanelWorkspace = useCallback(
     async (workspace: WorkspaceIdentity, pick: (request: number) => Promise<SessionInfo | null>) => {
@@ -1748,27 +1733,21 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
 
   const selectPanelDirectory = useCallback(
     (workspace: WorkspaceIdentity) =>
-      swapPanelWorkspace(workspace, (request) => selectedRuntimeID === "opencode"
-        ? window.openshell.selectFolder(request)
-        : window.openshell.selectFolder(request, selectedRuntimeID)),
-    [swapPanelWorkspace, selectedRuntimeID]
+      swapPanelWorkspace(workspace, (request) => window.openshell.selectFolder(request)),
+    [swapPanelWorkspace]
   );
 
   const changePanelDirectory = useCallback(
     (workspace: WorkspaceIdentity, dir: string) =>
-      swapPanelWorkspace(workspace, (request) => selectedRuntimeID === "opencode"
-        ? window.openshell.openSession(dir, request)
-        : window.openshell.openSession(dir, request, selectedRuntimeID)),
-    [swapPanelWorkspace, selectedRuntimeID]
+      swapPanelWorkspace(workspace, (request) => window.openshell.openSession(dir, request)),
+    [swapPanelWorkspace]
   );
 
   const selectFolder = useCallback(async () => {
     const request = ++requestSeqRef.current;
     const activation = ++activationSeqRef.current;
     try {
-      const info = selectedRuntimeID === "opencode"
-        ? await window.openshell.selectFolder(request)
-        : await window.openshell.selectFolder(request, selectedRuntimeID);
+      const info = await window.openshell.selectFolder(request);
       if (info) {
         if (activation !== activationSeqRef.current) {
           await window.openshell.closeSession(info.workspace).catch(() => {});
@@ -1791,10 +1770,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     } catch (err) {
       toast(err instanceof Error ? err.message : String(err), "error");
     }
-  }, [replacePanels, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript, selectedRuntimeID]);
+  }, [replacePanels, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]);
 
   const reopenSession = useCallback(
-    async (sessionID: string, silent = false, restoreRuntimeID?: RuntimeID): Promise<SessionInfo | null> => {
+    async (sessionID: string, silent = false): Promise<SessionInfo | null> => {
       const existing = panelForSession(sessionID);
       if (existing) {
         if (!transcriptsBySessionRef.current[sessionID]) void hydrateTranscript(sessionID);
@@ -1811,10 +1790,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         replacingSessionIDsRef.current.set(sessionID, (replacingSessionIDsRef.current.get(sessionID) ?? 0) + 1);
       }
       try {
-        const requestedRuntimeID = restoreRuntimeID ?? (silent ? undefined : selectedRuntimeID);
-        const reopened = requestedRuntimeID === undefined
-          ? await window.openshell.openSessionById(sessionID, request)
-          : await window.openshell.openSessionById(sessionID, request, requestedRuntimeID);
+        const reopened = await window.openshell.openSessionById(sessionID, request);
         if (!silent && activation !== activationSeqRef.current) {
           await window.openshell.closeSession(reopened.session.workspace).catch(() => {});
           return null;
@@ -1878,7 +1854,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
       }
     },
-    [attachPanel, replacePanels, replacePanel, focusSession, panelForSession, chatStateFor, reconcileStreaming, setTodosFor, toast, loadModels, loadAgents, loadSessions, loadRecovery, hydrateTranscript, protectedSessionIDs, selectedRuntimeID]
+    [attachPanel, replacePanels, replacePanel, focusSession, panelForSession, chatStateFor, reconcileStreaming, setTodosFor, toast, loadModels, loadAgents, loadSessions, loadRecovery, hydrateTranscript, protectedSessionIDs]
   );
 
   const sendPrompt = useCallback(
@@ -2433,9 +2409,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       const request = ++requestSeqRef.current;
       const activation = ++activationSeqRef.current;
       try {
-        const result = selectedRuntimeID === "opencode"
-          ? await window.openshell.selectFile(request)
-          : await window.openshell.selectFile(request, selectedRuntimeID);
+        const result = await window.openshell.selectFile(request);
         if (!result) return;
         const info = await attachFileWorkspace(result, activation);
         if (info) toast(`Opened ${result.path}`);
@@ -2443,16 +2417,14 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         toast(err instanceof Error ? err.message : String(err), "error");
       }
     },
-    [attachFileWorkspace, toast, selectedRuntimeID]
+    [attachFileWorkspace, toast]
   );
   const openFileWorkspace = useCallback(
     async (file: string): Promise<SessionInfo | null> => {
       const request = ++requestSeqRef.current;
       const activation = ++activationSeqRef.current;
       try {
-        const result = selectedRuntimeID === "opencode"
-          ? await window.openshell.openFileWorkspace(file, request)
-          : await window.openshell.openFileWorkspace(file, request, selectedRuntimeID);
+        const result = await window.openshell.openFileWorkspace(file, request);
         const info = await attachFileWorkspace(result, activation);
         if (info) toast(`Opened ${result.path}`);
         return info;
@@ -2461,7 +2433,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         return null;
       }
     },
-    [attachFileWorkspace, toast, selectedRuntimeID]
+    [attachFileWorkspace, toast]
   );
   const openSourceTarget = useCallback(
     async (path: string, line: number): Promise<void> => {
@@ -3454,7 +3426,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         const restored: SessionInfo[] = [];
         for (const live of liveSessions) {
           if (cancelled) return;
-          const session = await reopenSession(live.id, true, live.runtimeID ?? selectedRuntimeID);
+          const session = await reopenSession(live.id, true);
           if (session) restored.push(session);
         }
         if (cancelled) return;
@@ -3501,7 +3473,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     persistence,
     refreshActiveSessions,
     openPaths,
-    selectedRuntimeID
   ]);
 
   useEffect(() => {
@@ -3614,8 +3585,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       connected,
       runtimes,
       refreshRuntimes,
-      selectedRuntimeID,
-      setSelectedRuntimeID,
       busy,
       todos,
       transcript,
@@ -3715,7 +3684,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       acknowledgeRecovery
     }),
     [
-      session, connected, runtimes, refreshRuntimes, selectedRuntimeID, setSelectedRuntimeID, busy, todos, transcript, sessionUsage, providerUsage, providerUsageLoading, tabs, activePath, singleFile, agentFiles, tree, expanded, hiddenPaths, toasts, recoveryRecords,
+      session, connected, runtimes, refreshRuntimes, busy, todos, transcript, sessionUsage, providerUsage, providerUsageLoading, tabs, activePath, singleFile, agentFiles, tree, expanded, hiddenPaths, toasts, recoveryRecords,
       models, availableModels, lastModel, currentModel, agents, currentAgent, approvalMode, wordWrap, messageQueue.followUpBehavior, setFollowUpBehavior, sessions, savedWorkspaces, saveWorkspace, removeWorkspace, activeSessions, panels, workspaceOnlyPanelIDs, panelViews, activeSessionID,
       focusSession, closePanel, openSession, addModelPanel, openWorkspacePanel, selectAddPanel, selectFolder, selectFile, openFileWorkspace, openExternalPath, importPaths, dropIntoExplorer, selectPanelDirectory, changePanelDirectory, reopenSession, loadSessions, sendPrompt, runCommand, stop, refreshProviderUsage, loadModels, switchModel,
       loadAgents, switchAgent, toggleApprovalMode, toggleWordWrap,

@@ -17,19 +17,19 @@ automatically.
 | `platform()` | `string` — `process.platform` (not an invoke; the renderer uses it for the darwin titlebar inset) |
 | `isPackaged()` | `boolean` — true when main added the `--openshell-packaged` flag; the renderer hides install affordances in packaged builds |
 | `onMessage(cb)` | `(msg: BackendMessage) => void`, returns unsubscribe |
-| `selectFolder(generation, runtimeID?)` | `Promise<SessionInfo \| null>` — native dialog; the caller decides mounting (replace panels, add a model panel, or swap an existing panel's directory) |
+| `selectFolder(generation, runtimeID?)` | `Promise<SessionInfo \| null>` — native dialog; opens through OpenCode, and the caller decides mounting (replace panels, add a model panel, or swap an existing panel's directory) |
 | `selectDirectory()` | `Promise<string \| null>` — native directory dialog that returns a canonical folder path without creating a runtime session; used only to save an Orbit workspace bookmark |
-| `selectFile(generation, runtimeID?)` | `Promise<OpenFileWorkspaceResult \| null>` — native single-file dialog; opens the file's parent folder through the selected runtime and reports which file to open |
-| `openFileWorkspace(file, generation, runtimeID?)` | `Promise<OpenFileWorkspaceResult>` — opens an absolute path as a single-file workspace through the selected runtime (parent folder session + the file to open), no dialog |
-| `openSession(dir, generation, runtimeID?)` | `Promise<SessionInfo>` — creates a session through OpenCode by default or the selected runtime; model mode uses the renderer's explicit additive action |
-| `runtimes()` | `Promise<RuntimeManifest[]>` — installed status, versions, and normalized capability manifests |
+| `selectFile(generation, runtimeID?)` | `Promise<OpenFileWorkspaceResult \| null>` — native single-file dialog; opens the file's parent folder through OpenCode and reports which file to open |
+| `openFileWorkspace(file, generation, runtimeID?)` | `Promise<OpenFileWorkspaceResult>` — opens an absolute path as a single-file workspace backed by OpenCode (parent folder session + the file to open), no dialog |
+| `openSession(dir, generation, runtimeID?)` | `Promise<SessionInfo>` — creates an OpenCode session; non-OpenCode runtime ids are rejected |
+| `runtimes()` | `Promise<RuntimeManifest[]>` — OpenCode's version and normalized capability manifest; DeepSeek is currently dormant |
 | `syncOpenCode()` | `Promise<OpenCodeSyncResult>` — syncs the attached shared service to the exact version resolved from Orbit's PATH |
 | `updateOpenCode()` | `Promise<OpenCodeSyncResult>` — runs OpenCode's own updater, then syncs the attached service |
 | `sessions()` | `Promise<SessionSummary[]>` — recent session list |
 | `activeSessions()` | `Promise<SessionInfo[]>` — currently open backend sessions in activation order; the last element is the most recently activated (used for startup restore) |
 | `closeSession(workspace)` | `Promise<void>` — tears down the backend context when a panel closes; the opencode session remains reopenable |
-| `openSessionById(sessionID, generation, runtimeID?)` | `Promise<ReopenedSession>` (session + replayed transcript + cumulative `usage`); idempotent for already-open sessions and resolves persisted runtime identity when omitted. A `runtimeID` that differs from the session's native runtime and targets no active context remaps the session to the requested runtime on the same directory |
-| `deleteSession(sessionID)` | `Promise<void>` — permanently destroys the opencode session server-side (`client.session.remove`) and closes its panel; DeepSeek sessions are rejected (no delete RPC) |
+| `openSessionById(sessionID, generation, runtimeID?)` | `Promise<ReopenedSession>` (session + replayed transcript + cumulative `usage`); idempotent for already-open OpenCode sessions. Legacy DeepSeek sessions cannot be reopened by the dormant adapter |
+| `deleteSession(sessionID)` | `Promise<void>` — permanently destroys the OpenCode session server-side (`client.session.remove`) and closes its panel |
 | `sessionTranscript(sessionID)` | `Promise<{transcript, todos}>` — authoritative message replay used to materialize incomplete stream snapshots |
 | `sessionUsage(sessionID)` | `Promise<SessionUsage \| null>` — normalized `cost`/`tokens` for the addressed session; used after `session.compaction` to refresh the context-window display |
 | `prompt(workspace, text, files?, delivery?)` | Sends the prompt; `delivery` is `"queue"` or `"steer"` for follow-ups while busy |
@@ -93,7 +93,7 @@ automatically.
 | `state()` | `Promise<SessionInfo \| null>` — the most recently activated session |
 | `sessionSelection(workspace)` | `Promise<SessionSelection \| null>` |
 | `providerUsage()` | `Promise<ProviderUsageResult[]>` |
-| `providerIntegrations(workspace)` | `Promise<ProviderIntegration[]>` — supported-provider catalog (OpenCode Go, Command Code, OpenAI) and secret-free connection state supplied by the active runtime adapter |
+| `providerIntegrations(workspace)` | `Promise<ProviderIntegration[]>` — supported-provider catalog (OpenCode Go, Command Code, OpenAI) and secret-free OpenCode connection state |
 | `connectProviderKey(workspace, integrationID, key, label, answers)` | `Promise<void>` — sends a write-only key and provider-specific form answers; the key is never returned to the renderer |
 | `removeProviderCredential(workspace, credentialID)` | `Promise<void>` — removes one stored credential by opaque id |
 | `health()` | `Promise<boolean>` |

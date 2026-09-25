@@ -78,6 +78,18 @@ describe("agent and model picker state across sessions", () => {
     vi.restoreAllMocks();
   });
 
+  it("ignores and clears a stored DeepSeek runtime preference", async () => {
+    window.localStorage.setItem("runtimeID", "deepseek");
+    const openSession = vi.fn(async (directory: string, generation: number) => info(directory, generation));
+    window.openshell = api({ openSession });
+
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+
+    expect(openSession).toHaveBeenCalledWith("/one", expect.any(Number));
+    expect(window.localStorage.getItem("runtimeID")).toBeNull();
+  });
+
   it("falls back to build instead of carrying the previous session's plan selection", async () => {
     window.openshell = api();
     await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
@@ -137,6 +149,18 @@ describe("agent and model picker state across sessions", () => {
 
     selection = null;
     await act(async () => store.openSession("/two"));
+    expect(store.currentModel?.id).toBe("m2");
+  });
+
+  it("uses OpenCode's default model when the session selection is unavailable", async () => {
+    window.openshell = api();
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    selection = { model: { id: "m1", providerID: "p1", name: "One" } };
+    await act(async () => store.openSession("/one"));
+    expect(store.currentModel?.id).toBe("m1");
+
+    selection = null;
+    await act(async () => store.loadModels());
     expect(store.currentModel?.id).toBe("m2");
   });
 

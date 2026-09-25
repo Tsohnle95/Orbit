@@ -19,11 +19,11 @@ conventional user tool directories without duplicating existing entries; Windows
 GUI processes already inherit the user PATH and are left unchanged.
 
 `src/main/runtimes/runtime-adapter.ts` defines the version-1 normalized runtime
-contract and capability manifest. `src/main/runtimes/deepseek/` implements the
-DeepSeek Harness rc.7 HTTP/WebSocket carrier, native session/model operations, event
-deduplication, owned `dsh web` process lifecycle, and transcript projection.
-Runtime-owned operations route through the adapter retained by each session
-context; no native DeepSeek envelope or service URL crosses preload IPC.
+contract and capability manifest. OpenCode V2 is the only runtime registered
+by the production backend. The DeepSeek Harness implementation under
+`src/main/runtimes/deepseek/` is dormant: the production backend has no factory
+for it, does not probe `dsh`, and rejects DeepSeek session creation. Legacy
+runtime identity records are not included in recent sessions.
 
 ## OpenShellBackend (`src/main/opencode.ts`)
 
@@ -66,8 +66,8 @@ Public methods (all used by IPC):
 | `mobileEndpoint()` | Returns the connected OpenCode mobile endpoint credentials when available, otherwise `null` |
 | `onMessage(cb)` | Subscribe to outbound messages; returns unsubscribe |
 | `beginActivation(requestGeneration)` | Accept a renderer user action before native dialog/backend awaits and return a fresh backend generation token |
-| `openSession(directory)` | Accepts a generation, calls `session.create`, and activates a new context (a new concurrent panel); starts the context watcher and emits `{kind:"session"}` |
-| `openFileWorkspace(absolutePath, generation?, runtimeID?)` | Validates the path is a regular file, opens a session through the selected runtime on its parent directory (via `openSession`), and returns `{session, path}` so the renderer opens the file inside a true single-file workspace |
+| `openSession(directory)` | Accepts a generation, calls the OpenCode `session.create`, and activates a new context (a new concurrent panel); starts the context watcher and emits `{kind:"session"}`. Non-OpenCode runtime ids are rejected |
+| `openFileWorkspace(absolutePath, generation?, runtimeID?)` | Validates the path is a regular file, opens an OpenCode session on its parent directory (via `openSession`), and returns `{session, path}` so the renderer opens the file inside a true single-file workspace |
 | `resolveExternalOpen(workspace, absolutePath)` | Resolves a dragged/dropped absolute path against the workspace root: inside-repo files come back as `{kind:"relative", rel, content}`, outside-repo files as a writable `{kind:"standalone", path, content}` (content size-capped, atomically readable) |
 | `statExternal(absolutePath)` | Probes an absolute path (`file` / `directory` / `missing`) so a mixed file/folder drop can be routed: files open as standalone tabs, folders import into the workspace |
 | `writeStandaloneFile(absolutePath, content, expectedContent, overwrite)` | Bounded atomic write (temp-file + rename in the file's own directory) for standalone tabs; rejects mismatched `expectedContent` unless `overwrite` |
@@ -75,8 +75,8 @@ Public methods (all used by IPC):
 | `listSessions()` | `session.list` (paged, newest first) → `{id, title, directory, updatedAt, parentID?, agent?}`; hides sessions older than 30 days and sessions with no conversation (no title and zero token usage) |
 | `activeSessions()` | The open contexts' `SessionInfo` in activation order, primary last (startup restore) |
 | `closeSession(workspace)` | Tears down the addressed context (stops its watcher, removes it from the context map) when its panel closes; the opencode session itself stays alive so recents can reopen it |
-| `deleteSession(sessionID)` | Closes the panel context when open, then permanently destroys the opencode session via `session.remove`; DeepSeek sessions are rejected (no delete RPC) |
-| `openSessionById(sessionID, generation?, runtimeID?)` | Loads `session.get` plus replay; reuses the context when the session is already open (no re-emit), otherwise activates a new one. When a `runtimeID` is passed for a session whose native runtime differs and no context is active, remaps it to the requested runtime by opening the same directory (fresh native session) instead of the session's original runtime |
+| `deleteSession(sessionID)` | Closes the panel context when open, then permanently destroys the OpenCode session via `session.remove`; legacy DeepSeek sessions are unavailable |
+| `openSessionById(sessionID, generation?, runtimeID?)` | Loads OpenCode `session.get` plus replay and reuses an already-open context without re-emitting. A legacy DeepSeek session id is not reopened by the dormant adapter |
 | `sessionTranscript(sessionID)` | Loads `message.list` replay as `{transcript, todos}` without activating a context; the renderer's stream materialization source |
 | `sessionUsage(sessionID)` | Loads `session.get` and returns the normalized `SessionUsage` (`cost` + `tokens`) or `null` when unavailable (tokens missing — a missing `cost`, as with cost-less local providers, coerces to 0 so the snapshot stays refreshable); called after compaction to refresh the context-window display |
 | `workspaceDirectory(workspace)` | Resolves a workspace identity to its canonical session directory (terminal cwd, identity validation) |
@@ -130,7 +130,7 @@ Public methods (all used by IPC):
 | `getState()` | The primary (most recently activated) session `{id, directory, workspace}` or null |
 | `sessionSelection(workspace)` | `session.get` → `{model?, agent?}` so the UI can restore the addressed session's current picks |
 | `providerUsage()` | Delegates to `src/main/provider-usage.ts` → `ProviderUsageResult[]` for every provider (OAuth or API-key) opencode has stored credentials for |
-| `runtimeManifests()` | Probes installed runtimes and returns protocol-versioned, secret-free capability manifests for OpenCode and DeepSeek Harness |
+| `runtimeManifests()` | Probes OpenCode and returns its protocol-versioned, secret-free capability manifest |
 
 Provider usage (`providerUsage()`): the opencode service exposes no
 provider plan/rate-limit API yet, so Orbit reads the credentials
@@ -239,11 +239,11 @@ Internals:
 
 | Channel | Args → Returns |
 |---|---|
-| `shell:select-folder` | `(generation, runtimeID?) → SessionInfo \| null` (generation accepted before native dialog); the returned session is mounted by the caller — replacing the displayed panels, added as a new panel, or swapped into an existing panel — depending on the store action that opened the dialog |
+| `shell:select-folder` | `(generation, runtimeID?) → SessionInfo \| null` (generation accepted before native dialog; only OpenCode is enabled); the returned session is mounted by the caller — replacing the displayed panels, added as a new panel, or swapped into an existing panel — depending on the store action that opened the dialog |
 | `shell:select-directory` | `() → string \| null` — returns the canonical folder chosen in a native dialog without opening a runtime context; workspace bookmarks are renderer-owned and this channel never mutates the selected folder |
-| `shell:open-session` | `(dir, generation, runtimeID?) → SessionInfo` — creates a session for `dir` with OpenCode by default or the selected runtime; used for the app-wide replacement view, model-mode additions, and per-panel workspace swaps |
-| `shell:select-file` | `(generation, runtimeID?) → OpenFileWorkspaceResult \| null` (generation accepted before native `openFile` dialog); opens the folder containing the chosen file as a single-file workspace through the selected runtime |
-| `shell:open-file` | `(file, generation, runtimeID?) → OpenFileWorkspaceResult` — programmatic single-file workspace open for an absolute path (parent-folder runtime session + the file to open) |
+| `shell:open-session` | `(dir, generation, runtimeID?) → SessionInfo` — creates an OpenCode session for `dir`; non-OpenCode runtime ids are rejected |
+| `shell:select-file` | `(generation, runtimeID?) → OpenFileWorkspaceResult \| null` (generation accepted before native `openFile` dialog); opens the file's parent directory as an OpenCode session |
+| `shell:open-file` | `(file, generation, runtimeID?) → OpenFileWorkspaceResult` — opens an absolute path in a single-file workspace backed by OpenCode |
 | `shell:open-external` | `(workspace, file) → ExternalOpenResult` — resolves a dropped absolute path: in-repo files become `{kind:"relative", rel, content}`, outside-repo files a writable `{kind:"standalone", path, content}` |
 | `shell:stat-external` | `(file) → ExternalKind` — probes an absolute path as `file` / `directory` / `missing` to route mixed file/folder drops |
 | `shell:fs-write-standalone` | `(file, content, expectedContent, overwrite) → void` — atomic standalone-file write for external tabs |
@@ -254,8 +254,8 @@ Internals:
 | `shell:update-opencode` | `() → OpenCodeSyncResult` — runs OpenCode's updater, then syncs the shared service to the resulting CLI version |
 | `shell:active-sessions` | `() → SessionInfo[]` — open backend sessions, most recently activated last |
 | `shell:close-session` | `(workspace) → void` — tears down the backend context when a panel closes; the opencode session remains reopenable |
-| `shell:open-session-id` | `(sessionID, generation, runtimeID?) → ReopenedSession`; persisted runtime identity resolves omitted ids; a differing `runtimeID` with no active context remaps the session to the requested runtime on the same directory |
-| `shell:delete-session` | `(sessionID) → void` — permanently destroys the opencode session server-side; the panel closes first and DeepSeek sessions are rejected |
+| `shell:open-session-id` | `(sessionID, generation, runtimeID?) → ReopenedSession`; opens an OpenCode session and transcript. Legacy DeepSeek sessions cannot be reopened through the dormant adapter |
+| `shell:delete-session` | `(sessionID) → void` — permanently destroys the OpenCode session server-side; the panel closes first |
 | `shell:session-transcript` | `(sessionID) → { transcript, todos }` — stream materialization snapshot; does not activate a context |
 | `shell:session-usage` | `(sessionID) → SessionUsage \| null` — normalized `cost`/`tokens` for the addressed session; materialization and compaction refresh the live usage popup |
 | `shell:prompt` | `(workspace, text, files?, delivery?) → SessionTranscript` |

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import type { CommandOption, McpServerOption, PluginOption, RuntimeID, SkillOption } from "@shared/types";
+import type { CommandOption, McpServerOption, PluginOption, SkillOption } from "@shared/types";
 import { useStore } from "../store";
 import { type ThemeId, useTheme } from "../theme";
 import { OrbitMark } from "./OrbitMark";
@@ -31,7 +31,7 @@ const themes: Array<{ id: ThemeId; name: string; description: string; colors: st
 const sectionCopy: Record<SettingsSection, { title: string; description: string }> = {
   appearance: { title: "Appearance", description: "Choose how Orbit looks and how code is presented." },
   plugins: { title: "Plugins", description: "Review commands and skills available in the current workspace." },
-  providers: { title: "Providers", description: "Connect model services supported by your active agent runtime." },
+  providers: { title: "Providers", description: "Connect model services supported by OpenCode." },
   safety: { title: "Safety", description: "Set permission and follow-up defaults for agent behavior." },
   voice: { title: "Voice", description: "Configure voice input preferences and review availability." },
   model: { title: "Model", description: "Choose the model used by the current workspace." },
@@ -66,9 +66,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
     wordWrap,
     toggleWordWrap,
     followUpBehavior,
-    setFollowUpBehavior,
-    selectedRuntimeID,
-    setSelectedRuntimeID
+    setFollowUpBehavior
   } = useStore();
   const [commands, setCommands] = useState<CommandOption[]>([]);
   const [mcpServers, setMcpServers] = useState<McpServerOption[]>([]);
@@ -108,7 +106,8 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   useEffect(() => {
     if (section !== "model") return;
     void refreshRuntimes().catch(() => {});
-  }, [section, refreshRuntimes]);
+    if (session) void loadModels(session.workspace);
+  }, [section, session?.workspace, refreshRuntimes, loadModels]);
 
   useEffect(() => {
     if (section !== "plugins") return;
@@ -226,13 +225,6 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
 
       {section === "model" && <section className="settings-section">
         <div className="settings-list">
-          <SettingRow
-            title="Agent runtime"
-            detail="Choose which agent runtime handles sessions. Open sessions keep their runtime until the next app launch, which reopens them under this mode."
-            control={<select className="settings-select" value={selectedRuntimeID} onChange={(event) => setSelectedRuntimeID(event.target.value as RuntimeID)}>{(runtimes.length > 0 ? runtimes : [{ id: "opencode", name: "OpenCode", version: null, available: true }]).map((runtime) => (
-              <option key={runtime.id} value={runtime.id} disabled={!runtime.available}>{runtime.name}{runtime.version ? ` ${runtime.version}` : ""}{runtime.available ? "" : " (not installed)"}</option>
-            ))}</select>}
-          />
           <SettingRow
             title="Default model"
             detail={session ? `Used for new prompts in ${session.directory}.` : "Open a workspace to choose its default model."}
