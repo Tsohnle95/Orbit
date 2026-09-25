@@ -388,7 +388,10 @@ terminal data, resize, ownership, and cleanup paths. DeepSeek advertises no TUI
 capability until a supported profile is available. The Kitty Glass appearance
 profile uses the same embedded terminal with alpha surfaces, native macOS
 under-window vibrancy, and Kitty-inspired colors; it does not open an external
-terminal window.
+terminal window. The renderer reports the active theme's native appearance to
+the main process on boot and on theme changes, so the macOS `under-window`
+vibrancy and native chrome stay dark with the glass instead of following a
+light system appearance.
 
 ## Permissions
 

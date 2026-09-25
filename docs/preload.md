@@ -96,6 +96,7 @@ automatically.
 | `removeProviderCredential(workspace, credentialID)` | `Promise<void>` — removes one stored credential by opaque id |
 | `health()` | `Promise<boolean>` |
 | `windowView(view)` | `Promise<void>` — asks the main process to switch between the `"landing"` and `"session"` window profiles |
+| `setAppearance(appearance)` | `Promise<void>` — reports the active theme's native appearance (`"dark"` for Original and Kitty Glass, `"light"` for Paper) so window vibrancy and native chrome stay on the theme's side of light/dark |
 | `installApp()` | `Promise<{ok: boolean, message: string}>` — macOS-only: builds the packaged app and installs it to `/Applications`; `ok` false with a message on failure |
 | `validateW3c(path, content)` | `Promise<W3cDiagnostic[]>` — validates HTML/CSS source through the W3C services |
 | `viteStart(workspace, entryPath?)` | `Promise<VitePreview>` — serves a confined active HTML file from its containing directory, or the workspace root when omitted, and opens the verified loopback URL in the default browser |

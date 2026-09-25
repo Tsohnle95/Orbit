@@ -23,6 +23,8 @@ const store = {
 
 vi.mock("../store", () => ({ useStore: () => store }));
 
+const setAppearance = vi.fn().mockResolvedValue(undefined);
+
 describe("SettingsPage", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -31,6 +33,7 @@ describe("SettingsPage", () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     window.localStorage.clear();
     delete document.documentElement.dataset.theme;
+    window.openshell = { setAppearance } as unknown as typeof window.openshell;
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -43,7 +46,7 @@ describe("SettingsPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("defaults to the dark original profile, persists selection, and restores it", () => {
+  it("defaults to the dark original profile, persists selection, restores it, and tracks the native appearance", () => {
     act(() => root.render(<ThemeProvider><SettingsPage section="appearance" onClose={() => {}} /></ThemeProvider>));
 
     const cards = [...container.querySelectorAll<HTMLButtonElement>(".theme-card")];
@@ -54,10 +57,12 @@ describe("SettingsPage", () => {
     ]);
     expect(document.documentElement.dataset.theme).toBeUndefined();
     expect(window.localStorage.getItem("orbit.theme")).toBe("original");
+    expect(setAppearance).toHaveBeenLastCalledWith("dark");
 
     act(() => cards[1].click());
     expect(document.documentElement.dataset.theme).toBe("paper");
     expect(cards[1].getAttribute("aria-checked")).toBe("true");
+    expect(setAppearance).toHaveBeenLastCalledWith("light");
 
     act(() => root.unmount());
     container.remove();
@@ -65,15 +70,18 @@ describe("SettingsPage", () => {
     root = createRoot(container);
     act(() => root.render(<ThemeProvider><SettingsPage section="appearance" onClose={() => {}} /></ThemeProvider>));
     expect(document.documentElement.dataset.theme).toBe("paper");
+    expect(setAppearance).toHaveBeenLastCalledWith("light");
 
     const restored = [...container.querySelectorAll<HTMLButtonElement>(".theme-card")];
     act(() => restored[2].click());
     expect(document.documentElement.dataset.theme).toBeUndefined();
     expect(window.localStorage.getItem("orbit.theme")).toBe("original");
+    expect(setAppearance).toHaveBeenLastCalledWith("dark");
 
     act(() => restored[0].click());
     expect(document.documentElement.dataset.theme).toBe("kitty");
     expect(window.localStorage.getItem("orbit.theme")).toBe("kitty");
+    expect(setAppearance).toHaveBeenLastCalledWith("dark");
   });
 
   it("provides dedicated settings navigation with About as the final tab", () => {

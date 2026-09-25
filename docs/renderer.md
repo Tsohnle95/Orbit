@@ -479,6 +479,11 @@ DeepSeek profile remains unavailable until its TUI command is supported.
 The persisted Kitty Glass appearance profile applies its transparent xterm
 background, Kitty-inspired palette, and Fira Code fallback to the embedded TUI,
 so the terminal shares the panel's glass instead of adding its own dark layer.
+The window and native chrome track the theme's native appearance: the renderer
+reports it through `setAppearance` on boot and on every theme change (dark for
+Original and Kitty Glass, light for Paper), so the macOS `under-window`
+vibrancy renders the dark material for the glass regardless of the system
+appearance.
 The renderer generates and registers each validated terminal UUID before
 invoking `terminalStart`, so startup output or exit can be attributed even when
 it arrives before the invoke resolves. Only those pending IDs can buffer startup output. Buffers retain at most 64 chunks / 256 KiB for ten

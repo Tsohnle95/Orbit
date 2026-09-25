@@ -189,6 +189,7 @@ const api = {
   health: (): Promise<boolean> => ipcRenderer.invoke("shell:health"),
   installApp: (): Promise<{ ok: boolean; message: string }> => ipcRenderer.invoke("shell:install-app"),
   windowView: (view: "landing" | "session"): Promise<void> => ipcRenderer.invoke("shell:window-view", view),
+  setAppearance: (appearance: "dark" | "light"): Promise<void> => ipcRenderer.invoke("shell:set-appearance", appearance),
   validateW3c: (path: string, content: string): Promise<W3cDiagnostic[]> =>
     ipcRenderer.invoke("shell:validate-w3c", path, content),
   viteStart: (workspace: WorkspaceIdentity, entryPath?: string): Promise<VitePreview> =>

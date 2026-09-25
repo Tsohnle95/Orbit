@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell, type IpcMainInvokeEvent, type WebContents } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, shell, type IpcMainInvokeEvent, type WebContents } from "electron";
 import path from "node:path";
 import fsp from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -953,6 +953,13 @@ function registerIpc(): void {
     applyWindowView(view);
   });
 
+  // The native appearance tracks the active theme — only the Paper profile is
+  // light — so window vibrancy and native chrome never follow a mismatched
+  // system appearance.
+  handleTrusted("shell:set-appearance", (_e, appearance: unknown) => {
+    nativeTheme.themeSource = appearance === "light" ? "light" : "dark";
+  });
+
   handleTrusted("shell:install-app", async () => installApplication());
 
   handleTrusted("shell:validate-w3c", async (_e, filePath: string, content: string) => {
@@ -1024,6 +1031,10 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     app.setName("Orbit");
+    // Window vibrancy and native chrome follow the native appearance, so pin
+    // the dark default before any window exists; the renderer reports the
+    // persisted theme through `shell:set-appearance` right after boot.
+    nativeTheme.themeSource = "dark";
     if (process.platform === "darwin") {
       try {
         app.dock?.setIcon(appIconPath);
@@ -1089,7 +1100,11 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  // macOS would normally keep the app alive with no window; Orbit must not
+  // linger invisibly in the background (macOS then files it as a background
+  // task), so closing the last window quits on every platform. The backend,
+  // terminals, Vite servers and mobile server are stopped in `before-quit`.
+  app.quit();
 });
 
 let quitting = false;
