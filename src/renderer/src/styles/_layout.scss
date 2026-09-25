@@ -4,25 +4,115 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding-top: 34px;
-  background: var(--bg-panel);
+  padding-top: 44px;
+  background: var(--bg);
 }
 
 .main-row {
   display: grid;
-  grid-template-columns: var(--pane-columns);
+  grid-template-columns: 3.4em var(--pane-columns);
   grid-auto-rows: minmax(0, 1fr);
   flex: 1;
+  min-width: 0;
   min-height: 0;
+  gap: 12px;
+  padding: 12px;
+  background: var(--workspace-background);
 }
 
 .workspace-area {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, var(--tray-row, 0px));
+  row-gap: var(--tray-gap, 0px);
+  transition: grid-template-rows 200ms cubic-bezier(0.16, 1, 0.3, 1);
   background: transparent;
   min-width: 0;
   min-height: 0;
+  overflow: visible;
+}
+
+.workspace-area > .editor-pane {
+  grid-row: 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 0.8em 2.5em rgba(0, 0, 0, 0.2);
+}
+
+.workspace-area.agent-open > .editor-pane {
+  margin-right: calc(var(--editor-right, 0px) + 12px);
+}
+
+.workspace-area.agent-open > .tray-area {
+  width: calc(100% - var(--editor-right, 0px) - 12px);
+}
+
+.workspace-area.tray-dragging { transition: none; }
+
+.sidebar-slot {
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
+}
+
+.sidebar-slot > .sidebar {
+  width: 100%;
+  height: 100%;
+}
+
+.activity-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 5px;
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--rail-surface) 92%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 0.8em 2.5em rgba(0, 0, 0, 0.2);
+}
+
+.activity-brand,
+.activity-tool {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: var(--text-dim);
+  background: transparent;
+  border: 0;
+  border-radius: 11px;
+  cursor: pointer;
+  transition: color 120ms var(--ease), background 120ms var(--ease), box-shadow 120ms var(--ease);
+}
+
+.activity-brand {
+  margin-bottom: 5px;
+  color: var(--accent);
+  background: var(--bg-active-pill);
+  border: 1px solid var(--border-strong);
+}
+
+.activity-tool:hover,
+.activity-tool.active {
+  color: var(--accent);
+  background: var(--bg-active-pill);
+}
+
+.activity-tool.active { box-shadow: inset 0 0 0 1px var(--border-strong); }
+.activity-tool .os-icon { width: 17px; height: 17px; }
+.activity-spacer { flex: 1 1 auto; }
+
+.activity-brand:focus-visible,
+.activity-tool:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .agent-col {
@@ -41,6 +131,8 @@
 .agent-col > .agent-panel {
   flex: 1;
   min-width: 0;
+  border-radius: 16px;
+  box-shadow: 0 0.8em 2.5em rgba(0, 0, 0, 0.2);
 }
 
 .empty-agent-col {
@@ -59,20 +151,20 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 34px;
+  height: 44px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 8px;
-  background: var(--bg-panel);
-  border-bottom: none;
+  gap: 12px;
+  padding: 0 12px;
+  background: var(--top-surface);
+  border-bottom: 1px solid var(--border);
   z-index: 50;
   -webkit-app-region: drag;
 }
 
 :root[data-theme="kitty"] .titlebar { background: transparent; }
 
-.darwin .titlebar { padding-left: 78px; }
+.darwin .titlebar { padding-left: 80px; }
 
 .titlebar-title {
   display: inline-flex;

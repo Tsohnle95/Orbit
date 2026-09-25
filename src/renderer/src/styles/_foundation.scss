@@ -1,4 +1,10 @@
 :root {
+  --workspace-background: radial-gradient(ellipse at 66% 15%, #302456 0, transparent 44%), #151423;
+  --top-surface: #1d1b30;
+  --rail-surface: #171628;
+  --editor-surface: rgba(24, 23, 42, 0.97);
+  --terminal-surface: rgba(15, 15, 28, 0.98);
+  --status-surface: #1b1930;
   --bg: #171412;
   --bg-panel: #262220;
   --bg-inset: #201d1b;
@@ -56,10 +62,10 @@
   --bg-raised: #2d2926;
   --interactive-hover: rgba(255, 255, 255, 0.06);
 
-  --radius-sm: 13px;
-  --radius-md: 16px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
   --radius-full: 999px;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -254,7 +260,7 @@ body {
 #root { position: relative; }
 
 ::selection {
-  background: rgba(126, 153, 132, 0.32);
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
 :focus-visible {

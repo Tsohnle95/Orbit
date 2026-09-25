@@ -89,8 +89,7 @@ All backend→renderer message kinds are defined in
 - `{ kind: "terminal-data" | "terminal-exit", terminal }` — PTY output /
   exit from the terminal tray (`src/main/terminal.ts`).
 - `{ kind: "ui-command", command }` — main-process requests to the
-  renderer (`toggle-word-wrap` when ⌘W / Ctrl+W is pressed;
-  `open-source` with `{ path, line }` when a CSS rule's source link
+  renderer (`open-source` with `{ path, line }` when a CSS rule's source link
   is clicked in DevTools — `path` is a canonical app-root-confined absolute
   path opened at that line as a standalone tab when outside the active workspace).
 
@@ -351,13 +350,12 @@ process resolves the active session's runtime command and starts it with the
 session directory as cwd; OpenCode launches `opencode --session <session-id>`.
 The renderer keeps the TUI inside the panel with xterm.js and reuses the
 terminal data, resize, ownership, and cleanup paths. Only OpenCode is currently
-available to panels; the dormant DeepSeek adapter has no TUI path. The Kitty Glass appearance
-profile uses the same embedded terminal with alpha surfaces, native macOS
-under-window vibrancy, and Kitty-inspired colors; it does not open an external
-terminal window. The renderer reports the active theme's native appearance to
-the main process on boot and on theme changes, so the macOS `under-window`
-vibrancy and native chrome stay dark with the glass instead of following a
-light system appearance.
+available to panels; the dormant DeepSeek adapter has no TUI path. The Prism
+appearance uses violet alpha surfaces with the same embedded terminal; it does
+not open an external terminal window. The renderer reports the active color
+profile's native appearance to the main process on boot and on profile changes,
+so macOS `under-window` vibrancy and native chrome use the matching light or
+dark material.
 
 ## Permissions
 

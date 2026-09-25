@@ -98,7 +98,7 @@ automatically.
 | `removeProviderCredential(workspace, credentialID)` | `Promise<void>` — removes one stored credential by opaque id |
 | `health()` | `Promise<boolean>` |
 | `windowView(view)` | `Promise<void>` — asks the main process to switch between the `"landing"` and `"session"` window profiles |
-| `setAppearance(appearance)` | `Promise<void>` — reports the active theme's native appearance (`"dark"` for Original and Kitty Glass, `"light"` for Paper) so window vibrancy and native chrome stay on the theme's side of light/dark |
+| `setAppearance(appearance)` | `Promise<void>` — reports the selected color profile's native appearance (`"dark"` or `"light"`) so window vibrancy and native chrome follow its color scheme |
 | `installApp()` | `Promise<{ok: boolean, message: string}>` — macOS-only: builds the packaged app and installs it to `/Applications`; `ok` false with a message on failure |
 | `validateW3c(path, content)` | `Promise<W3cDiagnostic[]>` — validates HTML/CSS source through the W3C services |
 | `viteToggle(workspace, entryPath?)` | `Promise<ViteToggleResult>` — starts the loopback Vite dev server for the resolved page (a confined active HTML file's directory, or the workspace root, falling back to the shallowest HTML page) and opens it, or stops the server already running for that same target |

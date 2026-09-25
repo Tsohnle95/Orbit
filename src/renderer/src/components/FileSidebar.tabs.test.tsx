@@ -57,8 +57,6 @@ const store = {
   runCommand: vi.fn(async () => {}),
   approvalMode: "ask" as const,
   toggleApprovalMode: vi.fn(),
-  wordWrap: false,
-  toggleWordWrap: vi.fn(),
   followUpBehavior: "queue" as const,
   setFollowUpBehavior: vi.fn()
 };
@@ -90,7 +88,7 @@ describe("FileSidebar tabs and sessions pane", () => {
     store.savedWorkspaces = [{ directory: "/workspace", name: "Workspace" }];
     for (const mock of [
       store.focusSession, store.closePanel, store.reopenSession, store.openSession, store.selectFolder, store.selectFile,
-      store.loadSessions, store.runCommand, store.toggleWordWrap, store.selectPanelDirectory, store.saveWorkspace,
+      store.loadSessions, store.runCommand, store.selectPanelDirectory, store.saveWorkspace,
       store.removeWorkspace
     ]) {
       mock.mockClear();

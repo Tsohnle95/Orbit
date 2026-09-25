@@ -316,7 +316,7 @@ Internals:
 | `shell:provider-credential-remove` | `(workspace, credentialID) → void` — removes a stored credential by opaque id |
 | `shell:health` | `() → boolean` |
 | `shell:window-view` | `(view: "landing" \| "session") → void` — switches the window between the fixed landing size and the persisted session size (see Window sizing) |
-| `shell:set-appearance` | `(appearance: "dark" \| "light") → void` — sets `nativeTheme.themeSource` so window vibrancy and native chrome follow the active theme (dark for Original and Kitty Glass, light for Paper); the renderer reports it on boot and on every theme change |
+| `shell:set-appearance` | `(appearance: "dark" \| "light") → void` — sets `nativeTheme.themeSource` so window vibrancy and native chrome follow the selected color profile; the renderer reports it on boot and on every profile change |
 | `shell:install-app` | `() → {ok, message}`; macOS only — spawns `scripts/install-app.mjs` to build and package the app, then replaces `/Applications/Orbit.app` |
 | `shell:validate-w3c` | `(path, content) → W3cDiagnostic[]`; calls the Nu Html Checker or W3C CSS Validator for HTML and plain CSS paths; preprocessor stylesheets (SCSS, LESS, Sass) return no diagnostics |
 | `shell:vite-toggle` | `(workspace, entryPath?) → ViteToggleResult` — starts a loopback Vite dev server for the resolved page and opens its verified URL, or stops the server already running for that same workspace/page; an active HTML entry is confined to the workspace and served from its containing directory; otherwise the root is served, or, when the root has no index.html, the shallowest HTML page in the workspace (skipping dependencies/VCS) is served from its folder; Vite resolves from either a self-contained package or the repository backing the installed live launcher |
@@ -402,10 +402,8 @@ at quit, where it kills each child, waits (bounded, 3s per terminal) for the
 exit events to drain, then detaches the callbacks so no pty callback can
 fire into Node teardown and abort the process. The `before-quit` handler
 bounds the whole shutdown at 10s and always proceeds to `app.quit()`. `before-input-event` intercepts
-⌘W / Ctrl+W (so it never closes the window) and forwards
-`{kind:"ui-command", command:"toggle-word-wrap"}` to the renderer instead
-(the user's muscle memory maps ⌘W to word wrap, and the window must never
-die on it). DevTools follow the browser conventions: F12 toggles a
+⌘W / Ctrl+W so it never closes the window. Editor word wrap is always enabled.
+DevTools follow the browser conventions: F12 toggles a
 bottom-docked inspector (never detached) and ⌘⇧C (Ctrl+Shift+C) toggles
 element-picking mode. Hover highlighting runs over the Chrome DevTools
 Protocol (`webContents.debugger`, `Overlay.setInspectMode` with

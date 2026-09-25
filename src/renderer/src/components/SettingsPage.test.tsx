@@ -20,8 +20,6 @@ const store = {
   refreshRuntimes: vi.fn(async () => []),
   approvalMode: "ask",
   toggleApprovalMode: vi.fn(),
-  wordWrap: false,
-  toggleWordWrap: vi.fn(),
   followUpBehavior: "queue",
   setFollowUpBehavior: vi.fn()
 };
@@ -51,22 +49,29 @@ describe("SettingsPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("defaults to the dark original profile, persists selection, restores it, and tracks the native appearance", () => {
+  it("defaults to Prism, persists color-profile selection, restores it, and tracks native appearance", () => {
     act(() => root.render(<ThemeProvider><SettingsPage section="appearance" onClose={() => {}} /></ThemeProvider>));
 
     const cards = [...container.querySelectorAll<HTMLButtonElement>(".theme-card")];
     expect(cards.map((card) => card.textContent)).toEqual([
-      expect.stringContaining("Kitty Glass"),
-      expect.stringContaining("Paper Editorial"),
-      expect.stringContaining("Original")
+      expect.stringContaining("Quiet Habitat"),
+      expect.stringContaining("Control Deck"),
+      expect.stringContaining("Papertrail"),
+      expect.stringContaining("Shell First"),
+      expect.stringContaining("Swiss Grid"),
+      expect.stringContaining("Prism"),
+      expect.stringContaining("Workshop"),
+      expect.stringContaining("Blueprint"),
+      expect.stringContaining("Stillness"),
+      expect.stringContaining("Bloom")
     ]);
-    expect(document.documentElement.dataset.theme).toBeUndefined();
-    expect(window.localStorage.getItem("orbit.theme")).toBe("original");
+    expect(document.documentElement.dataset.theme).toBe("prism");
+    expect(window.localStorage.getItem("orbit.theme")).toBe("prism");
     expect(setAppearance).toHaveBeenLastCalledWith("dark");
 
-    act(() => cards[1].click());
-    expect(document.documentElement.dataset.theme).toBe("paper");
-    expect(cards[1].getAttribute("aria-checked")).toBe("true");
+    act(() => cards[2].click());
+    expect(document.documentElement.dataset.theme).toBe("papertrail");
+    expect(cards[2].getAttribute("aria-checked")).toBe("true");
     expect(setAppearance).toHaveBeenLastCalledWith("light");
 
     act(() => root.unmount());
@@ -74,19 +79,25 @@ describe("SettingsPage", () => {
     document.body.append(container);
     root = createRoot(container);
     act(() => root.render(<ThemeProvider><SettingsPage section="appearance" onClose={() => {}} /></ThemeProvider>));
-    expect(document.documentElement.dataset.theme).toBe("paper");
+    expect(document.documentElement.dataset.theme).toBe("papertrail");
     expect(setAppearance).toHaveBeenLastCalledWith("light");
 
     const restored = [...container.querySelectorAll<HTMLButtonElement>(".theme-card")];
-    act(() => restored[2].click());
-    expect(document.documentElement.dataset.theme).toBeUndefined();
-    expect(window.localStorage.getItem("orbit.theme")).toBe("original");
+    act(() => restored[5].click());
+    expect(document.documentElement.dataset.theme).toBe("prism");
+    expect(window.localStorage.getItem("orbit.theme")).toBe("prism");
     expect(setAppearance).toHaveBeenLastCalledWith("dark");
 
     act(() => restored[0].click());
-    expect(document.documentElement.dataset.theme).toBe("kitty");
-    expect(window.localStorage.getItem("orbit.theme")).toBe("kitty");
-    expect(setAppearance).toHaveBeenLastCalledWith("dark");
+    expect(document.documentElement.dataset.theme).toBe("quiet-habitat");
+    expect(window.localStorage.getItem("orbit.theme")).toBe("quiet-habitat");
+    expect(setAppearance).toHaveBeenLastCalledWith("light");
+  });
+
+  it("keeps editor wrapping enabled without a wrap control", () => {
+    act(() => root.render(<ThemeProvider><SettingsPage section="appearance" onClose={() => {}} /></ThemeProvider>));
+    expect(container.textContent).not.toContain("Word wrap");
+    expect(container.querySelector('[role="switch"]')).toBeNull();
   });
 
   it("provides dedicated settings navigation with About as the final tab", () => {

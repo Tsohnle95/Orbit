@@ -40,7 +40,6 @@ Exposed via `useStore()` (context). State:
 | `currentAgent` | `AgentOption \| null` | per workspace; seeded from the session selection, falling back to the session's creation agent and then `build`; live-updated by `session.agent.selected` for the addressed session and optimistic `switchAgent` |
 | `runtimes` | `RuntimeManifest[]` | runtime availability and capability manifests; `AgentPanel` uses the active manifest's `tui` flag to enable the embedded TUI option |
 | `approvalMode` | `ApprovalMode` | `ask` shows permission cards; `approve` automatically replies `once` |
-| `wordWrap` | `boolean` | Monaco `wordWrap` setting, persisted to `localStorage` ("wordWrap") |
 | `sessions` | `SessionSummary[]` | recent sessions for the Welcome screen and the sidebar's Sessions pane |
 | `ctxMenu` | `{x, y, target} \| null` | explorer right-click menu position and target entry (`null` = empty area) |
 | `pendingCreate` | `{parent, kind} \| null` | inline "new file/folder" name input target |
@@ -175,7 +174,7 @@ dialog), `reopenSession(id, silent)`
 (focus a running panel, otherwise replace the selected panel or the current view when no panel is selected unless silent), `focusSession(id)`,
 `closePanel(id)`, `loadSessions`, `sendPrompt(text, files, workspace?)`, `stop(workspace?)`,
 `refreshProviderUsage`, `loadModels(workspace?)`, `switchModel(id, providerID, variant?, workspace?)`,
-`loadAgents(workspace?)`, `switchAgent(id, workspace?)`, `toggleApprovalMode`, `toggleWordWrap`,
+`loadAgents(workspace?)`, `switchAgent(id, workspace?)`, `toggleApprovalMode`,
 `openFile(path, {mode}, workspace?)`, `closeTab`, `setActive`, `setTabMode`, `editContent`, `saveTab`,
 `reloadTab`, `overwriteTab`, `mergeTab`, `toggleDir`, `ensureRootOpen`,
 `replyPermission(requestID, reply, sessionID?)`,
@@ -410,14 +409,14 @@ express a cross-component invariant or non-obvious state contract.
 
 | Component | File | Responsibility |
 |---|---|---|
-| `App` | `App.tsx` | Top-level session/editor/sidebar/agent/terminal layout; panel geometry and focus routing |
+| `App` | `App.tsx` | Prism workspace shell, profile-independent panel layout, panel geometry and focus routing; Files activity button toggles the file pane while preserving its grid slot so the editor expands in place |
 | `Welcome` | `Welcome.tsx` | Landing view, recent sessions/workspaces, initial folder/file open |
 | `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation (defaults to Files when a workspace opens), Changes, Explorer, filesystem actions, terminal context actions |
 | `SettingsSidebar` | `SettingsSidebar.tsx` | Settings navigation |
-| `SettingsPage` | `SettingsPage.tsx` | Appearance, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and about surfaces |
+| `SettingsPage` | `SettingsPage.tsx` | Ten color-only appearances plus plugins, providers, safety, voice, default model and OpenCode sync, mobile, and about surfaces |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
 | `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
-| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs, save/conflict UI, editor validation entry points |
+| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, save/conflict UI, editor validation entry points |
 | `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status |
 | `AgentTui` | `AgentTui.tsx` | xterm view for the active runtime's PTY-backed TUI |
 | `OpenCodeTimeline` | `OpenCodeTimeline.tsx` | Runtime-neutral chronological rendering of assistant reasoning/text/tools/delegation |
@@ -487,14 +486,12 @@ Agent TUI input uses the same terminal message stream and ownership checks, but
 starts the active runtime command through `agentTuiStart` in the panel's
 workspace directory. OpenCode uses `opencode --session <session-id>`; the
 dormant DeepSeek runtime is not available to panels.
-The persisted Kitty Glass appearance profile applies its transparent xterm
-background, Kitty-inspired palette, and Fira Code fallback to the embedded TUI,
-so the terminal shares the panel's glass instead of adding its own dark layer.
-The window and native chrome track the theme's native appearance: the renderer
-reports it through `setAppearance` on boot and on every theme change (dark for
-Original and Kitty Glass, light for Paper), so the macOS `under-window`
-vibrancy renders the dark material for the glass regardless of the system
-appearance.
+The selected appearance supplies the color palette for both embedded xterm
+surfaces. Prism uses alpha-backed violet panels; the other profiles change only
+colors while retaining the same workspace layout. The window and native chrome
+track each profile's native appearance: the renderer reports it through
+`setAppearance` on boot and on every profile change so macOS `under-window`
+vibrancy follows the palette's light or dark scheme.
 The renderer generates and registers each validated terminal UUID before
 invoking `terminalStart`, so startup output or exit can be attributed even when
 it arrives before the invoke resolves. Only those pending IDs can buffer startup output. Buffers retain at most 64 chunks / 256 KiB for ten
@@ -512,10 +509,12 @@ released at that collapsed position.
 ## Monaco (`monaco.ts`)
 
 - Workers wired for editor/json/css/html/ts (`?worker` imports).
-- `orbit-original`, `orbit-paper`, and `orbit-kitty` themes (diff insert/remove colors included), selected with the persisted renderer color profile. Monaco
+- The persisted `orbit.theme` color profile defaults to Prism. Profile selection changes colors, not the activity rail, sidebar, editor/terminal stack, or agent-panel geometry.
+- `orbit-${appearanceId}` themes (diff insert/remove colors included) for the ten persisted color profiles. Monaco
   parses theme palette colors with `Color.fromHex`, which silently maps any
   non-hex value to pure red — every palette color must be hex
   (`#RRGGBB` or `#RRGGBBAA`), never `rgba()`.
+- Editor line wrapping is always enabled; there is no settings or toolbar toggle.
 - `languageForPath()` — extension → Monaco language map (fallback
   `plaintext`).
 - `editor-navigation.ts` binds Command/Control + Arrow Up/Down to the start/end

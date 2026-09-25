@@ -141,7 +141,7 @@ describe("Layout panel sizing", () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
-    expect(container.querySelector('[title^="Sessions"]')).toBeNull();
+    expect(container.querySelector('.titlebar [title^="Sessions"]')).toBeNull();
     expect(container.querySelector('[title="Open another workspace"]')).toBeNull();
     expect(container.querySelector('[title="Open a single file"]')).toBeNull();
   });
@@ -167,13 +167,14 @@ describe("Layout panel sizing", () => {
     expect(sideTab(container, "Sessions").className).not.toContain("active");
   });
 
-  it("toggles the sidebar from the titlebar button without leaving a collapsed strip", async () => {
+  it("toggles the file pane from the Files activity button and keeps the editor slot", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
-    const toggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!;
+    const toggle = container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!;
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
     expect(container.querySelector(".sidebar.collapsed")).toBeNull();
+    expect(container.querySelector(".workspace-area")).not.toBeNull();
 
     await act(async () => {
       toggle.click();
@@ -181,8 +182,10 @@ describe("Layout panel sizing", () => {
     });
 
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
-    expect(gridCols()).toEqual(["0px", "minmax(0,1fr)"]);
+    expect(gridCols()).toEqual(["0px", "0px", "minmax(0,1fr)"]);
+    expect(container.querySelector(".sidebar-slot.collapsed")).not.toBeNull();
     expect(container.querySelector(".sidebar")).toBeNull();
+    expect(container.querySelector(".workspace-area")).not.toBeNull();
 
     await act(async () => {
       toggle.click();
@@ -194,24 +197,15 @@ describe("Layout panel sizing", () => {
     expect(container.querySelector(".sidebar")).not.toBeNull();
   });
 
-  it("mirrors the panel glyph between the sidebar and agent panel toggles", async () => {
+  it("keeps file navigation in the activity rail and agent visibility in the titlebar", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
-    const sidebarToggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!;
+    const filesButton = container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!;
     const panelToggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-agent-panel"]')!;
-    expect(sidebarToggle.closest(".titlebar-leading-actions")).not.toBeNull();
+    expect(filesButton.closest(".activity-rail")).not.toBeNull();
     expect(panelToggle.closest(".titlebar-actions")).not.toBeNull();
-
-    const left = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"] svg')!;
-    const right = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-agent-panel"] svg')!;
-    expect(left.getAttribute("class")).toContain("codicon-sidebar-left");
-    expect(right.getAttribute("class")).toContain("codicon-sidebar-right");
-    const leftHalf = left.querySelectorAll("rect")[1];
-    const rightHalf = right.querySelectorAll("rect")[1];
-    expect(leftHalf?.getAttribute("x")).toBe("1.5");
-    expect(rightHalf?.getAttribute("x")).toBe("8");
-    expect(right.querySelectorAll("rect").length).toBe(left.querySelectorAll("rect").length);
+    expect(container.querySelector('[data-panel-action="toggle-sidebar"]')).toBeNull();
   });
 
   it("settles with both panels fitting when the window is narrower than their combined width", async () => {
@@ -245,7 +239,7 @@ describe("Layout panel sizing", () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
-    expect(agentLefts()).toEqual([969]);
+    expect(agentLefts()).toEqual([924]);
 
     await act(async () => {
       const handle = container.querySelector<HTMLElement>(".agent-col .panel-resize-left")!;
@@ -255,8 +249,8 @@ describe("Layout panel sizing", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    expect(agentWidths()[0]).toBeCloseTo(1228, 0);
-    expect(agentLefts()[0]).toBeCloseTo(21, 0);
+    expect(agentWidths()[0]).toBeCloseTo(1249, 0);
+    expect(agentLefts()[0]).toBeCloseTo(0, 0);
 
     await act(async () => {
       setWidth(900);
@@ -264,7 +258,7 @@ describe("Layout panel sizing", () => {
     });
 
     expect(Number.parseFloat(gridCols()[0] ?? "0")).toBeCloseTo(230, 0);
-    expect(agentWidths()[0]).toBeCloseTo(668, 0);
+    expect(agentWidths()[0]).toBeCloseTo(669, 0);
   });
 
   it("previews panel resizing without committing React renders on mousemove", async () => {
@@ -290,7 +284,7 @@ describe("Layout panel sizing", () => {
       await Promise.resolve();
     });
 
-    expect(agentWidths()[0]).toBeCloseTo(580, 0);
+    expect(agentWidths()[0]).toBeCloseTo(625, 0);
     expect(commits).toBe(baseline);
 
     await act(async () => {
@@ -298,7 +292,7 @@ describe("Layout panel sizing", () => {
       await Promise.resolve();
     });
 
-    expect(agentWidths()[0]).toBeCloseTo(580, 0);
+    expect(agentWidths()[0]).toBeCloseTo(625, 0);
     expect(commits).toBeGreaterThan(baseline);
   });
 
@@ -336,7 +330,7 @@ describe("Layout panel sizing", () => {
       handle.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, clientX: 1000 }));
       window.dispatchEvent(new MouseEvent("mousemove", { clientX: 0 }));
       window.dispatchEvent(new MouseEvent("mouseup", {}));
-      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
+      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
@@ -344,7 +338,7 @@ describe("Layout panel sizing", () => {
     expect(agentWidths()[0]).toBeCloseTo(1480, 0);
 
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
+      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
@@ -354,18 +348,18 @@ describe("Layout panel sizing", () => {
     expect(container.querySelector<HTMLElement>(".workspace-area")!.style.getPropertyValue("--editor-right")).toBe("1249px");
   });
 
-  it("reopens the sidebar from the titlebar toggle after closing it", async () => {
+  it("reopens the file pane from the Files activity button after closing it", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
+      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    expect(gridCols()).toEqual(["0px", "minmax(0,1fr)"]);
+    expect(gridCols()).toEqual(["0px", "0px", "minmax(0,1fr)"]);
     expect(container.querySelector(".sidebar")).toBeNull();
 
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
+      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
     expect(gridCols()[0]).toBe("230px");
@@ -376,13 +370,13 @@ describe("Layout panel sizing", () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
+      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
-    expect(gridCols()).toEqual(["0px", "minmax(0,1fr)"]);
+    expect(gridCols()).toEqual(["0px", "0px", "minmax(0,1fr)"]);
 
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
+      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
     expect(gridCols()[0]).toBe("230px");
@@ -409,16 +403,16 @@ describe("Layout panel sizing", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    expect(agentWidths()[0]).toBeCloseTo(1228, 0);
-    expect(agentLefts()[0]).toBeCloseTo(21, 0);
+    expect(agentWidths()[0]).toBeCloseTo(1249, 0);
+    expect(agentLefts()[0]).toBeCloseTo(0, 0);
 
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
+      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    expect(agentWidths()[0]).toBeCloseTo(1228, 0);
-    expect(agentLefts()[0]).toBeCloseTo(252, 0);
+    expect(agentWidths()[0]).toBeCloseTo(1480, 0);
+    expect(agentLefts()[0]).toBeCloseTo(0, 0);
   });
 
   it("insets the editor area to the free space left of the agent panels", async () => {
@@ -430,14 +424,14 @@ describe("Layout panel sizing", () => {
         container.querySelector<HTMLElement>(".workspace-area")!.style.getPropertyValue("--editor-right") || "0"
       );
 
-    expect(editorRight()).toBeCloseTo(280, 0);
+    expect(editorRight()).toBeCloseTo(325, 0);
 
     await act(async () => {
       dispatch({ kind: "session", session: info("/two", 2) });
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    expect(editorRight()).toBeCloseTo(280, 0);
+    expect(editorRight()).toBeCloseTo(325, 0);
     await enterAgentMode();
     expect(editorRight()).toBeCloseTo(1480, 0);
 
@@ -450,7 +444,7 @@ describe("Layout panel sizing", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
-    expect(editorRight()).toBeCloseTo(280, 0);
+    expect(editorRight()).toBeCloseTo(325, 0);
     expect(container.querySelector(".app.agent-mode")).toBeNull();
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(1);
   });
@@ -469,7 +463,7 @@ describe("Layout panel sizing", () => {
 
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(2);
     const cols = gridCols();
-    expect(cols).toEqual(["0px", "minmax(0,1fr)"]);
+    expect(cols).toEqual(["0px", "0px", "minmax(0,1fr)"]);
     const [first, second] = agentWidths();
     expect(first).toBeGreaterThanOrEqual(44);
     expect(second).toBeGreaterThanOrEqual(44);
@@ -521,8 +515,8 @@ describe("Layout panel sizing", () => {
 
     await enterAgentMode();
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(1);
-    expect(agentWidths()).toEqual([280]);
-    expect(agentLefts()).toEqual([969]);
+    expect(agentWidths()).toEqual([325]);
+    expect(agentLefts()).toEqual([924]);
     expect(container.querySelector(".agent-workspace")?.textContent).toContain("two");
 
     await enterAgentMode();
@@ -561,7 +555,7 @@ describe("Layout panel sizing", () => {
 
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(3);
     const cols = gridCols();
-    expect(cols).toHaveLength(2);
+    expect(cols).toHaveLength(3);
     expect(agentWidths()).toEqual([740, 740, 740]);
     expect(agentLefts()).toEqual([0, 0, 740]);
   });
@@ -661,7 +655,7 @@ describe("Layout panel sizing", () => {
     });
 
     expect(agentCols()).toHaveLength(1);
-    expect(agentLefts()).toEqual([969]);
+    expect(agentLefts()).toEqual([924]);
   });
 
   it("stops a panel at its neighbor's edge without touching it", async () => {
@@ -791,8 +785,8 @@ describe("Layout panel sizing", () => {
 
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(1);
-    expect(agentWidths()).toEqual([280]);
-    expect(agentLefts()).toEqual([969]);
+    expect(agentWidths()).toEqual([325]);
+    expect(agentLefts()).toEqual([924]);
   });
 
   it("repeatedly toggles the single agent panel closed and open from the titlebar", async () => {
@@ -815,8 +809,8 @@ describe("Layout panel sizing", () => {
         await new Promise((resolve) => setTimeout(resolve, 20));
       });
       expect(container.querySelectorAll(".agent-panel")).toHaveLength(1);
-      expect(agentWidths()).toEqual([280]);
-      expect(agentLefts()).toEqual([969]);
+      expect(agentWidths()).toEqual([325]);
+      expect(agentLefts()).toEqual([924]);
     }
   });
 
@@ -927,8 +921,8 @@ describe("Layout panel sizing", () => {
     });
 
     expect(gridCols()[0]).toBe("230px");
-    expect(agentWidths()).toEqual([280]);
-    expect(agentLefts()).toEqual([969]);
+    expect(agentWidths()).toEqual([325]);
+    expect(agentLefts()).toEqual([924]);
   });
 
   it("model mode places three panels into three quadrants", async () => {
@@ -972,8 +966,8 @@ describe("Layout panel sizing", () => {
     });
 
     expect(gridCols()[0]).toBe("230px");
-    expect(agentWidths()).toEqual([280]);
-    expect(agentLefts()).toEqual([969]);
+    expect(agentWidths()).toEqual([325]);
+    expect(agentLefts()).toEqual([924]);
   });
 
   it("exits agent mode without restoring when the user manually resizes a panel", async () => {
@@ -1063,8 +1057,8 @@ describe("Layout panel sizing", () => {
     });
 
     expect(gridCols()[0]).toBe("230px");
-    expect(agentWidths()).toEqual([280]);
-    expect(agentLefts()).toEqual([969]);
+    expect(agentWidths()).toEqual([325]);
+    expect(agentLefts()).toEqual([924]);
   });
 
   it("only the plus control adds a model panel", async () => {

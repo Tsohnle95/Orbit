@@ -181,7 +181,6 @@ interface Store {
   agents: AgentOption[];
   currentAgent: AgentOption | null;
   approvalMode: ApprovalMode;
-  wordWrap: boolean;
   followUpBehavior: FollowUpBehavior;
   setFollowUpBehavior: (behavior: FollowUpBehavior) => void;
   sessions: SessionSummary[];
@@ -222,7 +221,6 @@ interface Store {
   loadAgents: (workspace?: WorkspaceIdentity) => Promise<void>;
   switchAgent: (id: string, workspace?: WorkspaceIdentity) => Promise<void>;
   toggleApprovalMode: () => void;
-  toggleWordWrap: () => void;
   openFile: (path: string, opts?: { mode?: "edit" | "diff"; source?: boolean }, workspace?: WorkspaceIdentity) => Promise<void>;
   closeTab: (path: string) => void;
   setActive: (path: string) => void;
@@ -523,9 +521,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const [currentAgentByWorkspace, setCurrentAgentByWorkspace] = useState<Record<string, AgentOption | null>>({});
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>(
     () => (window.localStorage.getItem("approvalMode") === "approve" ? "approve" : "ask")
-  );
-  const [wordWrap, setWordWrap] = useState<boolean>(
-    () => window.localStorage.getItem("wordWrap") === "on"
   );
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [savedWorkspaces, setSavedWorkspaces] = useState<ProjectInfo[]>(() => readSavedWorkspaces());
@@ -1508,14 +1503,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     },
     [toast, panelFor]
   );
-
-  const toggleWordWrap = useCallback(() => {
-    setWordWrap((prev) => {
-      const next = !prev;
-      window.localStorage.setItem("wordWrap", next ? "on" : "off");
-      return next;
-    });
-  }, []);
 
   const loadSessions = useCallback(async () => {
     try {
@@ -2810,9 +2797,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         return;
       }
       if (msg.kind === "ui-command") {
-        if (msg.command === "toggle-word-wrap") {
-          toggleWordWrap();
-        } else if (msg.command === "open-source" && typeof msg.path === "string" && typeof msg.line === "number") {
+        if (msg.command === "open-source" && typeof msg.path === "string" && typeof msg.line === "number") {
           void openSourceTarget(msg.path, msg.line);
         } else if (msg.command === "open-paths" && Array.isArray(msg.data)) {
           void openPaths(msg.data.filter((entry): entry is string => typeof entry === "string"));
@@ -3449,7 +3434,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     focusSession,
     openSourceTarget,
     loadModels,
-    toggleWordWrap,
     loadAgents,
     loadRecovery,
     reopenSession,
@@ -3607,7 +3591,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       agents,
       currentAgent,
       approvalMode,
-      wordWrap,
       followUpBehavior: messageQueue.followUpBehavior,
       setFollowUpBehavior,
       sessions,
@@ -3648,7 +3631,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       loadAgents,
       switchAgent,
       toggleApprovalMode,
-      toggleWordWrap,
       openFile,
       closeTab,
       setActive,
@@ -3685,9 +3667,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     }),
     [
       session, connected, runtimes, refreshRuntimes, busy, todos, transcript, sessionUsage, providerUsage, providerUsageLoading, tabs, activePath, singleFile, agentFiles, tree, expanded, hiddenPaths, toasts, recoveryRecords,
-      models, availableModels, lastModel, currentModel, agents, currentAgent, approvalMode, wordWrap, messageQueue.followUpBehavior, setFollowUpBehavior, sessions, savedWorkspaces, saveWorkspace, removeWorkspace, activeSessions, panels, workspaceOnlyPanelIDs, panelViews, activeSessionID,
+      models, availableModels, lastModel, currentModel, agents, currentAgent, approvalMode, messageQueue.followUpBehavior, setFollowUpBehavior, sessions, savedWorkspaces, saveWorkspace, removeWorkspace, activeSessions, panels, workspaceOnlyPanelIDs, panelViews, activeSessionID,
       focusSession, closePanel, openSession, addModelPanel, openWorkspacePanel, selectAddPanel, selectFolder, selectFile, openFileWorkspace, openExternalPath, importPaths, dropIntoExplorer, selectPanelDirectory, changePanelDirectory, reopenSession, loadSessions, sendPrompt, runCommand, stop, refreshProviderUsage, loadModels, switchModel,
-      loadAgents, switchAgent, toggleApprovalMode, toggleWordWrap,
+      loadAgents, switchAgent, toggleApprovalMode,
       openFile, closeTab, setActive, setTabMode, revealInFileManager,
       editContent, saveTab, reloadTab, overwriteTab, mergeTab, toggleDir, ensureRootOpen, replyPermission,
       startCreate, startRename, cancelPending, commitName, deleteEntry, removeFromWorkspace, moveEntry, openRecovery, acknowledgeRecovery,

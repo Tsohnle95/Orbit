@@ -4,7 +4,9 @@
   background-image: var(--panel-surface-image);
   background-size: var(--panel-surface-size);
   background-repeat: var(--panel-surface-repeat);
-  border-right: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 0.8em 2.5em rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   min-width: 0;

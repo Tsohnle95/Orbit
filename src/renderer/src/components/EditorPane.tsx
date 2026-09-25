@@ -11,6 +11,7 @@ import { useTheme } from "../theme";
 import { registerEditor, unregisterEditor } from "../reveal";
 import { droppedFilePaths, isExternalFileDrag } from "../drop";
 import type { Tab } from "@shared/types";
+import { IconChevronRight } from "./icons";
 
 const EDITOR_OPTIONS = {
   fontSize: 13,
@@ -29,7 +30,8 @@ const EDITOR_OPTIONS = {
   renderWhitespace: "none" as const,
   scrollbar: { verticalScrollbarSize: 3, horizontalScrollbarSize: 3 },
   lineNumbersMinChars: 3,
-  lineDecorationsWidth: 5
+  lineDecorationsWidth: 5,
+  wordWrap: "on" as const
 };
 
 function TabBar(): ReactNode {
@@ -82,17 +84,49 @@ function TabBar(): ReactNode {
   );
 }
 
+function BreadcrumbBar({ tab, directory }: { tab: Tab; directory: string | undefined }): ReactNode {
+  const { setTabMode } = useStore();
+  const root = directory?.split(/[\\/]/).filter(Boolean).at(-1) ?? "workspace";
+  const segments = tab.path.replace(/\\/g, "/").split("/").filter(Boolean);
+  const diffAvailable = tab.baseline?.kind === "known";
+  const diffUnknown = tab.baseline?.kind === "unknown";
+  const mode = tab.mode === "diff" && !diffAvailable ? "edit" : tab.mode;
+
+  return (
+    <div className="editor-breadcrumbs">
+      <nav className="editor-breadcrumb-path" aria-label="File path">
+        <span className="breadcrumb-workspace">{root}</span>
+        {segments.map((segment, index) => (
+          <span className="breadcrumb-segment" key={`${index}:${segment}`}>
+            <IconChevronRight />
+            <span aria-current={index === segments.length - 1 ? "page" : undefined}>{segment}</span>
+          </span>
+        ))}
+      </nav>
+      <div className="editor-breadcrumb-actions">
+        {tab.dirty && <span className="editor-dirty">unsaved</span>}
+        {tab.stale && <span className="editor-stale">changed on disk</span>}
+        {tab.deleted && <span className="editor-deleted">deleted on disk</span>}
+        {diffAvailable && (
+          <>
+            <button className={`toolbar-btn ${mode === "edit" ? "on" : ""}`} onClick={() => setTabMode(tab.path, "edit")}>Edit</button>
+            <button className={`toolbar-btn ${mode === "diff" ? "on" : ""}`} onClick={() => setTabMode(tab.path, "diff")}>Diff</button>
+          </>
+        )}
+        {diffUnknown && <button className="toolbar-btn" disabled title="Pre-change content was not observed">Diff unavailable</button>}
+      </div>
+    </div>
+  );
+}
+
 function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
   const { theme } = useTheme();
   const {
     editContent,
-    setTabMode,
     saveTab,
     reloadTab,
     overwriteTab,
-    mergeTab,
-    wordWrap,
-    toggleWordWrap
+    mergeTab
   } = useStore();
 
   useEffect(() => {
@@ -109,12 +143,8 @@ function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
   const language = useMemo(() => languageForPath(tab.path), [tab.path]);
   const w3cFile = useMemo(() => /\.(?:html?|css)$/i.test(tab.path), [tab.path]);
   const diffAvailable = tab.baseline?.kind === "known";
-  const diffUnknown = tab.baseline?.kind === "unknown";
   const mode = tab.mode === "diff" && !diffAvailable ? "edit" : tab.mode;
-  const options = useMemo(
-    () => ({ ...EDITOR_OPTIONS, wordWrap: (wordWrap ? "on" : "off") as "on" | "off" }),
-    [wordWrap]
-  );
+  const options = EDITOR_OPTIONS;
 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const tabContent = tab.content;
@@ -174,47 +204,6 @@ function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
 
   return (
     <div className="editor-wrap">
-      <div className="editor-toolbar">
-        <div className="editor-toolbar-left">
-          <span className="editor-path" title={tab.path}>
-            {tab.path}
-          </span>
-          {tab.dirty && <span className="editor-dirty">unsaved</span>}
-          {tab.stale && <span className="editor-stale">changed on disk</span>}
-          {tab.deleted && <span className="editor-deleted">deleted on disk</span>}
-        </div>
-        <div className="editor-toolbar-right">
-          <button
-            className={`toolbar-btn ${wordWrap ? "on" : ""}`}
-            title="Toggle word wrap (⌥Z)"
-            onClick={toggleWordWrap}
-          >
-            Wrap
-          </button>
-          {diffAvailable && (
-            <>
-              <button
-                className={`toolbar-btn ${mode === "edit" ? "on" : ""}`}
-                onClick={() => setTabMode(tab.path, "edit")}
-              >
-                Edit
-              </button>
-              <button
-                className={`toolbar-btn ${mode === "diff" ? "on" : ""}`}
-                onClick={() => setTabMode(tab.path, "diff")}
-              >
-                Diff
-              </button>
-            </>
-          )}
-          {diffUnknown && (
-            <button className="toolbar-btn" disabled title="Pre-change content was not observed">
-              Diff unavailable
-            </button>
-          )}
-        </div>
-      </div>
-
       {tab.deleted && (
         <div className="deleted-banner">
           This file was deleted from disk while you were viewing it.
@@ -242,7 +231,7 @@ function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
 
       {mode === "diff" ? (
         <DiffEditor
-          theme={theme === "paper" ? "orbit-paper" : theme === "kitty" ? "orbit-kitty" : "orbit-original"}
+          theme={`orbit-${theme}`}
           language={language}
           original={tab.baseline?.kind === "known" ? tab.baseline.content : ""}
           modified={tab.content}
@@ -259,7 +248,7 @@ function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
         />
       ) : (
         <Editor
-          theme={theme === "paper" ? "orbit-paper" : theme === "kitty" ? "orbit-kitty" : "orbit-original"}
+          theme={`orbit-${theme}`}
           language={language}
           path={tab.path}
           defaultValue={tab.content}
@@ -321,6 +310,7 @@ export function EditorPane(): ReactNode {
       ) : (
         <>
           <TabBar />
+          {activeTab ? <BreadcrumbBar tab={activeTab} directory={session?.directory} /> : null}
           {activeTab ? <EditorWithSave key={activeTab.path} tab={activeTab} /> : null}
         </>
       )}

@@ -99,8 +99,7 @@ blocks, and provider metadata is retained instead of flattened away.
 - `"event"` / `"file-update"` / `"session"` / `"recovery"` — shared base
   (`BackendMessageBase`): `{ kind, type?, data?, file?, session? }` plus
   `{ kind: "ui-command", command }` (main→renderer requests, e.g.
-  `toggle-word-wrap` when ⌘W is pressed, or `open-source` with
-  `{ path, line }` when a DevTools CSS source link is clicked — `path` is a
+  `open-source` with `{ path, line }` when a DevTools CSS source link is clicked — `path` is a
   canonical absolute application-source path opened through the renderer's
   external-file workflow).
   Recovery messages carry `{ workspace, records }` so renderer state rejects

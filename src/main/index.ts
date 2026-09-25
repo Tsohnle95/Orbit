@@ -430,8 +430,8 @@ function createWindow(show = true): BrowserWindow {
   newWin.webContents.on("before-input-event", (event, input) => {
     const mod = process.platform === "darwin" ? input.meta : input.control;
     if (input.type === "keyDown" && mod && !input.alt && !input.shift && input.key.toLowerCase() === "w") {
+      // Preserve the shortcut so it cannot close Orbit; editor wrapping is always on.
       event.preventDefault();
-      win?.webContents.send("shell:message", { kind: "ui-command", command: "toggle-word-wrap" });
       return;
     }
     if (input.type === "keyDown" && !mod && !input.alt && !input.shift && input.key === "F12") {

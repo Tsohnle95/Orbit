@@ -1,0 +1,199 @@
+export type AppearanceId =
+  | "quiet-habitat"
+  | "control-deck"
+  | "papertrail"
+  | "shell-first"
+  | "swiss-grid"
+  | "prism"
+  | "workshop"
+  | "blueprint"
+  | "stillness"
+  | "bloom";
+
+export interface AppearanceColors {
+  base: string;
+  top: string;
+  pane: string;
+  editor: string;
+  editorOpaque: string;
+  agent: string;
+  rail: string;
+  tab: string;
+  console: string;
+  status: string;
+  ink: string;
+  muted: string;
+  faint: string;
+  line: string;
+  lineStrong: string;
+  lineSoft: string;
+  selected: string;
+  user: string;
+  card: string;
+  compose: string;
+  composeShadow: string;
+  accent: string;
+  good: string;
+  danger: string;
+  icon: string;
+  sendInk: string;
+  glow: string;
+  syntaxKeyword: string;
+  syntaxFunction: string;
+  syntaxString: string;
+  syntaxComment: string;
+  syntaxNumber: string;
+}
+
+export interface AppearanceProfile {
+  id: AppearanceId;
+  name: string;
+  description: string;
+  scheme: "dark" | "light";
+  colors: AppearanceColors;
+}
+
+export const APPEARANCES: AppearanceProfile[] = [
+  {
+    id: "quiet-habitat",
+    name: "Quiet Habitat",
+    description: "Soft sage surfaces with a calm green signal.",
+    scheme: "light",
+    colors: {
+      base: "#e9efe8", top: "#f2f6f0", pane: "#f0f4ee", editor: "#f7f9f5", editorOpaque: "#f7f9f5", agent: "#f0f4ef", rail: "#e4ebe3", tab: "#f0f4ee", console: "#eef3ed", status: "#dfe8df",
+      ink: "#26332a", muted: "#66766a", faint: "#8a998d", line: "#dce5dc", lineStrong: "#bdcdbd", lineSoft: "rgba(87,126,92,.08)", selected: "#e1ece0", user: "#e1ebe1", card: "#f4f7f2", compose: "#fafcf8", composeShadow: "0 7px 18px rgba(44,74,49,.08)",
+      accent: "#557d5b", good: "#537f59", danger: "#b65853", icon: "#718a73", sendInk: "#f7faf6", glow: "rgba(87,126,92,.16)", syntaxKeyword: "#8a5d92", syntaxFunction: "#316b72", syntaxString: "#99713e", syntaxComment: "#91a08e", syntaxNumber: "#b76b55"
+    }
+  },
+  {
+    id: "control-deck",
+    name: "Control Deck",
+    description: "Dense graphite panels with a warm instrument accent.",
+    scheme: "dark",
+    colors: {
+      base: "#161b21", top: "#1e252d", pane: "#202830", editor: "#171d23", editorOpaque: "#171d23", agent: "#1d252d", rail: "#171d23", tab: "#1b2229", console: "#12171c", status: "#202830",
+      ink: "#e8edf1", muted: "#a0acb5", faint: "#687681", line: "#303b45", lineStrong: "#53636e", lineSoft: "rgba(238,153,79,.075)", selected: "#263943", user: "#2a3740", card: "#222d35", compose: "#192129", composeShadow: "0 8px 24px rgba(0,0,0,.28)",
+      accent: "#f0a15f", good: "#86c79c", danger: "#f07a70", icon: "#86a0b4", sendInk: "#21160e", glow: "rgba(240,161,95,.15)", syntaxKeyword: "#e6a6cd", syntaxFunction: "#80c8d5", syntaxString: "#dfc47c", syntaxComment: "#72847b", syntaxNumber: "#e89668"
+    }
+  },
+  {
+    id: "papertrail",
+    name: "Papertrail",
+    description: "A warm notebook palette with a restrained clay accent.",
+    scheme: "light",
+    colors: {
+      base: "#e8dfce", top: "#f0e8d9", pane: "#eee6d8", editor: "#faf5e9", editorOpaque: "#faf5e9", agent: "#f2ebdd", rail: "#e6ddce", tab: "#f6f0e5", console: "#eee6d8", status: "#dfd5c4",
+      ink: "#30291f", muted: "#696050", faint: "#9a8c77", line: "#d9cfbd", lineStrong: "#b7a88e", lineSoft: "rgba(174,82,57,.075)", selected: "#e8dec9", user: "#e8dfcf", card: "#f7f0e3", compose: "#fbf6eb", composeShadow: "0 5px 14px rgba(79,58,34,.08)",
+      accent: "#a34d3b", good: "#667b50", danger: "#ad514a", icon: "#79735d", sendInk: "#fff9ed", glow: "rgba(163,77,59,.12)", syntaxKeyword: "#974f5f", syntaxFunction: "#486e75", syntaxString: "#aa6d35", syntaxComment: "#9b907e", syntaxNumber: "#8257a1"
+    }
+  },
+  {
+    id: "shell-first",
+    name: "Shell First",
+    description: "Deep forest panels with a bright terminal green.",
+    scheme: "dark",
+    colors: {
+      base: "#090e0c", top: "#111815", pane: "#0f1713", editor: "#131d17", editorOpaque: "#131d17", agent: "#0d1511", rail: "#0b110e", tab: "#101913", console: "#080d0a", status: "#111a14",
+      ink: "#ddf3df", muted: "#9db7a2", faint: "#597563", line: "#1d3627", lineStrong: "#326243", lineSoft: "rgba(135,227,142,.09)", selected: "#12251a", user: "#15281c", card: "#101d15", compose: "#0d1911", composeShadow: "0 0 24px rgba(82,217,108,.07)",
+      accent: "#8bea88", good: "#a4f2a3", danger: "#f27f79", icon: "#70b682", sendInk: "#071109", glow: "rgba(139,234,136,.12)", syntaxKeyword: "#d0a0ec", syntaxFunction: "#91e1d2", syntaxString: "#f0d27e", syntaxComment: "#568468", syntaxNumber: "#fa9672"
+    }
+  },
+  {
+    id: "swiss-grid",
+    name: "Swiss Grid",
+    description: "Clear, precise paper with one vermilion signal.",
+    scheme: "light",
+    colors: {
+      base: "#f2f1ed", top: "#f8f7f3", pane: "#f8f7f3", editor: "#fbfaf7", editorOpaque: "#fbfaf7", agent: "#f5f4ef", rail: "#ecebe6", tab: "#f2f1ed", console: "#e9e8e2", status: "#191b1b",
+      ink: "#181b1a", muted: "#535957", faint: "#8e9591", line: "#d5d9d5", lineStrong: "#8a9690", lineSoft: "rgba(223,67,47,.07)", selected: "#f0e3de", user: "#ede8e3", card: "#fbfaf7", compose: "#fbfaf7", composeShadow: "none",
+      accent: "#df472f", good: "#6f8e48", danger: "#b53632", icon: "#4c5e54", sendInk: "#ffffff", glow: "rgba(223,71,47,.08)", syntaxKeyword: "#bd3e53", syntaxFunction: "#315f73", syntaxString: "#886229", syntaxComment: "#8d948c", syntaxNumber: "#925094"
+    }
+  },
+  {
+    id: "prism",
+    name: "Prism",
+    description: "Atmospheric violet glass with soft, luminous edges.",
+    scheme: "dark",
+    colors: {
+      base: "#151423", top: "#1d1b30", pane: "rgba(31,29,51,.95)", editor: "rgba(24,23,42,.97)", editorOpaque: "#18172a", agent: "rgba(30,27,51,.97)", rail: "#171628", tab: "#201e35", console: "rgba(15,15,28,.98)", status: "#1b1930",
+      ink: "#f1efff", muted: "#b7b1d1", faint: "#797595", line: "#373451", lineStrong: "#625c91", lineSoft: "rgba(135,119,255,.10)", selected: "#302b52", user: "#343052", card: "#25223e", compose: "#201d38", composeShadow: "0 8px 27px rgba(0,0,0,.28),0 0 20px rgba(134,112,255,.1)",
+      accent: "#b6a3ff", good: "#7fe3c2", danger: "#ff7c94", icon: "#a599eb", sendInk: "#201a3b", glow: "#302456", syntaxKeyword: "#f09ed0", syntaxFunction: "#7be3df", syntaxString: "#f3d28d", syntaxComment: "#7975a1", syntaxNumber: "#a8d987"
+    }
+  },
+  {
+    id: "workshop",
+    name: "Workshop",
+    description: "Tactile graphite with safety orange and olive details.",
+    scheme: "dark",
+    colors: {
+      base: "#252a2a", top: "#343b3a", pane: "#2e3534", editor: "#202626", editorOpaque: "#202626", agent: "#303736", rail: "#252b2b", tab: "#303736", console: "#171c1c", status: "#d87c3c",
+      ink: "#ece8dc", muted: "#b7b8a8", faint: "#858b7e", line: "#454e4b", lineStrong: "#737e72", lineSoft: "rgba(245,142,71,.09)", selected: "#3b4137", user: "#3b4039", card: "#292f2d", compose: "#272e2c", composeShadow: "inset 0 1px rgba(255,255,255,.035)",
+      accent: "#f29a58", good: "#b4cc73", danger: "#ef8173", icon: "#c0b27d", sendInk: "#211811", glow: "rgba(242,154,88,.12)", syntaxKeyword: "#eaa69f", syntaxFunction: "#9dd5c0", syntaxString: "#efd284", syntaxComment: "#818c79", syntaxNumber: "#d5a9ed"
+    }
+  },
+  {
+    id: "blueprint",
+    name: "Blueprint",
+    description: "Technical navy surfaces traced with electric cyan.",
+    scheme: "dark",
+    colors: {
+      base: "#0c1a27", top: "#122437", pane: "#102235", editor: "#0d2031", editorOpaque: "#0d2031", agent: "#102237", rail: "#0a1826", tab: "#11263a", console: "#091724", status: "#12314a",
+      ink: "#e2f0f8", muted: "#abc2d2", faint: "#64849c", line: "#25445d", lineStrong: "#39718f", lineSoft: "rgba(78,205,226,.08)", selected: "#123147", user: "#15344a", card: "#10283b", compose: "#0c2133", composeShadow: "0 0 16px rgba(63,191,218,.08)",
+      accent: "#65d0dd", good: "#9bd69a", danger: "#ff7b82", icon: "#6cb3cb", sendInk: "#08232d", glow: "rgba(101,208,221,.12)", syntaxKeyword: "#e29cde", syntaxFunction: "#78d7db", syntaxString: "#eecb82", syntaxComment: "#608ba1", syntaxNumber: "#8fbbfa"
+    }
+  },
+  {
+    id: "stillness",
+    name: "Stillness",
+    description: "Near-white canvas, quiet chrome and a single green thread.",
+    scheme: "light",
+    colors: {
+      base: "#f4f5f2", top: "#fafbf9", pane: "#f7f8f5", editor: "#ffffff", editorOpaque: "#ffffff", agent: "#f8f9f6", rail: "#f4f5f2", tab: "#fbfcfa", console: "#f6f7f4", status: "#f0f2ee",
+      ink: "#222824", muted: "#68736c", faint: "#9ba49d", line: "#e7eae5", lineStrong: "#cbd4cb", lineSoft: "rgba(71,133,83,.06)", selected: "#edf3ec", user: "#eef2ed", card: "#fafbf9", compose: "#ffffff", composeShadow: "0 6px 22px rgba(34,53,38,.06)",
+      accent: "#597b61", good: "#527d57", danger: "#b4564f", icon: "#829488", sendInk: "#ffffff", glow: "rgba(89,123,97,.08)", syntaxKeyword: "#8f638d", syntaxFunction: "#3d7882", syntaxString: "#a17948", syntaxComment: "#a1aaa1", syntaxNumber: "#be7158"
+    }
+  },
+  {
+    id: "bloom",
+    name: "Bloom",
+    description: "Playful petal tones with soft, modular color accents.",
+    scheme: "light",
+    colors: {
+      base: "#ececf4", top: "#f8f7fc", pane: "#f5f4fb", editor: "#fffefa", editorOpaque: "#fffefa", agent: "#f2effa", rail: "#e9e8f1", tab: "#f5f4fb", console: "#202339", status: "#deddec",
+      ink: "#29293c", muted: "#6d6d84", faint: "#9998ae", line: "#dcdbe8", lineStrong: "#c1bfd6", lineSoft: "rgba(221,92,115,.07)", selected: "#eee7fa", user: "#e8e7f5", card: "#faf9fd", compose: "#ffffff", composeShadow: "0 7px 18px rgba(69,56,104,.09)",
+      accent: "#c65370", good: "#579a7d", danger: "#ba465a", icon: "#6f7ca9", sendInk: "#ffffff", glow: "rgba(198,83,112,.12)", syntaxKeyword: "#ae568b", syntaxFunction: "#4c8194", syntaxString: "#a57737", syntaxComment: "#9a9aab", syntaxNumber: "#6c70bb"
+    }
+  }
+];
+
+export function appearanceForId(id: AppearanceId): AppearanceProfile {
+  return APPEARANCES.find((appearance) => appearance.id === id) ?? APPEARANCES.find((appearance) => appearance.id === "prism")!;
+}
+
+export function terminalThemeForAppearance(id: AppearanceId) {
+  const { colors, scheme } = appearanceForId(id);
+  const black = scheme === "light" ? colors.ink : colors.base;
+  return {
+    background: colors.console,
+    foreground: colors.ink,
+    cursor: colors.accent,
+    cursorAccent: colors.base,
+    selectionBackground: colors.selected,
+    black,
+    red: colors.danger,
+    green: colors.good,
+    yellow: colors.syntaxString,
+    blue: colors.syntaxFunction,
+    magenta: colors.syntaxKeyword,
+    cyan: colors.icon,
+    white: colors.ink,
+    brightBlack: colors.faint,
+    brightRed: colors.danger,
+    brightGreen: colors.good,
+    brightYellow: colors.syntaxString,
+    brightBlue: colors.accent,
+    brightMagenta: colors.syntaxKeyword,
+    brightCyan: colors.icon,
+    brightWhite: colors.ink
+  };
+}

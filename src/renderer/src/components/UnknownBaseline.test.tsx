@@ -49,8 +49,6 @@ const store = {
   reloadTab: vi.fn(),
   overwriteTab: vi.fn(),
   mergeTab: vi.fn(),
-  wordWrap: false,
-  toggleWordWrap: vi.fn()
 };
 
 const ctxMenuApi = { ctxMenu: null, openCtxMenu: vi.fn(), closeCtxMenu: vi.fn() };

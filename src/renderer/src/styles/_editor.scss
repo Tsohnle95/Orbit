@@ -1,6 +1,6 @@
 .editor-pane {
   position: relative;
-  background-color: var(--panel-surface-color);
+  background-color: var(--editor-surface);
   background-image: var(--panel-surface-image);
   background-size: var(--panel-surface-size);
   background-repeat: var(--panel-surface-repeat);
@@ -30,13 +30,15 @@
 
 .tabbar {
   display: flex;
+  flex: 0 0 40px;
+  align-items: stretch;
   overflow-x: auto;
-  gap: 4px;
-  margin: 12px 14px 0;
-  padding: 4px;
-  background: var(--bg-inset);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-full);
+  gap: 0;
+  margin: 0;
+  padding: 0 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border);
   scrollbar-width: none;
 }
 
@@ -47,22 +49,22 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 13px;
+  padding: 7px 13px 6px;
   color: var(--text-dim);
   cursor: pointer;
   white-space: nowrap;
   font-size: 12.5px;
   max-width: 220px;
-  border-radius: var(--radius-full);
-  transition: background 120ms var(--ease), color 120ms var(--ease);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: background 120ms var(--ease), color 120ms var(--ease), border-color 120ms var(--ease);
 }
 
 .tab:hover { background: var(--bg-hover); color: var(--text); }
 
 .tab.active {
-  background: var(--bg-active-pill);
   color: var(--text);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  border-bottom-color: var(--accent);
 }
 
 .tab-name {
@@ -108,18 +110,57 @@
   transform-origin: right center;
 }
 
-.editor-toolbar {
+.editor-breadcrumbs {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 16px;
+  flex: 0 0 36px;
+  gap: 12px;
+  padding: 0 14px;
   border-bottom: 1px solid var(--border);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-dim);
   background: transparent;
 }
 
-.editor-toolbar-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.editor-breadcrumb-path {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.breadcrumb-workspace {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.breadcrumb-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-dim);
+}
+
+.breadcrumb-segment .os-icon { flex: 0 0 auto; width: 11px; height: 11px; color: var(--text-faint); }
+.breadcrumb-segment > span { overflow: hidden; text-overflow: ellipsis; }
+.breadcrumb-segment > span[aria-current="page"] { color: var(--text); }
+
+.editor-breadcrumb-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.editor-breadcrumb-actions .editor-dirty,
+.editor-breadcrumb-actions .editor-stale,
+.editor-breadcrumb-actions .editor-deleted { margin-right: 5px; }
 
 .editor-path {
   overflow: hidden;
@@ -133,8 +174,6 @@
 .editor-stale { color: var(--yellow); font-size: 11px; }
 
 .editor-deleted { color: var(--red); font-size: 11px; }
-
-.editor-toolbar-right { display: flex; gap: 4px; flex-shrink: 0; }
 
 .toolbar-btn {
   background: none;
@@ -155,6 +194,15 @@
   color: var(--accent);
   border-color: var(--accent);
   font-weight: 600;
+}
+
+@container (max-width: 480px) {
+  .editor-breadcrumbs { gap: 5px; padding: 0 8px; }
+  .breadcrumb-workspace { display: none; }
+  .editor-breadcrumb-actions { gap: 2px; }
+  .editor-breadcrumb-actions .editor-dirty,
+  .editor-breadcrumb-actions .editor-stale { display: none; }
+  .toolbar-btn { padding-inline: 7px; }
 }
 
 .deleted-banner {

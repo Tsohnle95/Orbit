@@ -1,32 +1,18 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { CommandOption, McpServerOption, PluginOption, SkillOption } from "@shared/types";
 import { useStore } from "../store";
-import { type ThemeId, useTheme } from "../theme";
+import { APPEARANCES, type ThemeId, useTheme } from "../theme";
 import { OrbitMark } from "./OrbitMark";
 import { ProviderSettings } from "./ProviderSettings";
 import { ServerSettings } from "./ServerSettings";
 import type { SettingsSection } from "./SettingsSidebar";
 
-const themes: Array<{ id: ThemeId; name: string; description: string; colors: string[] }> = [
-  {
-    id: "kitty",
-    name: "Kitty Glass",
-    description: "A translucent dark glass profile inspired by your Kitty terminal setup.",
-    colors: ["#020204", "#00a2ce", "#e7e7ee", "#5bd69a", "#ff4b67"]
-  },
-  {
-    id: "paper",
-    name: "Paper Editorial",
-    description: "Warm paper surfaces, deep ink and the settled clay accent.",
-    colors: ["#f4eee1", "#fbf7ec", "#2b2119", "#617a68", "#948571"]
-  },
-  {
-    id: "original",
-    name: "Original",
-    description: "Orbit's original warm charcoal color profile.",
-    colors: ["#171412", "#262220", "#e8e3dd", "#9eb4a1", "#a8a29e"]
-  }
-];
+const themes: Array<{ id: ThemeId; name: string; description: string; colors: { base: string; pane: string; editor: string; agent: string; terminal: string; accent: string; good: string; muted: string } }> = APPEARANCES.map(({ id, name, description, colors }) => ({
+  id,
+  name,
+  description,
+  colors: { base: colors.base, pane: colors.pane, editor: colors.editor, agent: colors.agent, terminal: colors.console, accent: colors.accent, good: colors.good, muted: colors.muted }
+}));
 
 const sectionCopy: Record<SettingsSection, { title: string; description: string }> = {
   appearance: { title: "Appearance", description: "Choose how Orbit looks and how code is presented." },
@@ -63,8 +49,6 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
     refreshProviderUsage,
     approvalMode,
     toggleApprovalMode,
-    wordWrap,
-    toggleWordWrap,
     followUpBehavior,
     setFollowUpBehavior
   } = useStore();
@@ -150,23 +134,30 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
               aria-checked={theme === option.id}
               onClick={() => setTheme(option.id)}
             >
-              <span className={`theme-preview theme-preview-${option.id}`}>
+              <span
+                className="theme-preview"
+                style={{
+                  "--preview-base": option.colors.base,
+                  "--preview-pane": option.colors.pane,
+                  "--preview-editor": option.colors.editor,
+                  "--preview-agent": option.colors.agent,
+                  "--preview-terminal": option.colors.terminal,
+                  "--preview-accent": option.colors.accent,
+                  "--preview-good": option.colors.good,
+                  "--preview-muted": option.colors.muted
+                } as CSSProperties}
+              >
+                <span className="theme-preview-rail" />
                 <span className="theme-preview-sidebar" />
                 <span className="theme-preview-editor"><i /><i /><i /></span>
                 <span className="theme-preview-agent" />
+                <span className="theme-preview-terminal" />
               </span>
               <span className="theme-card-copy"><strong>{option.name}</strong><small>{option.description}</small></span>
-              <span className="theme-swatches">{option.colors.map((color) => <i key={color} style={{ background: color }} />)}</span>
+              <span className="theme-swatches">{[option.colors.base, option.colors.pane, option.colors.accent, option.colors.good, option.colors.muted].map((color) => <i key={color} style={{ background: color }} />)}</span>
               <span className="theme-check">{theme === option.id ? "Selected" : "Select"}</span>
             </button>
           ))}
-        </div>
-        <div className="settings-list">
-          <SettingRow
-            title="Word wrap"
-            detail="Wrap long editor lines to the available width."
-            control={<button className={`settings-switch ${wordWrap ? "on" : ""}`} role="switch" aria-checked={wordWrap} onClick={toggleWordWrap}><span /></button>}
-          />
         </div>
       </section>}
 

@@ -1,6 +1,7 @@
 import * as monaco from "monaco-editor";
 import { loader } from "@monaco-editor/react";
 import { emmetCSS, emmetHTML } from "emmet-monaco-es";
+import { APPEARANCES } from "./appearances";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
@@ -30,100 +31,39 @@ loader.config({ monaco });
 emmetHTML(monaco, ["html"]);
 emmetCSS(monaco, ["css", "scss", "less"]);
 
-monaco.editor.defineTheme("orbit-original", {
-  base: "vs-dark",
-  inherit: true,
-  rules: [
-    { token: "comment", foreground: "78716C", fontStyle: "italic" },
-    { token: "keyword", foreground: "E8875F" },
-    { token: "string", foreground: "A8C69A" },
-    { token: "number", foreground: "E5B567" },
-    { token: "type", foreground: "8FBCD9" },
-    { token: "function", foreground: "EAD9C8" }
-  ],
-  colors: {
-    "editor.background": "#262220",
-    "editor.lineHighlightBackground": "#2d2926",
-    "editorLineNumber.foreground": "#57534e",
-    "editorCursor.foreground": "#9eb4a1",
-    "editor.selectionBackground": "#4a352c",
-    "editorGutter.background": "#262220",
-    "diffEditor.insertedTextBackground": "#9dc2a11f",
-    "diffEditor.removedTextBackground": "#e2988a1f",
-    "diffEditor.insertedLineBackground": "#9dc2a117",
-    "diffEditor.removedLineBackground": "#e2988a17",
-    "diffEditorOverview.insertedForeground": "#9dc2a1b3",
-    "diffEditorOverview.removedForeground": "#e2988ab3",
-    "diffEditor.diagonalFill": "#262220",
-    "scrollbarSlider.background": "#ffffff17",
-    "scrollbarSlider.hoverBackground": "#ffffff26",
-    "minimap.background": "#262220"
-  }
-});
-
-monaco.editor.defineTheme("orbit-paper", {
-  base: "vs",
-  inherit: true,
-  rules: [
-    { token: "comment", foreground: "948571", fontStyle: "italic" },
-    { token: "keyword", foreground: "C25F3C" },
-    { token: "string", foreground: "587657" },
-    { token: "number", foreground: "9C742F" },
-    { token: "type", foreground: "49708F" },
-    { token: "function", foreground: "5B4030" }
-  ],
-  colors: {
-    "editor.background": "#fbf7ec",
-    "editor.foreground": "#2b2119",
-    "editor.lineHighlightBackground": "#eee5d4",
-    "editorLineNumber.foreground": "#a69883",
-    "editorCursor.foreground": "#617a68",
-    "editor.selectionBackground": "#dfc8b7",
-    "editorGutter.background": "#fbf7ec",
-    "diffEditor.insertedTextBackground": "#58765720",
-    "diffEditor.removedTextBackground": "#aa624f20",
-    "diffEditor.insertedLineBackground": "#58765714",
-    "diffEditor.removedLineBackground": "#aa624f14",
-    "diffEditorOverview.insertedForeground": "#587657b3",
-    "diffEditorOverview.removedForeground": "#aa624fb3",
-    "diffEditor.diagonalFill": "#eee5d4",
-    "scrollbarSlider.background": "#2b21191a",
-    "scrollbarSlider.hoverBackground": "#2b21192b",
-    "minimap.background": "#fbf7ec"
-  }
-});
-
-monaco.editor.defineTheme("orbit-kitty", {
-  base: "vs-dark",
-  inherit: true,
-  rules: [
-    { token: "comment", foreground: "7F8292", fontStyle: "italic" },
-    { token: "keyword", foreground: "FF8B85" },
-    { token: "string", foreground: "5BD69A" },
-    { token: "number", foreground: "E0A85A" },
-    { token: "type", foreground: "6FC3DF" },
-    { token: "function", foreground: "E7E7EE" }
-  ],
-  colors: {
-    "editor.background": "#02020400",
-    "editor.foreground": "#e7e7ee",
-    "editor.lineHighlightBackground": "#343a5526",
-    "editorLineNumber.foreground": "#626b78",
-    "editorCursor.foreground": "#00a2ce",
-    "editor.selectionBackground": "#2e4d78",
-    "editorGutter.background": "#02020400",
-    "diffEditor.insertedTextBackground": "#5bd69a20",
-    "diffEditor.removedTextBackground": "#ff4b6720",
-    "diffEditor.insertedLineBackground": "#5bd69a14",
-    "diffEditor.removedLineBackground": "#ff4b6714",
-    "diffEditorOverview.insertedForeground": "#5bd69ab3",
-    "diffEditorOverview.removedForeground": "#ff4b67b3",
-    "diffEditor.diagonalFill": "#02020400",
-    "scrollbarSlider.background": "#e7e7ee17",
-    "scrollbarSlider.hoverBackground": "#e7e7ee2b",
-    "minimap.background": "#02020400"
-  }
-});
+for (const { id, scheme, colors } of APPEARANCES) {
+  monaco.editor.defineTheme(`orbit-${id}`, {
+    base: scheme === "light" ? "vs" : "vs-dark",
+    inherit: true,
+    rules: [
+      { token: "comment", foreground: colors.syntaxComment.slice(1), fontStyle: "italic" },
+      { token: "keyword", foreground: colors.syntaxKeyword.slice(1) },
+      { token: "string", foreground: colors.syntaxString.slice(1) },
+      { token: "number", foreground: colors.syntaxNumber.slice(1) },
+      { token: "type", foreground: colors.icon.slice(1) },
+      { token: "function", foreground: colors.syntaxFunction.slice(1) }
+    ],
+    colors: {
+      "editor.background": colors.editorOpaque,
+      "editor.foreground": colors.ink,
+      "editor.lineHighlightBackground": colors.selected,
+      "editorLineNumber.foreground": colors.faint,
+      "editorCursor.foreground": colors.accent,
+      "editor.selectionBackground": colors.selected,
+      "editorGutter.background": colors.editorOpaque,
+      "diffEditor.insertedTextBackground": `${colors.good}24`,
+      "diffEditor.removedTextBackground": `${colors.danger}24`,
+      "diffEditor.insertedLineBackground": `${colors.good}16`,
+      "diffEditor.removedLineBackground": `${colors.danger}16`,
+      "diffEditorOverview.insertedForeground": `${colors.good}b3`,
+      "diffEditorOverview.removedForeground": `${colors.danger}b3`,
+      "diffEditor.diagonalFill": colors.editorOpaque,
+      "scrollbarSlider.background": scheme === "light" ? "#00000018" : "#ffffff17",
+      "scrollbarSlider.hoverBackground": scheme === "light" ? "#0000002b" : "#ffffff2b",
+      "minimap.background": colors.editorOpaque
+    }
+  });
+}
 
 export { monaco };
 

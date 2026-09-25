@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { useStore } from "../store";
 import { useOptionalTheme } from "../theme";
+import { terminalThemeForAppearance } from "../appearances";
 import { IconAdd, IconChevronDown, IconChevronUp, IconServer } from "./icons";
 import type { ViteServerInfo, WorkspaceIdentity } from "@shared/types";
 import { PendingTerminalOutput, removeTerminal, terminalDirectoryCommand, type TerminalTabs } from "../terminal-state";
@@ -23,56 +24,6 @@ function viteServerLabel(server: ViteServerInfo, root: string): string {
   return relative ? `${relative}/${entry}` : entry;
 }
 
-const THEME = {
-  background: "#121317",
-  foreground: "#e8eaef",
-  cursor: "#d97757",
-  cursorAccent: "#0d0e11",
-  selectionBackground: "#2e4d78",
-  black: "#17181d",
-  red: "#f16d6b",
-  green: "#4cc38a",
-  yellow: "#e0af68",
-  blue: "#d97757",
-  magenta: "#c99ff2",
-  cyan: "#6fc3df",
-  white: "#e8eaef",
-  brightBlack: "#626b78",
-  brightRed: "#ff8b85",
-  brightGreen: "#6fd8a8",
-  brightYellow: "#eec27f",
-  brightBlue: "#e68a68",
-  brightMagenta: "#dcb8ff",
-  brightCyan: "#8fd8ef",
-  brightWhite: "#ffffff"
-};
-
-// Same palette as the embedded agent TUI; the transparent background lets the
-// window's glass show through so the kitty tray matches the app background.
-const KITTY_THEME = {
-  background: "rgba(2, 2, 4, 0)",
-  foreground: "#f4f4fa",
-  cursor: "#00a2ce",
-  cursorAccent: "#020204",
-  selectionBackground: "#2e4d78",
-  black: "#020204",
-  red: "#ff4b67",
-  green: "#5bd69a",
-  yellow: "#e0a85a",
-  blue: "#00a2ce",
-  magenta: "#c99ff2",
-  cyan: "#6fc3df",
-  white: "#f4f4fa",
-  brightBlack: "#a6a9b8",
-  brightRed: "#ff8b85",
-  brightGreen: "#82e8b4",
-  brightYellow: "#f0c780",
-  brightBlue: "#25b8dd",
-  brightMagenta: "#dcb8ff",
-  brightCyan: "#8fd8ef",
-  brightWhite: "#ffffff"
-};
-
 interface TermInstanceProps {
   id: string;
   active: boolean;
@@ -83,7 +34,7 @@ interface TermInstanceProps {
 }
 
 function TermInstance({ id, active, height, workspace, onRegister, onUnregister }: TermInstanceProps): ReactNode {
-  const theme = useOptionalTheme()?.theme ?? "original";
+  const theme = useOptionalTheme()?.theme ?? "prism";
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -97,8 +48,7 @@ function TermInstance({ id, active, height, workspace, onRegister, onUnregister 
       lineHeight: 1.25,
       cursorBlink: true,
       scrollback: 5000,
-      allowTransparency: theme === "kitty",
-      theme: theme === "kitty" ? KITTY_THEME : THEME
+      theme: terminalThemeForAppearance(theme)
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -142,7 +92,7 @@ function TermInstance({ id, active, height, workspace, onRegister, onUnregister 
   useEffect(() => {
     const term = termRef.current;
     if (!term) return;
-    term.options.theme = theme === "kitty" ? KITTY_THEME : THEME;
+    term.options.theme = terminalThemeForAppearance(theme);
   }, [theme]);
 
   useEffect(() => {

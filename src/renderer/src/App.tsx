@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { StoreProvider, useStore } from "./store";
-import { IconAdd, IconChevronDown, IconGear, IconRobot, IconSidebarLeft, IconSidebarRight, IconTerminal } from "./components/icons";
+import { IconAdd, IconChevronDown, IconFolder, IconGear, IconHistory, IconRobot, IconSidebarRight, IconTerminal } from "./components/icons";
 import type { SessionInfo } from "@shared/types";
 import { Welcome } from "./components/Welcome";
 import { FileSidebar, type SidebarTab } from "./components/FileSidebar";
@@ -11,17 +11,18 @@ import { RecoveryNotice } from "./components/RecoveryNotice";
 import { OrbitMark } from "./components/OrbitMark";
 import { SettingsPage } from "./components/SettingsPage";
 import { SettingsSidebar, type SettingsSection } from "./components/SettingsSidebar";
+import { StatusBar } from "./components/StatusBar";
 import { ThemeProvider } from "./theme";
 import { agentPanelGrid, MAX_AGENT_PANELS } from "./agent-panels";
 
 const SIDE_MIN_W = 230;
 const SIDE_MAX_W = 520;
-const SIDE_DEFAULT_W = 280;
+const SIDE_DEFAULT_W = 234;
 
 function clampSideWidth(width: number): number {
   return Math.max(SIDE_MIN_W, width);
 }
-const AGENT_DEFAULT_W = 280;
+const AGENT_DEFAULT_W = 325;
 const AGENT_MIN_W = 280;
 
 function EmptyTerminalTray({ onClose }: { onClose: () => void }): ReactNode {
@@ -118,9 +119,9 @@ function useTrayHeight(onPreview?: (height: number) => void): {
   const [open, setOpen] = useState(false);
   const [snapped, setSnapped] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [height, setHeight] = useState(240);
+  const [height, setHeight] = useState(176);
   const startRef = useRef<{ y: number; height: number; live: number } | null>(null);
-  const lastFullRef = useRef(240);
+  const lastFullRef = useRef(176);
 
   const onDrag = (e: React.MouseEvent): void => {
     e.preventDefault();
@@ -335,19 +336,24 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const [slots, setSlots] = useState<Record<string, PanelSlot>>({});
   const [pendingModelPanels, setPendingModelPanels] = useState(0);
   const trayAreaRef = useRef<HTMLDivElement>(null);
+  const workspaceAreaRef = useRef<HTMLDivElement>(null);
   const { height: trayH, open: trayOpen, snapped: traySnapped, dragging: trayDragging, toggle: toggleTray, show: showTray, close: closeTray, expand: expandTray, onDrag: trayDrag } = useTrayHeight(
-    (height) => trayAreaRef.current?.style.setProperty("--tray-height", `${height}px`)
+    (height) => {
+      trayAreaRef.current?.style.setProperty("--tray-height", `${height}px`);
+      workspaceAreaRef.current?.style.setProperty("--tray-row", `${height}px`);
+    }
   );
   const [terminalRequest, setTerminalRequest] = useState<{ id: number; directory: string } | null>(null);
-  const [winW, setWinW] = useState(() => window.innerWidth);
   const [sideTab, setSideTab] = useState<SidebarTab>("files");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("appearance");
   const [agentModeActive, setAgentModeActive] = useState(false);
   const [agentModePanelIDs, setAgentModePanelIDs] = useState<string[]>([]);
   const [emptyAgentOpen, setEmptyAgentOpen] = useState(true);
-  const [emptyAgentWidth, setEmptyAgentWidth] = useState(280);
+  const [emptyAgentWidth, setEmptyAgentWidth] = useState(AGENT_DEFAULT_W);
   const mainRowRef = useRef<HTMLDivElement>(null);
+  const [measuredAreaW, setMeasuredAreaW] = useState(0);
+  const [winW, setWinW] = useState(() => window.innerWidth);
   const emptyAgentRef = useRef<HTMLDivElement>(null);
   const prevSidebarRef = useRef<{ open: boolean; width: number } | null>(null);
   const inAgentMode = agentModeActive;
@@ -389,8 +395,28 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   }, [activeSessionID, agentPanels, codingPanel, inAgentMode]);
 
   const sideShown = sideOpen ? sideW : 0;
-  const fixedPanelChrome = 1 + panels.length;
-  const areaW = Math.max(0, winW - sideShown - (sideOpen ? 1 : 0));
+  const areaW = measuredAreaW > 0
+    ? measuredAreaW
+    : Math.max(0, winW - sideShown - (sideOpen ? 1 : 0));
+
+  useLayoutEffect(() => {
+    const area = workspaceAreaRef.current;
+    if (!area) return;
+    const measure = (): void => {
+      if (area.clientWidth > 0) setMeasuredAreaW(area.clientWidth);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(area);
+    return () => observer.disconnect();
+  }, [settingsOpen]);
+
+  useEffect(() => {
+    const onResize = (): void => setWinW(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const wasOpenWorkspacesRef = useRef(0);
   useEffect(() => {
@@ -411,12 +437,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     }
     if (opened) setSideTab("files");
   }, [allPanels]);
-
-  useEffect(() => {
-    const onResize = (): void => setWinW(window.innerWidth);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
 
   const prevPanelsRef = useRef<SessionInfo[] | null>(null);
   const sessionSlotsRef = useRef(new Map<string, PanelSlot>());
@@ -544,7 +564,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const agentShown = singlePanel && panels.length === 1
     ? slotShown(panels[0])
     : 0;
-  const sideMax = Math.max(SIDE_MIN_W, Math.min(SIDE_MAX_W, winW - agentShown - fixedPanelChrome));
+  const sideMax = Math.max(SIDE_MIN_W, Math.min(SIDE_MAX_W, areaW + sideShown - agentShown));
 
   const sideCapRef = useRef<number | null>(null);
   const agentCapRef = useRef<number | null>(null);
@@ -559,7 +579,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       return slot.open ? slot.width : 0;
     };
     if (prevSidebarRef.current !== null) {
-      const avail = Math.max(0, winW - sideShown - (sideShown > 0 ? 1 : 0));
+      const avail = Math.max(0, areaW + sideShown);
       const openIDs = panels
         .filter((panel) => current[panel.workspace.id]?.open ?? true)
         .map((panel) => panel.workspace.id);
@@ -596,7 +616,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       const panel0 = panels[0];
       const panelOpen = current[panel0.workspace.id]?.open ?? true;
       if (!sideOpen && !panelOpen) return;
-      const avail = Math.max(0, winW - fixedPanelChrome);
+      const avail = Math.max(0, areaW + sideShown);
       const agentShownNow = panelOpen ? shown(panel0) : 0;
       const agentLimit = Math.max(0, avail - sideShown);
       const sideLimit = Math.max(0, Math.min(SIDE_MAX_W, avail - agentShownNow));
@@ -628,7 +648,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       setSlotWidth(panel0.workspace.id, nextAgent);
       return;
     }
-    const avail = Math.max(0, winW - fixedPanelChrome - sideShown);
+    const avail = areaW;
     const openIDs = panels
       .filter((panel) => current[panel.workspace.id]?.open)
       .map((panel) => panel.workspace.id);
@@ -654,7 +674,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       if (capped !== slot.left) setSlotLeft(panel.workspace.id, capped);
       boundary = Math.min(boundary, capped);
     }
-  }, [winW, sideOpen, sideW, panels]);
+  }, [areaW, sideOpen, sideW, panels]);
 
   const sideDrag = useDragResize(
     sideW,
@@ -686,7 +706,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
 
   const cols = [
     sideOpen ? `${sideW}px` : "0px",
-    ...(sideOpen ? ["1px"] : []),
+    sideOpen ? "1px" : "0px",
     "minmax(0,1fr)"
   ].join(" ");
 
@@ -705,7 +725,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     });
   };
 
-  const distributeEvenly = useCallback((sideShownAt: number, singleRestore: boolean, targetPanels: SessionInfo[] = panels, modelMode = prevSidebarRef.current !== null): void => {
+  const distributeEvenly = useCallback((singleRestore: boolean, targetPanels: SessionInfo[] = panels, modelMode = prevSidebarRef.current !== null): void => {
     setSlots((current) => {
       const anchorId = targetPanels[0]?.workspace.id ?? null;
       const openIDs = modelMode
@@ -717,14 +737,13 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       if (singleRestore && openIDs.length === 1 && anchorId) {
         return { ...current, [anchorId]: { open: true, width: AGENT_DEFAULT_W, left: 0, top: 0, height: 100 } };
       }
-      const area = Math.max(0, winW - sideShownAt - (sideShownAt > 0 ? 1 : 0));
-      const total = modelMode ? area : Math.max(0, winW - fixedPanelChrome - sideShownAt);
+      const total = areaW;
       const grid = modelMode && openIDs.length >= 3;
       const { columns, rows } = agentPanelGrid(openIDs.length);
       const width = Math.max(AGENT_MIN_W, Math.floor(total / columns));
       const anchorW = Math.max(AGENT_MIN_W, total - width * (columns - 1));
       const next: Record<string, PanelSlot> = {};
-      let boundary = Math.max(0, area - anchorW);
+      let boundary = Math.max(0, areaW - anchorW);
       for (const [index, panel] of [...targetPanels].reverse().entries()) {
         const id = panel.workspace.id;
         if (id === anchorId || !openIDs.includes(id)) continue;
@@ -743,7 +762,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
         next[anchorId] = {
           open: true,
           width: anchorW,
-          left: grid ? (anchorIndex % columns) * Math.floor(total / columns) : Math.max(0, area - anchorW),
+          left: grid ? (anchorIndex % columns) * Math.floor(total / columns) : Math.max(0, areaW - anchorW),
           leftAnchored: false,
           top: grid ? Math.floor(anchorIndex / columns) * (100 / rows) : 0,
           height: grid ? 100 / rows : 100
@@ -751,18 +770,18 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       }
       return { ...current, ...next };
     });
-  }, [fixedPanelChrome, panels, winW]);
+  }, [areaW, panels]);
 
   const previousPanelCountRef = useRef(panels.length);
   useEffect(() => {
     if (inAgentMode && panels.length > previousPanelCountRef.current) {
-      distributeEvenly(sideShown, false, panels, true);
+      distributeEvenly(false, panels, true);
     }
     previousPanelCountRef.current = panels.length;
   }, [distributeEvenly, inAgentMode, panels, sideShown]);
 
   useLayoutEffect(() => {
-    if (inAgentMode && sideOpen) distributeEvenly(sideW, false, panels, true);
+    if (inAgentMode && sideOpen) distributeEvenly(false, panels, true);
   }, [distributeEvenly, inAgentMode, panels, sideOpen, sideW]);
 
   const addModelPanel = (): void => {
@@ -801,7 +820,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       setAgentModeActive(true);
       setSettingsOpen(false);
       setSideOpen(false);
-      distributeEvenly(0, false, seed ? [seed] : [], true);
+      distributeEvenly(false, seed ? [seed] : [], true);
     } else {
       const prev = prevSidebarRef.current;
       if (!prev) return;
@@ -811,7 +830,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       setAgentModeActive(false);
       setSideOpen(prev.open);
       setSideW(prev.width);
-      distributeEvenly(prev.open ? prev.width : 0, true, focused ? [focused] : [], false);
+      distributeEvenly(true, focused ? [focused] : [], false);
       if (focused) focusSession(focused.id);
     }
   };
@@ -846,6 +865,19 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     setSlotOpen(panel.workspace.id, false);
   };
 
+  const activateSidebarTab = (tab: SidebarTab, toggleFiles = false): void => {
+    const closeFiles = toggleFiles && tab === "files" && !settingsOpen && sideTab === "files" && sideOpen;
+    setSettingsOpen(false);
+    setSideTab(tab);
+    setSidebarOpen(!closeFiles);
+  };
+
+  const openSettings = (): void => {
+    setSidebarOpen(true);
+    setSettingsSection("appearance");
+    setSettingsOpen(true);
+  };
+
   const setSlotWidth = (id: string, width: number): void => {
     setSlots((current) => {
       const slot = current[id] ?? { open: true, width: AGENT_DEFAULT_W, left: 0, top: 0, height: 100 };
@@ -865,18 +897,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   return (
     <div className={`app ${inAgentMode ? "agent-mode" : ""}`}>
       <div className="titlebar">
-        <span className="titlebar-leading-actions">
-          <button
-            className={`icon-btn ${sideOpen ? "on" : ""}`}
-            data-panel-action="toggle-sidebar"
-            title={sideOpen ? "Hide sidebar" : "Show sidebar"}
-            aria-label={sideOpen ? "Hide sidebar" : "Show sidebar"}
-            aria-pressed={sideOpen}
-            onClick={() => setSidebarOpen(!sideOpen)}
-          >
-            <IconSidebarLeft />
-          </button>
-        </span>
         <span className="titlebar-title"><OrbitMark size={16} />Orbit</span>
         <span className="titlebar-actions">
           {inAgentMode && (
@@ -944,29 +964,55 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       </div>
 
       <div ref={mainRowRef} className="main-row" style={{ "--pane-columns": cols } as CSSProperties}>
-        {settingsOpen ? <SettingsSidebar
-          section={settingsSection}
-          onSectionChange={setSettingsSection}
-        /> : <FileSidebar
-          collapsed={!sideOpen}
-          onCollapse={setSidebarOpen}
-          onDrag={sideDrag}
-          onOpenTerminal={(directory) => {
-            setTerminalRequest((current) => ({ id: (current?.id ?? 0) + 1, directory }));
-            showTray();
-          }}
-          tab={sideTab}
-          onTabChange={(tab) => {
-            setSideTab(tab);
-            setSettingsOpen(false);
-          }}
-        />}
+        <nav className="activity-rail" aria-label="Workspace views">
+          <button className="activity-brand" aria-label="Orbit files" title="Orbit files" onClick={() => activateSidebarTab("files")}>
+            <OrbitMark size={19} />
+          </button>
+          <button className={`activity-tool ${sideOpen && !settingsOpen && sideTab === "files" ? "active" : ""}`} aria-label="Files" aria-pressed={sideOpen && !settingsOpen && sideTab === "files"} title={sideOpen && !settingsOpen && sideTab === "files" ? "Hide files" : "Files"} onClick={() => activateSidebarTab("files", true)}>
+            <IconFolder />
+          </button>
+          <button className={`activity-tool ${sideOpen && !settingsOpen && sideTab === "sessions" ? "active" : ""}`} aria-label="Sessions" aria-pressed={sideOpen && !settingsOpen && sideTab === "sessions"} title="Sessions" onClick={() => activateSidebarTab("sessions")}>
+            <IconHistory />
+          </button>
+          <span className="activity-spacer" />
+          <button className={`activity-tool ${inAgentMode ? "active" : ""}`} aria-label={inAgentMode ? "Exit Agent Mode" : "Agent Mode"} aria-pressed={inAgentMode} title={inAgentMode ? "Exit Agent Mode" : "Agent Mode"} onClick={toggleAgentMode}>
+            <IconRobot />
+          </button>
+          <button className={`activity-tool ${trayOpen ? "active" : ""}`} aria-label={trayOpen ? "Hide terminal" : "Show terminal"} aria-pressed={trayOpen} title={trayOpen ? "Hide terminal" : "Show terminal"} onClick={toggleTray}>
+            <IconTerminal />
+          </button>
+          <button className={`activity-tool ${settingsOpen ? "active" : ""}`} aria-label="Settings" aria-pressed={settingsOpen} title="Settings" onClick={openSettings}>
+            <IconGear />
+          </button>
+        </nav>
+        <div className={`sidebar-slot ${sideOpen ? "" : "collapsed"}`}>
+          {settingsOpen ? <SettingsSidebar
+            section={settingsSection}
+            onSectionChange={setSettingsSection}
+          /> : <FileSidebar
+            collapsed={!sideOpen}
+            onCollapse={setSidebarOpen}
+            onDrag={sideDrag}
+            onOpenTerminal={(directory) => {
+              setTerminalRequest((current) => ({ id: (current?.id ?? 0) + 1, directory }));
+              showTray();
+            }}
+            tab={sideTab}
+            onTabChange={(tab) => {
+              setSideTab(tab);
+              setSettingsOpen(false);
+            }}
+          />}
+        </div>
         <div className={`divider ${sideOpen ? "" : "collapsed"}`} onMouseDown={sideDrag} style={{ pointerEvents: sideOpen ? undefined : "none" }} />
         {settingsOpen ? <SettingsPage section={settingsSection} onClose={() => setSettingsOpen(false)} /> : <div
-          className="workspace-area"
+          ref={workspaceAreaRef}
+          className={`workspace-area ${ordered.some((panel) => slotShown(panel) > 0) || (panels.length === 0 && emptyAgentOpen) ? "agent-open" : ""} ${trayDragging ? "tray-dragging" : ""}`}
           style={
             {
-              "--editor-right": `${ordered.length > 0 ? Math.max(0, areaW - slotFor(ordered[0]).left) : emptyAgentOpen && !inAgentMode ? emptyAgentWidth : 0}px`
+              "--editor-right": `${ordered.length > 0 ? Math.max(0, areaW - slotFor(ordered[0]).left) : emptyAgentOpen && !inAgentMode ? emptyAgentWidth : 0}px`,
+              "--tray-row": trayOpen ? `${trayH}px` : "0px",
+              "--tray-gap": trayOpen ? "12px" : "0px"
             } as CSSProperties
           }
         >
@@ -1020,24 +1066,24 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
               />
             </div>
           )}
+          <div
+            ref={trayAreaRef}
+            className={`tray-area ${trayOpen ? "open" : ""} ${trayDragging ? "dragging" : ""}`}
+            style={{ "--tray-height": `${trayH}px` } as CSSProperties}
+          >
+            <div className="tray-inner">
+              <div className="tray-divider" onMouseDown={trayDrag} title="Drag to resize" />
+              {session ? (
+                <TerminalTray height={trayH} snapped={traySnapped} request={terminalRequest} onClose={closeTray} onExpand={expandTray} />
+              ) : (
+                <EmptyTerminalTray onClose={closeTray} />
+              )}
+            </div>
+          </div>
         </div>}
       </div>
 
-      <div
-        ref={trayAreaRef}
-        className={`tray-area ${trayOpen ? "open" : ""} ${trayDragging ? "dragging" : ""}`}
-        style={{ "--tray-height": `${trayH}px` } as CSSProperties}
-      >
-        {!settingsOpen && <div className="tray-inner">
-          <div className="tray-divider" onMouseDown={trayDrag} title="Drag to resize" />
-          {session ? (
-            <TerminalTray height={trayH} snapped={traySnapped} request={terminalRequest} onClose={closeTray} onExpand={expandTray} />
-          ) : (
-            <EmptyTerminalTray onClose={closeTray} />
-          )}
-        </div>}
-      </div>
-
+      {!settingsOpen && <StatusBar />}
       <Toasts />
       <RecoveryNotice />
     </div>
@@ -1075,7 +1121,7 @@ export default function App(): ReactNode {
 }
 
 function Root(): ReactNode {
-  const { session, toggleWordWrap } = useStore();
+  const { session } = useStore();
   const wasOpen = useRef(false);
   const [enteredIde, setEnteredIde] = useState(false);
   const pendingView = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1097,17 +1143,6 @@ function Root(): ReactNode {
       if (pendingView.current) clearTimeout(pendingView.current);
     };
   }, [session]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.altKey && !e.metaKey && !e.ctrlKey && e.code === "KeyZ") {
-        e.preventDefault();
-        toggleWordWrap();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [toggleWordWrap]);
 
   if (!session && !enteredIde) return <Welcome />;
   return <Layout />;
