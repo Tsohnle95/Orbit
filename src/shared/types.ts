@@ -22,6 +22,12 @@ export interface RuntimeManifest {
   capabilities: RuntimeCapabilities;
 }
 
+export interface OpenCodeSyncResult {
+  version: string;
+  previousVersion: string;
+  cliUpdated: boolean;
+}
+
 export interface SessionInfo {
   id: string;
   runtimeID?: RuntimeID;

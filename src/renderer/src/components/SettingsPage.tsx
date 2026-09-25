@@ -56,6 +56,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
     currentModel,
     switchModel,
     loadModels,
+    refreshRuntimes,
     providerUsage,
     refreshProviderUsage,
     approvalMode,
@@ -71,8 +72,41 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   const [mcpServers, setMcpServers] = useState<McpServerOption[]>([]);
   const [plugins, setPlugins] = useState<PluginOption[]>([]);
   const [skills, setSkills] = useState<SkillOption[]>([]);
+  const [openCodeAction, setOpenCodeAction] = useState<"sync" | "update" | null>(null);
+  const [openCodeFeedback, setOpenCodeFeedback] = useState("");
   const copy = sectionCopy[section];
   const runtime = (runtimes ?? []).find((item) => item.id === (session?.runtimeID ?? "opencode"));
+  const openCodeRuntime = (runtimes ?? []).find((item) => item.id === "opencode");
+
+  const runOpenCodeAction = async (action: "sync" | "update"): Promise<void> => {
+    if (openCodeAction) return;
+    const intent = action === "update"
+      ? "OpenCode will update its global CLI using its own updater. Orbit will then restart the shared OpenCode service to match."
+      : "Orbit will restart the shared OpenCode service so it matches the installed CLI.";
+    if (!window.confirm(`${intent}\n\nActive agent runs in Orbit or other OpenCode apps may be interrupted. Continue?`)) return;
+    setOpenCodeAction(action);
+    setOpenCodeFeedback("");
+    try {
+      const result = action === "update"
+        ? await window.openshell.updateOpenCode()
+        : await window.openshell.syncOpenCode();
+      await refreshRuntimes().catch(() => []);
+      setOpenCodeFeedback(action === "update"
+        ? result.cliUpdated
+          ? `Updated OpenCode from ${result.previousVersion} to ${result.version}. Orbit is synced.`
+          : `OpenCode ${result.version} is already current. Orbit is synced.`
+        : `Orbit is synced to OpenCode ${result.version}.`);
+    } catch (error) {
+      setOpenCodeFeedback(error instanceof Error ? error.message : String(error));
+    } finally {
+      setOpenCodeAction(null);
+    }
+  };
+
+  useEffect(() => {
+    if (section !== "model") return;
+    void refreshRuntimes().catch(() => {});
+  }, [section, refreshRuntimes]);
 
   useEffect(() => {
     if (section !== "plugins") return;
@@ -206,6 +240,26 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
             }}><option value="">{models.length === 0 ? "No models available" : "Select a model"}</option>{models.map((model) => <option key={`${model.providerID}:${model.id}`} value={`${model.providerID}:${model.id}`}>{model.name} · {model.providerID}</option>)}</select>}
           />
         </div>
+        <h2 className="settings-group-title">OpenCode</h2>
+        <div className="settings-callout"><strong>Orbit uses the global OpenCode CLI.</strong><p>Sync and update restart the shared OpenCode service. Active runs in Orbit or other OpenCode apps may be interrupted.</p></div>
+        <div className="settings-list">
+          <SettingRow
+            title="Installed CLI"
+            detail="The version resolved from Orbit's PATH."
+            control={<span className="settings-badge">{openCodeRuntime?.version ?? "Not found"}</span>}
+          />
+          <SettingRow
+            title="Sync installed version"
+            detail="Restart the shared service to use the CLI version already installed."
+            control={<button className="settings-action-button" disabled={!openCodeRuntime?.version || openCodeAction !== null} onClick={() => void runOpenCodeAction("sync")}>{openCodeAction === "sync" ? "Syncing…" : "Sync"}</button>}
+          />
+          <SettingRow
+            title="Update to latest"
+            detail="Run OpenCode's updater for its detected install method, then sync the service."
+            control={<button className="settings-action-button" disabled={!openCodeRuntime?.version || openCodeAction !== null} onClick={() => void runOpenCodeAction("update")}>{openCodeAction === "update" ? "Updating…" : "Update"}</button>}
+          />
+        </div>
+        {openCodeFeedback && <p className="settings-action-feedback" role="status" aria-live="polite">{openCodeFeedback}</p>}
       </section>}
 
       {section === "mobile" && <section className="settings-section">

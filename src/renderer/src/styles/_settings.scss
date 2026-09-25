@@ -131,6 +131,10 @@
 .settings-list-row:last-child { border: 0; }
 .settings-list-row strong { display: block; font-size: 12.5px; }
 .settings-list-row small { display: block; margin-top: 3px; color: var(--text-faint); font-size: 10.5px; }
+.settings-action-button { flex-shrink: 0; padding: 7px 12px; color: var(--text); background: var(--bg-inset); border: 1px solid var(--border-strong); border-radius: var(--radius-full); cursor: pointer; font-size: 10.5px; }
+.settings-action-button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.settings-action-button:disabled { opacity: 0.5; cursor: not-allowed; }
+.settings-action-feedback { margin: 12px 2px 0; color: var(--text-dim); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
 .settings-segmented { display: inline-flex; flex-shrink: 0; padding: 2px; background: var(--bg-inset); border-radius: var(--radius-full); }
 .settings-segmented button { padding: 4px 11px; color: var(--text-dim); background: transparent; border: 0; border-radius: var(--radius-full); cursor: pointer; font-size: 10.5px; }
 .settings-segmented button.on { color: var(--text); background: var(--bg-active-pill); box-shadow: var(--shadow-sm); }

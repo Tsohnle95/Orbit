@@ -413,7 +413,7 @@ express a cross-component invariant or non-obvious state contract.
 | `Welcome` | `Welcome.tsx` | Landing view, recent sessions/workspaces, initial folder/file open |
 | `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation, Changes, Explorer, filesystem actions, terminal context actions |
 | `SettingsSidebar` | `SettingsSidebar.tsx` | Settings navigation |
-| `SettingsPage` | `SettingsPage.tsx` | Appearance, plugins, providers, safety, voice, model, mobile, and about surfaces |
+| `SettingsPage` | `SettingsPage.tsx` | Appearance, plugins, providers, safety, voice, model/runtime sync, mobile, and about surfaces |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
 | `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
 | `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs, save/conflict UI, editor validation entry points |

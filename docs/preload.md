@@ -23,6 +23,8 @@ automatically.
 | `openFileWorkspace(file, generation, runtimeID?)` | `Promise<OpenFileWorkspaceResult>` — opens an absolute path as a single-file workspace through the selected runtime (parent folder session + the file to open), no dialog |
 | `openSession(dir, generation, runtimeID?)` | `Promise<SessionInfo>` — creates a session through OpenCode by default or the selected runtime; model mode uses the renderer's explicit additive action |
 | `runtimes()` | `Promise<RuntimeManifest[]>` — installed status, versions, and normalized capability manifests |
+| `syncOpenCode()` | `Promise<OpenCodeSyncResult>` — syncs the attached shared service to the exact version resolved from Orbit's PATH |
+| `updateOpenCode()` | `Promise<OpenCodeSyncResult>` — runs OpenCode's own updater, then syncs the attached service |
 | `sessions()` | `Promise<SessionSummary[]>` — recent session list |
 | `activeSessions()` | `Promise<SessionInfo[]>` — currently open backend sessions in activation order; the last element is the most recently activated (used for startup restore) |
 | `closeSession(workspace)` | `Promise<void>` — tears down the backend context when a panel closes; the opencode session remains reopenable |

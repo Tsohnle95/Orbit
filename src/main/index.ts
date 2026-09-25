@@ -641,6 +641,10 @@ function registerIpc(): void {
 
   handleTrusted("shell:runtimes", async () => backend.runtimeManifests());
 
+  handleTrusted("shell:sync-opencode", async () => backend.syncOpenCode());
+
+  handleTrusted("shell:update-opencode", async () => backend.updateOpenCode());
+
   handleTrusted("shell:session-transcript", async (_e, sessionID: string) =>
     backend.sessionTranscript(sessionId(sessionID))
   );

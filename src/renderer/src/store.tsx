@@ -159,6 +159,7 @@ interface Store {
   session: SessionInfo | null;
   connected: boolean;
   runtimes: RuntimeManifest[];
+  refreshRuntimes: () => Promise<RuntimeManifest[]>;
   selectedRuntimeID: RuntimeID;
   setSelectedRuntimeID: (runtimeID: RuntimeID) => void;
   busy: boolean;
@@ -602,16 +603,18 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     window.localStorage.setItem("runtimeID", runtimeID);
   }, []);
 
-  useEffect(() => {
-    const load = window.openshell.runtimes;
-    if (typeof load !== "function") return;
-    void load().then((items) => {
-      setRuntimes(items);
-      if (!items.some((item) => item.id === selectedRuntimeID && item.available)) {
-        setSelectedRuntimeID("opencode");
-      }
-    }).catch(() => setRuntimes([]));
+  const refreshRuntimes = useCallback(async (): Promise<RuntimeManifest[]> => {
+    const items = await window.openshell.runtimes();
+    setRuntimes(items);
+    if (!items.some((item) => item.id === selectedRuntimeID && item.available)) {
+      setSelectedRuntimeID("opencode");
+    }
+    return items;
   }, [selectedRuntimeID, setSelectedRuntimeID]);
+
+  useEffect(() => {
+    void refreshRuntimes().catch(() => setRuntimes([]));
+  }, [refreshRuntimes]);
 
   useEffect(() => {
     const open = new Set(panels.map((panel) => panel.id));
@@ -3605,6 +3608,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       session,
       connected,
       runtimes,
+      refreshRuntimes,
       selectedRuntimeID,
       setSelectedRuntimeID,
       busy,
@@ -3706,7 +3710,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       acknowledgeRecovery
     }),
     [
-      session, connected, runtimes, selectedRuntimeID, setSelectedRuntimeID, busy, todos, transcript, sessionUsage, providerUsage, providerUsageLoading, tabs, activePath, singleFile, agentFiles, tree, expanded, hiddenPaths, toasts, recoveryRecords,
+      session, connected, runtimes, refreshRuntimes, selectedRuntimeID, setSelectedRuntimeID, busy, todos, transcript, sessionUsage, providerUsage, providerUsageLoading, tabs, activePath, singleFile, agentFiles, tree, expanded, hiddenPaths, toasts, recoveryRecords,
       models, availableModels, lastModel, currentModel, agents, currentAgent, approvalMode, wordWrap, messageQueue.followUpBehavior, setFollowUpBehavior, sessions, savedWorkspaces, saveWorkspace, removeWorkspace, activeSessions, panels, workspaceOnlyPanelIDs, panelViews, activeSessionID,
       focusSession, closePanel, openSession, addModelPanel, openWorkspacePanel, selectAddPanel, selectFolder, selectFile, openFileWorkspace, openExternalPath, importPaths, dropIntoExplorer, selectPanelDirectory, changePanelDirectory, reopenSession, loadSessions, sendPrompt, runCommand, stop, refreshProviderUsage, loadModels, switchModel,
       loadAgents, switchAgent, toggleApprovalMode, toggleWordWrap,

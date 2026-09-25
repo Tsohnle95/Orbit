@@ -93,12 +93,20 @@ cadence — and before adopting any new protocol feature — to compare the pin
 against the published `latest` tag; it exits nonzero when a newer stable
 release exists.
 
-The runtime binary is not pinned. On every connect Orbit probes
-`opencode --version`, accepts a registered service only when it reports the
-same V2 major line (`MIN_SUPPORTED_SERVER_MAJOR = 2`), and otherwise asks
-`Service.ensure` to terminate the mismatched daemon and spawn the new binary.
-The binary is whatever `PATH` resolves, so upgrading the CLI in a terminal and
-restarting Orbit is enough to move to the new server; no pin change is needed.
+The runtime binary is not pinned. Orbit probes `opencode --version` on its
+augmented PATH, accepts a registered V2 service during ordinary connection,
+and otherwise asks `Service.ensure` to start a compatible daemon. In Settings
+→ Model, **Sync installed version** asks `Service.ensure` for the exact version
+of the CLI Orbit resolves, then reconnects the event stream. This replaces a
+stale same-major daemon when needed, including one upgraded outside Orbit.
+
+**Update to latest** runs OpenCode's own `opencode upgrade` command, then
+performs the same exact-version sync. OpenCode chooses the install method it
+recognizes, so Orbit does not duplicate its installer logic. Installations
+managed by a package manager that OpenCode does not recognize must be updated
+through that package manager. Both Settings actions restart the shared
+OpenCode service when its version differs; active agent runs in Orbit or other
+OpenCode clients may be interrupted, so Orbit confirms before proceeding.
 
 When the event contract moves to a new V2 major line, raise
 `MIN_SUPPORTED_SERVER_MAJOR` in `src/main/opencode.ts` so discovery and

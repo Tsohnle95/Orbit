@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promises as fsp } from "node:fs";
 import { constants, watch, type FSWatcher } from "node:fs";
 import { homedir } from "node:os";
@@ -42,6 +42,7 @@ import type {
   ReopenedSession,
   RuntimeID,
   RuntimeManifest,
+  OpenCodeSyncResult,
   SessionInfo,
   SessionSelection,
   SessionSummary,
@@ -549,6 +550,12 @@ export function serverMajor(version: string | null | undefined): number | null {
   return match ? Number(match[1]) : null;
 }
 
+function exactServerVersion(version: string | null | undefined): string | null {
+  if (!version) return null;
+  const match = /(?:^|[^\d])v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)(?=$|[^\d])/.exec(version.trim());
+  return match?.[1] ?? null;
+}
+
 export const MIN_SUPPORTED_SERVER_MAJOR = 2;
 
 /** Providers Orbit surfaces in Settings, in display order. Every other
@@ -570,6 +577,8 @@ export function serverVersionPredicate(installedVersion: string | null): (versio
 export class OpenShellBackend {
   private client: Client | null = null;
   private endpoint: Endpoint | null = null;
+  private serviceFile: string | undefined = undefined;
+  private updatingOpenCode = false;
   private readonly contexts = new Map<string, SessionContext>();
   private primary: string | null = null;
   private listeners = new Set<(msg: unknown) => void>();
@@ -674,29 +683,130 @@ export class OpenShellBackend {
     });
   }
 
-  private async discoverEndpoint(version: (value: string) => boolean): Promise<Endpoint | null> {
-    const files = OpenShellBackend.discoverFiles();
+  private async discoverEndpoint(version: (value: string) => boolean): Promise<{ endpoint: Endpoint; file?: string } | null> {
+    const files = [undefined, ...OpenShellBackend.discoverFiles()];
     for (const file of files) {
-      const endpoint = await Service.discover({ file, version }).catch(() => null);
-      if (endpoint) return endpoint;
+      const endpoint = await Service.discover({ ...(file ? { file } : {}), version }).catch(() => null);
+      if (endpoint) return { endpoint, ...(file ? { file } : {}) };
     }
     return null;
   }
 
   async connect(): Promise<boolean> {
     const version = OpenShellBackend.serverVersionPredicate(await this.installedServerVersion());
-    const endpoint =
-      (await Service.discover({ version }).catch(() => null)) ??
-      (await this.discoverEndpoint(version)) ??
-      (await this.ensureBounded(version));
+    const existing = await this.discoverEndpoint(version);
+    const endpoint = existing?.endpoint ?? (await this.ensureBounded(version));
     if (!endpoint) return false;
     this.endpoint = endpoint;
+    this.serviceFile = existing?.file;
     this.client = OpenCode.make({
       baseUrl: endpoint.url,
       headers: Service.headers(endpoint)
     });
     this.scheduleRetentionPrune();
     return true;
+  }
+
+  async syncOpenCode(): Promise<OpenCodeSyncResult> {
+    return this.manageOpenCode(false);
+  }
+
+  async updateOpenCode(): Promise<OpenCodeSyncResult> {
+    return this.manageOpenCode(true);
+  }
+
+  private async installedOpenCodeVersion(): Promise<string> {
+    const version = exactServerVersion(await this.installedServerVersion());
+    if (!version) throw new Error("OpenCode was not found on Orbit's PATH. Install it or correct Orbit's PATH, then try again.");
+    return version;
+  }
+
+  private async runOpenCodeUpgrade(): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      const child = spawn("opencode", ["upgrade"], {
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true
+      });
+      let stdout = "";
+      let stderr = "";
+      const appendTail = (current: string, chunk: Buffer): string => (current + chunk.toString("utf8")).slice(-12000);
+      child.stdout?.on("data", (chunk: Buffer) => { stdout = appendTail(stdout, chunk); });
+      child.stderr?.on("data", (chunk: Buffer) => { stderr = appendTail(stderr, chunk); });
+      const timeout = setTimeout(() => {
+        child.kill();
+        reject(new Error("OpenCode's updater timed out after five minutes."));
+      }, 5 * 60 * 1000);
+      child.once("error", (error) => {
+        clearTimeout(timeout);
+        reject(new Error(`Could not run OpenCode's updater: ${error.message}`));
+      });
+      child.once("close", (code, signal) => {
+        clearTimeout(timeout);
+        if (code === 0) {
+          resolve(`${stdout}\n${stderr}`);
+          return;
+        }
+        const detail = (stderr.trim() || stdout.trim()).slice(-2400);
+        reject(new Error(detail || `OpenCode's updater exited with ${signal ? `signal ${signal}` : `code ${code ?? "unknown"}`}.`));
+      });
+    });
+  }
+
+  private async ensureExactOpenCodeVersion(version: string, file: string | undefined): Promise<Endpoint> {
+    const ensure = Service.ensure({
+      command: ["opencode", "serve", "--service"],
+      version,
+      ...(file ? { file } : {})
+    });
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        ensure,
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(() => reject(new Error("Timed out waiting for the synced OpenCode service to start.")), 60_000);
+        })
+      ]);
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
+  }
+
+  private async manageOpenCode(update: boolean): Promise<OpenCodeSyncResult> {
+    if (this.updatingOpenCode) throw new Error("An OpenCode update or sync is already in progress.");
+    this.updatingOpenCode = true;
+    try {
+      const previousVersion = await this.installedOpenCodeVersion();
+      const upgradeOutput = update ? await this.runOpenCodeUpgrade() : "";
+      const version = await this.installedOpenCodeVersion();
+      if (update && version === previousVersion && /may be managed by a package manager|install anyways\?/i.test(upgradeOutput)) {
+        throw new Error("OpenCode could not identify its install method. Update it through its package manager, then use Sync installed version.");
+      }
+      if (serverMajor(version) !== MIN_SUPPORTED_SERVER_MAJOR) {
+        throw new Error(`OpenCode ${version} is installed, but Orbit currently requires OpenCode V2.`);
+      }
+
+      const serviceFile = this.serviceFile;
+      const resumeEventLoop = this.eventLoop.active();
+      if (resumeEventLoop) await this.eventLoop.stop();
+      this.client = null;
+      this.endpoint = null;
+      try {
+        const endpoint = await this.ensureExactOpenCodeVersion(version, serviceFile);
+        this.endpoint = endpoint;
+        this.serviceFile = serviceFile;
+        this.client = OpenCode.make({
+          baseUrl: endpoint.url,
+          headers: Service.headers(endpoint)
+        });
+        this.scheduleRetentionPrune();
+        this.emit({ kind: "event", type: "server.connected", data: {} });
+      } finally {
+        if (resumeEventLoop && !this.stopped) this.start();
+      }
+      return { version, previousVersion, cliUpdated: version !== previousVersion };
+    } finally {
+      this.updatingOpenCode = false;
+    }
   }
 
   /**

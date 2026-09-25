@@ -30,6 +30,7 @@ context; no native DeepSeek envelope or service URL crosses preload IPC.
 State:
 
 - `client` — `OpenCode.make()` result, null until connected
+- `serviceFile` — registration file used by the active shared service, retained so Settings sync replaces the service Orbit is attached to
 - `contexts` — a `Map<workspaceID, SessionContext>` of concurrently open
   sessions. Each `SessionContext` holds the immutable `WorkspaceIdentity`
   (`{id, generation}`), the session id, the canonical `directory`, the
@@ -58,6 +59,8 @@ Public methods (all used by IPC):
 | Method | Purpose |
 |---|---|
 | `connect()` | Probe `opencode --version` → V2 predicate (`MIN_SUPPORTED_SERVER_MAJOR = 2`) → `Service.discover()` / `Service.ensure({command:["opencode","serve","--service"]})` → `OpenCode.make` |
+| `syncOpenCode()` | Ensures the service Orbit is attached to reports the exact version of the installed CLI, then rebinds the event stream without clearing open workspace contexts |
+| `updateOpenCode()` | Runs the installed CLI's `opencode upgrade`, then performs the exact-version service sync |
 | `start()` | Start the SSE event loop if one is not already running; unexpected loop failures are forwarded as structured `global.error` events |
 | `stop()` | Abort and invalidate the active SSE loop lifecycle, then stop every context's fs watcher |
 | `mobileEndpoint()` | Returns the connected OpenCode mobile endpoint credentials when available, otherwise `null` |
@@ -247,6 +250,8 @@ Internals:
 | `shell:fs-import` | `(workspace, destDir, sources) → ImportResult[]` — copies external files/folders into the workspace at `destDir` (empty `destDir` is the workspace root) |
 | `shell:sessions` | `() → SessionSummary[]` |
 | `shell:runtimes` | `() → RuntimeManifest[]` — installed status, native version, normalized protocol version, and capability bitmap |
+| `shell:sync-opencode` | `() → OpenCodeSyncResult` — restarts the attached shared OpenCode service only when needed to match the installed CLI version |
+| `shell:update-opencode` | `() → OpenCodeSyncResult` — runs OpenCode's updater, then syncs the shared service to the resulting CLI version |
 | `shell:active-sessions` | `() → SessionInfo[]` — open backend sessions, most recently activated last |
 | `shell:close-session` | `(workspace) → void` — tears down the backend context when a panel closes; the opencode session remains reopenable |
 | `shell:open-session-id` | `(sessionID, generation, runtimeID?) → ReopenedSession`; persisted runtime identity resolves omitted ids; a differing `runtimeID` with no active context remaps the session to the requested runtime on the same directory |
