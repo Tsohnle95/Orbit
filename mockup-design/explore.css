@@ -80,7 +80,7 @@ html[data-theme="dark"] .explore-page { --canvas: #171e1c; --surface: #222c28; -
 .agent-focused .art-hero h1 { max-width: 1080px; font-size: clamp(76px, 8vw, 112px); }
 .agent-focused .art-hero-subtitle { margin: 8px 0 0; font-size: clamp(19px, 2.2vw, 28px); font-weight: 500; letter-spacing: -.025em; line-height: 1.2; }
 .agent-focused .art-actions { margin-top: 22px; }
-.agent-focused .art-hero .art-product { margin-top: 96px; }
+.agent-focused .art-hero .art-product { margin-top: 236px; }
 .layout-centered .art-hero .celestial-body { translate: 65px 0; }
 .layout-centered.celestial-saturn .art-hero .celestial-body { translate: 130px 0; }
 .form-inset .art-product { width: min(1100px,94%); }
