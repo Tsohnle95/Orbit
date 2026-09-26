@@ -568,3 +568,11 @@ html[data-theme="dark"] .iteration-card { --surface: #202723; }
 .exploration-preview .scene-art { position: absolute; z-index: -1; inset: 0; width: 100%; height: 100%; }
 .exploration-preview::before { z-index: 0; background: linear-gradient(0deg, rgba(17,25,20,.43), transparent 65%); }
 .exploration-card .iteration-card-body small { letter-spacing: .03em; }
+.iteration-cluster + .iteration-cluster { margin-top: 48px; }
+.cluster-heading { display: flex; align-items: baseline; gap: 20px; padding: 0 0 16px; }
+.cluster-heading > span { flex: none; color: var(--accent); font: 9px var(--mono); letter-spacing: .09em; }
+.cluster-heading h3 { margin: 0; color: var(--ink); font-size: clamp(18px, 2.4vw, 25px); font-weight: 540; letter-spacing: -.045em; }
+.seed-card { border-color: color-mix(in srgb, var(--accent) 54%, var(--rule)); }
+.seed-card .iteration-card-body small { color: var(--accent); }
+.seed-preview { background: linear-gradient(150deg, var(--scene-paper), var(--scene-ground)); }
+@media (max-width: 640px) { .cluster-heading { flex-direction: column; gap: 5px; } .iteration-cluster + .iteration-cluster { margin-top: 38px; } }

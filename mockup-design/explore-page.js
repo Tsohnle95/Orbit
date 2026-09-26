@@ -38,6 +38,11 @@ if (!design) {
     <div class="map-path" aria-hidden="true"><span></span><span></span><span></span></div>
     <div class="map-destinations"><div><span class="map-key">01 / READ</span><strong>Monaco editor</strong><small>App.tsx ↗</small></div><div><span class="map-key">02 / ASK</span><strong>Agent in context</strong><small>Working in this repo ↗</small></div><div><span class="map-key">03 / REVIEW</span><strong>Changed files</strong><small>3 changes ready ↗</small></div></div>
   </div>`;
+  const ridgeTiles = `<div class="ridge-tiles" aria-label="The repository, editor, and change review stay together">
+    <article class="ridge-tile"><div class="ridge-tile-bar"><span>01 / EXPLORE</span><span>⌁ &nbsp; main</span></div><div class="ridge-tile-files"><p>⌄ &nbsp; orbit</p><p>⌄ &nbsp; src</p><p class="selected">TS &nbsp; App.tsx</p><p>TS &nbsp; workspace.ts</p><p>⌄ &nbsp; styles</p></div><div class="ridge-tile-foot"><strong>Begin with the repo.</strong><small>Your files are already here.</small></div></article>
+    <article class="ridge-tile ridge-tile-code"><div class="ridge-tile-bar"><span>02 / EDIT</span><span>App.tsx &nbsp; ×</span></div><div class="ridge-tile-lines"><p><i>118</i> <b>export</b> function Workspace() {</p><p><i>119</i> &nbsp; const root = useRepo();</p><p class="selected"><i>120</i> &nbsp; return &lt;Agent root={root} /&gt;;</p><p><i>121</i> }</p></div><div class="ridge-tile-foot"><strong>Stay with the code.</strong><small>Editor and agent in the same view.</small></div></article>
+    <article class="ridge-tile"><div class="ridge-tile-bar"><span>03 / REVIEW</span><span>3 files ↗</span></div><div class="ridge-tile-diff"><p>App.tsx <b>+12</b></p><p>workspace.ts <b>+7 −2</b></p><p>_layout.scss <b>+4</b></p><code>+ keep workspace context</code></div><div class="ridge-tile-foot"><strong>Know what changed.</strong><small>Follow each edit back to its file.</small></div></article>
+  </div>`;
   const desktopDock = `<div class="desktop-dock" aria-label="The editor, agent, terminal, and change review share one desk">
     <div class="dock-pane"><span class="dock-glyph">⌘</span><span><small>READ + EDIT</small><strong>Monaco workbench</strong></span><i>01</i></div>
     <div class="dock-pane"><span class="dock-glyph">✳</span><span><small>ASK</small><strong>Agent beside your code</strong></span><i>02</i></div>
@@ -73,11 +78,11 @@ if (!design) {
       </section>
       <section class="art-inside" id="inside">
         <div class="art-section-header"><p class="art-section-label">${isRepo ? "01 / THE SOURCE" : "01 / YOUR DESK"}</p><h2>${design.section}</h2><p>${isRepo ? "Orbit starts with a real repository. Your editor, terminal, agent session, and review all stay attached to the folder you chose." : "The desktop workspace puts your code, conversation, terminal, and changes together. No tab shuffle between the important parts."}</p></div>
-        ${isRepo ? projectDiagram : desktopDock}
+        ${design.lineage === "ridge" ? ridgeTiles : isRepo ? projectDiagram : desktopDock}
       </section>
       <section class="art-interlude" aria-label="${isRepo ? "The repository stays at the center" : "A connected desktop workspace"}">
         ${orbitScene(design, "interlude")}
-        <div class="interlude-copy"><span class="interlude-mark" aria-hidden="true">◉</span><p>${isRepo ? "ONE REPOSITORY / MANY NEXT STEPS" : "ONE DESK / A BETTER RHYTHM"}</p><h2>${sceneMessages[design.id]}</h2></div>
+        <div class="interlude-copy"><span class="interlude-mark" aria-hidden="true">◉</span><p>${isRepo ? "ONE REPOSITORY / MANY NEXT STEPS" : "ONE DESK / A BETTER RHYTHM"}</p><h2>${design.message ?? sceneMessages[design.id]}</h2></div>
         <div class="interlude-note"><span class="live-dot"></span>${isRepo ? "~/code/orbit · project open" : "Orbit desktop · workspace active"}</div>
       </section>
       <section class="art-review" id="review">
