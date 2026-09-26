@@ -47,11 +47,71 @@ function orbitAtmosphere(config, instance = "hero") {
   const cityWindowClip = city
     ? `<clipPath id="city-facades-${id}" clipPathUnits="userSpaceOnUse"><path d="${cityBackFacade}"/><path d="${cityFrontFacade}"/></clipPath>`
     : "";
-  const windowLights = city ? Array.from({ length: 82 }, () => {
-    const x = 12 + Math.floor(random() * 156) * 10;
-    const y = 681 + Math.floor(random() * 13) * 10;
-    return `<rect x="${x}" y="${y}" width="3" height="6" fill="${config.glow}" opacity="${(.18 + random() * .55).toFixed(2)}"/>`;
-  }).join("") : "";
+  // Roof-run bounds mirror the silhouette paths; rear windows stop at the foreground roofline.
+  const backBuildingFacades = [
+    [0, 84, 692], [84, 161, 644], [161, 257, 739], [257, 320, 684],
+    [320, 397, 581], [397, 487, 716], [487, 558, 651], [558, 654, 742],
+    [654, 734, 617], [734, 847, 704], [847, 920, 642], [920, 1004, 537],
+    [1004, 1113, 709], [1113, 1187, 631], [1187, 1288, 724], [1288, 1372, 607],
+    [1372, 1478, 742], [1478, 1580, 654]
+  ];
+  const frontBuildingFacades = [
+    [0, 107, 703], [107, 191, 762], [191, 290, 653], [290, 374, 763],
+    [374, 475, 693], [475, 562, 754], [562, 638, 615], [638, 747, 754],
+    [747, 840, 670], [840, 957, 766], [957, 1041, 645], [1041, 1146, 764],
+    [1146, 1239, 713], [1239, 1350, 793], [1350, 1433, 683]
+  ];
+  const visibleBackFacades = backBuildingFacades.flatMap(([left, right, top]) => {
+    const edges = [left, right];
+    for (const [frontLeft, frontRight] of frontBuildingFacades) {
+      if (frontRight > left && frontLeft < right) {
+        edges.push(Math.max(left, frontLeft), Math.min(right, frontRight));
+      }
+    }
+    edges.sort((first, second) => first - second);
+    return edges.slice(0, -1).flatMap((start, index) => {
+      const end = edges[index + 1];
+      const midpoint = (start + end) / 2;
+      const foreground = frontBuildingFacades.find(([frontLeft, frontRight]) => midpoint >= frontLeft && midpoint < frontRight);
+      const bottom = foreground ? Math.min(790, foreground[2]) : 790;
+      return bottom > top ? [[start, end, top, bottom]] : [];
+    });
+  });
+  const makeFacadeWindows = (facades, foreground) => {
+    const width = foreground ? 4 : 3;
+    const height = foreground ? 6 : 5;
+    const horizontalGap = foreground ? 7 : 6;
+    const verticalGap = foreground ? 9 : 8;
+    const horizontalMargin = foreground ? 8 : 6;
+    const topMargin = foreground ? 12 : 10;
+    const bottomMargin = foreground ? 12 : 10;
+    const litChance = foreground ? .64 : .48;
+    return facades.flatMap(([left, right, top, bottom]) => {
+      const availableWidth = right - left - horizontalMargin * 2;
+      const availableHeight = bottom - top - topMargin - bottomMargin;
+      const columns = Math.floor((availableWidth + horizontalGap) / (width + horizontalGap));
+      const rows = Math.floor((availableHeight + verticalGap) / (height + verticalGap));
+      if (columns < 1 || rows < 1) return [];
+      const gridWidth = columns * width + (columns - 1) * horizontalGap;
+      const gridHeight = rows * height + (rows - 1) * verticalGap;
+      const firstX = Math.round(left + horizontalMargin + (availableWidth - gridWidth) / 2);
+      const firstY = Math.round(top + topMargin + (availableHeight - gridHeight) / 2);
+      const windows = [];
+      for (let row = 0; row < rows; row += 1) {
+        for (let column = 0; column < columns; column += 1) {
+          if (random() > litChance) continue;
+          const x = firstX + column * (width + horizontalGap);
+          const y = firstY + row * (height + verticalGap);
+          const opacity = foreground ? .32 + random() * .42 : .2 + random() * .34;
+          windows.push(`<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${config.glow}" opacity="${opacity.toFixed(2)}"/>`);
+        }
+      }
+      return windows;
+    });
+  };
+  const windowLights = city
+    ? [...makeFacadeWindows(visibleBackFacades, false), ...makeFacadeWindows(frontBuildingFacades.map(([left, right, top]) => [left, right, top, 810]), true)].join("")
+    : "";
   const coast = water ? `<path d="M0 744q290-64 573 40t583-47q233-70 444-34v237H0z" fill="url(#near-${id})"/><g fill="none" stroke="${config.glow}" opacity=".37"><path d="M0 772q290-64 573 40t583-47q233-70 444-34" stroke-width="2"/><path d="M0 805q290-64 573 40t583-47q233-70 444-34" stroke-width="2"/></g>${Array.from({ length: 55 }, () => `<path d="M${Math.round(random() * 1600)} ${Math.round(766 + random() * 120)}h${Math.round(9 + random() * 65)}" stroke="${config.glow}" stroke-width="${(random() * 2 + .5).toFixed(1)}" opacity="${(.1 + random() * .3).toFixed(2)}"/>`).join("")}` : "";
   const rockLines = Array.from({ length: 54 }, () => {
     const x = Math.round(random() * 1600), y = Math.round(625 + random() * 230);
