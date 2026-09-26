@@ -30,6 +30,14 @@ html[data-theme="dark"] .explore-page { --canvas: #171e1c; --surface: #222c28; -
 .terrain-city .art-hero .atmosphere-scene .atmosphere-distance { transform: translateY(calc(-9% - var(--scroll-depth, 0) * 14%)); }
 .atmosphere-scene .orbiting-marker { transform-box: view-box; transform-origin: 1200px 270px; animation: orbiting-world 34s linear infinite; }
 @keyframes orbiting-world { to { transform: rotate(360deg); } }
+.atmosphere-scene .shooting-star { opacity: 0; transform-box: fill-box; transform-origin: 0 0; animation: meteor-flight 7.4s ease-in-out infinite both; }
+.atmosphere-scene .shooting-star-two { animation-delay: -3.7s; animation-duration: 8.2s; }
+@keyframes meteor-flight {
+  0%, 69%, 100% { opacity: 0; transform: translate(40px,-22px); }
+  73% { opacity: .95; }
+  82% { opacity: .82; transform: translate(0,0); }
+  91% { opacity: 0; transform: translate(-88px,48px); }
+}
 .has-atmosphere .art-hero { background: var(--scene-paper); }
 .has-atmosphere .art-hero-content { position: relative; z-index: 1; }
 .has-atmosphere .art-hero-copy { padding: 16px 25px 24px; }
@@ -190,6 +198,7 @@ html[data-theme="light"] .scene-dark .art-inside, html[data-theme="light"] .scen
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .atmosphere-scene .orbiting-marker { animation: none; }
+  .atmosphere-scene .shooting-star { animation: none; opacity: 0; }
 }
 
 @media (max-width: 900px) {
@@ -210,6 +219,7 @@ html[data-theme="light"] .scene-dark .art-inside, html[data-theme="light"] .scen
 }
 
 @media (max-width: 600px) {
+  @keyframes meteor-flight { 0%,69%,100% { opacity: 0; transform: translate(24px,-14px); } 73% { opacity: .95; } 82% { opacity: .82; transform: translate(0,0); } 91% { opacity: 0; transform: translate(-58px,34px); } }
   .has-atmosphere .art-hero .celestial-body { translate: -245px 300px; }
   .explore-nav { height: 60px; padding: 0 17px; }
   .explore-nav nav { display: none; }

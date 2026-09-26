@@ -572,7 +572,10 @@ html[data-theme="dark"] .iteration-card { --surface: #202723; }
 .exploration-preview .atmosphere-scene .scene-art { z-index: auto; }
 .exploration-preview .orbiting-marker { transform-box: view-box; transform-origin: 1200px 270px; animation: card-orbit 34s linear infinite; }
 @keyframes card-orbit { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .exploration-preview .orbiting-marker { animation: none; } }
+.exploration-preview .shooting-star { opacity: 0; transform-box: fill-box; transform-origin: 0 0; animation: card-meteor-flight 7.4s ease-in-out infinite both; }
+.exploration-preview .shooting-star-two { animation-delay: -3.7s; animation-duration: 8.2s; }
+@keyframes card-meteor-flight { 0%, 69%, 100% { opacity: 0; transform: translate(10px,-6px); } 73% { opacity: .95; } 82% { opacity: .82; transform: translate(0,0); } 91% { opacity: 0; transform: translate(-22px,13px); } }
+@media (prefers-reduced-motion: reduce) { .exploration-preview .orbiting-marker, .exploration-preview .shooting-star { animation: none; } .exploration-preview .shooting-star { opacity: 0; } }
 .iteration-cluster + .iteration-cluster { margin-top: 48px; }
 .cluster-heading { display: flex; align-items: baseline; gap: 20px; padding: 0 0 16px; }
 .cluster-heading > span { flex: none; color: var(--accent); font: 9px var(--mono); letter-spacing: .09em; }
