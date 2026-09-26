@@ -28,7 +28,6 @@ if (!design) {
   app.innerHTML = `<main class="missing-design"><h1>That exploration isn't here.</h1><a href="../index.html">See all Orbit designs →</a></main>`;
 } else {
   const isRepo = design.family === "04";
-  const isAgentFocused = Boolean(design.productCopy);
   const colors = `--scene-ink:${design.ink};--scene-accent:${design.accent};--scene-paper:${design.sky};--scene-ground:${design.foreground}`;
   document.title = `Orbit — ${design.name}`;
   document.body.classList.add(`explore-${design.family}`, `scene-${design.scene}`, `form-${design.form}`, `type-${design.type}`, design.light ? "scene-light" : "scene-dark");
@@ -67,43 +66,40 @@ if (!design) {
         <div class="hero-light" aria-hidden="true"></div>
         <div class="art-hero-content">
           <div class="art-hero-copy">
-            <p class="art-kicker"><span class="live-dot"></span>${isAgentFocused ? isRepo ? "ORBIT / REPOSITORY-AWARE AGENT WORKSPACE" : "ORBIT / AGENT DEVELOPMENT ENVIRONMENT" : isRepo ? "YOUR REPOSITORY / YOUR WORKSPACE" : "THE DESKTOP WORKSPACE FOR CODING AGENTS"}</p>
+            <p class="art-kicker"><span class="live-dot"></span>${isRepo ? "YOUR REPOSITORY / YOUR WORKSPACE" : "THE DESKTOP WORKSPACE FOR CODING AGENTS"}</p>
             <h1 id="hero-title">${design.title}</h1>
             <p class="art-lede">${design.lede}</p>
-            <div class="art-actions"><a class="art-button" href="#inside">${isAgentFocused ? "Explore Orbit" : isRepo ? "Explore the workspace" : "Step inside"}<span aria-hidden="true">↓</span></a><a class="art-secondary" href="#review">${isAgentFocused ? "Review agent changes" : "See the whole loop"} <span aria-hidden="true">→</span></a></div>
-            <div class="art-facts" aria-label="Orbit workspace features"><span>${isAgentFocused ? "Repository context" : "Repository first"}</span><span>${isAgentFocused ? "Agent session" : "Monaco editor"}</span><span>${isAgentFocused ? "Diff review" : "OpenCode V2"}</span></div>
+            <div class="art-actions"><a class="art-button" href="#inside">${isRepo ? "Explore the workspace" : "Step inside"}<span aria-hidden="true">↓</span></a><a class="art-secondary" href="#review">See the whole loop <span aria-hidden="true">→</span></a></div>
+            <div class="art-facts" aria-label="Orbit workspace features"><span>Repository first</span><span>Monaco editor</span><span>OpenCode V2</span></div>
           </div>
           <figure class="art-product">
             <img src="../assets/orbit-workbench-reference.png" width="1375" height="779" alt="Orbit desktop workbench showing the repository explorer, editor, terminal, and agent panel in one window." />
-            <figcaption><span class="live-dot"></span>${isAgentFocused ? isRepo ? "Repository open · Agent ready" : "Agent workspace · Repository connected" : isRepo ? "Project open · Files in view" : "One desk · All your tools"}</figcaption>
+            <figcaption><span class="live-dot"></span>${isRepo ? "Project open · Files in view" : "One desk · All your tools"}</figcaption>
           </figure>
         </div>
       </section>
       <section class="art-inside" id="inside">
-        <div class="art-section-header"><p class="art-section-label">${isAgentFocused ? "01 / AGENT WORKSPACE" : isRepo ? "01 / THE SOURCE" : "01 / YOUR DESK"}</p><h2>${design.section}</h2><p>${isAgentFocused ? "Open a repository, run a coding agent beside the editor and terminal, then inspect its file diffs in Orbit." : isRepo ? "Orbit starts with a real repository. Your editor, terminal, agent session, and review all stay attached to the folder you chose." : "The desktop workspace puts your code, conversation, terminal, and changes together. No tab shuffle between the important parts."}</p></div>
+        <div class="art-section-header"><p class="art-section-label">${isRepo ? "01 / THE SOURCE" : "01 / YOUR DESK"}</p><h2>${design.section}</h2><p>${isRepo ? "Orbit starts with a real repository. Your editor, terminal, agent session, and review all stay attached to the folder you chose." : "The desktop workspace puts your code, conversation, terminal, and changes together. No tab shuffle between the important parts."}</p></div>
         ${design.lineage === "ridge" ? ridgeTiles : isRepo ? projectDiagram : desktopDock}
       </section>
       <section class="art-interlude" aria-label="${isRepo ? "The repository stays at the center" : "A connected desktop workspace"}">
          ${design.atmosphere ? orbitAtmosphere(design, "interlude") : orbitScene(design, "interlude")}
-        <div class="interlude-copy"><span class="interlude-mark" aria-hidden="true">◉</span><p>${isAgentFocused ? "ORBIT / AGENT WORKFLOW" : isRepo ? "ONE REPOSITORY / MANY NEXT STEPS" : "ONE DESK / A BETTER RHYTHM"}</p><h2>${design.message ?? sceneMessages[design.id]}</h2></div>
-        <div class="interlude-note"><span class="live-dot"></span>${isAgentFocused ? isRepo ? "~/code/orbit · agent workspace" : "Orbit · repository connected" : isRepo ? "~/code/orbit · project open" : "Orbit desktop · workspace active"}</div>
+        <div class="interlude-copy"><span class="interlude-mark" aria-hidden="true">◉</span><p>${isRepo ? "ONE REPOSITORY / MANY NEXT STEPS" : "ONE DESK / A BETTER RHYTHM"}</p><h2>${design.message ?? sceneMessages[design.id]}</h2></div>
+        <div class="interlude-note"><span class="live-dot"></span>${isRepo ? "~/code/orbit · project open" : "Orbit desktop · workspace active"}</div>
       </section>
       <section class="art-review" id="review">
-        <div class="review-words"><p class="art-section-label">${isAgentFocused ? "02 / CHANGE REVIEW" : "02 / FROM START TO FINISH"}</p><h2>${isAgentFocused ? "From agent task to reviewed diff." : isRepo ? "Follow the work back to its source." : "Stay for the whole coding loop."}</h2><p>${isAgentFocused ? "Run the agent in your codebase, then inspect the exact file changes before accepting them." : isRepo ? "Read a file, ask a question about it, then open the diff. The work stays legible because it never leaves its project behind." : "Bring a project into view, work alongside the agent, run a command, and review the changes before moving on."}</p><div class="review-sequence"><span>01 &nbsp; OPEN</span><span>02 &nbsp; ASK</span><span>03 &nbsp; REVIEW</span></div></div>
+        <div class="review-words"><p class="art-section-label">02 / FROM START TO FINISH</p><h2>${isRepo ? "Follow the work back to its source." : "Stay for the whole coding loop."}</h2><p>${isRepo ? "Read a file, ask a question about it, then open the diff. The work stays legible because it never leaves its project behind." : "Bring a project into view, work alongside the agent, run a command, and review the changes before moving on."}</p><div class="review-sequence"><span>01 &nbsp; OPEN</span><span>02 &nbsp; ASK</span><span>03 &nbsp; REVIEW</span></div></div>
         ${isRepo ? repoProof : deskProof}
       </section>
-      <section class="art-close"><div><p class="art-section-label">${isAgentFocused ? "ORBIT / AGENT DEVELOPMENT ENVIRONMENT" : isRepo ? "KEEP THE PROJECT CLOSE" : "WORK WHERE THE WORK IS"}</p><h2>${isAgentFocused ? "Code, run, review." : isRepo ? "A clear place to begin." : "Make yourself at home."}</h2></div><a class="art-button" href="#inside">${isAgentFocused ? "Open the workspace" : "Explore Orbit"} <span aria-hidden="true">↑</span></a></section>
+      <section class="art-close"><div><p class="art-section-label">${isRepo ? "KEEP THE PROJECT CLOSE" : "WORK WHERE THE WORK IS"}</p><h2>${isRepo ? "A clear place to begin." : "Make yourself at home."}</h2></div><a class="art-button" href="#inside">Explore Orbit <span aria-hidden="true">↑</span></a></section>
     </main>
-     <footer class="art-footer"><a class="explore-brand" href="../index.html"><span aria-hidden="true">◉</span> orbit</a><span>${isAgentFocused ? "Orbit · repository-aware agent development environment." : isRepo ? "Built around your repository." : "A home for the coding loop."}</span></footer>`;
+     <footer class="art-footer"><a class="explore-brand" href="../index.html"><span aria-hidden="true">◉</span> orbit</a><span>${isRepo ? "Built around your repository." : "A home for the coding loop."}</span></footer>`;
   if (design.atmosphere) {
     const hero = document.querySelector(".art-hero");
     const foreground = hero.querySelector(".atmosphere-foreground");
-    if (design.terrain === "city") foreground.remove();
-    else {
-      foreground.remove();
-      foreground.classList.add("hero-foreground");
-      hero.append(foreground);
-    }
+    foreground.remove();
+    foreground.classList.add("hero-foreground");
+    hero.append(foreground);
     const updateDepth = () => {
       const progress = Math.max(0, Math.min(1, -hero.getBoundingClientRect().top / Math.max(hero.offsetHeight - innerHeight * .35, 1)));
       hero.style.setProperty("--scroll-depth", progress.toFixed(3));

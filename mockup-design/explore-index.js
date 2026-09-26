@@ -1,8 +1,8 @@
 const violetHourId = "10-dusk-crescent-detail-violet-hour";
 const curatedGroups = [
-  ...orbitFocusedGroups.map((group) => ({
+  ...orbitCityWorkflowGroups.map((group) => ({
     ...group,
-    variants: orbitFocusedExplorations.filter((design) => design.parent === group.seed)
+    variants: orbitCityWorkflowExplorations.filter((design) => design.parent === group.seed)
   })),
   ...orbitDetailedGroups
     .filter((group) => group.group !== "tidal")
