@@ -963,7 +963,11 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
         </span>
       </div>
 
-      <div ref={mainRowRef} className="main-row" style={{ "--pane-columns": cols } as CSSProperties}>
+      <div
+        ref={mainRowRef}
+        className={sideOpen ? "main-row" : "main-row sidebar-closed"}
+        style={{ "--pane-columns": cols } as CSSProperties}
+      >
         <nav className="activity-rail" aria-label="Workspace views">
           <button className="activity-brand" aria-label="Orbit files" title="Orbit files" onClick={() => activateSidebarTab("files")}>
             <OrbitMark size={19} />
@@ -1012,7 +1016,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             {
               "--editor-right": `${ordered.length > 0 ? Math.max(0, areaW - slotFor(ordered[0]).left) : emptyAgentOpen && !inAgentMode ? emptyAgentWidth : 0}px`,
               "--tray-row": trayOpen ? `${trayH}px` : "0px",
-              "--tray-gap": trayOpen ? "12px" : "0px"
+              "--tray-gap": trayOpen ? "10px" : "0px"
             } as CSSProperties
           }
         >

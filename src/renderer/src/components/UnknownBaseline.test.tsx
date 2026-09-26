@@ -111,6 +111,9 @@ describe("unknown baseline presentation", () => {
     const unavailable = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Diff unavailable"));
     expect(unavailable).toBeTruthy();
     expect(unavailable?.hasAttribute("disabled")).toBe(true);
+    expect(container.querySelector(".tab-file-icon .si-icon")).toBeTruthy();
+    expect(container.querySelector(".editor-breadcrumbs")?.textContent).toContain("workspace");
+    expect(container.querySelector(".editor-breadcrumbs")?.textContent).toContain("unknown.ts");
     expect(container.querySelector("[data-testid=editor]")).toBeTruthy();
     expect(container.querySelector("[data-testid=diff-editor]")).toBeNull();
   });

@@ -7,6 +7,7 @@ import { wireEditorNavigationKeys } from "../editor-navigation";
 import { clearW3cMarkers } from "../w3c-validation";
 import { useStore } from "../store";
 import { OrbitMark } from "./OrbitMark";
+import { FileIcon } from "./FileIcons";
 import { useTheme } from "../theme";
 import { registerEditor, unregisterEditor } from "../reveal";
 import { droppedFilePaths, isExternalFileDrag } from "../drop";
@@ -50,6 +51,7 @@ function TabBar(): ReactNode {
             onClick={() => setActive(tab.path)}
             title={tab.path}
           >
+            <span className="tab-file-icon"><FileIcon name={tab.name} isDir={false} /></span>
             <span className="tab-name">
               {tab.dirty && <span className="tab-dirty" />}
               {tab.name}

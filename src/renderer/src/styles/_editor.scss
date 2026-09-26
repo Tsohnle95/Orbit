@@ -30,12 +30,12 @@
 
 .tabbar {
   display: flex;
-  flex: 0 0 40px;
+  flex: 0 0 37px;
   align-items: stretch;
   overflow-x: auto;
   gap: 0;
   margin: 0;
-  padding: 0 12px;
+  padding: 0 10px;
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--border);
@@ -49,11 +49,11 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 13px 6px;
+  padding: 8px 10px 7px;
   color: var(--text-dim);
   cursor: pointer;
   white-space: nowrap;
-  font-size: 12.5px;
+  font-size: 11px;
   max-width: 220px;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
@@ -74,6 +74,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.tab-file-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  color: var(--text-faint);
+}
+
+.tab-file-icon .si-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.tab.active .tab-file-icon { color: var(--accent); }
 
 .tab-dirty {
   width: 7px;
@@ -114,11 +128,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex: 0 0 36px;
+  flex: 0 0 33px;
   gap: 12px;
   padding: 0 14px;
   border-bottom: 1px solid var(--border);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
   background: transparent;
 }

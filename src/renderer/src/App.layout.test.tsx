@@ -173,6 +173,7 @@ describe("Layout panel sizing", () => {
 
     const toggle = container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!;
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(container.querySelector(".main-row.sidebar-closed")).toBeNull();
     expect(container.querySelector(".sidebar.collapsed")).toBeNull();
     expect(container.querySelector(".workspace-area")).not.toBeNull();
 
@@ -185,6 +186,7 @@ describe("Layout panel sizing", () => {
     expect(gridCols()).toEqual(["0px", "0px", "minmax(0,1fr)"]);
     expect(container.querySelector(".sidebar-slot.collapsed")).not.toBeNull();
     expect(container.querySelector(".sidebar")).toBeNull();
+    expect(container.querySelector(".main-row.sidebar-closed")).not.toBeNull();
     expect(container.querySelector(".workspace-area")).not.toBeNull();
 
     await act(async () => {
@@ -194,6 +196,7 @@ describe("Layout panel sizing", () => {
 
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
     expect(gridCols()[0]).toBe("230px");
+    expect(container.querySelector(".main-row.sidebar-closed")).toBeNull();
     expect(container.querySelector(".sidebar")).not.toBeNull();
   });
 

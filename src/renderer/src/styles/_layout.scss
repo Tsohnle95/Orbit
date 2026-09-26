@@ -15,9 +15,18 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 10px;
   background: var(--workspace-background);
+}
+
+.main-row.sidebar-closed {
+  grid-template-columns: 3.4em minmax(0, 1fr);
+}
+
+.main-row.sidebar-closed > .sidebar-slot,
+.main-row.sidebar-closed > .divider {
+  display: none;
 }
 
 .workspace-area {
@@ -42,11 +51,11 @@
 }
 
 .workspace-area.agent-open > .editor-pane {
-  margin-right: calc(var(--editor-right, 0px) + 12px);
+  margin-right: calc(var(--editor-right, 0px) + 10px);
 }
 
 .workspace-area.agent-open > .tray-area {
-  width: calc(100% - var(--editor-right, 0px) - 12px);
+  width: calc(100% - var(--editor-right, 0px) - 10px);
 }
 
 .workspace-area.tray-dragging { transition: none; }
