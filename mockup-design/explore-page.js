@@ -31,7 +31,8 @@ if (!design) {
   const colors = `--scene-ink:${design.ink};--scene-accent:${design.accent};--scene-paper:${design.sky};--scene-ground:${design.foreground}`;
   document.title = `Orbit — ${design.name}`;
   document.body.classList.add(`explore-${design.family}`, `scene-${design.scene}`, `form-${design.form}`, `type-${design.type}`, design.light ? "scene-light" : "scene-dark");
-  if (design.atmosphere) document.body.classList.add("has-atmosphere", `terrain-${design.terrain}`);
+  if (design.atmosphere) document.body.classList.add("has-atmosphere", `terrain-${design.terrain}`, `celestial-${design.celestial}`);
+  if (design.layout) document.body.classList.add(`layout-${design.layout}`);
   document.body.style.cssText = colors;
 
   const projectDiagram = `<div class="project-map" aria-label="One repository connects the editor, agent, and change review">

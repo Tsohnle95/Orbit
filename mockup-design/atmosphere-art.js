@@ -21,8 +21,21 @@ function orbitAtmosphere(config, instance = "hero") {
   const mountain = config.terrain === "alpine";
   const city = config.terrain === "city";
   const water = config.terrain === "water";
+  const distantCity = city ? Array.from({ length: 32 }, (_, index) => {
+    const x = index * 51 + Math.round(random() * 12);
+    const width = 29 + Math.round(random() * 19);
+    const height = 74 + Math.round(random() * 122);
+    const top = 748 - height;
+    const windows = [];
+    for (let row = top + 12; row < 740; row += 15) {
+      for (let column = x + 5; column < x + width - 3; column += 9) {
+        if (random() > .35) windows.push(`<rect x="${column}" y="${row}" width="2.5" height="4"/>`);
+      }
+    }
+    return `<path d="M${x} 748v-${height}h${width}v${height}z" fill="url(#far-${id})" opacity="${(.56 + random() * .3).toFixed(2)}"/><path d="M${x + 4} ${top + 9}v${height - 22}" stroke="${starColor}" stroke-width="1" opacity=".08"/><g fill="${config.glow}" opacity=".52">${windows.join("")}</g>`;
+  }).join("") : "";
   const farTerrain = city
-    ? `<path d="M0 660q178-86 370-37t418-23q257-105 498-9t314-18v367H0z" fill="url(#far-${id})"/><path d="M0 699q317-111 575 13t598-50q217-58 427 29" fill="none" stroke="${config.glow}" stroke-width="2" opacity=".22"/>`
+    ? `<g>${distantCity}</g><path d="M0 748h1600v192H0z" fill="url(#far-${id})" opacity=".74"/>`
     : water
       ? `<path d="M0 645q297-82 574 23t541-34q268-89 485-22v328H0z" fill="url(#far-${id})"/><path d="M0 680q370-39 725 22t875-49" fill="none" stroke="${config.glow}" stroke-width="3" opacity=".26"/>`
       : config.terrain === "mist"
@@ -41,14 +54,14 @@ function orbitAtmosphere(config, instance = "hero") {
   const ridge = !city && !water ? config.terrain === "mist"
     ? `<path d="M0 830q220-79 448 4t482-60q327-100 670-14v180H0z" fill="url(#near-${id})" opacity=".72"/><path d="M0 786q255-73 496 0t520-35q312-99 584-58" fill="none" stroke="${starColor}" stroke-width="24" opacity=".17"/><path d="M0 845q260-55 553 17t547-45q285-80 500-35" fill="none" stroke="${config.glow}" stroke-width="31" opacity=".22"/>`
     : `<path d="M0 835 80 765l42 17 74-142 29 16 48-86 29 27 41-31 33 51 50-22 72-112 36 44 38-19 64 99 53-16 45 60 46-28 70-122 41 25 29-65 37 12 56 103 57-36 51 62 57-33 47 26 56-103 39 13 38-53 46 23 74 102 34-16 50 84 56-18 42 55v240H0z" fill="url(#near-${id})"/><path d="M0 849 80 785l42 17 74-142 29 16 48-86 29 27 41-31 33 51 50-22 72-112 36 44 38-19 64 99 53-16 45 60 46-28 70-122 41 25 29-65 37 12 56 103 57-36 51 62 57-33 47 26 56-103 39 13 38-53 46 23 74 102 34-16 50 84 56-18 42 55" fill="none" stroke="${starColor}" stroke-width="1.3" opacity=".19"/><g fill="${config.foreground}" opacity=".23"><path d="m198 640 75-70 29 27 41-31-69 153-115 65z"/><path d="m499 483 36 44 38-19 64 99-74 59-135 17z"/><path d="m790 501 41 25 29-65 37 12 56 103-129 132-118-40z"/><path d="m1350 540 39 13 38-53 46 23 74 102-101 52-160-14z"/></g>${rockLines}` : "";
-  const foliage = Array.from({ length: city ? 25 : 85 }, () => {
+  const foliage = city ? "" : Array.from({ length: 85 }, () => {
     const x = Math.round(random() * 1660 - 30), y = Math.round(792 + random() * 150);
     const height = Math.round(11 + random() * (city ? 25 : mountain ? 81 : 52));
     return city
       ? `<path d="M${x} ${y}v-${height}m-8 8 8-7 8 7" fill="none" stroke="${config.horizon}" stroke-width="2" opacity=".45"/>`
       : `<path d="M${x} ${y}v-${height}m-${Math.round(height / 3)} ${Math.round(height * .64)} ${Math.round(height / 3)}-${Math.round(height * .36)} ${Math.round(height / 3)} ${Math.round(height * .36)}m-${Math.round(height * .56)} ${Math.round(-height * .3)} ${Math.round(height * .23)}-${Math.round(height * .3)} ${Math.round(height * .23)} ${Math.round(height * .3)}" fill="none" stroke="${config.horizon}" stroke-width="${height > 54 ? 2.7 : 1.5}" opacity=".54"/>`;
   }).join("");
-  const grass = Array.from({ length: 115 }, () => {
+  const grass = city ? "" : Array.from({ length: 115 }, () => {
     const x = Math.round(random() * 1630 - 15), y = Math.round(873 + random() * 65), h = 8 + random() * 46;
     return `<path d="M${x} ${y}q${Math.round(random() * 24 - 12)}-${Math.round(h / 2)} ${Math.round(random() * 20 - 10)}-${Math.round(h)}" fill="none" stroke="${random() > .5 ? config.horizon : config.glow}" stroke-width="${(1 + random() * 1.5).toFixed(1)}" opacity="${(.19 + random() * .34).toFixed(2)}"/>`;
   }).join("");

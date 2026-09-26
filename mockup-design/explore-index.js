@@ -1,11 +1,29 @@
-for (const [index, group] of orbitDetailedGroups.entries()) {
+const violetHourId = "10-dusk-crescent-detail-violet-hour";
+const curatedGroups = [
+  ...orbitFocusedGroups.map((group) => ({
+    ...group,
+    variants: orbitFocusedExplorations.filter((design) => design.parent === group.seed)
+  })),
+  ...orbitDetailedGroups
+    .filter((group) => group.group !== "tidal")
+    .map((group) => ({
+      ...group,
+      title: `${orbitExplorations.find((design) => design.id === group.seed).name} · a world of its own.`,
+      variants: orbitDetailedExplorations.filter((design) => design.parent === group.seed && (group.group !== "crescent" || design.id !== violetHourId))
+    }))
+];
+
+const groupOrderByFamily = new Map();
+for (const group of curatedGroups) {
   const seed = orbitExplorations.find((design) => design.id === group.seed);
+  const groupIndex = (groupOrderByFamily.get(seed.family) ?? 0) + 1;
+  groupOrderByFamily.set(seed.family, groupIndex);
   const cluster = document.createElement("div");
   cluster.className = "iteration-cluster";
   cluster.id = `lineage-${group.group}`;
-  cluster.innerHTML = `<div class="cluster-heading"><span>${String(index + 1).padStart(2, "0")} / ${group.group.toUpperCase()}</span><h3>${seed.name} · a world of its own.</h3></div><div class="iteration-card-grid"></div>`;
+  cluster.innerHTML = `<div class="cluster-heading"><span>${String(groupIndex).padStart(2, "0")} / ${group.group.toUpperCase()}</span><h3>${group.title}</h3></div><div class="iteration-card-grid"></div>`;
   const grid = cluster.querySelector(".iteration-card-grid");
-  for (const design of [seed, ...orbitDetailedExplorations.filter((item) => item.parent === seed.id)]) {
+  for (const design of [seed, ...group.variants]) {
     const card = document.createElement("a");
     const isSeed = design === seed;
     card.className = `iteration-card exploration-card ${isSeed ? "seed-card" : ""} ${design.light ? "scene-light" : "scene-dark"}`;

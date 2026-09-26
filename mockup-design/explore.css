@@ -72,6 +72,13 @@ html[data-theme="dark"] .explore-page { --canvas: #171e1c; --surface: #222c28; -
 .explore-10 .art-hero-copy { max-width: 850px; }
 .explore-10 .art-hero h1 { max-width: 850px; }
 .explore-10 .art-product { margin-top: 51px; }
+.layout-centered .art-hero-content { padding-top: 151px; }
+.layout-centered .art-hero-copy { max-width: 930px; margin: 0 auto; text-align: center; }
+.layout-centered .art-kicker, .layout-centered .art-actions, .layout-centered .art-facts { justify-content: center; }
+.layout-centered .art-hero h1, .layout-centered .art-lede { margin-right: auto; margin-left: auto; }
+.layout-centered .art-hero .art-product { width: min(1250px,100%); margin-top: 57px; }
+.layout-centered .art-hero .celestial-body { translate: 65px 0; }
+.layout-centered.celestial-saturn .art-hero .celestial-body { translate: 130px 0; }
 .form-inset .art-product { width: min(1100px,94%); }
 .form-framed .art-product { width: min(1150px,95%); padding: 14px; border: 1px solid color-mix(in srgb, var(--scene-ink) 36%, transparent); border-radius: 18px; background: color-mix(in srgb, var(--scene-paper) 30%, transparent); backdrop-filter: blur(8px); }
 .form-framed .art-product img { border-radius: 7px; }
@@ -219,13 +226,14 @@ html[data-theme="light"] .scene-dark .art-inside, html[data-theme="light"] .scen
 }
 
 @media (max-width: 600px) {
+  .layout-centered.celestial-saturn .art-hero .celestial-body { translate: -245px 300px; }
   @keyframes meteor-flight { 0%,69%,100% { opacity: 0; transform: translate(24px,-14px); } 73% { opacity: .95; } 82% { opacity: .82; transform: translate(0,0); } 91% { opacity: 0; transform: translate(-58px,34px); } }
   .has-atmosphere .art-hero .celestial-body { translate: -245px 300px; }
   .explore-nav { height: 60px; padding: 0 17px; }
   .explore-nav nav { display: none; }
   .explore-brand { font-size: 15px; }
   .theme-toggle { min-height: 33px; padding: 0 9px; }
-  .art-hero-content, .explore-04 .art-hero-content, .explore-10 .art-hero-content { width: calc(100% - 36px); padding-top: 115px; padding-bottom: 75px; }
+  .art-hero-content, .explore-04 .art-hero-content, .explore-10 .art-hero-content, .layout-centered .art-hero-content { width: calc(100% - 36px); padding-top: 115px; padding-bottom: 75px; }
   .art-hero h1, .type-mono .art-hero h1 { font-size: clamp(45px,11.2vw,67px); }
   .art-kicker { font-size: 8px; }
   .art-lede { font-size: 13px; }

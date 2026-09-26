@@ -93,3 +93,48 @@ orbitDetailedGroups.forEach(({ seed, terrain }, index) => {
 });
 
 orbitExplorations.push(...orbitDetailedExplorations);
+
+const violetHourPalette = {
+  sky: "#2e2c47", horizon: "#7c6c8b", foreground: "#20243d", glow: "#e9c8b3",
+  ink: "#f8f2ec", accent: "#eccdbf", tint: "#e1b9d1", light: false
+};
+const violetHourSeed = orbitDetailedExplorations.find((item) => item.id === "10-dusk-crescent-detail-violet-hour");
+Object.assign(violetHourSeed, { layout: "centered", terrain: "city" });
+
+const nocturneTidalSeed = orbitExplorations.find((item) => item.id === "04-nocturne-tidal");
+Object.assign(nocturneTidalSeed, violetHourPalette, { terrain: "city", celestial: "moon", atmosphere: true });
+
+const orbitFocusedGroups = [
+  {
+    seed: violetHourSeed.id, group: "violet-center", title: "Violet Hour · centered over the city.", terrain: "city", layout: "centered",
+    variants: [
+      ["lilac-afterglow", "Lilac Afterglow", "lilac moon / distant towers", "A lilac moon settles over a deep, many-layered skyline.", "Stay for the whole loop.", "Make the next change without leaving your place in the project.", "moon", { sky: "#292741", horizon: "#716983", foreground: "#20233d", glow: "#e6d3ea", tint: "#d6c4e8", accent: "#ddc9e8" }],
+      ["plum-orbit", "Plum Orbit", "ringed plum world / city lights", "A small ringed world floats above a plum-lit city.", "Let every tool find its place.", "Code, agent, and review move together around the project.", "saturn", { sky: "#30243d", horizon: "#765774", foreground: "#251e38", glow: "#edb9c9", tint: "#dab2df", accent: "#ecc5d6" }],
+      ["amethyst-window", "Amethyst Window", "crescent / violet windows", "A crescent glow catches on windows across the dark skyline.", "Keep your focus in orbit.", "Move between the editor and the agent without losing context.", "crescent", { sky: "#29263f", horizon: "#6c648a", foreground: "#20243d", glow: "#ded0ed", tint: "#cbbbe8", accent: "#d8c9eb" }],
+      ["rose-nebula", "Rose Nebula", "eclipsed rose / city haze", "A rose-colored corona diffuses across distant buildings.", "A little more room to think.", "The whole coding loop stays calm and connected in one workspace.", "eclipse", { sky: "#34243e", horizon: "#805a76", foreground: "#281f39", glow: "#f0b8c8", tint: "#e6a9cf", accent: "#edc2d3" }],
+      ["lavender-rise", "Lavender Rise", "pale planet / lavender skyline", "A pale lavender world rises behind the city's outer towers.", "See the work from one place.", "Follow the session from the first file to the final review.", "planet", { sky: "#28243e", horizon: "#6a6182", foreground: "#20233d", glow: "#e3c7df", tint: "#d4bce4", accent: "#ddc9e5" }]
+    ]
+  },
+  {
+    seed: nocturneTidalSeed.id, group: "tidal-violet-city", title: "Nocturne Tidal · violet light, distant towers.", terrain: "city",
+    variants: [
+      ["violet-quay", "Violet Quay", "violet moon / layered waterfront city", "The old tidal calm meets a deep-violet city at night.", "The project stays your shoreline.", "Keep the source in view as the agent moves through the work.", "moon", { sky: "#24213b", horizon: "#625875", foreground: "#1d223a", glow: "#e7c3cf", tint: "#d9b4d6", accent: "#e5c4d3" }],
+      ["amethyst-harbor", "Amethyst Harbor", "ringed world / harbor lights", "A small amethyst world hangs above a glimmering city harbor.", "Keep the signal above the tide.", "Questions and changes both lead back to the same repository.", "saturn", { sky: "#29243f", horizon: "#746381", foreground: "#20233d", glow: "#edc4d2", tint: "#cdb4e6", accent: "#d7c3ec" }],
+      ["orchid-night", "Orchid Night", "orchid crescent / close-set towers", "An orchid crescent softens the edges of a close-set skyline.", "Stay close to what matters.", "Let every next step land in the project you already know.", "crescent", { sky: "#35253e", horizon: "#805d78", foreground: "#281f3c", glow: "#f0b8c8", tint: "#dda9cd", accent: "#ecc3d1" }],
+      ["violet-spires", "Violet Spires", "eclipse / distant spires", "A fine eclipse halo silhouettes a row of distant towers.", "Bring every path back to source.", "Keep code, conversation, and the resulting diff connected.", "eclipse", { sky: "#252540", horizon: "#625f88", foreground: "#1c233c", glow: "#d9d6ed", tint: "#c9c3ef", accent: "#d8d3ef" }],
+      ["rose-night", "Rose Night", "rose planet / night windows", "A softly lit rose world hangs above violet window lights.", "Keep the details within reach.", "The repository holds the thread from question through review.", "planet", { sky: "#30253f", horizon: "#785d7c", foreground: "#241f3a", glow: "#efc1b8", tint: "#e5b3d0", accent: "#eac5d1" }]
+    ]
+  }
+];
+
+const orbitFocusedExplorations = orbitFocusedGroups.flatMap(({ seed, group, terrain, layout, variants }) => {
+  const parent = orbitExplorations.find((item) => item.id === seed);
+  return variants.map(([slug, name, motif, note, title, lede, celestial, colors], index) => ({
+    ...parent, ...colors, id: `${seed}-city-${slug}`, parent: seed, group, terrain, layout,
+    name, motif, note, title, lede, celestial, atmosphere: true, detailIndex: index,
+    form: ["grounded", "inset", "floating", "framed", "diagram"][index],
+    message: `${name}: the city moves, the project stays in view.`
+  }));
+});
+
+orbitExplorations.push(...orbitFocusedExplorations);
