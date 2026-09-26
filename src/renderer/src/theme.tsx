@@ -17,8 +17,6 @@ function storedTheme(): ThemeId {
   const stored = APPEARANCES.find((appearance) => appearance.id === value);
   if (stored) return stored.id;
   if (value === "paper") return "papertrail";
-  if (value === "kitty") return "blueprint";
-  if (value === "original") return "control-deck";
   return "prism";
 }
 
@@ -88,6 +86,28 @@ function applyAppearance(theme: ThemeId): void {
     "--danger-bg": `color-mix(in srgb, ${colors.danger} 14%, transparent)`,
     "--streaming-ink": colors.accent
   };
+  if (theme === "kitty") Object.assign(variables, {
+    "--bg": "transparent",
+    "--workspace-background": "transparent",
+    "--panel-surface-color": "rgba(2, 2, 4, 0.08)",
+    "--panel-float-color": "rgba(14, 18, 28, 0.44)",
+    "--panel-surface-image": "radial-gradient(900px 580px at 100% 0%, rgba(0, 162, 206, 0.10), transparent 66%), linear-gradient(135deg, rgba(67, 36, 43, 0.20), transparent 46%)",
+    "--panel-surface-size": "cover",
+    "--agent-bg-base": "rgba(2, 2, 4, 0.38)",
+    "--agent-bg-deep": "rgba(2, 2, 4, 0.18)",
+    "--agent-bg-layer": "rgba(52, 58, 85, 0.38)",
+    "--agent-composer-background": "linear-gradient(118deg, rgba(0, 162, 206, 0.10), transparent 36%), linear-gradient(300deg, rgba(67, 36, 43, 0.15), transparent 44%), rgba(14, 18, 28, 0.34)",
+    "--agent-composer-border": "rgba(0, 162, 206, 0.32)",
+    "--agent-composer-shadow": "0 7px 24px rgba(0, 0, 0, 0.38), inset 0 1px rgba(231, 231, 238, 0.06)",
+    "--agent-composer-focus-border": "rgba(0, 162, 206, 0.64)",
+    "--agent-composer-focus-shadow": "0 8px 26px rgba(0, 0, 0, 0.42), 0 0 0 3px rgba(0, 162, 206, 0.12)"
+  });
+  if (theme === "original") Object.assign(variables, {
+    "--workspace-background": colors.base,
+    "--agent-composer-background": "linear-gradient(118deg, rgba(148, 174, 151, 0.045), transparent 34%), linear-gradient(300deg, rgba(196, 181, 154, 0.03), transparent 42%), #262220",
+    "--agent-composer-border": "rgba(148, 174, 151, 0.18)",
+    "--agent-composer-shadow": "0 4px 16px rgba(0, 0, 0, 0.28), 0 0 16px rgba(148, 174, 151, 0.025)"
+  });
   root.dataset.theme = theme;
   root.style.colorScheme = scheme;
   for (const [property, color] of Object.entries(variables)) root.style.setProperty(property, color);

@@ -32,6 +32,26 @@ emmetHTML(monaco, ["html"]);
 emmetCSS(monaco, ["css", "scss", "less"]);
 
 for (const { id, scheme, colors } of APPEARANCES) {
+  const legacyColors = id === "kitty" ? {
+    "editor.lineHighlightBackground": "#343a5526",
+    "editorLineNumber.foreground": "#626b78",
+    "editor.selectionBackground": "#2e4d78",
+    "diffEditor.insertedTextBackground": "#5bd69a20",
+    "diffEditor.removedTextBackground": "#ff4b6720",
+    "diffEditor.insertedLineBackground": "#5bd69a14",
+    "diffEditor.removedLineBackground": "#ff4b6714",
+    "scrollbarSlider.background": "#e7e7ee17",
+    "scrollbarSlider.hoverBackground": "#e7e7ee2b"
+  } : id === "original" ? {
+    "editor.lineHighlightBackground": "#2d2926",
+    "editorLineNumber.foreground": "#57534e",
+    "editor.selectionBackground": "#4a352c",
+    "diffEditor.insertedTextBackground": "#9dc2a11f",
+    "diffEditor.removedTextBackground": "#e2988a1f",
+    "diffEditor.insertedLineBackground": "#9dc2a117",
+    "diffEditor.removedLineBackground": "#e2988a17",
+    "scrollbarSlider.hoverBackground": "#ffffff26"
+  } : {};
   monaco.editor.defineTheme(`orbit-${id}`, {
     base: scheme === "light" ? "vs" : "vs-dark",
     inherit: true,
@@ -60,7 +80,8 @@ for (const { id, scheme, colors } of APPEARANCES) {
       "diffEditor.diagonalFill": colors.editorOpaque,
       "scrollbarSlider.background": scheme === "light" ? "#00000018" : "#ffffff17",
       "scrollbarSlider.hoverBackground": scheme === "light" ? "#0000002b" : "#ffffff2b",
-      "minimap.background": colors.editorOpaque
+      "minimap.background": colors.editorOpaque,
+      ...legacyColors
     }
   });
 }

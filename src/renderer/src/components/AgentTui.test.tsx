@@ -2,16 +2,21 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BackendMessage, WorkspaceIdentity } from "@shared/types";
-import { ThemeProvider } from "../theme";
+import { ThemeProvider, useTheme } from "../theme";
 
 const terminalWrites = vi.hoisted(() => vi.fn());
 const terminalData = vi.hoisted(() => vi.fn());
+const terminalOptions = vi.hoisted(() => vi.fn());
 
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
     cols = 80;
     rows = 24;
-    options = { theme: {}, fontFamily: "" };
+    options: Record<string, unknown>;
+    constructor(options: Record<string, unknown>) {
+      this.options = { ...options };
+      terminalOptions(this.options);
+    }
     loadAddon() {}
     open() {}
     onData(callback: (data: string) => void) {
@@ -40,6 +45,7 @@ describe("AgentTui", () => {
 
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    window.localStorage.clear();
     vi.stubGlobal("ResizeObserver", class {
       constructor(private readonly callback: ResizeObserverCallback) {}
       observe() { this.callback([], {} as ResizeObserver); }
@@ -48,6 +54,7 @@ describe("AgentTui", () => {
     vi.stubGlobal("crypto", { randomUUID: () => "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" });
     terminalWrites.mockClear();
     terminalData.mockReset();
+    terminalOptions.mockClear();
     onExit.mockClear();
     onError.mockClear();
     start.mockClear();
@@ -110,6 +117,30 @@ describe("AgentTui", () => {
     expect(terminalWrites).toHaveBeenCalledWith("hello");
     await act(async () => terminalData("\u0003"));
     expect(input).toHaveBeenCalledWith(workspace, "term-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "\u0003");
+  });
+
+  it("keeps Kitty's embedded terminal transparent across appearance changes", async () => {
+    window.localStorage.setItem("orbit.theme", "kitty");
+    const { AgentTui } = await import("./AgentTui");
+    function SwitchTheme() {
+      const { setTheme } = useTheme();
+      return <button onClick={() => setTheme("original")}>Original Dark</button>;
+    }
+    await act(async () => root.render(<ThemeProvider><AgentTui workspace={workspace} onExit={onExit} onError={onError} /><SwitchTheme /></ThemeProvider>));
+
+    const options = terminalOptions.mock.calls[0][0];
+    expect(options.allowTransparency).toBe(true);
+    expect(options.theme.background).toBe("rgba(2, 2, 4, 0)");
+    expect(options.fontFamily).toContain("FiraCode Nerd Font");
+    expect(options.fontWeight).toBe(500);
+    await act(async () => listener({ kind: "terminal-data", terminal: { id: "term-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", data: "\u001b[48;5;0mglass" } }));
+    expect(terminalWrites).toHaveBeenLastCalledWith("glass");
+
+    await act(async () => container.querySelector("button")!.click());
+    expect(options.theme.background).toBe("#121317");
+    expect(options.fontWeight).toBe(400);
+    await act(async () => listener({ kind: "terminal-data", terminal: { id: "term-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", data: "\u001b[48;5;0mdark" } }));
+    expect(terminalWrites).toHaveBeenLastCalledWith("\u001b[48;5;0mdark");
   });
 
   it("reports natural exit and stops the PTY on unmount", async () => {

@@ -413,7 +413,7 @@ express a cross-component invariant or non-obvious state contract.
 | `Welcome` | `Welcome.tsx` | Landing view, recent sessions/workspaces, initial folder/file open |
 | `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation (defaults to Files when a workspace opens), Changes, Explorer, filesystem actions, terminal context actions |
 | `SettingsSidebar` | `SettingsSidebar.tsx` | Settings navigation |
-| `SettingsPage` | `SettingsPage.tsx` | Ten color-only appearances plus plugins, providers, safety, voice, default model and OpenCode sync, mobile, and about surfaces |
+| `SettingsPage` | `SettingsPage.tsx` | Ten design-direction palettes plus the restored Kitty Glass and Original Dark appearances, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and about surfaces |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
 | `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
 | `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, save/conflict UI, editor validation entry points |
@@ -487,8 +487,10 @@ starts the active runtime command through `agentTuiStart` in the panel's
 workspace directory. OpenCode uses `opencode --session <session-id>`; the
 dormant DeepSeek runtime is not available to panels.
 The selected appearance supplies the color palette for both embedded xterm
-surfaces. Prism uses alpha-backed violet panels; the other profiles change only
-colors while retaining the same workspace layout. The window and native chrome
+surfaces. Prism uses alpha-backed violet panels; Kitty Glass restores the
+transparent glass surfaces and terminal backgrounds of the earlier app, and
+Original Dark restores its warm charcoal palette. All appearances retain the
+same workspace layout. The window and native chrome
 track each profile's native appearance: the renderer reports it through
 `setAppearance` on boot and on every profile change so macOS `under-window`
 vibrancy follows the palette's light or dark scheme.
@@ -510,7 +512,7 @@ released at that collapsed position.
 
 - Workers wired for editor/json/css/html/ts (`?worker` imports).
 - The persisted `orbit.theme` color profile defaults to Prism. Profile selection changes colors, not the activity rail, sidebar, editor/terminal stack, or agent-panel geometry.
-- `orbit-${appearanceId}` themes (diff insert/remove colors included) for the ten persisted color profiles. Monaco
+- `orbit-${appearanceId}` themes (diff insert/remove colors included) for the twelve persisted color profiles. Saved `kitty` and `original` selections keep their IDs rather than mapping to Blueprint or Control Deck. Monaco
   parses theme palette colors with `Color.fromHex`, which silently maps any
   non-hex value to pure red — every palette color must be hex
   (`#RRGGBB` or `#RRGGBBAA`), never `rgba()`.

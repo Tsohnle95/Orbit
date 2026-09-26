@@ -63,7 +63,9 @@ describe("SettingsPage", () => {
       expect.stringContaining("Workshop"),
       expect.stringContaining("Blueprint"),
       expect.stringContaining("Stillness"),
-      expect.stringContaining("Bloom")
+      expect.stringContaining("Bloom"),
+      expect.stringContaining("Kitty Glass"),
+      expect.stringContaining("Original Dark")
     ]);
     expect(document.documentElement.dataset.theme).toBe("prism");
     expect(window.localStorage.getItem("orbit.theme")).toBe("prism");
@@ -92,6 +94,33 @@ describe("SettingsPage", () => {
     expect(document.documentElement.dataset.theme).toBe("quiet-habitat");
     expect(window.localStorage.getItem("orbit.theme")).toBe("quiet-habitat");
     expect(setAppearance).toHaveBeenLastCalledWith("light");
+  });
+
+  it.each(["kitty", "original"] as const)("restores the saved %s appearance without remapping it", (saved) => {
+    window.localStorage.setItem("orbit.theme", saved);
+    act(() => root.render(<ThemeProvider><SettingsPage section="appearance" onClose={() => {}} /></ThemeProvider>));
+
+    expect(document.documentElement.dataset.theme).toBe(saved);
+    expect(container.querySelector<HTMLButtonElement>(`.theme-card[aria-checked="true"]`)?.textContent)
+      .toContain(saved === "kitty" ? "Kitty Glass" : "Original Dark");
+    expect(setAppearance).toHaveBeenLastCalledWith("dark");
+    expect(document.documentElement.style.getPropertyValue("--workspace-background"))
+      .toBe(saved === "kitty" ? "transparent" : "#171412");
+  });
+
+  it("restores Kitty Glass transparency and clears it when choosing another profile", () => {
+    act(() => root.render(<ThemeProvider><SettingsPage section="appearance" onClose={() => {}} /></ThemeProvider>));
+    const cards = [...container.querySelectorAll<HTMLButtonElement>(".theme-card")];
+    act(() => cards[10].click());
+
+    expect(document.documentElement.dataset.theme).toBe("kitty");
+    expect(window.localStorage.getItem("orbit.theme")).toBe("kitty");
+    expect(document.documentElement.style.getPropertyValue("--bg")).toBe("transparent");
+    expect(document.documentElement.style.getPropertyValue("--panel-surface-image")).toContain("radial-gradient");
+
+    act(() => cards[5].click());
+    expect(document.documentElement.dataset.theme).toBe("prism");
+    expect(document.documentElement.style.getPropertyValue("--panel-surface-image")).toBe("none");
   });
 
   it("keeps editor wrapping enabled without a wrap control", () => {

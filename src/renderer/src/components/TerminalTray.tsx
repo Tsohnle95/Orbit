@@ -48,6 +48,7 @@ function TermInstance({ id, active, height, workspace, onRegister, onUnregister 
       lineHeight: 1.25,
       cursorBlink: true,
       scrollback: 5000,
+      allowTransparency: true,
       theme: terminalThemeForAppearance(theme)
     });
     const fit = new FitAddon();

@@ -8,7 +8,9 @@ export type AppearanceId =
   | "workshop"
   | "blueprint"
   | "stillness"
-  | "bloom";
+  | "bloom"
+  | "kitty"
+  | "original";
 
 export interface AppearanceColors {
   base: string;
@@ -163,6 +165,28 @@ export const APPEARANCES: AppearanceProfile[] = [
       ink: "#29293c", muted: "#6d6d84", faint: "#9998ae", line: "#dcdbe8", lineStrong: "#c1bfd6", lineSoft: "rgba(221,92,115,.07)", selected: "#eee7fa", user: "#e8e7f5", card: "#faf9fd", compose: "#ffffff", composeShadow: "0 7px 18px rgba(69,56,104,.09)",
       accent: "#c65370", good: "#579a7d", danger: "#ba465a", icon: "#6f7ca9", sendInk: "#ffffff", glow: "rgba(198,83,112,.12)", syntaxKeyword: "#ae568b", syntaxFunction: "#4c8194", syntaxString: "#a57737", syntaxComment: "#9a9aab", syntaxNumber: "#6c70bb"
     }
+  },
+  {
+    id: "kitty",
+    name: "Kitty Glass",
+    description: "The original translucent dark glass with a cyan signal.",
+    scheme: "dark",
+    colors: {
+      base: "#0e121c", top: "#0e121c00", pane: "rgba(14,18,28,.24)", editor: "rgba(2,2,4,.08)", editorOpaque: "#02020400", agent: "rgba(14,18,28,.44)", rail: "rgba(14,18,28,.24)", tab: "rgba(2,2,4,.16)", console: "rgba(2,2,4,0)", status: "rgba(14,18,28,.24)",
+      ink: "#e7e7ee", muted: "#c0c3d0", faint: "#a0a4b4", line: "rgba(231,231,238,.08)", lineStrong: "rgba(231,231,238,.15)", lineSoft: "rgba(231,231,238,.05)", selected: "#343a55", user: "rgba(52,58,85,.52)", card: "rgba(24,31,48,.42)", compose: "rgba(14,18,28,.34)", composeShadow: "0 7px 24px rgba(0,0,0,.38)",
+      accent: "#00a2ce", good: "#5bd69a", danger: "#ff4b67", icon: "#6fc3df", sendInk: "#020204", glow: "rgba(0,162,206,.10)", syntaxKeyword: "#ff8b85", syntaxFunction: "#e7e7ee", syntaxString: "#5bd69a", syntaxComment: "#7f8292", syntaxNumber: "#e0a85a"
+    }
+  },
+  {
+    id: "original",
+    name: "Original Dark",
+    description: "Orbit's original warm charcoal and sage palette.",
+    scheme: "dark",
+    colors: {
+      base: "#171412", top: "#171412", pane: "#262220", editor: "#262220", editorOpaque: "#262220", agent: "rgba(38,34,32,.92)", rail: "#171412", tab: "#201d1b", console: "#121317", status: "#171412",
+      ink: "#e8e3dd", muted: "#a8a29e", faint: "#8f8880", line: "rgba(255,255,255,.05)", lineStrong: "rgba(255,255,255,.10)", lineSoft: "rgba(255,255,255,.04)", selected: "#37322e", user: "#37322e", card: "#2d2926", compose: "#262220", composeShadow: "0 4px 16px rgba(0,0,0,.28)",
+      accent: "#9eb4a1", good: "#a9cbad", danger: "#e2988a", icon: "#8fbcd9", sendInk: "#172019", glow: "rgba(158,180,161,.06)", syntaxKeyword: "#e8875f", syntaxFunction: "#ead9c8", syntaxString: "#a8c69a", syntaxComment: "#78716c", syntaxNumber: "#e5b567"
+    }
   }
 ];
 
@@ -171,6 +195,16 @@ export function appearanceForId(id: AppearanceId): AppearanceProfile {
 }
 
 export function terminalThemeForAppearance(id: AppearanceId) {
+  if (id === "kitty") return {
+    background: "rgba(2, 2, 4, 0)", foreground: "#f4f4fa", cursor: "#00a2ce", cursorAccent: "#020204", selectionBackground: "#2e4d78",
+    black: "#020204", red: "#ff4b67", green: "#5bd69a", yellow: "#e0a85a", blue: "#00a2ce", magenta: "#c99ff2", cyan: "#6fc3df", white: "#f4f4fa",
+    brightBlack: "#a6a9b8", brightRed: "#ff8b85", brightGreen: "#82e8b4", brightYellow: "#f0c780", brightBlue: "#25b8dd", brightMagenta: "#dcb8ff", brightCyan: "#8fd8ef", brightWhite: "#ffffff"
+  };
+  if (id === "original") return {
+    background: "#121317", foreground: "#e8eaef", cursor: "#d97757", cursorAccent: "#0d0e11", selectionBackground: "#2e4d78",
+    black: "#17181d", red: "#f16d6b", green: "#4cc38a", yellow: "#e0af68", blue: "#d97757", magenta: "#c99ff2", cyan: "#6fc3df", white: "#e8eaef",
+    brightBlack: "#626b78", brightRed: "#ff8b85", brightGreen: "#6fd8a8", brightYellow: "#eec27f", brightBlue: "#e68a68", brightMagenta: "#dcb8ff", brightCyan: "#8fd8ef", brightWhite: "#ffffff"
+  };
   const { colors, scheme } = appearanceForId(id);
   const black = scheme === "light" ? colors.ink : colors.base;
   return {

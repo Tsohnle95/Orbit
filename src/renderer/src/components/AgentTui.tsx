@@ -78,8 +78,11 @@ export function AgentTui({
   const terminalRef = useRef<Terminal | null>(null);
   const onExitRef = useRef(onExit);
   const onErrorRef = useRef(onError);
+  const themeRef = useRef(theme);
+  const ansiStateRef = useRef<AnsiSanitizerState>({ pending: "" });
   onExitRef.current = onExit;
   onErrorRef.current = onError;
+  themeRef.current = theme;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -87,18 +90,20 @@ export function AgentTui({
     const id = `term-${crypto.randomUUID()}`;
     const metrics = tuiMetricsForWidth(host.clientWidth);
     const terminal = new Terminal({
-      fontFamily: "'SF Mono', Menlo, Consolas, monospace",
+      fontFamily: theme === "kitty" ? "'FiraCode Nerd Font', 'SF Mono', Menlo, Consolas, monospace" : "'SF Mono', Menlo, Consolas, monospace",
       fontSize: metrics.fontSize,
       lineHeight: metrics.lineHeight,
       cursorBlink: true,
       scrollback: 5000,
-      fontWeight: 400,
+      allowTransparency: true,
+      fontWeight: theme === "kitty" ? 500 : 400,
       theme: terminalThemeForAppearance(theme)
     });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
     terminal.open(host);
     terminalRef.current = terminal;
+    ansiStateRef.current.pending = "";
 
     const resize = (): void => {
       try {
@@ -118,7 +123,10 @@ export function AgentTui({
     });
     const off = window.openshell.onMessage((message) => {
       if (message.kind === "terminal-data" && message.terminal.id === id) {
-        terminal.write(message.terminal.data);
+        const data = themeRef.current === "kitty"
+          ? stripKittyTuiBackgrounds(message.terminal.data, ansiStateRef.current)
+          : message.terminal.data;
+        terminal.write(data);
       }
       if (message.kind === "terminal-exit" && message.terminal.id === id) onExitRef.current(message.terminal.exitCode);
     });
@@ -147,9 +155,10 @@ export function AgentTui({
   useEffect(() => {
     const terminal = terminalRef.current;
     if (!terminal) return;
+    if (theme !== "kitty") ansiStateRef.current.pending = "";
     terminal.options.theme = terminalThemeForAppearance(theme);
-    terminal.options.fontWeight = 400;
-    terminal.options.fontFamily = "'SF Mono', Menlo, Consolas, monospace";
+    terminal.options.fontWeight = theme === "kitty" ? 500 : 400;
+    terminal.options.fontFamily = theme === "kitty" ? "'FiraCode Nerd Font', 'SF Mono', Menlo, Consolas, monospace" : "'SF Mono', Menlo, Consolas, monospace";
   }, [theme]);
 
   return <div className="agent-tui"><div className="agent-tui-host" ref={hostRef} /></div>;
