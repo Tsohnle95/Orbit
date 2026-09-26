@@ -10,6 +10,7 @@ import { droppedFilePaths, isExternalFileDrag } from "../drop";
 import {
   IconArrowLeft,
   IconArrowUp,
+  IconAdd,
   IconCheck,
   IconChevronDown,
   IconChevronRight,
@@ -29,6 +30,7 @@ import {
   IconTerminal
 } from "./icons";
 import { AgentTui } from "./AgentTui";
+import { OrbitMark } from "./OrbitMark";
 import { MAX_AGENT_PANELS } from "../agent-panels";
 
 function useModelGroups(models: ModelOption[]): [string, ModelOption[]][] {
@@ -356,6 +358,7 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
   const workspaceRef = useRef<WorkspaceIdentity | null>(workspace);
   workspaceRef.current = workspace;
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const visibleModels = useMemo(
     () =>
@@ -721,7 +724,7 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
           autoCorrect="off"
           autoCapitalize="off"
           rows={1}
-          placeholder="Ask anything"
+          placeholder="Ask about this repository or describe a change…"
           value={input}
           onChange={(e) => {
             const value = e.target.value;
@@ -806,6 +809,26 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
           </button>
         </div>
         <div className="composer-chips">
+          {supportsAttachments && (
+            <>
+              <input
+                ref={attachmentInputRef}
+                className="composer-file-input"
+                type="file"
+                multiple
+                hidden
+                onChange={(event) => {
+                  addAttachmentPaths([...event.currentTarget.files ?? []]
+                    .map((file) => window.openshell.getPathForFile(file))
+                    .filter(Boolean));
+                  event.currentTarget.value = "";
+                }}
+              />
+              <button className="composer-attach" title="Attach files" aria-label="Attach files" onClick={() => attachmentInputRef.current?.click()}>
+                <IconAdd />
+              </button>
+            </>
+          )}
           <button
             className={`composer-selector agent ${menu === "agent" ? "open" : ""}`}
             title="Change agent"
@@ -822,7 +845,6 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
             <span>{currentAgent?.name ?? "Agent"}</span>
             <IconChevronDown />
           </button>
-          <span className="composer-chip-break" aria-hidden="true" />
           <button
             className={`composer-selector model ${menu === "model" && modelView !== "strength" ? "open" : ""}`}
             title="Change model and response strength"
@@ -1456,6 +1478,7 @@ export function AgentPanel({
             <IconArrowLeft />
           </button>
         )}
+        {!activeSession?.parentID && <span className="agent-orb" aria-hidden="true"><OrbitMark size={16} /></span>}
         <div className="agent-identity">
           <div className="agent-identity-line">
             {onClose ? (
@@ -1481,7 +1504,11 @@ export function AgentPanel({
                   <span className="agent-subagent">@{activeSession.agent}</span>
                 )}
               </span>
-            ) : activeSession?.directory ? (
+            ) : (
+              <span className="agent-title">Agent</span>
+            )}
+          </div>
+          {!activeSession?.parentID && (activeSession?.directory ? (
               <button
                 className="agent-workspace"
                 title={`Change workspace — currently ${activeSession.directory}`}
@@ -1501,8 +1528,7 @@ export function AgentPanel({
                 <IconFolderOpen />
                 <span>Add workspace</span>
               </button>
-            )}
-          </div>
+            ))}
           {(busy || assistantStatus?.isWorking) && assistantStatus?.statusText && (
             <span className="agent-status-text">{assistantStatus.statusText}</span>
           )}

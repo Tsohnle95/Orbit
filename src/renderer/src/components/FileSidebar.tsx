@@ -618,7 +618,7 @@ export function FileSidebar({
   }
 
   return (
-    <div className="sidebar">
+    <div className="sidebar files-sidebar">
       <div className="side-tabs" role="tablist" aria-label="Sidebar panels">
         <button
           className={`side-tab ${activeTab === "sessions" ? "active" : ""}`}

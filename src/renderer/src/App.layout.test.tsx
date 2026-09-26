@@ -209,6 +209,11 @@ describe("Layout panel sizing", () => {
     expect(filesButton.closest(".activity-rail")).not.toBeNull();
     expect(panelToggle.closest(".titlebar-actions")).not.toBeNull();
     expect(container.querySelector('[data-panel-action="toggle-sidebar"]')).toBeNull();
+    expect(container.querySelector('.activity-rail button[aria-label="Settings"]')).not.toBeNull();
+    expect(container.querySelector('.titlebar-actions button[aria-label="Settings"]')).toBeNull();
+    expect(container.querySelector('.activity-rail button[aria-label="Orbit files"]')).toBeNull();
+    expect(container.querySelector('.activity-rail button[aria-label="Agent Mode"]')).toBeNull();
+    expect(container.querySelector('.activity-rail button[aria-label="Show terminal"]')).toBeNull();
   });
 
   it("settles with both panels fitting when the window is narrower than their combined width", async () => {
@@ -367,6 +372,20 @@ describe("Layout panel sizing", () => {
     });
     expect(gridCols()[0]).toBe("230px");
     expect(container.querySelector(".sidebar")).not.toBeNull();
+  });
+
+  it("reserves editor space with Files closed on a narrow window", async () => {
+    await act(async () => root.render(<App />));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
+      setWidth(500);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    expect(container.querySelector(".main-row.sidebar-closed .workspace-area")).not.toBeNull();
+    expect(agentWidths()[0]).toBe(310);
+    expect(agentLefts()[0]).toBe(190);
   });
 
   it("keeps the sidebar closed while dragging on the workspace after reopening it", async () => {

@@ -13,6 +13,13 @@
   overflow: hidden;
 }
 
+.main-row .files-sidebar .side-tabs { display: none; }
+.main-row .files-sidebar .section-trigger.with-actions { order: 0; padding-top: 10px; padding-bottom: 8px; }
+.main-row .files-sidebar .sidebar-section.explorer { order: 1; }
+.main-row .files-sidebar .section-trigger:not(.with-actions) { order: 2; padding-bottom: 6px; }
+.main-row .files-sidebar .sidebar-section.changes { order: 3; }
+.main-row .files-sidebar .sidebar-vdivider { order: 4; }
+
 .sidebar-header {
   display: flex;
   align-items: center;

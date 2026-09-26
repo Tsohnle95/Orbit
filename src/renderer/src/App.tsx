@@ -24,6 +24,7 @@ function clampSideWidth(width: number): number {
 }
 const AGENT_DEFAULT_W = 325;
 const AGENT_MIN_W = 280;
+const EDITOR_MIN_VISIBLE_W = 180;
 
 function EmptyTerminalTray({ onClose }: { onClose: () => void }): ReactNode {
   return (
@@ -525,7 +526,10 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     }
     if (panel.workspace.id === anchorId) {
       const open = stored?.open ?? true;
-      const width = stored ? (open ? stored.width : 0) : AGENT_DEFAULT_W;
+      const requestedWidth = stored ? (open ? stored.width : 0) : AGENT_DEFAULT_W;
+      const width = !inAgentMode && open && requestedWidth <= AGENT_DEFAULT_W && !stored?.leftAnchored
+        ? Math.min(requestedWidth, Math.max(0, areaW - EDITOR_MIN_VISIBLE_W - 10))
+        : requestedWidth;
       if (inAgentMode && stored) {
         return {
           open: true,
@@ -716,6 +720,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
 
   const anchorId = panels[0]?.workspace.id ?? null;
   const anchorOpen = anchorId ? slots[anchorId]?.open ?? true : emptyAgentOpen;
+  const emptyAgentShown = Math.min(emptyAgentWidth, Math.max(0, areaW - EDITOR_MIN_VISIBLE_W - 10));
   const setSlotOpen = (id: string | null, open: boolean): void => {
     if (!id) return;
     setSlots((current) => {
@@ -939,18 +944,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             <IconTerminal />
           </button>
           <button
-            className={`icon-btn ${settingsOpen ? "on" : ""}`}
-            title={settingsOpen ? "Back to workspace" : "Settings"}
-            aria-label={settingsOpen ? "Back to workspace" : "Settings"}
-            aria-pressed={settingsOpen}
-            onClick={() => {
-              if (!settingsOpen) setSidebarOpen(true);
-              setSettingsOpen((open) => !open);
-            }}
-          >
-            <IconGear />
-          </button>
-          <button
             className={`icon-btn ${anchorOpen ? "on" : ""}`}
             data-panel-action="toggle-agent-panel"
             title={anchorOpen ? "Hide agent panel" : "Show agent panel"}
@@ -969,9 +962,9 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
         style={{ "--pane-columns": cols } as CSSProperties}
       >
         <nav className="activity-rail" aria-label="Workspace views">
-          <button className="activity-brand" aria-label="Orbit files" title="Orbit files" onClick={() => activateSidebarTab("files")}>
+          <span className="activity-brand" aria-hidden="true">
             <OrbitMark size={19} />
-          </button>
+          </span>
           <button className={`activity-tool ${sideOpen && !settingsOpen && sideTab === "files" ? "active" : ""}`} aria-label="Files" aria-pressed={sideOpen && !settingsOpen && sideTab === "files"} title={sideOpen && !settingsOpen && sideTab === "files" ? "Hide files" : "Files"} onClick={() => activateSidebarTab("files", true)}>
             <IconFolder />
           </button>
@@ -979,12 +972,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             <IconHistory />
           </button>
           <span className="activity-spacer" />
-          <button className={`activity-tool ${inAgentMode ? "active" : ""}`} aria-label={inAgentMode ? "Exit Agent Mode" : "Agent Mode"} aria-pressed={inAgentMode} title={inAgentMode ? "Exit Agent Mode" : "Agent Mode"} onClick={toggleAgentMode}>
-            <IconRobot />
-          </button>
-          <button className={`activity-tool ${trayOpen ? "active" : ""}`} aria-label={trayOpen ? "Hide terminal" : "Show terminal"} aria-pressed={trayOpen} title={trayOpen ? "Hide terminal" : "Show terminal"} onClick={toggleTray}>
-            <IconTerminal />
-          </button>
           <button className={`activity-tool ${settingsOpen ? "active" : ""}`} aria-label="Settings" aria-pressed={settingsOpen} title="Settings" onClick={openSettings}>
             <IconGear />
           </button>
@@ -1014,7 +1001,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
           className={`workspace-area ${ordered.some((panel) => slotShown(panel) > 0) || (panels.length === 0 && emptyAgentOpen) ? "agent-open" : ""} ${trayDragging ? "tray-dragging" : ""}`}
           style={
             {
-              "--editor-right": `${ordered.length > 0 ? Math.max(0, areaW - slotFor(ordered[0]).left) : emptyAgentOpen && !inAgentMode ? emptyAgentWidth : 0}px`,
+              "--editor-right": `${ordered.length > 0 ? Math.max(0, areaW - slotFor(ordered[0]).left) : emptyAgentOpen && !inAgentMode ? emptyAgentShown : 0}px`,
               "--tray-row": trayOpen ? `${trayH}px` : "0px",
               "--tray-gap": trayOpen ? "10px" : "0px"
             } as CSSProperties
@@ -1062,7 +1049,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             <div
               ref={emptyAgentRef}
               className={`agent-col empty-agent-col ${inAgentMode ? "agent-mode-empty" : ""}`}
-              style={inAgentMode ? undefined : { width: `${emptyAgentWidth}px`, right: "0px" }}
+              style={inAgentMode ? undefined : { width: `${emptyAgentShown}px`, right: "0px" }}
             >
               <AgentPanel
                 onClose={() => setEmptyAgentOpen(false)}

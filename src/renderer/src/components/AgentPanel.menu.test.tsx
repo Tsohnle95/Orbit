@@ -107,6 +107,21 @@ describe("composer agent menu", () => {
     expect(search.getAttribute("autocapitalize")).toBe("off");
   });
 
+  it("keeps the inset composer controls on one row and attaches files from its add button", async () => {
+    await act(async () => root.render(<Composer />));
+
+    const input = container.querySelector<HTMLInputElement>('.composer-file-input')!;
+    const openPicker = vi.spyOn(input, "click");
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Attach files"]')!.click());
+    expect(openPicker).toHaveBeenCalledOnce();
+    expect(container.querySelector(".composer-chip-break")).toBeNull();
+
+    vi.stubGlobal("openshell", { getPathForFile: vi.fn(() => "/workspace/notes.txt") });
+    Object.defineProperty(input, "files", { configurable: true, value: [new File(["notes"], "notes.txt")] });
+    await act(async () => input.dispatchEvent(new Event("change", { bubbles: true })));
+    expect(container.querySelector(".composer-attachment")?.textContent).toContain("notes.txt");
+  });
+
   it("reloads agents and shows a hint when the list is empty", async () => {
     await act(async () => root.render(<Composer />));
     const button = container.querySelector<HTMLButtonElement>('button[title="Change agent"]')!;

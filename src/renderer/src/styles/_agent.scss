@@ -22,7 +22,21 @@
   align-items: center;
   gap: 7px;
   min-width: 0;
-  padding: 12px 0 10px 16px;
+  padding: 12px 10px 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.agent-orb {
+  display: grid;
+  place-items: center;
+  flex: 0 0 27px;
+  width: 27px;
+  height: 27px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--bg-active-pill);
+  color: var(--accent);
+  box-shadow: 0 0 18px var(--accent-tint);
 }
 
 .agent-dot {
@@ -107,13 +121,13 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 4px 1px 0;
+  padding: 0 4px 0 0;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
   font: inherit;
   font-weight: 400;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--text-faint);
   cursor: pointer;
   max-width: 100%;
