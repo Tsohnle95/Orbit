@@ -40,8 +40,8 @@ html[data-theme="dark"] .explore-page { --canvas: #171e1c; --surface: #222c28; -
 }
 .has-atmosphere .art-hero { background: var(--scene-paper); }
 .has-atmosphere .art-hero-content { position: relative; z-index: 1; }
-.terrain-city .art-hero-content { padding-bottom: 230px; }
 .has-atmosphere .art-hero-copy { padding: 16px 25px 24px; }
+.agent-focused .art-hero-copy { padding: 0 25px 6px; }
 .hero-light { position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.11) 0%, transparent 45%, rgba(0,0,0,.05) 100%); pointer-events: none; }
 .scene-dark .hero-light { background: linear-gradient(180deg, rgba(0,0,0,.06), transparent 46%, rgba(0,0,0,.28)); }
 .art-hero-content { width: min(1250px, calc(100% - 64px)); margin: 0 auto; padding-top: 144px; }
@@ -78,6 +78,9 @@ html[data-theme="dark"] .explore-page { --canvas: #171e1c; --surface: #222c28; -
 .layout-centered .art-kicker, .layout-centered .art-actions, .layout-centered .art-facts { justify-content: center; }
 .layout-centered .art-hero h1, .layout-centered .art-lede { margin-right: auto; margin-left: auto; }
 .layout-centered .art-hero .art-product { width: min(1250px,100%); margin-top: 57px; }
+.agent-focused .art-hero .art-hero-copy { max-width: 1080px; }
+.agent-focused .art-hero h1 { max-width: 1080px; font-size: clamp(65px, 6.2vw, 88px); }
+.agent-focused .art-hero .art-product { margin-top: 30px; }
 .layout-centered .art-hero .celestial-body { translate: 65px 0; }
 .layout-centered.celestial-saturn .art-hero .celestial-body { translate: 130px 0; }
 .form-inset .art-product { width: min(1100px,94%); }
@@ -211,7 +214,6 @@ html[data-theme="light"] .scene-dark .art-inside, html[data-theme="light"] .scen
 
 @media (max-width: 900px) {
   .terrain-city .art-hero .atmosphere-scene .atmosphere-terrain { transform: translateY(calc(-12% - var(--scroll-depth, 0) * 16%)); }
-  .terrain-city .art-hero-content { padding-bottom: 80px; }
   .art-hero { min-height: 0; }
   .art-hero-content { width: min(100% - 44px,1250px); padding-bottom: 80px; }
   .art-section-header, .art-review, .form-floating .art-review, .form-diagram .art-review { grid-template-columns: 1fr; }
@@ -237,12 +239,14 @@ html[data-theme="light"] .scene-dark .art-inside, html[data-theme="light"] .scen
   .theme-toggle { min-height: 33px; padding: 0 9px; }
   .art-hero-content, .explore-04 .art-hero-content, .explore-10 .art-hero-content, .layout-centered .art-hero-content { width: calc(100% - 36px); padding-top: 115px; padding-bottom: 75px; }
   .art-hero h1, .type-mono .art-hero h1 { font-size: clamp(45px,11.2vw,67px); }
+  .agent-focused .art-hero h1 { font-size: clamp(45px,11.2vw,67px); }
   .art-kicker { font-size: 8px; }
   .art-lede { font-size: 13px; }
   .art-actions { gap: 16px; }
   .art-button { min-height: 43px; font-size: 10px; }
   .art-facts { gap: 7px; font-size: 8px; }
   .art-product, .explore-10 .art-product { margin-top: 42px; }
+  .agent-focused .art-hero .art-product { margin-top: 24px; }
   .art-product figcaption { right: 6px; bottom: 6px; padding: 5px 6px; font-size: 6px; }
   .form-inset .art-product, .form-framed .art-product, .form-floating .art-product, .form-diagram .art-product { width: 100%; transform: none; }
   .form-framed .art-product, .form-diagram .art-product { padding: 5px; }

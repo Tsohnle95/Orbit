@@ -29,6 +29,7 @@ if (!design) {
 } else {
   const isRepo = design.family === "04";
   const isAgentFocused = Boolean(design.productCopy);
+  if (isAgentFocused) document.body.classList.add("agent-focused");
   const colors = `--scene-ink:${design.ink};--scene-accent:${design.accent};--scene-paper:${design.sky};--scene-ground:${design.foreground}`;
   document.title = `Orbit — ${design.name}`;
   document.body.classList.add(`explore-${design.family}`, `scene-${design.scene}`, `form-${design.form}`, `type-${design.type}`, design.light ? "scene-light" : "scene-dark");
@@ -67,11 +68,11 @@ if (!design) {
         <div class="hero-light" aria-hidden="true"></div>
         <div class="art-hero-content">
           <div class="art-hero-copy">
-            <p class="art-kicker"><span class="live-dot"></span>${isAgentFocused ? isRepo ? "ORBIT / REPOSITORY-AWARE AGENT WORKSPACE" : "ORBIT / AGENT DEVELOPMENT ENVIRONMENT" : isRepo ? "YOUR REPOSITORY / YOUR WORKSPACE" : "THE DESKTOP WORKSPACE FOR CODING AGENTS"}</p>
-            <h1 id="hero-title">${design.title}</h1>
-            <p class="art-lede">${design.lede}</p>
-            <div class="art-actions"><a class="art-button" href="#inside">${isAgentFocused ? "Explore Orbit" : isRepo ? "Explore the workspace" : "Step inside"}<span aria-hidden="true">↓</span></a><a class="art-secondary" href="#review">${isAgentFocused ? "Review agent changes" : "See the whole loop"} <span aria-hidden="true">→</span></a></div>
-            <div class="art-facts" aria-label="Orbit workspace features"><span>${isAgentFocused ? "Repository context" : "Repository first"}</span><span>${isAgentFocused ? "Agent session" : "Monaco editor"}</span><span>${isAgentFocused ? "Diff review" : "OpenCode V2"}</span></div>
+            ${isAgentFocused ? "" : `<p class="art-kicker"><span class="live-dot"></span>${isRepo ? "YOUR REPOSITORY / YOUR WORKSPACE" : "THE DESKTOP WORKSPACE FOR CODING AGENTS"}</p>`}
+            <h1 id="hero-title">${isAgentFocused ? "Orbit agent development environment." : design.title}</h1>
+            <p class="art-lede">${isAgentFocused ? "Run a coding agent in your open repository." : design.lede}</p>
+            <div class="art-actions"><a class="art-button" href="#inside">${isAgentFocused ? "Explore Orbit" : isRepo ? "Explore the workspace" : "Step inside"}<span aria-hidden="true">↓</span></a>${isAgentFocused ? "" : `<a class="art-secondary" href="#review">See the whole loop <span aria-hidden="true">→</span></a>`}</div>
+            ${isAgentFocused ? "" : `<div class="art-facts" aria-label="Orbit workspace features"><span>Repository first</span><span>Monaco editor</span><span>OpenCode V2</span></div>`}
           </div>
           <figure class="art-product">
             <img src="../assets/orbit-workbench-reference.png" width="1375" height="779" alt="Orbit desktop workbench showing the repository explorer, editor, terminal, and agent panel in one window." />

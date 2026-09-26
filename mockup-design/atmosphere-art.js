@@ -21,60 +21,40 @@ function orbitAtmosphere(config, instance = "hero") {
   const mountain = config.terrain === "alpine";
   const city = config.terrain === "city";
   const water = config.terrain === "water";
-  const buildCityLayer = (baseY, minHeight, maxHeight, gradient) => {
-    const buildings = [];
-    let x = -18;
-    while (x < 1620) {
-      x += 3 + Math.floor(random() * 10);
-      const width = 32 + Math.floor(random() * 27);
-      const height = minHeight + Math.floor(random() * (maxHeight - minHeight + 1));
-      const top = baseY - height;
-      const windows = [];
-      for (let row = top + 22; row < baseY - 12; row += 13) {
-        for (let column = x + 5; column < x + width - 4; column += 9) {
-          if (random() > .29) windows.push(`<rect x="${column}" y="${row}" width="3" height="4" rx=".5"/>`);
-        }
+  const distantCity = city ? Array.from({ length: 32 }, (_, index) => {
+    const x = index * 51 + Math.round(random() * 12);
+    const width = 29 + Math.round(random() * 19);
+    const height = 74 + Math.round(random() * 122);
+    const top = 748 - height;
+    const windows = [];
+    for (let row = top + 12; row < 740; row += 15) {
+      for (let column = x + 5; column < x + width - 3; column += 9) {
+        if (random() > .35) windows.push(`<rect x="${column}" y="${row}" width="2.5" height="4"/>`);
       }
-      const antenna = height > 165 && random() > .55
-        ? `<path d="M${x + width / 2} ${top}v-17" stroke="${starColor}" stroke-width="1.4" opacity=".38"/><circle cx="${x + width / 2}" cy="${top - 17}" r="1.6" fill="${config.glow}" opacity=".5"/>`
-        : "";
-      buildings.push(`<g class="city-building"><path d="M${x} ${baseY}V${top}h${width}v${height}z" fill="url(#${gradient}-${id})" opacity="${(.52 + random() * .31).toFixed(2)}"/><path d="M${x + 4} ${top + 12}v${height - 24}" stroke="${starColor}" stroke-width="1" opacity=".075"/><g class="city-windows" fill="${config.glow}" opacity="${(.34 + random() * .27).toFixed(2)}">${windows.join("")}</g>${antenna}</g>`);
-      x += width;
     }
-    return buildings.join("");
-  };
-  const distantCity = city ? buildCityLayer(758, 82, 190, "far") : "";
-  const nearCity = city ? buildCityLayer(817, 90, 245, "near") : "";
-  const cityStreet = city ? `<g class="city-street">
-    <path d="M0 807h1600v133H0z" fill="${config.foreground}"/>
-    <path d="M0 807h1600v20H0z" fill="${config.horizon}" opacity=".28"/>
-    <path d="M0 829h1600" stroke="${config.glow}" stroke-width="2" opacity=".18"/>
-    <path d="M0 886h1600" stroke="${config.glow}" stroke-width="2.4" stroke-dasharray="30 38" opacity=".2"/>
-    <path d="M0 930h1600" stroke="${config.horizon}" stroke-width="1" stroke-dasharray="3 17" opacity=".22"/>
-    <g class="street-vehicle" transform="translate(368 850)" fill="${config.glow}" stroke="${config.glow}" opacity=".36">
-      <path d="M0 19h77v-10l-13-3-11-12H27L15 5 5 9z"/>
-      <path d="M29-4h20l9 9H22z" fill="${config.sky}" stroke="none" opacity=".8"/>
-      <circle cx="20" cy="19" r="5" fill="${config.sky}" stroke="none"/><circle cx="62" cy="19" r="5" fill="${config.sky}" stroke="none"/>
-      <circle cx="4" cy="11" r="1.5" fill="${starColor}" stroke="none"/>
-    </g>
-    <g class="street-vehicle" transform="translate(1125 900) scale(.72)" fill="${config.glow}" stroke="${config.glow}" opacity=".31">
-      <path d="M0 19h77v-10l-13-3-11-12H27L15 5 5 9z"/><path d="M29-4h20l9 9H22z" fill="${config.sky}" stroke="none" opacity=".8"/>
-      <circle cx="20" cy="19" r="5" fill="${config.sky}" stroke="none"/><circle cx="62" cy="19" r="5" fill="${config.sky}" stroke="none"/>
-    </g>
-    <g class="street-pedestrian" fill="${config.glow}" stroke="${config.glow}" stroke-width="1.5" opacity=".48">
-      <g transform="translate(675 833)"><circle cx="5" cy="3" r="2.3" stroke="none"/><path d="M5 6v12m0-8-4 5m4-5 4 4m-4 4-3 7m3-7 4 7" fill="none"/></g>
-      <g transform="translate(711 837) scale(.84)"><circle cx="5" cy="3" r="2.3" stroke="none"/><path d="M5 6v12m0-8-4 5m4-5 4 4m-4 4-3 7m3-7 4 7" fill="none"/></g>
-      <g transform="translate(986 834) scale(.9)"><circle cx="5" cy="3" r="2.3" stroke="none"/><path d="M5 6v12m0-8-4 5m4-5 4 4m-4 4-3 7m3-7 4 7" fill="none"/></g>
-    </g>
-  </g>` : "";
+    return `<path d="M${x} 748v-${height}h${width}v${height}z" fill="url(#far-${id})" opacity="${(.56 + random() * .3).toFixed(2)}"/><path d="M${x + 4} ${top + 9}v${height - 22}" stroke="${starColor}" stroke-width="1" opacity=".08"/><g fill="${config.glow}" opacity=".52">${windows.join("")}</g>`;
+  }).join("") : "";
   const farTerrain = city
-    ? `<path d="M0 758h1600v182H0z" fill="url(#far-${id})" opacity=".58"/>${distantCity}`
+    ? `<g>${distantCity}</g><path d="M0 748h1600v192H0z" fill="url(#far-${id})" opacity=".74"/>`
     : water
       ? `<path d="M0 645q297-82 574 23t541-34q268-89 485-22v328H0z" fill="url(#far-${id})"/><path d="M0 680q370-39 725 22t875-49" fill="none" stroke="${config.glow}" stroke-width="3" opacity=".26"/>`
       : config.terrain === "mist"
         ? `<path d="M0 753q159-176 366-119t363-100q211-142 401-21t470-42v469H0z" fill="url(#far-${id})" opacity=".59"/><path d="M0 719q300-59 590 21t591-36q218-89 419-42" fill="none" stroke="${starColor}" stroke-width="22" opacity=".17"/><path d="M0 775q305-101 556 5t543-7q281-98 501-61" fill="none" stroke="${config.glow}" stroke-width="28" opacity=".16"/>`
       : `<path d="M0 781 48 723l46 19 47-109 30 9 88-135 23 24 43-57 83 77 36-32 54-139 35 21 31-55 48 34 36 72 38-38 71 69 46-49 57-85 29 18 39-59 49 30 71 105 42-39 66 48 48-91 59 12 36-75 39 9 59 92 58-38 52 51 48-84 23 17 43-55 48 41 89 114v337H0z" fill="url(#far-${id})"/><g fill="${config.glow}" opacity=".22"><path d="m251 519 31 12 43-57 44 41-56-19z"/><path d="m475 408 23-28 35 21 31-55 48 34-50 5-27 34-36-15z"/><path d="m838 382 29 18 39-59 49 30-43-6-37 50z"/><path d="m1252 463 36-75 39 9 59 92-55-48-40-22z"/></g>`;
-  const cityGeometry = nearCity;
+  const cityGeometry = `<path d="M0 790v-98h84v-48h77v95h96v-55h63v-103h77v135h90v-65h71v91h96v-125h80v87h113v-62h73v-105h84v172h109v-78h74v93h101v-117h84v135h106v-88h102v136H0z" fill="url(#near-${id})"/><path d="M0 810v-107h107v59h84V653h99v110h84v-70h101v61h87V615h76v139h109v-84h93v96h117V645h84v119h105v-51h93v80h111v-110h83v127H0z" fill="${config.foreground}" opacity=".55"/>`;
+  const cityFacades = [
+    [0, 84, 692], [84, 161, 644], [161, 257, 739], [257, 320, 684],
+    [320, 397, 581], [397, 487, 716], [487, 558, 651], [558, 654, 742],
+    [654, 734, 617], [734, 847, 704], [847, 920, 642], [920, 1004, 537],
+    [1004, 1113, 709], [1113, 1187, 631], [1187, 1288, 724], [1288, 1372, 607],
+    [1372, 1478, 742], [1478, 1580, 654]
+  ];
+  const windowLights = city ? Array.from({ length: 82 }, () => {
+    const [left, right, top] = cityFacades[Math.floor(random() * cityFacades.length)];
+    const x = left + 5 + Math.floor(random() * (right - left - 10));
+    const y = top + 12 + Math.floor(random() * (778 - top - 12));
+    return `<rect x="${x}" y="${y}" width="3" height="6" fill="${config.glow}" opacity="${(.18 + random() * .55).toFixed(2)}"/>`;
+  }).join("") : "";
   const coast = water ? `<path d="M0 744q290-64 573 40t583-47q233-70 444-34v237H0z" fill="url(#near-${id})"/><g fill="none" stroke="${config.glow}" opacity=".37"><path d="M0 772q290-64 573 40t583-47q233-70 444-34" stroke-width="2"/><path d="M0 805q290-64 573 40t583-47q233-70 444-34" stroke-width="2"/></g>${Array.from({ length: 55 }, () => `<path d="M${Math.round(random() * 1600)} ${Math.round(766 + random() * 120)}h${Math.round(9 + random() * 65)}" stroke="${config.glow}" stroke-width="${(random() * 2 + .5).toFixed(1)}" opacity="${(.1 + random() * .3).toFixed(2)}"/>`).join("")}` : "";
   const rockLines = Array.from({ length: 54 }, () => {
     const x = Math.round(random() * 1600), y = Math.round(625 + random() * 230);
@@ -96,15 +76,12 @@ function orbitAtmosphere(config, instance = "hero") {
   }).join("");
   const meteorGradients = config.celestial === "meteor" ? `<linearGradient id="meteor-tail-one-${id}" gradientUnits="userSpaceOnUse" x1="1300" y1="20" x2="1180" y2="95"><stop stop-color="${starColor}" stop-opacity="0"/><stop offset=".65" stop-color="${config.tint || config.glow}" stop-opacity=".42"/><stop offset="1" stop-color="${starColor}" stop-opacity=".98"/></linearGradient><linearGradient id="meteor-tail-two-${id}" gradientUnits="userSpaceOnUse" x1="1150" y1="70" x2="1060" y2="140"><stop stop-color="${starColor}" stop-opacity="0"/><stop offset=".68" stop-color="${config.tint || config.glow}" stop-opacity=".32"/><stop offset="1" stop-color="${starColor}" stop-opacity=".82"/></linearGradient>` : "";
   const defs = `<defs><linearGradient id="sky-${id}" x2=".25" y2="1"><stop stop-color="${config.sky}"/><stop offset=".72" stop-color="${config.horizon}"/><stop offset="1" stop-color="${config.foreground}"/></linearGradient><radialGradient id="planet-${id}" cx=".32" cy=".25" r=".85"><stop stop-color="${starColor}"/><stop offset=".48" stop-color="${config.tint || config.glow}"/><stop offset="1" stop-color="${config.horizon}"/></radialGradient><radialGradient id="halo-${id}" gradientUnits="userSpaceOnUse" cx="1200" cy="270" r="238"><stop stop-color="${config.tint || config.glow}" stop-opacity=".3"/><stop offset=".36" stop-color="${config.tint || config.glow}" stop-opacity=".18"/><stop offset=".72" stop-color="${config.tint || config.glow}" stop-opacity=".055"/><stop offset="1" stop-color="${config.tint || config.glow}" stop-opacity="0"/></radialGradient>${meteorGradients}<linearGradient id="far-${id}" x2=".15" y2="1"><stop stop-color="${config.horizon}"/><stop offset="1" stop-color="${config.foreground}"/></linearGradient><linearGradient id="near-${id}" x2=".45" y2="1"><stop stop-color="${config.horizon}"/><stop offset="1" stop-color="${config.foreground}"/></linearGradient><radialGradient id="vignette-${id}"><stop offset=".45" stop-color="${config.sky}" stop-opacity="0"/><stop offset="1" stop-color="${config.foreground}" stop-opacity=".32"/></radialGradient><filter id="grain-${id}"><feTurbulence type="fractalNoise" baseFrequency=".53" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .19"/></feComponentTransfer></filter></defs>`;
-  const distanceHaze = city ? "" : `<path d="M0 940V605q295 99 622 28t978-12v319H0z" fill="${config.glow}" opacity=".045"/>`;
-  const rollingForeground = city ? "" : `<path d="M0 940v-45q352-50 640-5t509-12q225-41 451 13v49H0z" fill="${config.foreground}"/>`;
   const svg = (plane, content) => `<svg class="scene-art atmosphere-${plane}" viewBox="0 0 1600 940" preserveAspectRatio="xMidYMid slice" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">${defs}${content}</svg>`;
   return `<div class="atmosphere-scene" aria-hidden="true">
     ${svg("sky", `<rect width="1600" height="940" fill="url(#sky-${id})"/><rect width="1600" height="940" fill="url(#vignette-${id})"/><g fill="${starColor}">${stars}</g>${celestial}`)}
-    ${svg("distance", `${farTerrain}${distanceHaze}`)}
-    ${svg("terrain", `${city ? cityGeometry : water ? coast : ridge}${city ? "" : `<path d="M0 940V847q293-91 653 12t947-50v131H0z" fill="${config.foreground}" opacity=".65"/>`}${foliage}`)}
-    ${city ? svg("road", cityStreet) : ""}
-    ${svg("foreground", `${rollingForeground}${grass}<path fill="#fff" filter="url(#grain-${id})" opacity=".38" d="M0 780h1600v160H0z"/>`)}
+    ${svg("distance", `${farTerrain}<path d="M0 940V605q295 99 622 28t978-12v319H0z" fill="${config.glow}" opacity=".045"/>`)}
+    ${svg("terrain", `${city ? cityGeometry + `<g>${windowLights}</g>` : water ? coast : ridge}<path d="M0 940V847q293-91 653 12t947-50v131H0z" fill="${config.foreground}" opacity=".65"/>${foliage}`)}
+    ${svg("foreground", `<path d="M0 940v-45q352-50 640-5t509-12q225-41 451 13v49H0z" fill="${config.foreground}"/>${grass}<path fill="#fff" filter="url(#grain-${id})" opacity=".38" d="M0 780h1600v160H0z"/>`)}
     ${svg("grain", `<path fill="#fff" filter="url(#grain-${id})" opacity=".46" d="M0 0h1600v940H0z"/>`)}
   </div>`;
 }
