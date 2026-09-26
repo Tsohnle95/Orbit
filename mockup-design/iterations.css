@@ -568,6 +568,11 @@ html[data-theme="dark"] .iteration-card { --surface: #202723; }
 .exploration-preview .scene-art { position: absolute; z-index: -1; inset: 0; width: 100%; height: 100%; }
 .exploration-preview::before { z-index: 0; background: linear-gradient(0deg, rgba(17,25,20,.43), transparent 65%); }
 .exploration-card .iteration-card-body small { letter-spacing: .03em; }
+.exploration-preview .atmosphere-scene { position: absolute; z-index: -1; inset: 0; overflow: hidden; }
+.exploration-preview .atmosphere-scene .scene-art { z-index: auto; }
+.exploration-preview .orbiting-marker { transform-box: view-box; transform-origin: 1200px 270px; animation: card-orbit 34s linear infinite; }
+@keyframes card-orbit { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .exploration-preview .orbiting-marker { animation: none; } }
 .iteration-cluster + .iteration-cluster { margin-top: 48px; }
 .cluster-heading { display: flex; align-items: baseline; gap: 20px; padding: 0 0 16px; }
 .cluster-heading > span { flex: none; color: var(--accent); font: 9px var(--mono); letter-spacing: .09em; }

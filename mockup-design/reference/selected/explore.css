@@ -19,20 +19,6 @@ html[data-theme="dark"] .explore-page { --canvas: #171e1c; --surface: #222c28; -
 .theme-icon { font-size: 14px; }
 .art-hero { position: relative; isolation: isolate; overflow: hidden; min-height: 1080px; color: var(--scene-ink); background: var(--scene-paper); }
 .scene-art { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.atmosphere-scene { position: absolute; z-index: -2; inset: 0; overflow: hidden; pointer-events: none; }
-.atmosphere-scene .scene-art { z-index: auto; }
-.atmosphere-scene .atmosphere-sky { transform: translateY(calc(var(--scroll-depth, 0) * 5%)); }
-.art-hero .atmosphere-scene .atmosphere-distance { transform: translateY(calc(-6% - var(--scroll-depth, 0) * 18%)); }
-.art-hero .atmosphere-scene .atmosphere-terrain { transform: translateY(calc(-9% - var(--scroll-depth, 0) * 24%)); }
-.atmosphere-scene .atmosphere-grain { opacity: .38; }
-.has-atmosphere .art-hero .hero-foreground { position: absolute; z-index: 4; inset: 0; width: 100%; height: 100%; transform: translateY(calc(var(--scroll-depth, 0) * -12%)); pointer-events: none; }
-.terrain-city .art-hero .atmosphere-scene .atmosphere-terrain { transform: translateY(calc(-20% - var(--scroll-depth, 0) * 17%)); }
-.terrain-city .art-hero .atmosphere-scene .atmosphere-distance { transform: translateY(calc(-9% - var(--scroll-depth, 0) * 14%)); }
-.atmosphere-scene .orbiting-marker { transform-box: view-box; transform-origin: 1200px 270px; animation: orbiting-world 34s linear infinite; }
-@keyframes orbiting-world { to { transform: rotate(360deg); } }
-.has-atmosphere .art-hero { background: var(--scene-paper); }
-.has-atmosphere .art-hero-content { position: relative; z-index: 1; }
-.has-atmosphere .art-hero-copy { padding: 16px 25px 24px; }
 .hero-light { position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.11) 0%, transparent 45%, rgba(0,0,0,.05) 100%); pointer-events: none; }
 .scene-dark .hero-light { background: linear-gradient(180deg, rgba(0,0,0,.06), transparent 46%, rgba(0,0,0,.28)); }
 .art-hero-content { width: min(1250px, calc(100% - 64px)); margin: 0 auto; padding-top: 144px; }
@@ -181,19 +167,12 @@ html[data-theme="dark"] .explore-page { --canvas: #171e1c; --surface: #222c28; -
 /* The scene stays recognizable in both modes; the working surface changes with the preference. */
 html[data-theme="dark"] .scene-light .art-hero { color: #f1f5ee; background: #17231e; }
 html[data-theme="dark"] .scene-light .art-hero .scene-art { opacity: .38; filter: brightness(.52) saturate(.75); }
-html[data-theme="dark"] .has-atmosphere.scene-light .art-hero .atmosphere-scene .scene-art { opacity: .8; filter: brightness(.45) saturate(.75); }
-html[data-theme="dark"] .has-atmosphere.scene-light .art-hero .hero-foreground { filter: brightness(.55); }
 html[data-theme="dark"] .scene-light .explore-nav { color: #f1f5ee; }
 html[data-theme="dark"] .scene-light .explore-nav nav, html[data-theme="dark"] .scene-light .explore-nav .theme-toggle { color: #f1f5ee; }
 html[data-theme="dark"] .scene-light .art-button { color: #f1f5ee; }
 html[data-theme="light"] .scene-dark .art-inside, html[data-theme="light"] .scene-dark .art-review { --scene-accent: #436c5b; }
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  .atmosphere-scene .orbiting-marker { animation: none; }
-}
 
 @media (max-width: 900px) {
-  .terrain-city .art-hero .atmosphere-scene .atmosphere-terrain { transform: translateY(calc(-12% - var(--scroll-depth, 0) * 16%)); }
   .art-hero { min-height: 0; }
   .art-hero-content { width: min(100% - 44px,1250px); padding-bottom: 80px; }
   .art-section-header, .art-review, .form-floating .art-review, .form-diagram .art-review { grid-template-columns: 1fr; }
@@ -210,7 +189,6 @@ html[data-theme="light"] .scene-dark .art-inside, html[data-theme="light"] .scen
 }
 
 @media (max-width: 600px) {
-  .has-atmosphere .art-hero .celestial-body { translate: -245px 300px; }
   .explore-nav { height: 60px; padding: 0 17px; }
   .explore-nav nav { display: none; }
   .explore-brand { font-size: 15px; }

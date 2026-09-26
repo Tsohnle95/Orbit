@@ -31,7 +31,6 @@ if (!design) {
   const colors = `--scene-ink:${design.ink};--scene-accent:${design.accent};--scene-paper:${design.sky};--scene-ground:${design.foreground}`;
   document.title = `Orbit — ${design.name}`;
   document.body.classList.add(`explore-${design.family}`, `scene-${design.scene}`, `form-${design.form}`, `type-${design.type}`, design.light ? "scene-light" : "scene-dark");
-  if (design.atmosphere) document.body.classList.add("has-atmosphere", `terrain-${design.terrain}`);
   document.body.style.cssText = colors;
 
   const projectDiagram = `<div class="project-map" aria-label="One repository connects the editor, agent, and change review">
@@ -61,7 +60,7 @@ if (!design) {
     </header>
     <main>
       <section class="art-hero" aria-labelledby="hero-title">
-         ${design.atmosphere ? orbitAtmosphere(design) : orbitScene(design)}
+        ${orbitScene(design)}
         <div class="hero-light" aria-hidden="true"></div>
         <div class="art-hero-content">
           <div class="art-hero-copy">
@@ -82,7 +81,7 @@ if (!design) {
         ${design.lineage === "ridge" ? ridgeTiles : isRepo ? projectDiagram : desktopDock}
       </section>
       <section class="art-interlude" aria-label="${isRepo ? "The repository stays at the center" : "A connected desktop workspace"}">
-         ${design.atmosphere ? orbitAtmosphere(design, "interlude") : orbitScene(design, "interlude")}
+        ${orbitScene(design, "interlude")}
         <div class="interlude-copy"><span class="interlude-mark" aria-hidden="true">◉</span><p>${isRepo ? "ONE REPOSITORY / MANY NEXT STEPS" : "ONE DESK / A BETTER RHYTHM"}</p><h2>${design.message ?? sceneMessages[design.id]}</h2></div>
         <div class="interlude-note"><span class="live-dot"></span>${isRepo ? "~/code/orbit · project open" : "Orbit desktop · workspace active"}</div>
       </section>
@@ -92,26 +91,5 @@ if (!design) {
       </section>
       <section class="art-close"><div><p class="art-section-label">${isRepo ? "KEEP THE PROJECT CLOSE" : "WORK WHERE THE WORK IS"}</p><h2>${isRepo ? "A clear place to begin." : "Make yourself at home."}</h2></div><a class="art-button" href="#inside">Explore Orbit <span aria-hidden="true">↑</span></a></section>
     </main>
-     <footer class="art-footer"><a class="explore-brand" href="../index.html"><span aria-hidden="true">◉</span> orbit</a><span>${isRepo ? "Built around your repository." : "A home for the coding loop."}</span></footer>`;
-  if (design.atmosphere) {
-    const hero = document.querySelector(".art-hero");
-    const foreground = hero.querySelector(".atmosphere-foreground");
-    foreground.remove();
-    foreground.classList.add("hero-foreground");
-    hero.append(foreground);
-    const updateDepth = () => {
-      const progress = Math.max(0, Math.min(1, -hero.getBoundingClientRect().top / Math.max(hero.offsetHeight - innerHeight * .35, 1)));
-      hero.style.setProperty("--scroll-depth", progress.toFixed(3));
-    };
-    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      let requested = false;
-      addEventListener("scroll", () => {
-        if (requested) return;
-        requested = true;
-        requestAnimationFrame(() => { updateDepth(); requested = false; });
-      }, { passive: true });
-      addEventListener("resize", updateDepth);
-      updateDepth();
-    }
-  }
+    <footer class="art-footer"><a class="explore-brand" href="../index.html"><span aria-hidden="true">◉</span> orbit</a><span>${isRepo ? "Built around your repository." : "A home for the coding loop."}</span></footer>`;
 }
