@@ -69,8 +69,8 @@ if (!design) {
         <div class="art-hero-content">
           <div class="art-hero-copy">
             ${isAgentFocused ? "" : `<p class="art-kicker"><span class="live-dot"></span>${isRepo ? "YOUR REPOSITORY / YOUR WORKSPACE" : "THE DESKTOP WORKSPACE FOR CODING AGENTS"}</p>`}
-            <h1 id="hero-title">${isAgentFocused ? "Orbit agent development environment." : design.title}</h1>
-            <p class="art-lede">${isAgentFocused ? "Run a coding agent in your open repository." : design.lede}</p>
+            <h1 id="hero-title">${isAgentFocused ? "Orbit" : design.title}</h1>
+            ${isAgentFocused ? '<h2 class="art-hero-subtitle">Agent Development Environment</h2>' : `<p class="art-lede">${design.lede}</p>`}
             <div class="art-actions"><a class="art-button" href="#inside">${isAgentFocused ? "Explore Orbit" : isRepo ? "Explore the workspace" : "Step inside"}<span aria-hidden="true">↓</span></a>${isAgentFocused ? "" : `<a class="art-secondary" href="#review">See the whole loop <span aria-hidden="true">→</span></a>`}</div>
             ${isAgentFocused ? "" : `<div class="art-facts" aria-label="Orbit workspace features"><span>Repository first</span><span>Monaco editor</span><span>OpenCode V2</span></div>`}
           </div>
