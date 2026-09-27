@@ -953,18 +953,9 @@
   100% { background-position: 0% 0, 0 0; }
 }
 
-[data-component="tool-part-wrapper"][data-variant="card"],
-[data-component="edit-tool-card"] {
-  width: min(100%, 640px);
-  min-width: 0;
-  border: 1px solid var(--v2-border-border-base);
-  border-radius: 10px;
-  background: var(--v2-background-bg-layer-01);
-  overflow: hidden;
-}
-
-/* Context reads render as a compact inline log instead of a card. */
-[data-component="tool-part-wrapper"][data-variant="inline"] {
+/* Every tool surface is a compact inline trigger — no per-tool bordered card.
+   Context reads group into `ContextToolGroup`; edit keeps its diff body below. */
+[data-variant="inline"] {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -974,53 +965,38 @@
   overflow: visible;
 }
 
-[data-component="tool-part-wrapper"][data-variant="inline"] [data-component="tool-trigger"] {
+[data-variant="inline"] [data-component="tool-trigger"] {
   padding: 3px 0;
   display: flex;
   align-items: center;
   gap: 9px;
 }
 
-[data-component="tool-part-wrapper"][data-variant="inline"] [data-slot="basic-tool-tool-info-main"] {
+[data-variant="inline"] [data-slot="basic-tool-tool-info-main"] {
   flex-direction: row;
   align-items: baseline;
   gap: 7px;
 }
 
-[data-component="tool-part-wrapper"][data-variant="inline"] [data-slot="basic-tool-tool-title"] {
+[data-variant="inline"] [data-slot="basic-tool-tool-title"] {
   color: var(--v2-text-text-muted);
 }
 
-[data-component="tool-part-wrapper"][data-variant="inline"] [data-slot="basic-tool-tool-subtitle"] {
+[data-variant="inline"] [data-slot="basic-tool-tool-subtitle"] {
   flex: 1 1 auto;
 }
 
-[data-component="tool-part-wrapper"][data-variant="inline"][data-status="running"] [data-slot="basic-tool-tool-title"] {
+[data-variant="inline"][data-status="running"] [data-slot="basic-tool-tool-title"] {
   color: var(--v2-text-text-base);
 }
 
-[data-component="tool-part-wrapper"][data-variant="inline"] .tool-collapsible > [data-slot="collapsible-content"] {
+[data-variant="inline"] .tool-collapsible > [data-slot="collapsible-content"] {
   margin: 0;
   padding: 2px 0 6px 25px;
 }
 
-[data-component="tool-part-wrapper"][data-variant="inline"] [data-slot="tool-progress"] {
+[data-variant="inline"] [data-slot="tool-progress"] {
   padding: 0 0 4px 25px;
-}
-
-[data-component="tool-part-wrapper"][data-variant="inline"] [data-slot="tool-error-summary"] {
-  padding: 0 0 4px 25px;
-}
-
-[data-component="tool-part-wrapper"][data-variant="card"][data-status="running"],
-[data-component="edit-tool-card"][data-status="running"] {
-  border-color: color-mix(in srgb, var(--accent) 58%, var(--v2-border-border-base));
-  background: var(--v2-background-bg-layer-03);
-}
-
-[data-component="tool-part-wrapper"][data-variant="card"][data-status="failed"] [data-slot="basic-tool-tool-title"],
-[data-component="edit-tool-card"][data-status="failed"] [data-slot="basic-tool-tool-title"] {
-  color: color-mix(in oklch, var(--red) 68%, var(--v2-text-text-muted));
 }
 
 .tool-collapsible { width: 100%; min-width: 0; }
@@ -1093,7 +1069,141 @@
   word-break: break-word;
 }
 
-[data-slot="tool-error-summary"] { max-width: 100%; padding: 0 12px 8px 37px; overflow: hidden; color: color-mix(in oklch, var(--v2-state-fg-danger) 72%, var(--v2-text-text-muted)); font: var(--font-weight-regular) 12px/18px var(--font-family-sans); text-overflow: ellipsis; white-space: nowrap; }
+/* OpenCode's `ToolErrorCard`: the only card surface left, and only for failures. */
+[data-variant="inline"] [data-kind="tool-error-card"] {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--v2-state-fg-danger) 26%, var(--v2-border-border-base));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--v2-state-fg-danger) 4%, var(--v2-background-bg-layer-01));
+}
+
+[data-variant="inline"] [data-kind="tool-error-card"] [data-component="tool-trigger"],
+[data-variant="inline"] [data-kind="tool-error-card"] .tool-collapsible > [data-slot="collapsible-trigger"] {
+  padding: 8px 11px 4px;
+  align-items: center;
+}
+
+[data-variant="inline"] [data-kind="tool-error-card"] .tool-collapsible > [data-slot="collapsible-content"] {
+  margin: 0;
+  padding: 2px 11px 9px 34px;
+}
+
+[data-kind="tool-error-card"] [data-slot="basic-tool-tool-title"] {
+  color: var(--v2-text-text-base);
+}
+
+[data-kind="tool-error-card"] [data-slot="basic-tool-tool-subtitle"] {
+  color: color-mix(in oklch, var(--v2-state-fg-danger) 72%, var(--v2-text-text-muted));
+}
+
+[data-kind="tool-error-card"] [data-slot="tool-status-icon"] {
+  color: var(--v2-state-fg-danger);
+}
+
+[data-slot="tool-error-card-content"] {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  user-select: text;
+}
+
+[data-slot="tool-error-card-copy"] {
+  position: absolute;
+  top: 0;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  will-change: opacity;
+}
+
+[data-kind="tool-error-card"]:hover [data-slot="tool-error-card-copy"],
+[data-kind="tool-error-card"]:focus-within [data-slot="tool-error-card-copy"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+[data-slot="tool-error-card-copy-button"] {
+  border: 0;
+  padding: 0 2px;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--v2-text-text-faint);
+  font: var(--font-weight-medium) 10px/16px var(--font-family-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+[data-slot="tool-error-card-copy-button"]:hover { color: var(--v2-text-text-base); }
+
+[data-slot="tool-error-card-description"] {
+  max-width: 100%;
+  color: color-mix(in oklch, var(--v2-state-fg-danger) 74%, var(--v2-text-text-muted));
+  font: var(--font-weight-regular) 12px/18px var(--font-family-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+[data-slot="tool-error-card-description"]::selection {
+  background: color-mix(in srgb, var(--v2-state-fg-danger) 24%, transparent);
+}
+
+/* OpenCode's shell body: `$ command` and output in one scrollable pre. */
+[data-component="bash-output"] {
+  direction: ltr;
+  unicode-bidi: isolate;
+  position: relative;
+  width: 100%;
+  max-height: 240px;
+  overflow: auto;
+  border: 0.5px solid var(--v2-border-border-base);
+  border-radius: 6px;
+  background: transparent;
+}
+
+[data-slot="bash-copy"] {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+[data-component="bash-output"]:hover [data-slot="bash-copy"],
+[data-component="bash-output"]:focus-within [data-slot="bash-copy"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+[data-slot="bash-copy-button"] {
+  border: 0;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--v2-background-bg-layer-01);
+  color: var(--v2-text-text-faint);
+  font: var(--font-weight-medium) 10px/16px var(--font-family-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+[data-slot="bash-copy-button"]:hover { color: var(--v2-text-text-base); }
+
+[data-slot="bash-pre"] {
+  margin: 0;
+  padding: 12px;
+  color: var(--v2-text-text-muted);
+  font-family: var(--font-family-mono);
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 .tool-collapsible > [data-slot="collapsible-content"] {
   margin: 0;

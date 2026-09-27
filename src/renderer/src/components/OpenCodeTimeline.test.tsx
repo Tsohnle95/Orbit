@@ -335,7 +335,7 @@ describe("OpenCodeTimeline chronology", () => {
     }];
     act(() => root.render(<OpenCodeTimeline transcript={transcript} busy={false} lastAssistantId={null} />));
 
-    expect(container.querySelector("[data-slot='basic-tool-tool-title']")?.textContent).toBe("Tool call");
+    expect(container.querySelector("[data-slot='basic-tool-tool-title']")?.textContent).toBe("Called `tool`");
     expect(container.textContent).not.toContain("limit=40");
     expect(container.textContent).not.toContain("content=private");
     expect(container.querySelector("[data-slot='basic-tool-tool-subtitle']")?.getAttribute("title")).toBe("a very long diagnostic detail");
@@ -367,11 +367,11 @@ describe("OpenCodeTimeline chronology", () => {
 
     expect(container.querySelector("[data-slot='tool-state']")?.textContent).toContain("Running");
     expect(container.querySelector("[data-slot='collapsible-content']")).not.toBeNull();
-    expect([...container.querySelectorAll("[data-slot='tool-io-label']")].map((node) => node.textContent)).toEqual(["COMMAND", "OUTPUT"]);
-    expect(container.querySelector("[data-slot='tool-io-text']")?.textContent).toBe(JSON.stringify({ command: "npm test" }, null, 2));
+    expect(container.querySelector("[data-component='bash-output']")).not.toBeNull();
+    expect(container.querySelector("[data-slot='bash-pre']")?.textContent).toBe("$ npm test\n\nRUN  v3.2.7");
   });
 
-  it("keeps failed calls compact while surfacing their error inline", () => {
+  it("renders a failed call as an expandable error card", () => {
     const failed = toolAssistant("tool", "tool", { path: "/repo/source b", limit: 2000 }) as Extract<TranscriptItem, { kind: "assistant" }>;
     const part = failed.parts[0];
     if (part.kind === "tool") {
@@ -382,9 +382,12 @@ describe("OpenCodeTimeline chronology", () => {
     act(() => root.render(<OpenCodeTimeline transcript={[failed]} busy={false} lastAssistantId={null} />));
 
     expect(container.querySelector("[data-slot='basic-tool-tool-title']")?.textContent).toBe("Inspect");
-    expect(container.querySelector("[data-slot='tool-state']")?.textContent).toContain("Failed");
-    expect(container.querySelector("[data-slot='tool-error-summary']")?.textContent).toBe("File not found: /repo/source b");
+    expect(container.querySelector("[data-kind='tool-error-card']")).not.toBeNull();
+    expect(container.querySelector("[data-slot='basic-tool-tool-subtitle']")?.textContent).toBe("File not found");
     expect(container.querySelector("[data-slot='collapsible-content']")).toBeNull();
+
+    act(() => container.querySelector<HTMLButtonElement>("[data-slot='collapsible-trigger']")!.click());
+    expect(container.querySelector("[data-slot='tool-error-card-description']")?.textContent).toBe("/repo/source b");
   });
 
   it.each(events)("keeps an interleaved %s event between assistant runs", (_name, event, row) => {

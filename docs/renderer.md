@@ -343,8 +343,9 @@ Key mechanisms:
   streaming. The full accumulated progress renders as Markdown when the user
   expands it. Tool rows expose running, failed, done, or duration state;
   structured progress is reduced to a readable phrase; live command output
-  opens automatically, while failures keep their error visible inline and leave
-  detailed I/O collapsed. Bottom-follow uses a stable signature to follow
+  opens automatically. Failed tools replace the inline row with OpenCode's
+  `ToolErrorCard`: the error head becomes the subtitle, the cleaned error body
+  expands on demand, and a copy affordance appears on hover. Bottom-follow uses a stable signature to follow
   new business rows and turn-state changes before paint, while a resize observer
   follows streamed height growth only while the reader remains at the floor.
   Programmatic positions are tracked separately
@@ -354,10 +355,12 @@ Key mechanisms:
   dormant DeepSeek code-dispatch metadata stays nested beneath its root call;
   task calls use
   OpenCode's agent-colored delegation card and todo writes are hidden from the
-  transcript in favor of the live prompt-dock checklist; edit/patch parts with
-  `metadata.files` render a dedicated diff card (full path, +/− stat chips,
-  expandable colorized unified diff, click-to-open in the editor pane) while
-  other tools use the compact inline trigger.
+  transcript in favor of the live prompt-dock checklist; edit/write/patch parts
+  with `metadata.files` render an inline diff body (full path, +/− stat chips,
+  expandable colorized unified diff, click-to-open in the editor pane); shell
+  parts render `$ command` plus output in one scrollable pre; and any other
+  unrecognized tool uses OpenCode's `Called \`{tool}\`` trigger. No non-error
+  tool surface renders as a bordered card.
   Assistant prose carries no bubble; there is no typing-dot placeholder or
   stream cursor path.
 - **Large-session fixture** — `large-session.performance.test.ts` deterministically

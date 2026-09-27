@@ -69,8 +69,8 @@ Implementation / tests:
 
 | Phase | Scope | Status | Validation | Commit |
 |---|---|---|---|---|
-| 1 | Context-tool streaming core: ToolStatusTitle, count summary, grouping semantics, ContextToolGroup DOM, inline tool triggers | active | unit tests + visual | — |
-| 2 | Non-context surfaces parity: shell/edit/write/patch diff body, generic "Called" trigger, tool error card, `partDefaultOpen` | pending | unit tests + visual | — |
+| 1 | Context-tool streaming core: ToolStatusTitle, count summary, grouping semantics, ContextToolGroup DOM, inline tool triggers | done (72d232f) | unit tests + visual | 72d232f |
+| 2 | Non-context surfaces parity: shell/edit/write/patch body, generic "Called" trigger, tool error card, `partDefaultOpen` | active | unit tests + visual | — |
 | 3 | Assistant turn parity: parts grouping across messages, reasoning/text part parity | pending | unit tests | — |
 | 4 | Markdown streaming parity (paced projection / fence healing) | pending | unit + visual | — |
 | 5 | CSS parity pass + full visual sweep | pending | visual + `npm run check` | — |
@@ -92,6 +92,17 @@ Implementation / tests:
   behavior) instead of Orbit's previous >= 2 rule.
 - 2026-09-27 — Preserve Orbit's generic-tool argument privacy (do not dump
   arbitrary input) while adopting OpenCode's inline trigger structure.
+- 2026-09-27 — Failed tools render OpenCode's `ToolErrorCard` (error head as
+  subtitle, cleaned error body expandable, copy-on-hover) in place of the old
+  inline error summary; a failed read still folds into its context group.
+- 2026-09-27 — Shell tools adopt OpenCode's `bash-output` body (`$ command`
+  plus output in one scrollable pre with a copy affordance); edit/write/patch
+  render an inline diff body instead of a bordered card; unrecognized tools use
+  OpenCode's `Called \`{tool}\`` trigger.
+- 2026-09-27 — `partDefaultOpen` is not ported as a live default: OpenCode only
+  opens shell/edit by default when the host passes `shellToolDefaultOpen`/
+  `editToolDefaultOpen`, which Orbit does not expose. Orbit keeps its own
+  running-shell auto-open and leaves edit bodies collapsed.
 
 ## Open risks / blockers
 

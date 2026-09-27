@@ -559,7 +559,8 @@ function toolPresentation(tool: ToolCallView): { title: string; subtitle: string
   const nativeRecord = native && typeof native === "object" && !Array.isArray(native) ? native as Record<string, unknown> : null;
   const rawView = nativeRecord?.resultView ?? nativeRecord?.callView;
   const view = rawView && typeof rawView === "object" && !Array.isArray(rawView) ? rawView as Record<string, unknown> : null;
-  let title = name === "tool" ? "Tool call" : titleCase(tool.title);
+  // OpenCode's `GenericTool` fallback names an unrecognized tool by its raw id.
+  let title = `Called \`${tool.title}\``;
   let subtitle = tool.detail.replace(/^\$\s*/, "");
   let path: string | undefined;
   if (name === "read") {
@@ -744,7 +745,7 @@ function EditToolCard({ tool, session }: { tool: ToolCallView; session: SessionI
     void openFile(target, undefined, session?.workspace);
   };
   return (
-    <div data-component="edit-tool-card" data-tool={toolKey(tool.title)} data-status={tool.status} data-timeline-part-id={tool.id}>
+    <div data-component="edit-tool" data-variant="inline" data-tool={toolKey(tool.title)} data-status={tool.status} data-timeline-part-id={tool.id}>
       <div className="tool-collapsible" data-expanded={open ? "true" : undefined}>
         <button
           data-slot="collapsible-trigger"
@@ -762,7 +763,7 @@ function EditToolCard({ tool, session }: { tool: ToolCallView; session: SessionI
                 <div data-slot="basic-tool-tool-info-structured">
                   <div data-slot="basic-tool-tool-info-main" data-layout="edit">
                     <span data-slot="basic-tool-tool-title">
-                      {titleCase(tool.title)}
+                      <TextShimmer text={titleCase(tool.title)} active={tool.status === "running"} />
                     </span>
                     <span data-slot="edit-tool-summary">
                       {path && (
@@ -834,6 +835,86 @@ function ToolState({ tool }: { tool: ToolCallView }): ReactNode {
       {tool.status === "running" && <span data-slot="tool-state-pulse" aria-hidden="true" />}
       {label}
     </span>
+  );
+}
+
+function ToolErrorCard({ tool, session }: { tool: ToolCallView; session: SessionInfo | null }): ReactNode {
+  const { openFile, focusSession } = useStore();
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const presentation = toolPresentation(tool);
+  const failurePath = presentation.path;
+  const cleaned = (tool.output ?? "").replace(/^Error:\s*/, "").trim();
+  const prefix = `${effectiveToolKey(tool)} `;
+  const tail = cleaned.startsWith(prefix) ? cleaned.slice(prefix.length) : cleaned;
+  const segments = tail.split(": ");
+  const subtitle = segments.length <= 1 ? "Failed" : segments[0]?.trim() || "Failed";
+  const body = segments.length <= 1 ? cleaned : segments.slice(1).join(": ").trim() || cleaned;
+  const activateSubtitle = failurePath
+    ? (): void => {
+        const target = workspaceFilePath(failurePath, session);
+        if (!target) return;
+        if (session) focusSession?.(session.id);
+        void openFile(target, undefined, session?.workspace);
+      }
+    : undefined;
+  const copy = (): void => {
+    if (!cleaned) return;
+    void navigator.clipboard?.writeText(cleaned).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div data-component="tool-part-wrapper" data-tool={effectiveToolKey(tool)} data-variant="inline" data-status="failed" data-timeline-part-id={tool.id}>
+      <div data-kind="tool-error-card" data-open={open ? "true" : "false"} className="tool-collapsible" data-expanded={open ? "true" : undefined}>
+        <button data-slot="collapsible-trigger" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+          <div data-component="tool-trigger" data-clickable="true">
+            <span data-slot="tool-status-icon" data-state="failed" aria-hidden="true"><span className="codicon codicon-error" /></span>
+            <div data-slot="basic-tool-tool-trigger-content">
+              <div data-slot="basic-tool-tool-info">
+                <div data-slot="basic-tool-tool-info-structured">
+                  <div data-slot="basic-tool-tool-info-main">
+                    <span data-slot="basic-tool-tool-title">{presentation.title}</span>
+                    <span
+                      data-slot="basic-tool-tool-subtitle"
+                      className={activateSubtitle ? "clickable" : undefined}
+                      onClick={activateSubtitle
+                        ? (event) => {
+                            event.stopPropagation();
+                            activateSubtitle();
+                          }
+                        : undefined}
+                    >
+                      {subtitle}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span data-slot="collapsible-arrow" className="codicon codicon-chevron-down" />
+          </div>
+        </button>
+        {open && (
+          <div data-slot="collapsible-content">
+            <div data-slot="tool-error-card-content">
+              <div data-slot="tool-error-card-copy">
+                <button
+                  data-slot="tool-error-card-copy-button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    copy();
+                  }}
+                >
+                  {copied ? "Copied" : "Copy error"}
+                </button>
+              </div>
+              <div data-slot="tool-error-card-description">{body}</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1038,6 +1119,18 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
   }, [output, tool.status]);
   const displayInput = input.length > OUTPUT_LIMIT ? `${input.slice(0, OUTPUT_LIMIT)}\n… (truncated)` : input;
   const displayOutput = output.length > OUTPUT_LIMIT ? `${output.slice(0, OUTPUT_LIMIT)}\n… (truncated)` : output;
+  const shellInput = toolInput(tool);
+  const shell = ["bash", "shell"].includes(effectiveToolKey(tool));
+  const shellCommand = typeof shellInput.command === "string" ? shellInput.command : "";
+  const shellText = `$ ${shellCommand}${displayOutput ? `\n\n${displayOutput}` : ""}`;
+  const [copied, setCopied] = useState(false);
+  const copyShell = (): void => {
+    if (!shellText.trim()) return;
+    void navigator.clipboard?.writeText(shellText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
   const activateSubtitle = (): void => {
     if (!presentation.path) return;
     const target = workspaceFilePath(presentation.path, session);
@@ -1047,6 +1140,7 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
   };
 
   if (toolKey(tool.title) === "todowrite") return null;
+  if (tool.status === "failed") return <ToolErrorCard tool={tool} session={session} />;
   if (toolKey(tool.title) === "task" || toolKey(tool.title) === "subagent") return <TaskTool tool={tool} session={session} />;
 
   return (
@@ -1061,7 +1155,7 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
             <span data-slot="tool-status-icon" data-state={tool.status} aria-hidden="true">
               {tool.status === "running"
                 ? <span className="spinner" />
-                : <span className={`codicon codicon-${tool.status === "failed" ? "error" : "check"}`} />}
+                : <span className="codicon codicon-check" />}
             </span>
             <div data-slot="basic-tool-tool-trigger-content">
               <div data-slot="basic-tool-tool-info">
@@ -1092,31 +1186,43 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
             {expandable && <span data-slot="collapsible-arrow" className="codicon codicon-chevron-down" />}
           </div>
         </button>
-        {tool.status === "failed" && output && (
-          <div data-slot="tool-error-summary" title={output}>{output.trim().split("\n", 1)[0]}</div>
-        )}
         {tool.progress && tool.status === "running" && (
           <div data-slot="tool-progress"><TextShimmer text={progressText(tool.progress)} /></div>
         )}
         {expandable && open && (
           <div data-slot="collapsible-content">
-            {(input || output) && (
+            {shell && (input || output) ? (
+              <div data-component="bash-output" dir="ltr">
+                <div data-slot="bash-copy">
+                  <button
+                    data-slot="bash-copy-button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      copyShell();
+                    }}
+                  >
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+                <pre data-slot="bash-pre">{shellText}</pre>
+              </div>
+            ) : (input || output) ? (
               <div data-component="tool-io">
                 {input && (
                   <div data-component="tool-io-section">
-                    <span data-slot="tool-io-label">{["bash", "shell"].includes(effectiveToolKey(tool)) ? "COMMAND" : "IN"}</span>
+                    <span data-slot="tool-io-label">IN</span>
                     <pre data-slot="tool-io-text">{displayInput}</pre>
                   </div>
                 )}
                 {input && output && <span data-slot="tool-io-divider" />}
                 {output && (
                   <div data-component="tool-io-section">
-                    <span data-slot="tool-io-label">{["bash", "shell"].includes(effectiveToolKey(tool)) ? "OUTPUT" : "OUT"}</span>
-                    <pre data-slot="tool-io-text" data-error={tool.status === "failed" ? "true" : undefined}>{displayOutput}</pre>
+                    <span data-slot="tool-io-label">OUT</span>
+                    <pre data-slot="tool-io-text">{displayOutput}</pre>
                   </div>
                 )}
               </div>
-            )}
+            ) : null}
             {files.length > 0 && (
               <div data-component="tool-files">
                 {files.map((file) => (
@@ -1399,9 +1505,11 @@ function AssistantNode({
                 <div data-slot="assistant-activity-content">
                   {part.kind === "reasoning"
                     ? <ReasoningPart part={part} streaming={running} />
-                    : isEditCardTool(part.tool)
-                      ? <EditToolCard tool={part.tool} session={session} />
-                      : <ToolPart tool={part.tool} session={session} />}
+                    : part.tool.status === "failed"
+                      ? <ToolErrorCard tool={part.tool} session={session} />
+                      : isEditCardTool(part.tool)
+                        ? <EditToolCard tool={part.tool} session={session} />
+                        : <ToolPart tool={part.tool} session={session} />}
                 </div>
               </div>
             );

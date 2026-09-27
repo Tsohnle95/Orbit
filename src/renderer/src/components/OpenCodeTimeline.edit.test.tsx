@@ -91,7 +91,7 @@ describe("edit tool diff cards", () => {
       />
     ));
 
-    const card = container.querySelector("[data-component='edit-tool-card']");
+    const card = container.querySelector("[data-component='edit-tool']");
     expect(card).not.toBeNull();
     expect(card?.textContent).toContain("src/renderer/src/styles/_foundation.scss");
     expect(card?.querySelector("[data-slot='edit-stat-add']")?.textContent).toBe("+2");
@@ -154,7 +154,7 @@ describe("edit tool diff cards", () => {
       />
     ));
 
-    const card = container.querySelector("[data-component='edit-tool-card']");
+    const card = container.querySelector("[data-component='edit-tool']");
     expect(card?.textContent).toContain("2 files");
     const groupedSummary = card?.querySelector("[data-slot='edit-tool-summary']");
     expect(groupedSummary?.textContent).toBe("src/a.ts2 files+4-1");
