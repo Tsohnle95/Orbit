@@ -23,16 +23,41 @@ const sceneMessages = {
   "10-midnight": "See the whole system without losing focus.",
   "10-daybreak": "Start fresh. Stay with the work."
 };
+const nightCityPageCopy = {
+  "04-nocturne-tidal-city-rose-night": {
+    workspaceLabel: "01 / WORKSPACE",
+    workspaceHeading: "Open a folder. Work in its files.",
+    workspaceDescription: "The selected folder becomes Orbit’s workspace. Explorer lists its files, Monaco opens them, the integrated terminal uses that directory, and OpenCode V2 creates the session for it.",
+    interludeLabel: "WORKSPACE / FILE WATCHING",
+    interludeHeading: "Changes lists file edits Orbit observes during the session.",
+    interludeNote: "Edits are observed, not attributed.",
+    reviewHeading: "Open a diff when Orbit knows the starting content.",
+    reviewDescription: "Changes lists workspace files Orbit observed changing. When the original content is known, a file opens in Monaco Diff; otherwise it stays marked observed and Diff is unavailable.",
+    closeHeading: "The editor, terminal, and agent session share this folder.",
+    closeAction: "Back to workspace"
+  },
+  "04-nocturne-tidal-city-rose-night-workflow-rose-terminal": {
+    workspaceLabel: "01 / INTEGRATED TERMINAL",
+    workspaceHeading: "Run project commands from Orbit’s terminal.",
+    workspaceDescription: "The integrated terminal uses the active workspace directory. Explorer lists that folder’s files, Monaco opens them, and OpenCode V2 creates the session for it.",
+    interludeLabel: "WORKSPACE / FILE WATCHING",
+    interludeHeading: "Changes lists file edits Orbit observes during the session.",
+    interludeNote: "Edits are observed, not attributed.",
+    reviewHeading: "Open a diff when Orbit knows the starting content.",
+    reviewDescription: "Changes lists workspace files Orbit observed changing. When the original content is known, a file opens in Monaco Diff; otherwise it stays marked observed and Diff is unavailable.",
+    closeHeading: "The editor, terminal, and agent session share this folder.",
+    closeAction: "Back to workspace"
+  }
+};
 
 if (!design) {
   app.innerHTML = `<main class="missing-design"><h1>That exploration isn't here.</h1><a href="../index.html">See all Orbit designs →</a></main>`;
 } else {
   const isRepo = design.family === "04";
   const isAgentFocused = Boolean(design.productCopy);
+  const nightCityCopy = nightCityPageCopy[design.id];
   if (isAgentFocused) document.body.classList.add("agent-focused");
-  if (design.id === "04-nocturne-tidal-city-rose-night" || design.id === "04-nocturne-tidal-city-rose-night-workflow-rose-terminal") {
-    document.body.classList.add("night-city-narrative");
-  }
+  if (nightCityCopy) document.body.classList.add("night-city-narrative");
   const colors = `--scene-ink:${design.ink};--scene-accent:${design.accent};--scene-paper:${design.sky};--scene-ground:${design.foreground}`;
   document.title = `Orbit — ${design.name}`;
   document.body.classList.add(`explore-${design.family}`, `scene-${design.scene}`, `form-${design.form}`, `type-${design.type}`, design.light ? "scene-light" : "scene-dark");
@@ -58,6 +83,17 @@ if (!design) {
   </div>`;
   const repoProof = `<div class="proof-visual proof-repo"><div class="proof-window-top"><span>ORBIT / FILES</span><span>main ↗</span></div><div class="proof-folders"><p>⌄ &nbsp; orbit</p><p>⌄ &nbsp; src</p><p class="active">TS &nbsp; App.tsx</p><p>SCSS &nbsp; _layout.scss</p><p>⌄ &nbsp; mockup-design</p></div><div class="proof-focus"><span>App.tsx</span><code><b>const</b> repo = useWorkspace();<br /><b>return</b> &lt;AgentPanel repo={repo} /&gt;;</code></div><div class="proof-window-foot">The same project stays with every tool &nbsp; ↗</div></div>`;
   const deskProof = `<div class="proof-visual proof-desk"><div class="proof-window-top"><span>YOUR WORKSPACE / ACTIVE</span><span>⌘ K</span></div><div class="proof-screen"><div class="screen-editor"><span>App.tsx</span><code><b>export</b> function Workspace() {<br />&nbsp; <i>const</i> root = useRepo();<br />&nbsp; <b>return</b> &lt;Agent context={root} /&gt;;<br />}</code></div><div class="screen-agent"><span class="screen-status"></span> Agent<div>Following the code in your project…</div><small>✓ &nbsp; 2 files opened</small></div></div><div class="proof-terminal"><span>orbit $</span> npm run check &nbsp; <strong>✓ ready</strong></div></div>`;
+  const nightWorkspaceFacts = `<dl class="night-workspace-facts" aria-label="Tools in the active workspace">
+    <div><dt>FILES</dt><dd>Explorer</dd></div>
+    <div><dt>EDITOR</dt><dd>Monaco</dd></div>
+    <div><dt>AGENT</dt><dd>OpenCode V2</dd></div>
+    <div><dt>SHELL</dt><dd>Integrated terminal</dd></div>
+  </dl>`;
+  const nightChangeStates = `<dl class="night-change-states" aria-label="Changes list status meanings">
+    <div><dt>Modified</dt><dd>A known baseline differs from the current file.</dd></div>
+    <div><dt>Deleted</dt><dd>The file path is no longer in the workspace.</dd></div>
+    <div><dt>Observed</dt><dd>Starting content is unknown; Diff is unavailable.</dd></div>
+  </dl>`;
 
   app.innerHTML = `
     <header class="explore-nav">
@@ -84,21 +120,21 @@ if (!design) {
         </div>
       </section>
       <section class="art-inside" id="inside">
-        <div class="art-section-header"><p class="art-section-label">${isAgentFocused ? "01 / AGENT WORKSPACE" : isRepo ? "01 / THE SOURCE" : "01 / YOUR DESK"}</p><h2>${design.section}</h2><p>${isAgentFocused ? "Open a repository, run a coding agent beside the editor and terminal, then inspect its file diffs in Orbit." : isRepo ? "Orbit starts with a real repository. Your editor, terminal, agent session, and review all stay attached to the folder you chose." : "The desktop workspace puts your code, conversation, terminal, and changes together. No tab shuffle between the important parts."}</p></div>
-        ${design.lineage === "ridge" ? ridgeTiles : isRepo ? projectDiagram : desktopDock}
+        <div class="art-section-header"><p class="art-section-label">${nightCityCopy?.workspaceLabel ?? (isAgentFocused ? "01 / AGENT WORKSPACE" : isRepo ? "01 / THE SOURCE" : "01 / YOUR DESK")}</p><h2>${nightCityCopy?.workspaceHeading ?? design.section}</h2><p>${nightCityCopy?.workspaceDescription ?? (isAgentFocused ? "Open a repository, run a coding agent beside the editor and terminal, then inspect its file diffs in Orbit." : isRepo ? "Orbit starts with a real repository. Your editor, terminal, agent session, and review all stay attached to the folder you chose." : "The desktop workspace puts your code, conversation, terminal, and changes together. No tab shuffle between the important parts.")}</p></div>
+        ${nightCityCopy ? nightWorkspaceFacts : design.lineage === "ridge" ? ridgeTiles : isRepo ? projectDiagram : desktopDock}
       </section>
-      <section class="art-interlude" aria-label="${isRepo ? "The repository stays at the center" : "A connected desktop workspace"}">
+      <section class="art-interlude" aria-label="${nightCityCopy ? "Workspace file change tracking" : isRepo ? "The repository stays at the center" : "A connected desktop workspace"}">
          ${design.atmosphere ? orbitAtmosphere(design, "interlude") : orbitScene(design, "interlude")}
-        <div class="interlude-copy"><span class="interlude-mark" aria-hidden="true">◉</span><p>${isAgentFocused ? "ORBIT / AGENT WORKFLOW" : isRepo ? "ONE REPOSITORY / MANY NEXT STEPS" : "ONE DESK / A BETTER RHYTHM"}</p><h2>${design.message ?? sceneMessages[design.id]}</h2></div>
-        <div class="interlude-note"><span class="live-dot"></span>${isAgentFocused ? isRepo ? "~/code/orbit · agent workspace" : "Orbit · repository connected" : isRepo ? "~/code/orbit · project open" : "Orbit desktop · workspace active"}</div>
+         <div class="interlude-copy"><span class="interlude-mark" aria-hidden="true">◉</span><p>${nightCityCopy?.interludeLabel ?? (isAgentFocused ? "ORBIT / AGENT WORKFLOW" : isRepo ? "ONE REPOSITORY / MANY NEXT STEPS" : "ONE DESK / A BETTER RHYTHM")}</p><h2>${nightCityCopy?.interludeHeading ?? design.message ?? sceneMessages[design.id]}</h2></div>
+         <div class="interlude-note"><span class="live-dot"></span>${nightCityCopy?.interludeNote ?? (isAgentFocused ? isRepo ? "~/code/orbit · agent workspace" : "Orbit · repository connected" : isRepo ? "~/code/orbit · project open" : "Orbit desktop · workspace active")}</div>
       </section>
       <section class="art-review" id="review">
-        <div class="review-words"><p class="art-section-label">${isAgentFocused ? "02 / CHANGE REVIEW" : "02 / FROM START TO FINISH"}</p><h2>${isAgentFocused ? "From agent task to reviewed diff." : isRepo ? "Follow the work back to its source." : "Stay for the whole coding loop."}</h2><p>${isAgentFocused ? "Run the agent in your codebase, then inspect the exact file changes before accepting them." : isRepo ? "Read a file, ask a question about it, then open the diff. The work stays legible because it never leaves its project behind." : "Bring a project into view, work alongside the agent, run a command, and review the changes before moving on."}</p><div class="review-sequence"><span>01 &nbsp; OPEN</span><span>02 &nbsp; ASK</span><span>03 &nbsp; REVIEW</span></div></div>
-        ${isRepo ? repoProof : deskProof}
+        <div class="review-words"><p class="art-section-label">${nightCityCopy ? "02 / CHANGES & DIFFS" : isAgentFocused ? "02 / CHANGE REVIEW" : "02 / FROM START TO FINISH"}</p><h2>${nightCityCopy?.reviewHeading ?? (isAgentFocused ? "From agent task to reviewed diff." : isRepo ? "Follow the work back to its source." : "Stay for the whole coding loop.")}</h2><p>${nightCityCopy?.reviewDescription ?? (isAgentFocused ? "Run the agent in your codebase, then inspect the exact file changes before accepting them." : isRepo ? "Read a file, ask a question about it, then open the diff. The work stays legible because it never leaves its project behind." : "Bring a project into view, work alongside the agent, run a command, and review the changes before moving on.")}</p>${nightCityCopy ? "" : `<div class="review-sequence"><span>01 &nbsp; OPEN</span><span>02 &nbsp; ASK</span><span>03 &nbsp; REVIEW</span></div>`}</div>
+        ${nightCityCopy ? nightChangeStates : isRepo ? repoProof : deskProof}
       </section>
-      <section class="art-close"><div><p class="art-section-label">${isAgentFocused ? "ORBIT / AGENT DEVELOPMENT ENVIRONMENT" : isRepo ? "KEEP THE PROJECT CLOSE" : "WORK WHERE THE WORK IS"}</p><h2>${isAgentFocused ? "Code, run, review." : isRepo ? "A clear place to begin." : "Make yourself at home."}</h2></div><a class="art-button" href="#inside">${isAgentFocused ? "Open the workspace" : "Explore Orbit"} <span aria-hidden="true">↑</span></a></section>
-    </main>
-     <footer class="art-footer"><a class="explore-brand" href="../index.html"><span aria-hidden="true">◉</span> orbit</a><span>${isAgentFocused ? "Orbit · repository-aware agent development environment." : isRepo ? "Built around your repository." : "A home for the coding loop."}</span></footer>`;
+      <section class="art-close"><div><p class="art-section-label">${nightCityCopy ? "ORBIT / WORKSPACE DETAILS" : isAgentFocused ? "ORBIT / AGENT DEVELOPMENT ENVIRONMENT" : isRepo ? "KEEP THE PROJECT CLOSE" : "WORK WHERE THE WORK IS"}</p><h2>${nightCityCopy?.closeHeading ?? (isAgentFocused ? "Code, run, review." : isRepo ? "A clear place to begin." : "Make yourself at home.")}</h2></div><a class="art-button" href="#inside">${nightCityCopy?.closeAction ?? (isAgentFocused ? "Open the workspace" : "Explore Orbit")} <span aria-hidden="true">↑</span></a></section>
+      </main>
+      <footer class="art-footer"><a class="explore-brand" href="../index.html"><span aria-hidden="true">◉</span> orbit</a><span>${nightCityCopy ? "OpenCode V2 · Explorer · Monaco · integrated terminal" : isAgentFocused ? "Orbit · repository-aware agent development environment." : isRepo ? "Built around your repository." : "A home for the coding loop."}</span></footer>`;
   if (design.atmosphere) {
     const hero = document.querySelector(".art-hero");
     const foreground = hero.querySelector(".atmosphere-foreground");
