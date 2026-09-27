@@ -4,6 +4,9 @@ import remarkGfm from "remark-gfm";
 import { useStore } from "../store";
 import type { ToolCallView, TranscriptItem, SessionSummary, SessionInfo } from "@shared/types";
 import { ExternalLink } from "./ExternalLink";
+import { TextShimmer } from "./TextShimmer";
+import { ToolStatusTitle } from "./ToolStatusTitle";
+import { AnimatedCountList, type CountItem } from "./ToolCountSummary";
 
 const OUTPUT_LIMIT = 6000;
 
@@ -13,29 +16,6 @@ type VisibleTimelineItem = Exclude<TranscriptItem, { kind: "permission" | "pendi
 
 function isInternalSystemReminder(item: Extract<TranscriptItem, { kind: "synthetic" }>): boolean {
   return /<system-reminder(?:\s[^>]*)?>[\s\S]*<\/system-reminder>/i.test(item.text);
-}
-
-function TextShimmer({ text, active = true, tone = "default" }: { text: string; active?: boolean; tone?: "default" | "thinking" }): ReactNode {
-  const [run, setRun] = useState(active);
-  useEffect(() => {
-    if (active) {
-      setRun(true);
-      return;
-    }
-    const timer = setTimeout(() => setRun(false), 220);
-    return () => clearTimeout(timer);
-  }, [active]);
-
-  return (
-    <span data-component="text-shimmer" data-tone={tone} data-active={active ? "true" : "false"} aria-label={text}>
-      <span data-slot="text-shimmer-char">
-        <span data-slot="text-shimmer-char-base" aria-hidden="true">{text}</span>
-        <span data-slot="text-shimmer-char-shimmer" data-run={run ? "true" : "false"} aria-hidden="true">
-          {text}
-        </span>
-      </span>
-    </span>
-  );
 }
 
 const CODE_TOKEN_PATTERN = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*|\b(?:as|async|await|break|case|catch|class|const|continue|def|else|export|extends|for|from|function|if|import|in|interface|let|new|of|return|static|switch|throw|try|type|var|while|with|yield)\b|\b\d+(?:\.\d+)?\b|\b[A-Za-z_$][\w$]*(?=\s*\())/g;
@@ -353,12 +333,45 @@ function effectiveToolKey(tool: ToolCallView): string {
   return explicit || "tool";
 }
 
-// Context reads are low-signal: render them as a compact inline log rather than
-// a full card, so a burst of exploration never fills the transcript.
-const CONTEXT_TOOL_KEYS = new Set(["read", "list", "glob", "grep", "inspect"]);
+// Context reads are low-signal. Like OpenCode's `isContextGroupTool`, a
+// contiguous run of these is folded into one `ContextToolGroup` so a burst of
+// exploration never fills the transcript.
+const CONTEXT_TOOL_KEYS = new Set(["read", "list", "glob", "grep"]);
 
 function isContextTool(tool: ToolCallView): boolean {
   return CONTEXT_TOOL_KEYS.has(effectiveToolKey(tool));
+}
+
+function contextToolArgs(tool: ToolCallView): string[] {
+  const name = effectiveToolKey(tool);
+  const input = toolInput(tool);
+  if (name === "read") {
+    const args: string[] = [];
+    if (typeof input.offset === "number") args.push(`offset=${input.offset}`);
+    if (typeof input.limit === "number") args.push(`limit=${input.limit}`);
+    return args;
+  }
+  if (name === "glob") return typeof input.pattern === "string" ? [`pattern=${input.pattern}`] : [];
+  if (name === "grep") {
+    const args: string[] = [];
+    if (typeof input.pattern === "string") args.push(`pattern=${input.pattern}`);
+    if (typeof input.include === "string") args.push(`include=${input.include}`);
+    return args;
+  }
+  return [];
+}
+
+function contextToolSummary(tools: ToolCallView[]): { read: number; search: number; list: number } {
+  let read = 0;
+  let search = 0;
+  let list = 0;
+  for (const tool of tools) {
+    const name = effectiveToolKey(tool);
+    if (name === "read") read += 1;
+    else if (name === "glob" || name === "grep") search += 1;
+    else if (name === "list") list += 1;
+  }
+  return { read, search, list };
 }
 
 interface SubagentRef {
@@ -1037,7 +1050,7 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
   if (toolKey(tool.title) === "task" || toolKey(tool.title) === "subagent") return <TaskTool tool={tool} session={session} />;
 
   return (
-    <div data-component="tool-part-wrapper" data-tool={effectiveToolKey(tool)} data-variant={isContextTool(tool) ? "inline" : "card"} data-status={tool.status} data-timeline-part-id={tool.id}>
+    <div data-component="tool-part-wrapper" data-tool={effectiveToolKey(tool)} data-variant="inline" data-status={tool.status} data-timeline-part-id={tool.id}>
       <div className="tool-collapsible" data-expanded={open ? "true" : undefined}>
         <button
           data-slot="collapsible-trigger"
@@ -1176,8 +1189,8 @@ function UserMessage({ item }: { item: Extract<TranscriptItem, { kind: "user" }>
 type ActivityPart = Exclude<AssistantPart, { kind: "text" }>;
 type ActivityEntry = ActivityPart | { kind: "context-group"; id: string; tools: ToolCallView[] };
 
-function isCompletedContextPart(part: ActivityPart): part is Extract<ActivityPart, { kind: "tool" }> {
-  return part.kind === "tool" && part.tool.status === "success" && isContextTool(part.tool);
+function isContextActivityPart(part: ActivityPart): part is Extract<ActivityPart, { kind: "tool" }> {
+  return part.kind === "tool" && isContextTool(part.tool);
 }
 
 function groupContextParts(parts: ActivityPart[]): ActivityEntry[] {
@@ -1185,40 +1198,104 @@ function groupContextParts(parts: ActivityPart[]): ActivityEntry[] {
   let index = 0;
   while (index < parts.length) {
     const part = parts[index];
-    if (!isCompletedContextPart(part)) {
+    if (!isContextActivityPart(part)) {
       grouped.push(part);
       index += 1;
       continue;
     }
     const context: Extract<ActivityPart, { kind: "tool" }>[] = [part];
     let cursor = index + 1;
-    while (cursor < parts.length && isCompletedContextPart(parts[cursor])) {
+    while (cursor < parts.length && isContextActivityPart(parts[cursor])) {
       context.push(parts[cursor] as Extract<ActivityPart, { kind: "tool" }>);
       cursor += 1;
     }
-    if (context.length < 2) grouped.push(...context);
-    else grouped.push({ kind: "context-group", id: `context:${context[0].id}`, tools: context.map((entry) => entry.tool) });
+    grouped.push({ kind: "context-group", id: `context:${context[0].id}`, tools: context.map((entry) => entry.tool) });
     index = cursor;
   }
   return grouped;
 }
 
+function ContextToolRow({ tool, session }: { tool: ToolCallView; session: SessionInfo | null }): ReactNode {
+  const { openFile, focusSession } = useStore();
+  const presentation = toolPresentation(tool);
+  const args = contextToolArgs(tool);
+  const activateSubtitle = presentation.path
+    ? (): void => {
+        const target = workspaceFilePath(presentation.path!, session);
+        if (!target) return;
+        if (session) focusSession?.(session.id);
+        void openFile(target, undefined, session?.workspace);
+      }
+    : undefined;
+  return (
+    <div data-slot="context-tool-group-item">
+      <div data-component="tool-trigger">
+        <div data-slot="basic-tool-tool-trigger-content">
+          <div data-slot="basic-tool-tool-info">
+            <div data-slot="basic-tool-tool-info-structured">
+              <div data-slot="basic-tool-tool-info-main">
+                <span data-slot="basic-tool-tool-title">
+                  <TextShimmer text={presentation.title} active={tool.status === "running"} />
+                </span>
+                {presentation.subtitle && (
+                  <span
+                    data-slot="basic-tool-tool-subtitle"
+                    className={activateSubtitle ? "clickable" : undefined}
+                    title={presentation.subtitle}
+                    onClick={activateSubtitle
+                      ? (event) => {
+                          event.stopPropagation();
+                          activateSubtitle();
+                        }
+                      : undefined}
+                  >
+                    {presentation.subtitle}
+                  </span>
+                )}
+                {args.map((arg) => <span data-slot="basic-tool-tool-arg" key={arg}>{arg}</span>)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ContextToolGroup({ tools, session }: { tools: ToolCallView[]; session: SessionInfo | null }): ReactNode {
   const [open, setOpen] = useState(false);
-  const labels = [...new Set(tools.map((tool) => toolPresentation(tool).subtitle).filter(Boolean))];
-  const preview = labels.slice(0, 3).join(", ");
-  const remaining = Math.max(0, labels.length - 3);
+  const summary = contextToolSummary(tools);
+  const pending = tools.some((tool) => tool.status === "running");
+  const items: CountItem[] = [
+    { key: "read", count: summary.read },
+    { key: "search", count: summary.search },
+    { key: "list", count: summary.list }
+  ];
   return (
-    <div data-component="context-tool-group" data-expanded={open ? "true" : undefined}>
-      <button data-slot="context-tool-trigger" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-        <span data-slot="context-tool-icon" aria-hidden="true"><span className="codicon codicon-check" /></span>
-        <span data-slot="context-tool-title">Explored {tools.length} {tools.length === 1 ? "item" : "items"}</span>
-        {preview && <span data-slot="context-tool-preview" title={labels.join(", ")}>{preview}{remaining ? ` +${remaining}` : ""}</span>}
-        <span data-slot="collapsible-arrow" className="codicon codicon-chevron-down" />
+    <div
+      data-component="context-tool-group"
+      className="tool-collapsible"
+      data-timeline-part-ids={tools.map((tool) => tool.id).join(",")}
+      data-expanded={open ? "true" : undefined}
+    >
+      <button data-slot="collapsible-trigger" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <div data-component="context-tool-group-trigger">
+          <span data-slot="context-tool-group-title">
+            <span data-slot="context-tool-group-label">
+              <ToolStatusTitle active={pending} activeText="Exploring" doneText="Explored" split={false} />
+            </span>
+            <span data-slot="context-tool-group-summary">
+              <AnimatedCountList items={items} fallback="" />
+            </span>
+          </span>
+          <span data-slot="collapsible-arrow" className="codicon codicon-chevron-down" />
+        </div>
       </button>
       {open && (
-        <div data-slot="context-tool-list">
-          {tools.map((tool) => <ToolPart tool={tool} session={session} key={tool.id} />)}
+        <div data-slot="collapsible-content">
+          <div data-component="context-tool-group-list">
+            {tools.map((tool) => <ContextToolRow tool={tool} session={session} key={tool.id} />)}
+          </div>
         </div>
       )}
     </div>

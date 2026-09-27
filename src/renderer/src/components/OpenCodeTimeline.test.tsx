@@ -175,7 +175,10 @@ describe("OpenCodeTimeline chronology", () => {
       />
     ));
 
-    const subtitle = container.querySelector("[data-slot='basic-tool-tool-subtitle']") as HTMLElement | null;
+    const subtitle = (() => {
+      act(() => container.querySelector<HTMLButtonElement>("[data-component='context-tool-group'] [data-slot='collapsible-trigger']")!.click());
+      return container.querySelector("[data-slot='basic-tool-tool-subtitle']") as HTMLElement | null;
+    })();
     act(() => subtitle?.click());
 
     expect(storeState.focusSession).toHaveBeenCalledWith("session-read");
@@ -447,32 +450,40 @@ describe("OpenCodeTimeline chronology", () => {
     expect(note?.querySelector("[data-slot='session-note-text']")?.textContent).toBe("Interrupted");
   });
 
-  it("summarizes contiguous completed exploration while retaining expandable call details", () => {
+  it("groups contiguous exploration under an OpenCode status title with counts", () => {
     const read = toolAssistant("read", "read", { filePath: "/repo/src/main.ts" }) as Extract<TranscriptItem, { kind: "assistant" }>;
     const grep = toolAssistant("grep", "grep", { pattern: "stream", path: "/repo/src" }) as Extract<TranscriptItem, { kind: "assistant" }>;
     const transcript: TranscriptItem[] = [{ ...read, parts: [...read.parts, ...grep.parts] }];
     act(() => root.render(<OpenCodeTimeline transcript={transcript} busy={false} lastAssistantId={null} />));
 
-    expect(container.querySelector("[data-slot='context-tool-title']")?.textContent).toBe("Explored 2 items");
-    expect(container.querySelector("[data-slot='context-tool-preview']")?.textContent).toContain("main.ts");
-    expect(container.querySelector("[data-slot='context-tool-list']")).toBeNull();
+    expect(container.querySelector("[data-component='tool-status-title']")?.getAttribute("aria-label")).toBe("Explored");
+    const summary = container.querySelector("[data-slot='context-tool-group-summary']");
+    const activeCounts = [...(summary?.querySelectorAll("[data-slot='tool-count-summary-item'][data-active='true'] [data-component='animated-number']") ?? [])]
+      .map((node) => node.getAttribute("aria-label"));
+    expect(activeCounts).toEqual(["1", "1"]);
+    const activeLabels = [...(summary?.querySelectorAll("[data-slot='tool-count-summary-item'][data-active='true']") ?? [])]
+      .map((node) => node.textContent?.replace(/[0-9]/g, "").trim());
+    expect(activeLabels).toEqual(["read", "search"]);
+    expect(container.querySelector("[data-component='context-tool-group-list']")).toBeNull();
 
-    act(() => container.querySelector<HTMLButtonElement>("[data-slot='context-tool-trigger']")!.click());
+    act(() => container.querySelector<HTMLButtonElement>("[data-component='context-tool-group'] [data-slot='collapsible-trigger']")!.click());
 
-    const titles = [...container.querySelectorAll("[data-slot='basic-tool-tool-title']")].map((node) => node.textContent);
+    const titles = [...container.querySelectorAll("[data-component='context-tool-group-list'] [data-slot='basic-tool-tool-title']")]
+      .map((node) => node.querySelector("[data-component='text-shimmer']")?.getAttribute("aria-label"));
     expect(titles).toEqual(["Read", "Grep"]);
   });
 
-  it("renders context reads inline and higher-signal tools as cards", () => {
+  it("renders every tool as a compact inline trigger inside context groups", () => {
     const read = toolAssistant("read", "read", { filePath: "/repo/src/main.ts" }) as Extract<TranscriptItem, { kind: "assistant" }>;
     const bash = toolAssistant("bash", "bash", { command: "npm test" }) as Extract<TranscriptItem, { kind: "assistant" }>;
     const transcript: TranscriptItem[] = [{ ...read, parts: [...read.parts, ...bash.parts] }];
     act(() => root.render(<OpenCodeTimeline transcript={transcript} busy={false} lastAssistantId={null} />));
 
-    const inline = container.querySelector("[data-component='tool-part-wrapper'][data-variant='inline']");
-    expect(inline?.getAttribute("data-tool")).toBe("read");
-    const card = container.querySelector("[data-component='tool-part-wrapper'][data-variant='card']");
-    expect(card?.getAttribute("data-tool")).toBe("bash");
+    const wrappers = [...container.querySelectorAll("[data-component='tool-part-wrapper']")];
+    expect(wrappers).toHaveLength(1);
+    expect(wrappers[0]?.getAttribute("data-tool")).toBe("bash");
+    expect(wrappers[0]?.getAttribute("data-variant")).toBe("inline");
+    expect(container.querySelector("[data-component='context-tool-group']")).not.toBeNull();
   });
 
   it("infers an inspect call and target from a generic path-shaped tool record", () => {

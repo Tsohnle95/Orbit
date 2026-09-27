@@ -329,13 +329,13 @@ Key mechanisms:
   (`colors.user`, exposed as `--agent-user-bubble`) and a first prose group in an
   assistant message (or the first prose after activity) is preceded by an accent-dot
   `Orbit` name head; final assistant markdown remains flat. Reasoning and tool calls
-  form one calm work log. Context reads (read/list/glob/grep/inspect) render as
-  compact single-line rows — status icon, action, and target — so a burst of
-  exploration never fills the transcript; a run of completed context reads
-  collapses into one inline `Explored N items` line that expands to those same
-  compact rows. Higher-signal work keeps bordered cards: edit/patch diffs, shell
-  commands, and delegated agents. A running card takes an accent border
-  and raised background instead of a per-row status marker.
+  form one calm work log. Context reads (read/list/glob/grep) always fold — as in
+  OpenCode's `groupParts` — into a `ContextToolGroup`: its trigger shows a
+  `ToolStatusTitle` (`Exploring` while pending, `Explored` when settled) plus an
+  `AnimatedCountList` summary (`N reads, N searches, N lists`) and expands to
+  compact inline rows (action, target, and any offset/limit/pattern/include
+  args). Every other tool renders as a compact inline trigger too, so a burst of
+  exploration never fills the transcript; a running tool shimmers its title.
   Final prose remains visually separate from that log. Each native step keeps a
   stable keyed entry and chronological position. A running Thinking summary
   follows the newest native reasoning or OpenCode commentary line. Native
@@ -344,22 +344,20 @@ Key mechanisms:
   expands it. Tool rows expose running, failed, done, or duration state;
   structured progress is reduced to a readable phrase; live command output
   opens automatically, while failures keep their error visible inline and leave
-  detailed I/O collapsed. Contiguous completed read/list/search calls collapse
-  into an expandable exploration summary. Bottom-follow uses a stable signature to follow
+  detailed I/O collapsed. Bottom-follow uses a stable signature to follow
   new business rows and turn-state changes before paint, while a resize observer
   follows streamed height growth only while the reader remains at the floor.
   Programmatic positions are tracked separately
   so inertial or deliberate reader scrolling is not mistaken for stream movement.
   A minimal inline working item exists only until the first concrete stream node
-  arrives; no footer mirrors active reasoning or tools. Adjacent read/glob/grep/list
-  parts remain individually visible across assistant messages; recursive
+  arrives; no footer mirrors active reasoning or tools. Recursive
   dormant DeepSeek code-dispatch metadata stays nested beneath its root call;
   task calls use
   OpenCode's agent-colored delegation card and todo writes are hidden from the
   transcript in favor of the live prompt-dock checklist; edit/patch parts with
   `metadata.files` render a dedicated diff card (full path, +/− stat chips,
   expandable colorized unified diff, click-to-open in the editor pane) while
-  other tools use bordered BasicTool cards.
+  other tools use the compact inline trigger.
   Assistant prose carries no bubble; there is no typing-dot placeholder or
   stream cursor path.
 - **Large-session fixture** — `large-session.performance.test.ts` deterministically
