@@ -402,8 +402,34 @@ describe("OpenCodeTimeline chronology", () => {
       />
     ));
 
-    expect([...container.querySelectorAll("[data-timeline-row]")].map((node) => node.textContent))
+    const rowText = (node: Element): string | null => {
+      const clone = node.cloneNode(true) as Element;
+      clone.querySelectorAll("[data-slot='assistant-message-head']").forEach((head) => head.remove());
+      return clone.textContent;
+    };
+
+    expect([...container.querySelectorAll("[data-timeline-row]")].map(rowText))
       .toEqual(["one", "two", "working", "three", "four"]);
+  });
+
+  it("shows the Orbit name head for the first prose group and after activity", () => {
+    const message: TranscriptItem = {
+      kind: "assistant",
+      id: "a1",
+      messageID: "a1",
+      completed: true,
+      parts: [
+        { kind: "text", id: "t1", text: "intro", complete: true },
+        { kind: "tool", id: "tool1", tool: { id: "tool1", title: "read", detail: "", status: "success", input: "{}", inputValue: {} } },
+        { kind: "text", id: "t2", text: "outro", complete: true }
+      ]
+    };
+    act(() => root.render(<OpenCodeTimeline transcript={[message]} busy={false} lastAssistantId={null} />));
+
+    const heads = [...container.querySelectorAll("[data-slot='assistant-message-head']")];
+    expect(heads).toHaveLength(2);
+    expect(heads.every((head) => head.textContent === "Orbit")).toBe(true);
+    expect(heads[0]?.querySelector("[data-slot='assistant-avatar']")).not.toBeNull();
   });
 
   it("renders status notes as quiet inline markers, not boxes", () => {

@@ -48,6 +48,7 @@ function applyAppearance(theme: ThemeId): void {
     "--agent-bg-layer": colors.card,
     "--agent-bg-hover": accentMix(7),
     "--agent-bg-active": accentMix(13),
+    "--agent-user-bubble": colors.user,
     "--agent-border-muted": colors.lineSoft,
     "--agent-border-base": colors.line,
     "--agent-border-strong": colors.lineStrong,

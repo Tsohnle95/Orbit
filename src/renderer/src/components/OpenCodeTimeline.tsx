@@ -209,17 +209,25 @@ function ResponseOptions({
 function TextPart({
   part,
   streaming,
+  showLabel = false,
   showRevert = false,
   onRevert
 }: {
   part: Extract<AssistantPart, { kind: "text" }>;
   streaming: boolean;
+  showLabel?: boolean;
   showRevert?: boolean;
   onRevert?: () => void;
 }): ReactNode {
   if (!part.text) return null;
   return (
     <div data-component="text-part" data-copyable={!streaming ? "true" : undefined} data-timeline-part-id={part.id}>
+      {showLabel && (
+        <div data-slot="assistant-message-head">
+          <span data-slot="assistant-avatar" aria-hidden="true" />
+          <span data-slot="assistant-name">Orbit</span>
+        </div>
+      )}
       {!streaming && (
         <div data-slot="text-part-copy-wrapper">
           <ResponseOptions text={part.text} showRevert={showRevert} onRevert={onRevert} />
@@ -715,7 +723,7 @@ function EditToolCard({ tool, session }: { tool: ToolCallView; session: SessionI
     void openFile(target, undefined, session?.workspace);
   };
   return (
-    <div data-component="edit-tool-card" data-tool={toolKey(tool.title)} data-timeline-part-id={tool.id}>
+    <div data-component="edit-tool-card" data-tool={toolKey(tool.title)} data-status={tool.status} data-timeline-part-id={tool.id}>
       <div className="tool-collapsible" data-expanded={open ? "true" : undefined}>
         <button
           data-slot="collapsible-trigger"
@@ -723,6 +731,11 @@ function EditToolCard({ tool, session }: { tool: ToolCallView; session: SessionI
           onClick={() => expandable && setOpen((value) => !value)}
         >
           <div data-component="tool-trigger" data-clickable={expandable ? "true" : undefined}>
+            <span data-slot="tool-status-icon" data-state={tool.status} aria-hidden="true">
+              {tool.status === "running"
+                ? <span className="spinner" />
+                : <span className={`codicon codicon-${tool.status === "failed" ? "error" : "check"}`} />}
+            </span>
             <div data-slot="basic-tool-tool-trigger-content">
               <div data-slot="basic-tool-tool-info">
                 <div data-slot="basic-tool-tool-info-structured">
@@ -1024,6 +1037,11 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
           onClick={() => expandable && setOpen((value) => !value)}
         >
           <div data-component="tool-trigger" data-clickable={expandable ? "true" : undefined}>
+            <span data-slot="tool-status-icon" data-state={tool.status} aria-hidden="true">
+              {tool.status === "running"
+                ? <span className="spinner" />
+                : <span className={`codicon codicon-${tool.status === "failed" ? "error" : "check"}`} />}
+            </span>
             <div data-slot="basic-tool-tool-trigger-content">
               <div data-slot="basic-tool-tool-info">
                 <div data-slot="basic-tool-tool-info-structured">
@@ -1185,6 +1203,7 @@ function ContextToolGroup({ tools, session }: { tools: ToolCallView[]; session: 
   return (
     <div data-component="context-tool-group" data-expanded={open ? "true" : undefined}>
       <button data-slot="context-tool-trigger" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <span data-slot="context-tool-icon" aria-hidden="true"><span className="codicon codicon-check" /></span>
         <span data-slot="context-tool-title">Explored {tools.length} {tools.length === 1 ? "item" : "items"}</span>
         {preview && <span data-slot="context-tool-preview" title={labels.join(", ")}>{preview}{remaining ? ` +${remaining}` : ""}</span>}
         <span data-slot="collapsible-arrow" className="codicon codicon-chevron-down" />
@@ -1247,12 +1266,14 @@ function AssistantNode({
     const group = groups[groupIndex];
     const isLastGroup = groupIndex === groups.length - 1;
     if (group.kind === "text") {
+      const showLabel = groupIndex === 0 || groups[groupIndex - 1]?.kind === "activity";
       rows.push(
         <TimelineRow tag="AssistantMessage" previous={previous} key={group.part.id}>
           <div data-slot="session-turn-assistant-content">
             <TextPart
               part={group.part}
               streaming={streaming}
+              showLabel={showLabel}
               showRevert={showRevert && isLastGroup && Boolean(session)}
               onRevert={session ? () => void stageRevert(session.workspace, item.messageID) : undefined}
             />
