@@ -55,9 +55,11 @@ if (!design) {
 } else {
   const isRepo = design.family === "04";
   const isAgentFocused = Boolean(design.productCopy);
+  const isRoseTerminal = design.id === "04-nocturne-tidal-city-rose-night-workflow-rose-terminal";
   const nightCityCopy = nightCityPageCopy[design.id];
   if (isAgentFocused) document.body.classList.add("agent-focused");
   if (nightCityCopy) document.body.classList.add("night-city-narrative");
+  if (isRoseTerminal) document.body.classList.add("orbit-showcase");
   const colors = `--scene-ink:${design.ink};--scene-accent:${design.accent};--scene-paper:${design.sky};--scene-ground:${design.foreground}`;
   document.title = `Orbit — ${design.name}`;
   document.body.classList.add(`explore-${design.family}`, `scene-${design.scene}`, `form-${design.form}`, `type-${design.type}`, design.light ? "scene-light" : "scene-dark");
@@ -94,11 +96,83 @@ if (!design) {
     <div><dt>Deleted</dt><dd>The file path is no longer in the workspace.</dd></div>
     <div><dt>Observed</dt><dd>Starting content is unknown; Diff is unavailable.</dd></div>
   </dl>`;
+  const roseTerminalStory = `
+    <section class="showcase-workflow" id="inside" aria-labelledby="workflow-title">
+      <div class="showcase-heading">
+        <p class="art-section-label">01 / ONE WORKSPACE, TWO WAYS TO BUILD</p>
+        <h2 id="workflow-title">Stay in the code.<br /><em>Step back when you want to.</em></h2>
+        <p>Orbit brings the familiar coding desk and the agent conversation into one app. Open a repository, work directly in its files, or give an agent a task without losing sight of the project.</p>
+      </div>
+      <div class="showcase-workflow-grid">
+        <article class="showcase-mode">
+          <div class="showcase-mode-top"><span>01 / DIRECT WORK</span><span>EDITOR + TERMINAL</span></div>
+          <h3>For the parts you want to do yourself.</h3>
+          <p>Browse the file tree, edit in Monaco, run project commands in the integrated terminal, and inspect changed files in the diff view.</p>
+          <div class="showcase-mini-editor" aria-label="Illustration of Orbit's editor and integrated terminal">
+            <div class="showcase-mini-bar"><span class="showcase-window-dots" aria-hidden="true">● ● ●</span><span>src / main / opencode.ts</span><span>×</span></div>
+            <div class="showcase-code"><span>118</span><code><b>export async function</b> openWorkspace() {</code><span>119</span><code>&nbsp; <b>const</b> session = <i>await</i> connectRuntime();</code><span>120</span><code>&nbsp; <b>return</b> attachSession(session);</code></div>
+            <div class="showcase-mini-terminal"><span>TERMINAL</span><code>orbit $ npm run check <b>✓</b></code></div>
+          </div>
+        </article>
+        <article class="showcase-mode">
+          <div class="showcase-mode-top"><span>02 / AGENT WORK</span><span>CONVERSATION + TOOLS</span></div>
+          <h3>For the work you want to direct.</h3>
+          <p>Orbit's agent panel is built in. Give it a task, follow progress and tool activity in a readable conversation, then inspect the files that changed. No editor plugin to assemble.</p>
+          <div class="showcase-mini-agent" aria-label="Illustration of an Orbit agent conversation">
+            <div class="showcase-mini-bar"><span>◉ &nbsp; Agent</span><span>OpenCode V2</span></div>
+            <div class="showcase-prompt">Trace how a repository session reaches the editor and agent panel.</div>
+            <div class="showcase-agent-step"><span class="showcase-step-dot"></span><span><strong>Reading the project</strong><small>docs/architecture.md · src/main/opencode.ts</small></span></div>
+            <div class="showcase-agent-step"><span class="showcase-step-dot"></span><span><strong>Following the handoff</strong><small>src/renderer/src/store.tsx</small></span></div>
+            <div class="showcase-agent-composer">Ask about this repository or describe a change… <span>↑</span></div>
+          </div>
+        </article>
+      </div>
+      <p class="showcase-workflow-foot">YOUR REPOSITORY IS THE SHARED CONTEXT <span aria-hidden="true">↗</span> EXPLORER &nbsp;·&nbsp; EDITOR &nbsp;·&nbsp; TERMINAL &nbsp;·&nbsp; AGENTS &nbsp;·&nbsp; DIFFS</p>
+    </section>
+    <section class="showcase-fleet" id="agents" aria-labelledby="fleet-title">
+      <div class="showcase-fleet-inner">
+        <div class="showcase-fleet-copy">
+          <p class="art-section-label">02 / AGENT MODE</p>
+          <h2 id="fleet-title">A fleet of agents.<br /><em>One place to steer it.</em></h2>
+          <p>Open up to eight agent panes at once. Keep sessions visible in a single organized view instead of spreading eight CLI windows across your desktop. Switch back to the focused coding workspace whenever you need to get into the files.</p>
+          <div class="showcase-fleet-meta"><span>01—08</span><span>VISIBLE AGENT PANES</span></div>
+        </div>
+        <div class="showcase-fleet-window" role="img" aria-label="Illustration of eight agent sessions arranged in Orbit Agent Mode">
+          <div class="showcase-fleet-bar"><span><span class="showcase-window-dots" aria-hidden="true">● ● ●</span> ORBIT / AGENT MODE</span><span>8 PANELS <span aria-hidden="true">▦</span></span></div>
+          <div class="showcase-fleet-grid">
+            <div class="showcase-fleet-pane is-active"><span>01 <i>●</i></span><strong>Runtime bridge</strong><small>Following session events</small><b>Working</b></div>
+            <div class="showcase-fleet-pane"><span>02 <i>●</i></span><strong>Editor state</strong><small>Reviewing file changes</small><b>Working</b></div>
+            <div class="showcase-fleet-pane"><span>03 <i>●</i></span><strong>Terminal flow</strong><small>Checking command output</small><b>Working</b></div>
+            <div class="showcase-fleet-pane"><span>04 <i>●</i></span><strong>Docs pass</strong><small>Ready for review</small><b>Ready</b></div>
+            <div class="showcase-fleet-pane"><span>05 <i>●</i></span><strong>UI details</strong><small>Reading components</small><b>Working</b></div>
+            <div class="showcase-fleet-pane"><span>06 <i>●</i></span><strong>Tests</strong><small>Ready for review</small><b>Ready</b></div>
+            <div class="showcase-fleet-pane"><span>07 <i>●</i></span><strong>Refactor</strong><small>Following imports</small><b>Working</b></div>
+            <div class="showcase-fleet-pane"><span>08 <i>●</i></span><strong>Release notes</strong><small>Waiting for input</small><b>Waiting</b></div>
+          </div>
+          <div class="showcase-fleet-bottom"><span>ONE REPOSITORY · MULTIPLE SESSIONS</span><span>+ Add panel</span></div>
+        </div>
+      </div>
+    </section>
+    <section class="showcase-runtimes" id="runtimes" aria-labelledby="runtimes-title">
+      <div class="showcase-heading">
+        <p class="art-section-label">03 / RUNTIME DIRECTION</p>
+        <h2 id="runtimes-title">Your environment.<br /><em>Your choice of agent.</em></h2>
+        <p>Orbit is open source and is being built around a runtime adapter boundary. The aim is a home for the coding harnesses developers already use, with the editor and workspace experience staying familiar as runtime support grows.</p>
+      </div>
+      <div class="showcase-runtime-list">
+        <div class="showcase-runtime-row current"><span class="showcase-runtime-index">NOW / 01</span><div><h3>OpenCode V2</h3><p>Connected today. Use its configured providers and models in Orbit.</p></div><span class="showcase-runtime-status"><span class="showcase-step-dot"></span> AVAILABLE</span></div>
+        <div class="showcase-runtime-row"><span class="showcase-runtime-index">NEXT / →</span><div><h3>More harnesses, same workspace.</h3><p>Codex, DeepSeek Harness, CommandCode, and Pi Agent are future integrations, not available in Orbit yet.</p></div><span class="showcase-runtime-status">PLANNED</span></div>
+      </div>
+    </section>
+    <section class="showcase-close" aria-labelledby="close-title">
+      <div><p class="art-section-label">ORBIT / OPEN SOURCE AGENT DEVELOPMENT ENVIRONMENT</p><h2 id="close-title">Build in the code.<br />Work with your agents.</h2><p>An editor, terminal, agent workspace, and change review in one desktop app.</p></div>
+      <div class="showcase-close-actions"><a class="art-button" href="https://github.com/Tsohnle95/Orbit" target="_blank" rel="noopener noreferrer">View the source <span aria-hidden="true">↗</span></a><a class="showcase-back-link" href="#hero-title">Back to top ↑</a></div>
+    </section>`;
 
   app.innerHTML = `
     <header class="explore-nav">
       <a class="explore-brand" href="../index.html"><span aria-hidden="true">◉</span> orbit</a>
-      <nav aria-label="Page navigation"><a href="#inside">${isRepo ? "The project" : "The workbench"}</a><a href="#review">The loop</a></nav>
+      <nav aria-label="Page navigation">${isRoseTerminal ? '<a href="#inside">Workspace</a><a href="#agents">Agent mode</a><a href="#runtimes">Runtimes</a>' : `<a href="#inside">${isRepo ? "The project" : "The workbench"}</a><a href="#review">The loop</a>`}</nav>
       <button class="theme-toggle" type="button" data-theme-toggle aria-label="Toggle dark mode" aria-pressed="false"><span class="theme-icon" aria-hidden="true">◐</span><span>Dark mode</span></button>
     </header>
     <main>
@@ -115,11 +189,11 @@ if (!design) {
           </div>
           <figure class="art-product">
             <img src="../assets/orbit-workbench-reference.png" width="1375" height="779" alt="Orbit desktop workbench showing the repository explorer, editor, terminal, and agent panel in one window." />
-            <figcaption><span class="live-dot"></span>${isAgentFocused ? isRepo ? "Repository open · Agent ready" : "Agent workspace · Repository connected" : isRepo ? "Project open · Files in view" : "One desk · All your tools"}</figcaption>
+            ${isRoseTerminal ? "" : `<figcaption><span class="live-dot"></span>${isAgentFocused ? isRepo ? "Repository open · Agent ready" : "Agent workspace · Repository connected" : isRepo ? "Project open · Files in view" : "One desk · All your tools"}</figcaption>`}
           </figure>
         </div>
       </section>
-      <section class="art-inside" id="inside">
+      ${isRoseTerminal ? roseTerminalStory : `<section class="art-inside" id="inside">
         <div class="art-section-header"><p class="art-section-label">${nightCityCopy?.workspaceLabel ?? (isAgentFocused ? "01 / AGENT WORKSPACE" : isRepo ? "01 / THE SOURCE" : "01 / YOUR DESK")}</p><h2>${nightCityCopy?.workspaceHeading ?? design.section}</h2><p>${nightCityCopy?.workspaceDescription ?? (isAgentFocused ? "Open a repository, run a coding agent beside the editor and terminal, then inspect its file diffs in Orbit." : isRepo ? "Orbit starts with a real repository. Your editor, terminal, agent session, and review all stay attached to the folder you chose." : "The desktop workspace puts your code, conversation, terminal, and changes together. No tab shuffle between the important parts.")}</p></div>
         ${nightCityCopy ? nightWorkspaceFacts : design.lineage === "ridge" ? ridgeTiles : isRepo ? projectDiagram : desktopDock}
       </section>
@@ -132,9 +206,9 @@ if (!design) {
         <div class="review-words"><p class="art-section-label">${nightCityCopy ? "02 / CHANGES & DIFFS" : isAgentFocused ? "02 / CHANGE REVIEW" : "02 / FROM START TO FINISH"}</p><h2>${nightCityCopy?.reviewHeading ?? (isAgentFocused ? "From agent task to reviewed diff." : isRepo ? "Follow the work back to its source." : "Stay for the whole coding loop.")}</h2><p>${nightCityCopy?.reviewDescription ?? (isAgentFocused ? "Run the agent in your codebase, then inspect the exact file changes before accepting them." : isRepo ? "Read a file, ask a question about it, then open the diff. The work stays legible because it never leaves its project behind." : "Bring a project into view, work alongside the agent, run a command, and review the changes before moving on.")}</p>${nightCityCopy ? "" : `<div class="review-sequence"><span>01 &nbsp; OPEN</span><span>02 &nbsp; ASK</span><span>03 &nbsp; REVIEW</span></div>`}</div>
         ${nightCityCopy ? nightChangeStates : isRepo ? repoProof : deskProof}
       </section>
-      <section class="art-close"><div><p class="art-section-label">${nightCityCopy ? "ORBIT / WORKSPACE DETAILS" : isAgentFocused ? "ORBIT / AGENT DEVELOPMENT ENVIRONMENT" : isRepo ? "KEEP THE PROJECT CLOSE" : "WORK WHERE THE WORK IS"}</p><h2>${nightCityCopy?.closeHeading ?? (isAgentFocused ? "Code, run, review." : isRepo ? "A clear place to begin." : "Make yourself at home.")}</h2></div><a class="art-button" href="#inside">${nightCityCopy?.closeAction ?? (isAgentFocused ? "Open the workspace" : "Explore Orbit")} <span aria-hidden="true">↑</span></a></section>
+      <section class="art-close"><div><p class="art-section-label">${nightCityCopy ? "ORBIT / WORKSPACE DETAILS" : isAgentFocused ? "ORBIT / AGENT DEVELOPMENT ENVIRONMENT" : isRepo ? "KEEP THE PROJECT CLOSE" : "WORK WHERE THE WORK IS"}</p><h2>${nightCityCopy?.closeHeading ?? (isAgentFocused ? "Code, run, review." : isRepo ? "A clear place to begin." : "Make yourself at home.")}</h2></div><a class="art-button" href="#inside">${nightCityCopy?.closeAction ?? (isAgentFocused ? "Open the workspace" : "Explore Orbit")} <span aria-hidden="true">↑</span></a></section>`}
       </main>
-      <footer class="art-footer"><a class="explore-brand" href="../index.html"><span aria-hidden="true">◉</span> orbit</a><span>${nightCityCopy ? "OpenCode V2 · Explorer · Monaco · integrated terminal" : isAgentFocused ? "Orbit · repository-aware agent development environment." : isRepo ? "Built around your repository." : "A home for the coding loop."}</span></footer>`;
+      <footer class="art-footer"><a class="explore-brand" href="../index.html"><span aria-hidden="true">◉</span> orbit</a><span>${isRoseTerminal ? "Open source · OpenCode V2 available now · More runtimes planned" : nightCityCopy ? "OpenCode V2 · Explorer · Monaco · integrated terminal" : isAgentFocused ? "Orbit · repository-aware agent development environment." : isRepo ? "Built around your repository." : "A home for the coding loop."}</span></footer>`;
   if (design.atmosphere) {
     const hero = document.querySelector(".art-hero");
     const foreground = hero.querySelector(".atmosphere-foreground");
