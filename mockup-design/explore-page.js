@@ -30,6 +30,9 @@ if (!design) {
   const isRepo = design.family === "04";
   const isAgentFocused = Boolean(design.productCopy);
   if (isAgentFocused) document.body.classList.add("agent-focused");
+  if (design.id === "04-nocturne-tidal-city-rose-night" || design.id === "04-nocturne-tidal-city-rose-night-workflow-rose-terminal") {
+    document.body.classList.add("night-city-narrative");
+  }
   const colors = `--scene-ink:${design.ink};--scene-accent:${design.accent};--scene-paper:${design.sky};--scene-ground:${design.foreground}`;
   document.title = `Orbit — ${design.name}`;
   document.body.classList.add(`explore-${design.family}`, `scene-${design.scene}`, `form-${design.form}`, `type-${design.type}`, design.light ? "scene-light" : "scene-dark");
