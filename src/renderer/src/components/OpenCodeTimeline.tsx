@@ -353,6 +353,14 @@ function effectiveToolKey(tool: ToolCallView): string {
   return explicit || "tool";
 }
 
+// Context reads are low-signal: render them as a compact inline log rather than
+// a full card, so a burst of exploration never fills the transcript.
+const CONTEXT_TOOL_KEYS = new Set(["read", "list", "glob", "grep", "inspect"]);
+
+function isContextTool(tool: ToolCallView): boolean {
+  return CONTEXT_TOOL_KEYS.has(effectiveToolKey(tool));
+}
+
 interface SubagentRef {
   id: string;
   agent: string;
@@ -1029,7 +1037,7 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
   if (toolKey(tool.title) === "task" || toolKey(tool.title) === "subagent") return <TaskTool tool={tool} session={session} />;
 
   return (
-    <div data-component="tool-part-wrapper" data-tool={effectiveToolKey(tool)} data-status={tool.status} data-timeline-part-id={tool.id}>
+    <div data-component="tool-part-wrapper" data-tool={effectiveToolKey(tool)} data-variant={isContextTool(tool) ? "inline" : "card"} data-status={tool.status} data-timeline-part-id={tool.id}>
       <div className="tool-collapsible" data-expanded={open ? "true" : undefined}>
         <button
           data-slot="collapsible-trigger"
@@ -1169,7 +1177,7 @@ type ActivityPart = Exclude<AssistantPart, { kind: "text" }>;
 type ActivityEntry = ActivityPart | { kind: "context-group"; id: string; tools: ToolCallView[] };
 
 function isCompletedContextPart(part: ActivityPart): part is Extract<ActivityPart, { kind: "tool" }> {
-  return part.kind === "tool" && part.tool.status === "success" && ["read", "list", "glob", "grep", "inspect"].includes(effectiveToolKey(part.tool));
+  return part.kind === "tool" && part.tool.status === "success" && isContextTool(part.tool);
 }
 
 function groupContextParts(parts: ActivityPart[]): ActivityEntry[] {

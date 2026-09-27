@@ -329,9 +329,13 @@ Key mechanisms:
   (`colors.user`, exposed as `--agent-user-bubble`) and a first prose group in an
   assistant message (or the first prose after activity) is preceded by an accent-dot
   `Orbit` name head; final assistant markdown remains flat. Reasoning and tool calls
-  form one calm work log of bordered cards; the running card takes an accent border
-  and raised background instead of a per-row status marker, and completed
-  read/list/search calls still collapse into a bordered exploration summary.
+  form one calm work log. Context reads (read/list/glob/grep/inspect) render as
+  compact single-line rows — status icon, action, and target — so a burst of
+  exploration never fills the transcript; a run of completed context reads
+  collapses into one inline `Explored N items` line that expands to those same
+  compact rows. Higher-signal work keeps bordered cards: edit/patch diffs, shell
+  commands, and delegated agents. A running card takes an accent border
+  and raised background instead of a per-row status marker.
   Final prose remains visually separate from that log. Each native step keeps a
   stable keyed entry and chronological position. A running Thinking summary
   follows the newest native reasoning or OpenCode commentary line. Native
@@ -355,7 +359,7 @@ Key mechanisms:
   transcript in favor of the live prompt-dock checklist; edit/patch parts with
   `metadata.files` render a dedicated diff card (full path, +/− stat chips,
   expandable colorized unified diff, click-to-open in the editor pane) while
-  remaining tools use bordered BasicTool cards.
+  other tools use bordered BasicTool cards.
   Assistant prose carries no bubble; there is no typing-dot placeholder or
   stream cursor path.
 - **Large-session fixture** — `large-session.performance.test.ts` deterministically

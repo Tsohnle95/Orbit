@@ -463,6 +463,18 @@ describe("OpenCodeTimeline chronology", () => {
     expect(titles).toEqual(["Read", "Grep"]);
   });
 
+  it("renders context reads inline and higher-signal tools as cards", () => {
+    const read = toolAssistant("read", "read", { filePath: "/repo/src/main.ts" }) as Extract<TranscriptItem, { kind: "assistant" }>;
+    const bash = toolAssistant("bash", "bash", { command: "npm test" }) as Extract<TranscriptItem, { kind: "assistant" }>;
+    const transcript: TranscriptItem[] = [{ ...read, parts: [...read.parts, ...bash.parts] }];
+    act(() => root.render(<OpenCodeTimeline transcript={transcript} busy={false} lastAssistantId={null} />));
+
+    const inline = container.querySelector("[data-component='tool-part-wrapper'][data-variant='inline']");
+    expect(inline?.getAttribute("data-tool")).toBe("read");
+    const card = container.querySelector("[data-component='tool-part-wrapper'][data-variant='card']");
+    expect(card?.getAttribute("data-tool")).toBe("bash");
+  });
+
   it("infers an inspect call and target from a generic path-shaped tool record", () => {
     const generic = toolAssistant("tool", "tool", { path: "/repo/source b", limit: 2000 }) as Extract<TranscriptItem, { kind: "assistant" }>;
     act(() => root.render(<OpenCodeTimeline transcript={[generic]} busy={false} lastAssistantId={null} />));
