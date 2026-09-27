@@ -234,6 +234,8 @@ html[data-theme="light"] .scene-dark .art-inside, html[data-theme="light"] .scen
   .layout-centered.celestial-saturn .art-hero .celestial-body { translate: -245px 300px; }
   @keyframes meteor-flight { 0%,69%,100% { opacity: 0; transform: translate(24px,-14px); } 73% { opacity: .95; } 82% { opacity: .82; transform: translate(0,0); } 91% { opacity: 0; transform: translate(-58px,34px); } }
   .has-atmosphere .art-hero .celestial-body { translate: -245px 300px; }
+  /* The portrait slice puts the source moon under the city, so dock it in the open sky. */
+  .agent-focused.terrain-city .art-hero .celestial-body { translate: -590px -82px; scale: .65; transform-box: fill-box; transform-origin: center; }
   .explore-nav { height: 60px; padding: 0 17px; }
   .explore-nav nav { display: none; }
   .explore-brand { font-size: 15px; }
@@ -280,6 +282,11 @@ html[data-theme="light"] .scene-dark .art-inside, html[data-theme="light"] .scen
   .screen-agent { font-size: 7px; }
   .art-close { align-items: flex-start; flex-direction: column; margin: 20px 18px 54px; padding: 29px; }
   .art-footer { padding: 18px; }
+}
+
+@media (max-width: 360px) {
+  /* Keep the smaller moon fully inside the narrowest supported viewport. */
+  .agent-focused.terrain-city .art-hero .celestial-body { translate: -580px -82px; scale: .6; }
 }
 
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .art-button { transition: none; } }
