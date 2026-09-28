@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { StoreProvider, useStore } from "./store";
-import { IconAdd, IconChevronDown, IconFolder, IconGear, IconHistory, IconRobot, IconSidebarLeft, IconSidebarRight, IconTerminal } from "./components/icons";
+import { IconAdd, IconChevronDown, IconFolder, IconGear, IconRobot, IconSidebarLeft, IconSidebarRight, IconTerminal } from "./components/icons";
 import type { SessionInfo } from "@shared/types";
 import { Welcome } from "./components/Welcome";
 import { FileSidebar, type SidebarTab } from "./components/FileSidebar";
@@ -280,7 +280,6 @@ function PanelColumn({
       columnRef.current.style.width = `${width}px`;
       if (left !== null) {
         columnRef.current.style.left = `${left}px`;
-        columnRef.current.classList.toggle("edge-left", left <= leftMin + 0.5);
       }
       if (isAnchor) columnRef.current.parentElement?.style.setProperty("--editor-right", `${width}px`);
     }
@@ -308,7 +307,7 @@ function PanelColumn({
     return null;
   }
   return (
-    <div ref={columnRef} className={`agent-col ${settling ? "settling" : ""} ${slot.left <= leftMin + 0.5 ? "edge-left" : ""}`} style={{ left: `${slot.left}px`, top: `${slot.top}%`, bottom: "auto", width: `${slot.width}px`, height: `${slot.height}%` }}>
+    <div ref={columnRef} className={`agent-col ${settling ? "settling" : ""}`} style={{ left: `${slot.left}px`, top: `${slot.top}%`, bottom: "auto", width: `${slot.width}px`, height: `${slot.height}%` }}>
       <AgentPanel session={session} sessionChoices={sessionChoices} visibleSessionIDs={visibleSessionIDs} agentPanelLimitReached={agentPanelLimitReached} agentModeActive={agentModeActive} onSessionSelect={onSessionSelect} isAnchor={isAnchor} onFocus={onFocus} onClose={onClose} onResizeLeft={freeMove ? exitModeOnRelease : resizeLeft} onResizeRight={freeMove ? exitModeOnRelease : isAnchor ? undefined : resizeRight} onPanelDrag={freeMove || !isAnchor ? slideBy : undefined} onPanelDragEnd={freeMove || !isAnchor ? finishSlide : undefined} />
     </div>
   );
@@ -987,15 +986,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
               onClick={() => activateSidebarTab("files")}
             >
               <IconFolder />
-            </button>
-            <button
-              className={`activity-tool ${!settingsOpen && sideTab === "sessions" ? "active" : ""}`}
-              aria-label="Sessions"
-              aria-pressed={!settingsOpen && sideTab === "sessions"}
-              title="Sessions"
-              onClick={() => activateSidebarTab("sessions")}
-            >
-              <IconHistory />
             </button>
             <span className="activity-spacer" />
             <button

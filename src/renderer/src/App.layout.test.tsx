@@ -213,13 +213,13 @@ describe("Layout panel sizing", () => {
     const rail = container.querySelector<HTMLElement>(".activity-rail")!;
     expect(rail).not.toBeNull();
     expect(rail.querySelector('button[aria-label="Files"]')).not.toBeNull();
-    expect(rail.querySelector('button[aria-label="Sessions"]')).not.toBeNull();
+    expect(rail.querySelector('button[aria-label="Sessions"]')).toBeNull();
     expect(rail.querySelector('button[aria-label="Settings"]')).not.toBeNull();
     expect(sideTab(container, "Files")).not.toBeNull();
     expect(sideTab(container, "Sessions")).not.toBeNull();
 
     await act(async () => {
-      rail.querySelector<HTMLButtonElement>('button[aria-label="Sessions"]')!.click();
+      sideTab(container, "Sessions").click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
     expect(sideTab(container, "Sessions").className).toContain("active");
@@ -1314,7 +1314,7 @@ describe("Layout panel sizing", () => {
     expect(agentWidths()).toEqual([450, 450, 450, 450]);
   });
 
-  it("keeps edge-left on back-to-back panels after focus", async () => {
+  it("keeps back-to-back Agent Mode panels at their stops after focus", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
     await act(async () => {
@@ -1323,7 +1323,6 @@ describe("Layout panel sizing", () => {
     });
     await enterAgentMode("two");
     expect(agentLefts()).toEqual([0, 740]);
-    expect(agentCols()[1].classList.contains("edge-left")).toBe(true);
 
     // Focusing the other live panel does not alter the Agent Mode layout.
     await act(async () => {
@@ -1333,7 +1332,6 @@ describe("Layout panel sizing", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
     expect(agentLefts()).toEqual([0, 740]);
-    expect(agentCols()[1].classList.contains("edge-left")).toBe(true);
   });
 
   it("stays in the IDE with an open-workspace CTA after closing the last session", async () => {
