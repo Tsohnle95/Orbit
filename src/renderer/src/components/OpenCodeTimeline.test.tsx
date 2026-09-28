@@ -390,6 +390,19 @@ describe("OpenCodeTimeline chronology", () => {
     expect(container.querySelector("[data-slot='tool-error-card-description']")?.textContent).toBe("/repo/source b");
   });
 
+  it("capitalizes a lowercase error head like OpenCode", () => {
+    const failed = toolAssistant("tool", "bash", { command: "false" }) as Extract<TranscriptItem, { kind: "assistant" }>;
+    const part = failed.parts[0];
+    if (part.kind === "tool") {
+      part.tool.status = "failed";
+      part.tool.output = "Error: bash: command failed with exit code 1: boom";
+    }
+
+    act(() => root.render(<OpenCodeTimeline transcript={[failed]} busy={false} lastAssistantId={null} />));
+
+    expect(container.querySelector("[data-slot='basic-tool-tool-subtitle']")?.textContent).toBe("Bash");
+  });
+
   it.each(events)("keeps an interleaved %s event between assistant runs", (_name, event, row) => {
     act(() => root.render(
       <OpenCodeTimeline transcript={[assistant("before"), event, assistant("after")]} busy={false} lastAssistantId={null} />
@@ -474,6 +487,15 @@ describe("OpenCodeTimeline chronology", () => {
     const titles = [...container.querySelectorAll("[data-component='context-tool-group-list'] [data-slot='basic-tool-tool-title']")]
       .map((node) => node.querySelector("[data-component='text-shimmer']")?.getAttribute("aria-label"));
     expect(titles).toEqual(["Read", "Grep"]);
+
+    const subtitles = [...container.querySelectorAll("[data-component='context-tool-group-list'] [data-slot='basic-tool-tool-subtitle']")]
+      .map((node) => node.textContent);
+    // read shows the file basename; list/glob/grep show the search directory (OpenCode's `getDirectory`).
+    expect(subtitles).toEqual(["main.ts", "/repo/"]);
+    const args = [...container.querySelectorAll("[data-component='context-tool-group-list'] [data-slot='basic-tool-tool-arg']")]
+      .map((node) => node.textContent);
+    // The pattern lives only in the args, never duplicated into the subtitle.
+    expect(args).toEqual(["pattern=stream"]);
   });
 
   it("renders every tool as a compact inline trigger inside context groups", () => {

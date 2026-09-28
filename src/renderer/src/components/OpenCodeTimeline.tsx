@@ -270,6 +270,18 @@ function fileName(value: unknown): string {
   return value.split(/[\\/]/).pop() ?? value;
 }
 
+// OpenCode's `getDirectory` + `relativizeProjectPath`: the parent directory of a tool path
+// (trailing slash kept), stripped of the session workspace prefix when it sits underneath it.
+function contextDirectory(path: string | undefined, session: SessionInfo | null): string {
+  const raw = path && path.length > 0 ? path : "/";
+  const trimmed = raw.replace(/[/\\]+$/, "");
+  const directory = `${trimmed.split(/[\\/]/).slice(0, -1).join("/")}/`;
+  if (!session) return directory;
+  const workspace = session.directory.replace(/\\/g, "/").replace(/\/$/, "");
+  if (workspace === "/") return directory;
+  return directory.startsWith(`${workspace}/`) ? directory.slice(workspace.length) : directory;
+}
+
 function workspaceFilePath(path: string, session: SessionInfo | null): string | null {
   const normalizedPath = path.replace(/\\/g, "/");
   if (!session) return normalizedPath;
@@ -829,7 +841,9 @@ function ToolErrorCard({ tool, session }: { tool: ToolCallView; session: Session
   const prefix = `${effectiveToolKey(tool)} `;
   const tail = cleaned.startsWith(prefix) ? cleaned.slice(prefix.length) : cleaned;
   const segments = tail.split(": ");
-  const subtitle = segments.length <= 1 ? "Failed" : segments[0]?.trim() || "Failed";
+  const head = segments[0]?.trim();
+  // OpenCode capitalizes the error head: "bash: ..." -> "Bash".
+  const subtitle = segments.length <= 1 || !head ? "Failed" : head[0].toUpperCase() + head.slice(1);
   const body = segments.length <= 1 ? cleaned : segments.slice(1).join(": ").trim() || cleaned;
   const activateSubtitle = failurePath
     ? (): void => {
@@ -1310,7 +1324,15 @@ function groupContextParts(parts: ActivityPart[]): ActivityEntry[] {
 
 function ContextToolRow({ tool, session }: { tool: ToolCallView; session: SessionInfo | null }): ReactNode {
   const { openFile, focusSession } = useStore();
-  const presentation = toolPresentation(tool);
+  const name = effectiveToolKey(tool);
+  const input = toolInput(tool);
+  const base = toolPresentation(tool);
+  // OpenCode's `contextToolTrigger`: list/glob/grep subtitle is the search directory; the
+  // pattern/include live in `contextToolArgs` so they are never shown twice.
+  const presentation =
+    name === "list" || name === "glob" || name === "grep"
+      ? { title: base.title, subtitle: contextDirectory(typeof input.path === "string" ? input.path : undefined, session), path: base.path }
+      : base;
   const args = contextToolArgs(tool);
   const activateSubtitle = presentation.path
     ? (): void => {

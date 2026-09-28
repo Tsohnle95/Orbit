@@ -129,9 +129,11 @@
 [data-slot="assistant-activity-pulse"] { width: 7px; height: 7px; border: 2px solid var(--v2-background-bg-base); border-radius: 50%; background: currentColor; box-sizing: content-box; animation: assistant-activity-pulse 1.5s ease-in-out infinite; }
 
 [data-slot="session-turn-thinking"] [data-slot="session-turn-thinking-heading"] {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   color: var(--v2-text-text-faint);
+  font-weight: var(--font-weight-regular);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -283,7 +285,7 @@
   align-items: center;
   gap: 8px;
   color: var(--v2-text-text-strong);
-  font: var(--font-weight-medium) 13px/18px var(--font-family-sans);
+  font: var(--font-weight-medium) var(--font-size-base)/var(--line-height-large) var(--font-family-sans);
 }
 
 [data-slot="context-tool-group-label"] { flex: 0 0 auto; }
@@ -322,23 +324,6 @@
   width: 100%;
   min-height: 0;
   padding: 1px 0;
-  display: flex;
-  align-items: center;
-  gap: 0;
-}
-
-[data-component="context-tool-group-list"] [data-component="tool-trigger"] [data-slot="basic-tool-tool-info-main"] {
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 7px;
-  width: 100%;
-}
-
-[data-component="context-tool-group-list"] [data-component="tool-trigger"] [data-slot="basic-tool-tool-title"] {
-  flex: 0 0 auto;
-  color: var(--v2-text-text-muted);
-  font-size: 12px;
 }
 
 [data-component="context-tool-group-list"] [data-component="tool-trigger"] [data-slot="basic-tool-tool-subtitle"] { flex: 0 1 auto; }
@@ -885,27 +870,10 @@
 
 [data-variant="inline"] [data-component="tool-trigger"] {
   padding: 3px 0;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-[data-variant="inline"] [data-slot="basic-tool-tool-info-main"] {
-  flex-direction: row;
-  align-items: baseline;
-  gap: 7px;
-}
-
-[data-variant="inline"] [data-slot="basic-tool-tool-title"] {
-  color: var(--v2-text-text-muted);
 }
 
 [data-variant="inline"] [data-slot="basic-tool-tool-subtitle"] {
   flex: 1 1 auto;
-}
-
-[data-variant="inline"][data-status="running"] [data-slot="basic-tool-tool-title"] {
-  color: var(--v2-text-text-base);
 }
 
 [data-variant="inline"] .tool-collapsible > [data-slot="collapsible-content"] {
@@ -929,11 +897,10 @@
 [data-component="tool-trigger"] {
   width: 100%;
   min-height: 0;
-  padding: 10px 12px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-  align-items: start;
-  column-gap: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
 }
 
 [data-slot="tool-status-icon"] {
@@ -952,13 +919,13 @@
 
 [data-component="tool-trigger"][data-clickable="true"] { cursor: pointer; }
 [data-component="tool-trigger"][data-clickable="true"]:hover [data-slot="basic-tool-tool-title"] { color: var(--accent); }
-[data-component="tool-trigger"] [data-slot="basic-tool-tool-trigger-content"] { display: block; width: 100%; max-width: 100%; min-width: 0; }
-[data-component="tool-trigger"] [data-slot="basic-tool-tool-info"] { min-width: 0; max-width: 100%; }
-[data-component="tool-trigger"] [data-slot="basic-tool-tool-info-structured"] { width: 100%; max-width: 100%; min-width: 0; display: block; }
-[data-component="tool-trigger"] [data-slot="basic-tool-tool-info-main"] { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; overflow: hidden; }
-[data-component="tool-trigger"] [data-slot="basic-tool-tool-title"] { white-space: nowrap; max-width: 100%; font-family: var(--font-family-sans); font-size: 13px; font-weight: var(--font-weight-medium); line-height: 18px; color: var(--v2-text-text-base); letter-spacing: 0.005em; }
+[data-component="tool-trigger"] [data-slot="basic-tool-tool-trigger-content"] { flex: 0 1 auto; width: auto; max-width: 100%; min-width: 0; display: flex; align-items: center; gap: 8px; }
+[data-component="tool-trigger"] [data-slot="basic-tool-tool-info"] { min-width: 0; max-width: 100%; font-size: var(--font-size-base); }
+[data-component="tool-trigger"] [data-slot="basic-tool-tool-info-structured"] { display: inline-flex; align-items: center; gap: 8px; width: auto; max-width: 100%; min-width: 0; }
+[data-component="tool-trigger"] [data-slot="basic-tool-tool-info-main"] { display: flex; flex-direction: row; align-items: baseline; gap: 8px; min-width: 0; max-width: 100%; overflow: hidden; }
+[data-component="tool-trigger"] [data-slot="basic-tool-tool-title"] { flex-shrink: 0; white-space: nowrap; max-width: 100%; font-family: var(--font-family-sans); font-size: var(--font-size-base); font-weight: var(--font-weight-medium); line-height: var(--line-height-large); color: var(--v2-text-text-base); letter-spacing: 0.005em; }
 [data-component="tool-trigger"] [data-slot="basic-tool-tool-subtitle"],
-[data-component="tool-trigger"] [data-slot="basic-tool-tool-arg"] { max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-family-sans); font-variant-numeric: tabular-nums; font-size: 12px; font-weight: var(--font-weight-regular); line-height: 16px; color: var(--v2-text-text-faint); }
+[data-component="tool-trigger"] [data-slot="basic-tool-tool-arg"] { flex-shrink: 1; max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-family-sans); font-variant-numeric: tabular-nums; font-size: var(--font-size-base); font-weight: var(--font-weight-regular); line-height: var(--line-height-large); color: var(--v2-text-text-muted); }
 [data-component="tool-trigger"] [data-slot="basic-tool-tool-subtitle"].clickable { cursor: pointer; text-decoration: none; }
 [data-component="tool-trigger"] [data-slot="basic-tool-tool-subtitle"].clickable:hover { color: var(--accent); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 42%, transparent); text-underline-offset: 2px; }
 
@@ -987,24 +954,37 @@
   word-break: break-word;
 }
 
-/* OpenCode's `ToolErrorCard`: the only card surface left, and only for failures. */
+/* OpenCode's `ToolErrorCard`: flat, borderless, with a 2px inset left accent bar. */
 [data-variant="inline"] [data-kind="tool-error-card"] {
+  position: relative;
   width: 100%;
   min-width: 0;
-  border: 1px solid color-mix(in srgb, var(--v2-state-fg-danger) 26%, var(--v2-border-border-base));
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--v2-state-fg-danger) 4%, var(--v2-background-bg-layer-01));
+  padding: 8px 12px 8px 10px;
+  border: 0;
+  border-radius: var(--radius-md, 6px);
+  background: transparent;
+}
+
+[data-variant="inline"] [data-kind="tool-error-card"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: 2px;
+  background-color: var(--v2-state-fg-danger);
 }
 
 [data-variant="inline"] [data-kind="tool-error-card"] [data-component="tool-trigger"],
 [data-variant="inline"] [data-kind="tool-error-card"] .tool-collapsible > [data-slot="collapsible-trigger"] {
-  padding: 8px 11px 4px;
+  padding: 0;
   align-items: center;
 }
 
 [data-variant="inline"] [data-kind="tool-error-card"] .tool-collapsible > [data-slot="collapsible-content"] {
   margin: 0;
-  padding: 2px 11px 9px 34px;
+  padding: 0;
 }
 
 [data-kind="tool-error-card"] [data-slot="basic-tool-tool-title"] {
@@ -1012,7 +992,7 @@
 }
 
 [data-kind="tool-error-card"] [data-slot="basic-tool-tool-subtitle"] {
-  color: color-mix(in oklch, var(--v2-state-fg-danger) 72%, var(--v2-text-text-muted));
+  color: var(--v2-text-text-muted);
 }
 
 [data-kind="tool-error-card"] [data-slot="tool-status-icon"] {
@@ -1021,10 +1001,13 @@
 
 [data-slot="tool-error-card-content"] {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  padding-left: 24px;
+  margin-bottom: 8px;
   user-select: text;
+}
+
+[data-kind="tool-error-card"][data-open="true"] [data-slot="tool-error-card-content"] {
+  padding-right: 40px;
 }
 
 [data-slot="tool-error-card-copy"] {
@@ -1059,15 +1042,16 @@
 
 [data-slot="tool-error-card-description"] {
   max-width: 100%;
-  color: color-mix(in oklch, var(--v2-state-fg-danger) 74%, var(--v2-text-text-muted));
-  font: var(--font-weight-regular) 12px/18px var(--font-family-mono);
+  color: var(--v2-text-text-muted);
+  font: var(--font-weight-regular) var(--font-size-base)/var(--line-height-large) var(--font-family-sans);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 [data-slot="tool-error-card-description"]::selection {
-  background: color-mix(in srgb, var(--v2-state-fg-danger) 24%, transparent);
+  background: var(--v2-state-bg-danger);
+  color: var(--v2-text-text-base);
 }
 
 /* OpenCode's shell body: `$ command` and output in one scrollable pre. */
@@ -1519,6 +1503,7 @@
   width: 100%;
   min-width: 0;
   min-height: 20px;
+  margin-top: 12px;
   display: flex;
   align-items: center;
   gap: 8px;

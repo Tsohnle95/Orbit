@@ -336,9 +336,13 @@ Key mechanisms:
   OpenCode's `groupParts` — into a `ContextToolGroup`: its trigger shows a
   `ToolStatusTitle` (`Exploring` while pending, `Explored` when settled) plus an
   `AnimatedCountList` summary (`N reads, N searches, N lists`) and expands to
-  compact inline rows (action, target, and any offset/limit/pattern/include
-  args). Every other tool renders as a compact inline trigger too, so a burst of
-  exploration never fills the transcript; a running tool shimmers its title.
+  compact inline rows. Those rows mirror OpenCode's `contextToolTrigger`: read shows
+  the file basename plus offset/limit args, while list/glob/grep show the search
+  directory with `pattern`/`include` as args. Every tool row is a single-line
+  trigger using OpenCode's `basic-tool` metrics (`basic-tool-tool-info-main` is a
+  baseline flex row; 14px title in text-base, 14px subtitle/args in text-muted), so
+  a burst of exploration never fills the transcript; a running tool shimmers its
+  title.
   Final prose remains visually separate from that log. Each assistant run keeps a
   stable keyed entry and chronological position. Native deltas appear
   immediately; a one-shot reasoning summary is never made to resemble token
@@ -352,8 +356,9 @@ Key mechanisms:
   duration state;
   structured progress is reduced to a readable phrase; live command output
   opens automatically. Failed tools replace the inline row with OpenCode's
-  `ToolErrorCard`: the error head becomes the subtitle, the cleaned error body
-  expands on demand, and a copy affordance appears on hover. Bottom-follow uses a stable signature to follow
+  `ToolErrorCard`: the capitalized error head becomes the subtitle, the cleaned
+  error body expands on demand in the card's sans-serif body style, a flat 2px
+  inset left accent bar marks the failure, and a copy affordance appears on hover. Bottom-follow uses a stable signature to follow
   new business rows and turn-state changes before paint, while a resize observer
   follows streamed height growth only while the reader remains at the floor.
   Programmatic positions are tracked separately
