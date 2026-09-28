@@ -1,6 +1,6 @@
 import type { AssistantPartView, TranscriptItem } from "@shared/types";
 import { formatFailure, normalizeFailure } from "@shared/errors";
-import { assistantResponsesMatch, partFromProjection, type ChatStreamEvent } from "./chat-stream";
+import { partFromProjection, type ChatStreamEvent } from "./chat-stream";
 import { Binary } from "./binary";
 
 export const SKIP_PARTS = new Set(["patch", "step-start", "step-finish"]);
@@ -949,14 +949,19 @@ export function projectAssistantItems(draft: ChatDirectoryState, sessionID: stri
   const out: TranscriptItem[] = [];
   for (const message of messages) {
     if (message.role !== "assistant") continue;
-    const orderedParts = (draft.part[message.id] ?? [])
-      .map((part, index) => ({ part, index }))
-      .sort((left, right) => {
-        const leftSeq = typeof left.part.seq === "number" ? left.part.seq : Number.MAX_SAFE_INTEGER;
-        const rightSeq = typeof right.part.seq === "number" ? right.part.seq : Number.MAX_SAFE_INTEGER;
-        return leftSeq === rightSeq ? left.index - right.index : leftSeq - rightSeq;
-      })
-      .map(({ part }) => part);
+    const storedParts = draft.part[message.id] ?? [];
+    // OpenCode's canonical parts are ID-ordered; V2 stream parts use synthetic IDs
+    // and retain the order in which the server reported their steps.
+    const orderedParts = storedParts.every((part) => part.id.startsWith("prt_"))
+      ? storedParts
+      : storedParts
+          .map((part, index) => ({ part, index }))
+          .sort((left, right) => {
+            const leftSeq = typeof left.part.seq === "number" ? left.part.seq : Number.MAX_SAFE_INTEGER;
+            const rightSeq = typeof right.part.seq === "number" ? right.part.seq : Number.MAX_SAFE_INTEGER;
+            return leftSeq === rightSeq ? left.index - right.index : leftSeq - rightSeq;
+          })
+          .map(({ part }) => part);
     const projected = orderedParts.flatMap((part): AssistantPartView[] => {
       const view = partFromProjection(part as Record<string, any>, Number(message.time?.created ?? 0));
       return view ? [view] : [];
@@ -964,13 +969,6 @@ export function projectAssistantItems(draft: ChatDirectoryState, sessionID: stri
     const parts: AssistantPartView[] = [];
     const toolIndexes = new Map<string, number>();
     for (const part of projected) {
-      const previous = parts.at(-1);
-      if (
-        previous &&
-        (part.kind === "text" || part.kind === "reasoning") &&
-        previous.kind === part.kind &&
-        previous.text === part.text
-      ) continue;
       if (part.kind !== "tool") {
         parts.push(part);
         continue;
@@ -1016,8 +1014,6 @@ export function projectAssistantItems(draft: ChatDirectoryState, sessionID: stri
         : {}),
       ...(message.error ? { error: errorText(message.error) } : {})
     };
-    const previous = out.at(-1);
-    if (previous?.kind === "assistant" && assistantResponsesMatch(previous, projectedItem)) continue;
     out.push(projectedItem);
   }
   return out;

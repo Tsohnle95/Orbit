@@ -460,7 +460,7 @@ describe("applyChatEvent", () => {
     });
   });
 
-  it("does not project duplicate adjacent text parts or assistant messages", () => {
+  it("keeps distinct text parts and assistant messages even when their content repeats", () => {
     const draft = state();
     draft.message.s = [
       { id: "assistant-1", sessionID: "s", role: "assistant", time: { completed: 2 } },
@@ -474,9 +474,23 @@ describe("applyChatEvent", () => {
       { id: "text-3", messageID: "assistant-2", type: "text", text: "Same response", time: { completed: 3 } }
     ];
 
-    expect(projectAssistantItems(draft, "s")).toHaveLength(1);
+    expect(projectAssistantItems(draft, "s")).toMatchObject([
+      { id: "assistant-1", parts: [{ id: "text-1" }, { id: "text-2" }] },
+      { id: "assistant-2", parts: [{ id: "text-3" }] }
+    ]);
+  });
+
+  it("projects canonical OpenCode parts in ID order when snapshots arrive out of order", () => {
+    const draft = state();
+    draft.message.s = [{ id: "msg_1", sessionID: "s", role: "assistant", time: { completed: 3 } }];
+    for (const [id, text] of [["prt_003", "Third"], ["prt_002", "Second"], ["prt_001", "First"]]) {
+      applyChatEvent(draft, "s", event(id, "message.part.updated", {
+        sessionID: "s", part: { id, messageID: "msg_1", sessionID: "s", type: "text", text }
+      }));
+    }
+
     expect(projectAssistantItems(draft, "s")[0]).toMatchObject({
-      parts: [{ kind: "text", text: "Same response" }]
+      parts: [{ id: "prt_001", text: "First" }, { id: "prt_002", text: "Second" }, { id: "prt_003", text: "Third" }]
     });
   });
 });

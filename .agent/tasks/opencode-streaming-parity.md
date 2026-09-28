@@ -41,9 +41,9 @@ Reference: OpenCode `packages/session-ui/src/components/message-part.tsx`, `sess
 
 | Phase | Scope | Status | Validation | Commit |
 |---|---|---|---|---|
-| 1 | Reproduce and correct text pacing and message completion | complete | Component tests, `npm run check` | pending checkpoint |
-| 2 | Audit and correct part order/activity transitions against upstream | pending | Reducer/component tests, `npm run check` | — |
-| 3 | Direct UI/integration comparison, docs, final review | pending | Smoke, `npm run check` | — |
+| 1 | Reproduce and correct text pacing and message completion | complete | 819 tests and canonical gate passed on Node 22.23.2 | `422bc3f` |
+| 2 | Audit and correct part order/activity transitions against upstream | complete | 823 tests and canonical gate passed on Node 22.23.2 | pending checkpoint |
+| 3 | Direct UI/integration comparison, docs, final review | active | Smoke, `npm run check` | — |
 
 ## Validation plan
 
@@ -57,6 +57,8 @@ Reference: OpenCode `packages/session-ui/src/components/message-part.tsx`, `sess
 - 2026-09-27 — Use OpenCode desktop/web UI as the reference because the request names the GUI agent panel; OpenCode's TUI is a different presentation.
 - 2026-09-27 — Port observable streaming semantics into Orbit's React components instead of importing Solid components across the renderer boundary.
 - 2026-09-27 — Preserve Orbit's workspace/session ownership and existing actions while matching the response stream.
+- 2026-09-27 — Order canonical `prt_` parts by OpenCode ID and V2 synthetic parts by server event sequence. Their identifiers encode different ordering information.
+- 2026-09-27 — Preserve distinct parts and assistant messages with repeated text. OpenCode identifies them by ID and renders each; content equality is not message identity.
 
 ## Open risks / blockers
 

@@ -60,9 +60,11 @@ carry dedupe bookkeeping so a trailing delta already included in a snapshot
 is not applied twice (exact suffix match only — deltas are otherwise
 concatenated verbatim like OpenCode's own reducer), finished tool cards
 cannot regress, and history hydration (`hydrateChatState`) never shrinks
-longer live text. Parts render in arrival order: each insert stamps a `seq`
-counter, projection sorts by it, and the timeline groups consecutive
-activity entries while keeping interleaved prose between them. Text and
+longer live text. Canonical OpenCode parts render in ID order, including when
+snapshots arrive out of order. V2 stream parts have synthetic IDs and render
+in their event arrival order; the timeline groups consecutive activity
+entries while keeping interleaved prose between them. Distinct parts and
+assistant messages remain visible even when their content repeats. Text and
 reasoning segments without an explicit `ordinal` resolve to the newest
 same-type part, matching upstream's implicit ordinal.
 

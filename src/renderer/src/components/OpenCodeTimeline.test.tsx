@@ -143,6 +143,17 @@ describe("OpenCodeTimeline chronology", () => {
     expect(container.querySelector("[data-slot='session-turn-thinking-heading']")?.textContent).toBe("Planning the fix");
   });
 
+  it("uses the latest reasoning heading in an active turn", () => {
+    const live = reasoningAssistant(false) as Extract<TranscriptItem, { kind: "assistant" }>;
+    live.parts = [
+      { kind: "reasoning", id: "r1", text: "# Inspecting", complete: true },
+      { kind: "reasoning", id: "r2", text: "# Implementing", complete: false }
+    ];
+    act(() => root.render(<OpenCodeTimeline transcript={[live]} busy lastAssistantId={live.id} />));
+
+    expect(container.querySelector("[data-slot='session-turn-thinking-heading']")?.textContent).toBe("Implementing");
+  });
+
   it("hides the thinking row when the active turn errored", () => {
     const failed = reasoningAssistant(false) as Extract<TranscriptItem, { kind: "assistant" }>;
     failed.error = "Error: boom";
@@ -591,6 +602,35 @@ describe("completed assistant layout", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+  });
+
+  it("shows the response copy action on only the last text part of a turn", () => {
+    const transcript: TranscriptItem[] = [
+      { kind: "assistant", id: "a1", messageID: "a1", completed: true,
+        parts: [{ kind: "text", id: "p1", text: "First", complete: true }] },
+      { kind: "assistant", id: "a2", messageID: "a2", completed: true,
+        parts: [{ kind: "text", id: "p2", text: "Second", complete: true }] }
+    ];
+    act(() => root.render(<OpenCodeTimeline transcript={transcript} busy={false} lastAssistantId={null} />));
+
+    expect(container.querySelectorAll("[data-slot='text-part-copy-wrapper']")).toHaveLength(1);
+    expect(container.querySelector("[data-slot='text-part-copy-wrapper']")?.closest("[data-timeline-part-id]")?.getAttribute("data-timeline-part-id"))
+      .toBe("p2");
+  });
+
+  it("renders each assistant message in its own stream phase during a multi-step turn", () => {
+    const transcript: TranscriptItem[] = [
+      { kind: "assistant", id: "a1", messageID: "a1", completed: true,
+        parts: [{ kind: "text", id: "p1", text: "First step", complete: true }] },
+      { kind: "assistant", id: "a2", messageID: "a2", completed: false,
+        parts: [{ kind: "text", id: "p2", text: "Second step", complete: false }] }
+    ];
+    act(() => root.render(<OpenCodeTimeline transcript={transcript} busy lastAssistantId="a2" />));
+
+    const textRows = container.querySelectorAll("[data-component='text-part']");
+    expect(textRows[0]?.querySelector("[data-component='markdown']")?.getAttribute("data-streaming")).toBe("false");
+    expect(textRows[1]?.querySelector("[data-component='markdown']")?.getAttribute("data-streaming")).toBe("true");
+    expect(container.querySelector("[data-slot='text-part-copy-wrapper']")).toBeNull();
   });
 
   it("renders one row per group with no phantom action rows between assistant messages", () => {

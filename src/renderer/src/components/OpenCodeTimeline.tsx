@@ -271,12 +271,14 @@ function ResponseOptions({
 function TextPart({
   part,
   streaming,
+  showCopy,
   showLabel = false,
   showRevert = false,
   onRevert
 }: {
   part: Extract<AssistantPart, { kind: "text" }>;
   streaming: boolean;
+  showCopy: boolean;
   showLabel?: boolean;
   showRevert?: boolean;
   onRevert?: () => void;
@@ -284,7 +286,7 @@ function TextPart({
   const text = part.text.trim();
   if (!text) return null;
   return (
-    <div data-component="text-part" data-copyable={!streaming ? "true" : undefined} data-timeline-part-id={part.id}>
+    <div data-component="text-part" data-copyable={showCopy ? "true" : undefined} data-timeline-part-id={part.id}>
       {showLabel && (
         <div data-slot="assistant-message-head">
           <span data-slot="assistant-avatar" aria-hidden="true" />
@@ -294,7 +296,7 @@ function TextPart({
       <div data-slot="text-part-body">
         <PacedMarkdown text={text} streaming={streaming} />
       </div>
-      {!streaming && (
+      {showCopy && (
         <div data-slot="text-part-copy-wrapper">
           <ResponseOptions text={text} showRevert={showRevert} onRevert={onRevert} />
         </div>
@@ -1524,15 +1526,16 @@ function reasoningHeading(text: string): string | undefined {
   return undefined;
 }
 
-function firstReasoningHeading(items: AssistantItem[]): string | undefined {
+function latestReasoningHeading(items: AssistantItem[]): string | undefined {
+  let latest: string | undefined;
   for (const item of items) {
     for (const part of item.parts) {
       if (part.kind !== "reasoning" || !part.text) continue;
       const heading = reasoningHeading(part.text);
-      if (heading) return heading;
+      if (heading) latest = heading;
     }
   }
-  return undefined;
+  return latest;
 }
 
 // OpenCode groups all assistant messages of a turn into one assistant part stream before
@@ -1541,10 +1544,12 @@ function firstReasoningHeading(items: AssistantItem[]): string | undefined {
 function AssistantRun({
   items,
   streaming,
+  copyPartID,
   session
 }: {
   items: AssistantItem[];
   streaming: boolean;
+  copyPartID: string | null;
   session: SessionInfo | null;
 }): ReactNode {
   const { stageRevert } = useStore();
@@ -1586,6 +1591,7 @@ function AssistantRun({
             <TextPart
               part={group.part}
               streaming={group.streaming}
+              showCopy={!group.streaming && group.part.id === copyPartID}
               showLabel={showLabel}
               showRevert={showRevert && isLastGroup && Boolean(session)}
               onRevert={revert}
@@ -1672,6 +1678,10 @@ function renderTurnBody(
   session: SessionInfo | null
 ): ReactNode[] {
   const nodes: ReactNode[] = [];
+  const copyPartID = busy ? null : body
+    .flatMap((item) => item.kind === "assistant" ? item.parts : [])
+    .filter((part): part is Extract<AssistantPart, { kind: "text" }> => part.kind === "text" && Boolean(part.text.trim()))
+    .at(-1)?.id ?? null;
   let run: AssistantItem[] = [];
   const flush = (): void => {
     if (run.length === 0) return;
@@ -1681,6 +1691,7 @@ function renderTurnBody(
       <AssistantRun
         items={items}
         streaming={busy && items.some((item) => item.id === lastAssistantId)}
+        copyPartID={copyPartID}
         session={session}
         key={`assistant-run:${items[0].id}`}
       />
@@ -1903,7 +1914,7 @@ export const OpenCodeTimeline = memo(function OpenCodeTimeline({
     () => (turns.at(-1)?.body ?? []).filter((item): item is AssistantItem => item.kind === "assistant"),
     [turns]
   );
-  const thinkingHeading = useMemo(() => firstReasoningHeading(activeAssistants), [activeAssistants]);
+  const thinkingHeading = useMemo(() => latestReasoningHeading(activeAssistants), [activeAssistants]);
   const activeTurnError = activeAssistants.some((item) => Boolean(item.error));
   const activeTurnRetry = activeAssistants.some((item) => Boolean(item.retry));
   const showThinking = busy && !activeTurnError && !activeTurnRetry;
