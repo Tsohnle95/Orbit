@@ -987,9 +987,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
       >
         {sideOpen && (
           <nav className="activity-rail" aria-label="Workspace views">
-            <span className="activity-brand" aria-hidden="true">
-              <OrbitMark size={19} />
-            </span>
             <button
               className={`activity-tool ${!settingsOpen && sideTab === "files" ? "active" : ""}`}
               aria-label="Files"

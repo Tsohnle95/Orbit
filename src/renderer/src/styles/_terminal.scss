@@ -58,10 +58,11 @@
 .terminal-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px 4px;
+  gap: 2px;
+  padding: 0 12px;
+  min-height: 34px;
   background: transparent;
-  border-bottom: none;
+  border-bottom: 1px solid var(--border);
 }
 
 .terminal-header.snapped {
@@ -85,29 +86,41 @@
 }
 
 .terminal-tab {
+  position: relative;
+  align-self: stretch;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   color: var(--text-dim);
-  padding: 4px 12px;
+  padding: 0 9px;
   background: transparent;
   border: none;
-  border-radius: var(--radius-full);
+  border-radius: 0;
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
-  transition: background 100ms var(--ease), color 100ms var(--ease);
+  transition: color 100ms var(--ease);
 }
 
-.terminal-tab:hover { color: var(--text); background: var(--bg-hover); }
+.terminal-tab:hover { color: var(--text); }
 
 .terminal-tab.active {
-  background: var(--bg-active-pill);
-  color: var(--text);
-  position: relative;
+  color: var(--accent);
+  background: transparent;
+}
+
+.terminal-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: -1px;
+  height: 1px;
+  background: var(--accent);
 }
 
 .terminal-tab-close {

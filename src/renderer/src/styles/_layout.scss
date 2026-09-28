@@ -101,7 +101,6 @@
   box-shadow: 0 0.8em 2.5em rgba(0, 0, 0, 0.2);
 }
 
-.activity-brand,
 .activity-tool {
   display: grid;
   flex: 0 0 auto;
@@ -117,13 +116,6 @@
 }
 
 .activity-tool { cursor: pointer; }
-
-.activity-brand {
-  margin-bottom: 5px;
-  color: var(--accent);
-  background: var(--bg-active-pill);
-  border: 1px solid var(--border-strong);
-}
 
 .activity-tool:hover,
 .activity-tool.active {

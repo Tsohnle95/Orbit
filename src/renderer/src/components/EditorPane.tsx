@@ -20,7 +20,7 @@ const EDITOR_OPTIONS = {
   minimap: { enabled: false },
   automaticLayout: true,
   folding: true,
-  glyphMargin: true,
+  glyphMargin: false,
   showFoldingControls: "mouseover" as const,
   foldingHighlight: true,
   tabSize: 2,
@@ -31,7 +31,7 @@ const EDITOR_OPTIONS = {
   renderWhitespace: "none" as const,
   scrollbar: { verticalScrollbarSize: 3, horizontalScrollbarSize: 3 },
   lineNumbersMinChars: 3,
-  lineDecorationsWidth: 5,
+  lineDecorationsWidth: 0,
   wordWrap: "on" as const
 };
 

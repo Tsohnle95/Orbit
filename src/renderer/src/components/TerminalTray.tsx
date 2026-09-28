@@ -5,7 +5,7 @@ import "@xterm/xterm/css/xterm.css";
 import { useStore } from "../store";
 import { useOptionalTheme } from "../theme";
 import { terminalThemeForAppearance } from "../appearances";
-import { IconAdd, IconChevronDown, IconChevronUp, IconServer } from "./icons";
+import { IconAdd, IconChevronDown, IconChevronUp, IconGlobe } from "./icons";
 import type { ViteServerInfo, WorkspaceIdentity } from "@shared/types";
 import { PendingTerminalOutput, removeTerminal, terminalDirectoryCommand, type TerminalTabs } from "../terminal-state";
 
@@ -339,7 +339,7 @@ export function TerminalTray({
             setViteMenu({ x: e.clientX, y: e.clientY });
           }}
         >
-          <IconServer />
+          <IconGlobe />
         </button>
         {notice && <span className="terminal-notice" title={notice}>{notice}</span>}
         <button className="terminal-close" title="Close the terminal panel (⌥O)" onClick={onClose}>

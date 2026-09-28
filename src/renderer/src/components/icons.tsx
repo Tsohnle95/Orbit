@@ -229,6 +229,16 @@ export function IconGitBranch(props: IconProps): ReactNode {
   );
 }
 
+export function IconGlobe(props: IconProps): ReactNode {
+  return (
+    <Icon name="globe" {...props}>
+      <circle cx="8" cy="8" r="5.7" />
+      <path d="M2.4 8h11.2" />
+      <path d="M8 2.3c1.6 1.6 2.4 3.5 2.4 5.7S9.6 12.1 8 13.7C6.4 12.1 5.6 10.2 5.6 8s.8-4.1 2.4-5.7z" />
+    </Icon>
+  );
+}
+
 export function IconHistory(props: IconProps): ReactNode {
   return (
     <Icon name="history" {...props}>
