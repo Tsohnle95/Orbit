@@ -206,7 +206,7 @@ describe("FileSidebar tabs and sessions pane", () => {
   });
 
   it("pins a history session and persists the quiet pinned state", async () => {
-    store.sessions = [summary("s1", "/workspace", "First"), summary("s2", "/other", "Second")];
+    store.sessions = [summary("s1", "/workspace", "First", 2000), summary("s2", "/other", "Second", 1000)];
     await render();
     await settle();
 

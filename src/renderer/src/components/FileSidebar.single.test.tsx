@@ -92,6 +92,7 @@ describe("FileSidebar single-file mode and external drops", () => {
       externalKind: vi.fn(async (path: string) => ({ kind: /\.[^/]+$/.test(path) ? "file" as const : "directory" as const }))
     } as unknown as typeof window.openshell;
     store.singleFile = null;
+    store.expanded = new Set(initialExpanded);
     store.openExternalPath = vi.fn();
     store.importPaths = vi.fn();
     store.dropIntoExplorer = vi.fn();
