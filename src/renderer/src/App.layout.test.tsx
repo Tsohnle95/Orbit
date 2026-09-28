@@ -200,19 +200,61 @@ describe("Layout panel sizing", () => {
     expect(container.querySelector(".sidebar")).not.toBeNull();
   });
 
-  it("keeps the left-panel toggle and settings in the titlebar with no activity rail", async () => {
+  it("restores the activity rail with settings while keeping the sidebar tabs", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
     const sidebarToggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!;
     const panelToggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-agent-panel"]')!;
-    const settingsButton = container.querySelector<HTMLButtonElement>('.titlebar-actions button[aria-label="Settings"]')!;
     expect(sidebarToggle.closest(".titlebar-leading-actions")).not.toBeNull();
     expect(panelToggle.closest(".titlebar-actions")).not.toBeNull();
-    expect(settingsButton.closest(".titlebar-actions")).not.toBeNull();
+    expect(container.querySelector('.titlebar-actions button[aria-label="Settings"]')).toBeNull();
+
+    const rail = container.querySelector<HTMLElement>(".activity-rail")!;
+    expect(rail).not.toBeNull();
+    expect(rail.querySelector('button[aria-label="Files"]')).not.toBeNull();
+    expect(rail.querySelector('button[aria-label="Sessions"]')).not.toBeNull();
+    expect(rail.querySelector('button[aria-label="Settings"]')).not.toBeNull();
+    expect(sideTab(container, "Files")).not.toBeNull();
+    expect(sideTab(container, "Sessions")).not.toBeNull();
+
+    await act(async () => {
+      rail.querySelector<HTMLButtonElement>('button[aria-label="Sessions"]')!.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(sideTab(container, "Sessions").className).toContain("active");
+    expect(container.querySelector(".activity-rail")).not.toBeNull();
+
+    await act(async () => {
+      sidebarToggle.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
     expect(container.querySelector(".activity-rail")).toBeNull();
-    expect(container.querySelector('button[aria-label="Files"]')).toBeNull();
-    expect(container.querySelector('button[aria-label="Sessions"]')).toBeNull();
+    expect(container.querySelector(".sidebar")).toBeNull();
+    expect(sidebarToggle.getAttribute("aria-pressed")).toBe("false");
+
+    await act(async () => {
+      sidebarToggle.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(container.querySelector(".activity-rail")).not.toBeNull();
+    expect(container.querySelector(".sidebar")).not.toBeNull();
+  });
+
+  it("hides the activity rail and sidebar in agent mode", async () => {
+    await act(async () => root.render(<App />));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(container.querySelector(".activity-rail")).not.toBeNull();
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-model-mode"]')!.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    expect(container.querySelector(".app.agent-mode")).not.toBeNull();
+    expect(container.querySelector(".activity-rail")).toBeNull();
+    expect(container.querySelector(".sidebar")).toBeNull();
+    expect(container.querySelector('[data-panel-action="toggle-sidebar"]')).toBeNull();
   });
 
   it("settles with both panels fitting when the window is narrower than their combined width", async () => {
