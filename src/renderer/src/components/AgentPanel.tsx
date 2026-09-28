@@ -1740,7 +1740,6 @@ export function AgentPanel({
               busy={busy}
               lastAssistantId={lastAssistantId}
               session={activeSession}
-              statusText={assistantStatus?.statusText}
             />
           </div>
 

@@ -70,8 +70,8 @@ Implementation / tests:
 | Phase | Scope | Status | Validation | Commit |
 |---|---|---|---|---|
 | 1 | Context-tool streaming core: ToolStatusTitle, count summary, grouping semantics, ContextToolGroup DOM, inline tool triggers | done (72d232f) | unit tests + visual | 72d232f |
-| 2 | Non-context surfaces parity: shell/edit/write/patch body, generic "Called" trigger, tool error card, `partDefaultOpen` | active | unit tests + visual | — |
-| 3 | Assistant turn parity: parts grouping across messages, reasoning/text part parity | pending | unit tests | — |
+| 2 | Non-context surfaces parity: shell/edit/write/patch body, generic "Called" trigger, tool error card, `partDefaultOpen` | done | unit tests + visual | 4850432 |
+| 3 | Assistant turn parity: parts grouping across messages, reasoning/text part parity | done | unit tests + visual | — |
 | 4 | Markdown streaming parity (paced projection / fence healing) | pending | unit + visual | — |
 | 5 | CSS parity pass + full visual sweep | pending | visual + `npm run check` | — |
 
@@ -103,6 +103,14 @@ Implementation / tests:
   opens shell/edit by default when the host passes `shellToolDefaultOpen`/
   `editToolDefaultOpen`, which Orbit does not expose. Orbit keeps its own
   running-shell auto-open and leaves edit bodies collapsed.
+- 2026-09-27 — Turn parity matches OpenCode's app timeline: contiguous assistant
+  messages form one run and their parts are flattened before `groupParts`, so a
+  context run can span message boundaries. Reasoning is hidden
+  (`showReasoningSummaries: false`) and represented only by OpenCode's turn-level
+  `session-turn-thinking` row (shimmer `Thinking` plus `reasoningHeading`), shown
+  while the active turn is busy and error/retry-free. Orbit's collapsible
+  per-part `Thought`, its statusText-driven `inline-working` row, and the related
+  CSS were removed.
 
 ## Open risks / blockers
 

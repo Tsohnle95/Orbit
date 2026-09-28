@@ -98,7 +98,7 @@ describe("OpenCodeTimeline chronology", () => {
     vi.useRealTimers();
   });
 
-  it("renders completed reasoning as a collapsed Thought row with its first line", () => {
+  it("hides reasoning parts from the transcript like OpenCode's default", () => {
     act(() => root.render(
       <OpenCodeTimeline
         transcript={[reasoningAssistant(true)]}
@@ -107,14 +107,15 @@ describe("OpenCodeTimeline chronology", () => {
       />
     ));
 
-    expect(container.querySelector("[data-slot='reasoning-part-title']")?.textContent).toBe("Thought");
-    expect(container.querySelector("[data-slot='reasoning-part-summary']")?.textContent).toBe("Inspecting the code");
-    expect(container.querySelector("[data-slot='reasoning-part-content']")).toBeNull();
+    expect(container.querySelector("[data-component='reasoning-part']")).toBeNull();
+    expect(container.querySelector("[data-timeline-row='AssistantMessage']")).toBeNull();
+    expect(container.querySelector("[data-timeline-row='AssistantActivity']")).toBeNull();
+    expect(container.querySelector("[data-slot='session-turn-thinking']")).toBeNull();
   });
 
-  it("keeps live reasoning collapsed and follows its latest line", () => {
+  it("shows one turn-level thinking row with the reasoning heading while busy", () => {
     const live = reasoningAssistant(false) as Extract<TranscriptItem, { kind: "assistant" }>;
-    live.parts = [{ kind: "reasoning", id: "reasoning-1", text: "Inspecting the code\nChecking events", complete: false }];
+    live.parts = [{ kind: "reasoning", id: "reasoning-1", text: "**Inspecting the repository**", complete: false }];
     act(() => root.render(
       <OpenCodeTimeline
         transcript={[live]}
@@ -123,41 +124,34 @@ describe("OpenCodeTimeline chronology", () => {
       />
     ));
 
-    expect(container.querySelector("[data-slot='reasoning-part-title'] [data-component='text-shimmer']")?.getAttribute("aria-label")).toBe("Thinking");
-    expect(container.querySelector("[data-slot='reasoning-part-summary']")?.textContent).toBe("Checking events");
-    expect(container.querySelector("[data-slot='reasoning-part-content']")).toBeNull();
+    expect(container.querySelector("[data-slot='session-turn-thinking']")?.getAttribute("role")).toBe("status");
+    expect(container.querySelector("[data-slot='session-turn-thinking'] [data-component='text-shimmer']")?.getAttribute("aria-label")).toBe("Thinking");
+    expect(container.querySelector("[data-slot='session-turn-thinking-heading']")?.textContent).toBe("Inspecting the repository");
+    expect(container.querySelector("[data-component='reasoning-part']")).toBeNull();
   });
 
-  it("keeps the live reasoning preview on the newest streamed text", () => {
+  it("derives the thinking heading from a markdown heading like OpenCode", () => {
     const live = reasoningAssistant(false) as Extract<TranscriptItem, { kind: "assistant" }>;
-    live.parts = [{ kind: "reasoning", id: "reasoning-1", text: "**Inspecting the repository structure and current events**", complete: false }];
+    live.parts = [
+      { kind: "reasoning", id: "r1", text: "Scratch work without a heading", complete: true },
+      { kind: "reasoning", id: "r2", text: "# Planning the fix\n\nMore detail", complete: false }
+    ];
     act(() => root.render(
       <OpenCodeTimeline transcript={[live]} busy lastAssistantId="assistant-reasoning" />
     ));
 
-    const first = container.querySelector("[data-slot='reasoning-part-summary']");
-    expect(first?.textContent).toBe("Inspecting the repository structure and current events");
-    expect(first?.getAttribute("data-follow-end")).toBe("true");
-    expect(container.querySelector("[data-component='reasoning-part']")?.getAttribute("data-state")).toBe("running");
-
-    live.parts = [{ kind: "reasoning", id: "reasoning-1", text: "Earlier thought\n**Checking the latest streamed event now**", complete: false }];
-    act(() => root.render(
-      <OpenCodeTimeline transcript={[{ ...live }]} busy lastAssistantId="assistant-reasoning" />
-    ));
-
-    expect(container.querySelector("[data-slot='reasoning-part-summary']")?.textContent).toBe("Checking the latest streamed event now");
+    expect(container.querySelector("[data-slot='session-turn-thinking-heading']")?.textContent).toBe("Planning the fix");
   });
 
-  it("does not manufacture token streaming for a one-shot reasoning chunk", () => {
-    const live = reasoningAssistant(false) as Extract<TranscriptItem, { kind: "assistant" }>;
-    live.parts = [{ kind: "reasoning", id: "reasoning-1", text: "Inspecting plans and lessons", complete: true }];
+  it("hides the thinking row when the active turn errored", () => {
+    const failed = reasoningAssistant(false) as Extract<TranscriptItem, { kind: "assistant" }>;
+    failed.error = "Error: boom";
     act(() => root.render(
-      <OpenCodeTimeline transcript={[live]} busy lastAssistantId="assistant-reasoning" />
+      <OpenCodeTimeline transcript={[failed]} busy lastAssistantId="assistant-reasoning" />
     ));
 
-    const summary = container.querySelector("[data-slot='reasoning-part-summary']");
-    expect(summary?.textContent).toBe("Inspecting plans and lessons");
-    expect(container.querySelector("[data-component='reasoning-part']")?.getAttribute("data-state")).toBe("ok");
+    expect(container.querySelector("[data-slot='session-turn-thinking']")).toBeNull();
+    expect(container.querySelector("[data-timeline-row='Error']")).not.toBeNull();
   });
 
   it("opens absolute read paths relative to the tool session workspace", () => {
@@ -185,120 +179,90 @@ describe("OpenCodeTimeline chronology", () => {
     expect(storeState.openFile).toHaveBeenCalledWith("docs/README.md", undefined, session.workspace);
   });
 
-  it("renders one inline working item while the first stream item is pending", () => {
+  it("renders one thinking row while the first stream item is pending", () => {
     act(() => root.render(
-      <OpenCodeTimeline transcript={[]} busy lastAssistantId={null} statusText="preparing response" />
+      <OpenCodeTimeline transcript={[]} busy lastAssistantId={null} />
     ));
 
-    const working = container.querySelector("[data-component='inline-working']");
-    expect(working?.getAttribute("role")).toBe("status");
-    expect(working?.querySelector("[data-component='text-shimmer']")?.getAttribute("aria-label")).toBe("Preparing response");
+    const thinking = container.querySelector("[data-slot='session-turn-thinking']");
+    expect(thinking?.getAttribute("role")).toBe("status");
+    expect(thinking?.querySelector("[data-component='text-shimmer']")?.getAttribute("aria-label")).toBe("Thinking");
     expect(container.querySelector("[data-component='live-activity-dock']")).toBeNull();
   });
 
-  it("replaces the inline placeholder with the real stream item instead of duplicating it", () => {
-    const live = reasoningAssistant(false) as Extract<TranscriptItem, { kind: "assistant" }>;
-    live.parts = [{ kind: "reasoning", id: "reasoning-live", text: "Inspecting the lesson", complete: false }];
-
-    act(() => root.render(
-      <OpenCodeTimeline transcript={[live]} busy lastAssistantId={live.id} statusText="thinking" />
-    ));
-
-    expect(container.querySelector("[data-component='reasoning-part']")).not.toBeNull();
-    expect(container.querySelector("[data-component='inline-working']")).toBeNull();
-    expect(container.querySelector("[data-component='live-activity-dock']")).toBeNull();
-  });
-
-  it("renders reasoning blocks independently in their assistant node", () => {
-    const transcript: TranscriptItem[] = [{
-      kind: "assistant",
-      id: "assistant-reasoning",
-      messageID: "assistant-reasoning",
-      completed: true,
-      parts: [
-        { kind: "reasoning", id: "reasoning-1", text: "Inspecting the code", complete: true },
-        { kind: "reasoning", id: "reasoning-2", text: "Inspecting the code", complete: true },
-        { kind: "reasoning", id: "reasoning-3", text: "Planning the fix", complete: true }
-      ]
-    }];
-    act(() => root.render(<OpenCodeTimeline transcript={transcript} busy={false} lastAssistantId={null} />));
-
-    const thoughts = container.querySelectorAll("[data-component='reasoning-part']");
-    expect(thoughts).toHaveLength(3);
-    expect(Array.from(thoughts, (thought) => thought.querySelector("[data-slot='reasoning-part-summary']")?.textContent)).toEqual([
-      "Inspecting the code",
-      "Inspecting the code",
-      "Planning the fix"
-    ]);
-  });
-
-  it("keeps assistant steps as stable keyed nodes while their own reasoning changes", () => {
-    const first: TranscriptItem = {
-      kind: "assistant",
-      id: "assistant-reasoning",
-      messageID: "assistant-reasoning",
-      completed: false,
-      parts: [
-        { kind: "reasoning", id: "reasoning-1", text: "Before", complete: true },
-        ...((toolAssistant("tool", "bash", { command: "pwd" }) as Extract<TranscriptItem, { kind: "assistant" }>).parts)
-      ]
-    };
-    const second: TranscriptItem = {
-      kind: "assistant",
-      id: "assistant-commentary",
-      messageID: "assistant-commentary",
-      completed: false,
-      parts: [{ kind: "reasoning", id: "commentary-1", text: "After", complete: false }]
-    };
-    act(() => root.render(<OpenCodeTimeline transcript={[first, second]} busy lastAssistantId="assistant-commentary" />));
-
-    const thoughts = container.querySelectorAll("[data-component='reasoning-part']");
-    const thought = thoughts[1];
-    expect(thoughts).toHaveLength(2);
-    expect(thought.querySelector("[data-slot='reasoning-part-summary']")?.textContent).toBe("After");
-
-    const latest = {
-      ...second,
-      parts: [{ kind: "reasoning" as const, id: "commentary-1", text: "After\nLatest", complete: false }]
-    };
-    act(() => root.render(<OpenCodeTimeline transcript={[first, latest]} busy lastAssistantId="assistant-commentary" />));
-
-    const updatedThoughts = container.querySelectorAll("[data-component='reasoning-part']");
-    expect(updatedThoughts[1]).toBe(thought);
-    expect(updatedThoughts[1].querySelector("[data-slot='reasoning-part-summary']")?.textContent).toBe("Latest");
-  });
-
-  it("keeps reasoning at its chronological node instead of moving it to a synthetic footer", () => {
+  it("keeps the thinking row beside the live stream item without duplicating it", () => {
     const live = assistant("assistant-live") as Extract<TranscriptItem, { kind: "assistant" }>;
     live.completed = false;
-    live.parts = [
-      { kind: "reasoning", id: "reasoning-live", text: "Inspecting", complete: false },
-      { kind: "text", id: "text-live", text: "Growing answer", complete: false }
-    ];
-    const shell: TranscriptItem = { kind: "shell", id: "shell-live", shellID: "shell-live", command: "pwd", status: "running" };
+    live.parts = [{ kind: "text", id: "text-live", text: "Streaming answer", complete: false }];
+
     act(() => root.render(
-      <OpenCodeTimeline transcript={[live, shell]} busy lastAssistantId="assistant-live" />
+      <OpenCodeTimeline transcript={[live]} busy lastAssistantId={live.id} />
     ));
 
-    const list = container.querySelector("[data-slot='session-turn-list']")!;
-    const thought = container.querySelector("[data-component='reasoning-part']");
-    expect(list.firstElementChild?.querySelector("[data-component='reasoning-part']")).toBe(thought);
-    expect(container.querySelector("[data-component='turn-status']")).toBeNull();
-
-    live.parts = [
-      { kind: "reasoning", id: "reasoning-live", text: "Inspecting\nComparing", complete: false },
-      { kind: "text", id: "text-live", text: "Growing answer with another streamed paragraph", complete: false }
-    ];
-    act(() => root.render(
-      <OpenCodeTimeline transcript={[{ ...live }, shell]} busy lastAssistantId="assistant-live" />
-    ));
-
-    expect(container.querySelector("[data-component='reasoning-part']")).toBe(thought);
-    expect(list.firstElementChild?.querySelector("[data-component='reasoning-part']")).toBe(thought);
-    expect(container.querySelector("[data-slot='reasoning-part-summary']")?.textContent).toBe("Inspecting");
+    expect(container.querySelector("[data-timeline-row='AssistantMessage']")?.textContent).toContain("Streaming answer");
+    expect(container.querySelectorAll("[data-timeline-row='AssistantWorking']")).toHaveLength(1);
+    expect(container.querySelector("[data-component='live-activity-dock']")).toBeNull();
   });
 
-  it("marks reasoning as running only when it is the streaming tail block", () => {
+  it("folds a context run across contiguous assistant messages", () => {
+    act(() => root.render(
+      <OpenCodeTimeline
+        transcript={[toolAssistant("a1", "read", { filePath: "a.ts" }), toolAssistant("a2", "read", { filePath: "b.ts" })]}
+        busy={false}
+        lastAssistantId={null}
+      />
+    ));
+
+    expect(container.querySelectorAll("[data-component='context-tool-group']")).toHaveLength(1);
+    expect([...container.querySelectorAll("[data-timeline-row]")].map((row) => row.getAttribute("data-timeline-row")))
+      .toEqual(["AssistantActivity"]);
+
+    act(() => container.querySelector<HTMLButtonElement>("[data-component='context-tool-group'] [data-slot='collapsible-trigger']")!.click());
+    expect([...container.querySelectorAll("[data-slot='basic-tool-tool-subtitle']")].map((node) => node.textContent))
+      .toEqual(["a.ts", "b.ts"]);
+  });
+
+  it("keeps an assistant run as a stable keyed node while its parts change", () => {
+    const first: TranscriptItem = toolAssistant("tool-a", "bash", { command: "pwd" });
+    const second: TranscriptItem = {
+      kind: "assistant",
+      id: "assistant-text",
+      messageID: "assistant-text",
+      completed: false,
+      parts: [{ kind: "text", id: "text-1", text: "Before", complete: false }]
+    };
+    act(() => root.render(<OpenCodeTimeline transcript={[first, second]} busy lastAssistantId="assistant-text" />));
+
+    const row = container.querySelector("[data-timeline-row='AssistantMessage']");
+    expect(row?.textContent).toContain("Before");
+
+    act(() => root.render(
+      <OpenCodeTimeline
+        transcript={[first, { ...second, parts: [{ kind: "text" as const, id: "text-1", text: "After", complete: false }] }]}
+        busy
+        lastAssistantId="assistant-text"
+      />
+    ));
+
+    const updated = container.querySelector("[data-timeline-row='AssistantMessage']");
+    expect(updated).toBe(row);
+    expect(updated?.textContent).toContain("After");
+  });
+
+  it("renders the thinking row once at the end of the active run", () => {
+    const first = toolAssistant("a1", "bash", { command: "pwd" });
+    const second = assistant("a2") as Extract<TranscriptItem, { kind: "assistant" }>;
+    second.completed = false;
+    act(() => root.render(
+      <OpenCodeTimeline transcript={[first, second]} busy lastAssistantId="a2" />
+    ));
+
+    const rows = [...container.querySelectorAll("[data-timeline-row]")].map((row) => row.getAttribute("data-timeline-row"));
+    expect(rows.at(-1)).toBe("AssistantWorking");
+    expect(rows.filter((row) => row === "AssistantWorking")).toHaveLength(1);
+  });
+
+  it("renders streamed text parts while hiding the reasoning that produced them", () => {
     const live = reasoningAssistant(false) as Extract<TranscriptItem, { kind: "assistant" }>;
     live.parts = [
       { kind: "reasoning", id: "reasoning-1", text: "Inspecting", complete: false },
@@ -306,8 +270,9 @@ describe("OpenCodeTimeline chronology", () => {
     ];
     act(() => root.render(<OpenCodeTimeline transcript={[live]} busy lastAssistantId="assistant-reasoning" />));
 
-    expect(container.querySelector("[data-component='reasoning-part']")?.getAttribute("data-state")).toBe("ok");
+    expect(container.querySelector("[data-component='reasoning-part']")).toBeNull();
     expect(container.querySelector("[data-component='markdown']")?.textContent).toBe("Visible update");
+    expect(container.querySelector("[data-slot='session-turn-thinking']")).not.toBeNull();
   });
 
   it("renders native text updates immediately without a client-side typewriter queue", () => {
@@ -551,8 +516,8 @@ describe("completed assistant layout", () => {
     expect(actions).toBeNull();
     const options = container.querySelector("[data-component='response-options']");
     expect(options).not.toBeNull();
-    const activityRow = container.querySelector("[data-timeline-row='AssistantActivity']");
-    expect(options?.parentElement).toBe(activityRow?.querySelector("[data-component='assistant-options-footer']"));
+    const messageRow = container.querySelector("[data-timeline-row='AssistantMessage']");
+    expect(options?.parentElement).toBe(messageRow?.querySelector("[data-slot='text-part-copy-wrapper']"));
   });
 
   it("reveals copy and revert actions from the response options button", () => {

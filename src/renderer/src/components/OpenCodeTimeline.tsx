@@ -220,49 +220,6 @@ function TextPart({
   );
 }
 
-function ReasoningPart({
-  part,
-  streaming
-}: {
-  part: Extract<AssistantPart, { kind: "reasoning" }>;
-  streaming: boolean;
-}): ReactNode {
-  const [open, setOpen] = useState(false);
-  const active = streaming;
-  const contentID = `reasoning-${part.id}`;
-  const visible = part.text.trimEnd();
-  const rawSummary = active
-    ? visible.slice(visible.lastIndexOf("\n") + 1)
-    : visible.split("\n", 1)[0];
-  const summary = rawSummary.replace(/^\s*(?:\*\*|__)([\s\S]*?)(?:\*\*|__)\s*$/, "$1");
-  if (!part.text) return null;
-  return (
-    <div
-      data-component="reasoning-part"
-      data-expanded={open ? "true" : "false"}
-      data-state={active ? "running" : "ok"}
-      data-timeline-part-id={part.id}
-    >
-      <button
-        data-slot="reasoning-part-trigger"
-        aria-controls={contentID}
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <span data-slot="reasoning-part-title">{active ? <TextShimmer text="Thinking" tone="thinking" /> : "Thought"}</span>
-        {summary && <span data-slot="reasoning-part-separator" aria-hidden="true" />}
-        {summary && <span data-slot="reasoning-part-summary" data-follow-end={active ? "true" : undefined}>{summary}</span>}
-        <span data-slot="reasoning-part-arrow" className="codicon codicon-chevron-down" />
-      </button>
-      {open && (
-        <div data-slot="reasoning-part-content" id={contentID}>
-          <Markdown text={part.text} streaming={active} />
-        </div>
-      )}
-    </div>
-  );
-}
-
 function parseInput(value: string | undefined): Record<string, unknown> {
   if (!value) return {};
   try {
@@ -1256,13 +1213,16 @@ function TimelineRow({ tag, children, previous }: { tag: string; children: React
   );
 }
 
-function InlineWorking({ statusText }: { statusText?: string | null }): ReactNode {
-  const label = statusText ? statusText.charAt(0).toUpperCase() + statusText.slice(1) : "Working";
+const THINKING_LABEL = "Thinking";
+
+function SessionTurnThinking({ heading }: { heading?: string }): ReactNode {
   return (
-    <div data-component="inline-working" role="status" aria-live="polite">
-      <span data-slot="assistant-activity-pulse" aria-hidden="true" />
-      <TextShimmer text={label} tone="thinking" />
-    </div>
+    <TimelineRow tag="AssistantWorking">
+      <div data-slot="session-turn-thinking" role="status" aria-live="polite">
+        <TextShimmer text={THINKING_LABEL} tone="thinking" />
+        {heading && <span data-slot="session-turn-thinking-heading">{heading}</span>}
+      </div>
+    </TimelineRow>
   );
 }
 
@@ -1292,7 +1252,10 @@ function UserMessage({ item }: { item: Extract<TranscriptItem, { kind: "user" }>
   );
 }
 
-type ActivityPart = Exclude<AssistantPart, { kind: "text" }>;
+// OpenCode hides reasoning parts by default (`showReasoningSummaries: false`); only the
+// turn-level thinking heading reflects them. `ActivityPart` therefore excludes reasoning.
+type RenderablePart = Exclude<AssistantPart, { kind: "reasoning" }>;
+type ActivityPart = Extract<RenderablePart, { kind: "tool" }>;
 type ActivityEntry = ActivityPart | { kind: "context-group"; id: string; tools: ToolCallView[] };
 
 function isContextActivityPart(part: ActivityPart): part is Extract<ActivityPart, { kind: "tool" }> {
@@ -1408,30 +1371,86 @@ function ContextToolGroup({ tools, session }: { tools: ToolCallView[]; session: 
   );
 }
 
-function AssistantNode({
-  item,
+// Mirrors OpenCode's `renderable` with `showReasoningSummaries: false`: reasoning is never
+// rendered as a part, `todowrite` is hidden, and empty text parts are dropped.
+function renderableAssistantPart(part: AssistantPart): part is RenderablePart {
+  if (part.kind === "reasoning") return false;
+  if (part.kind === "tool") return toolKey(part.tool.title) !== "todowrite";
+  return Boolean(part.text.trim());
+}
+
+// Port of OpenCode's `reasoningHeading`/`cleanHeading` (timeline rows) so the thinking row
+// surfaces the same heading a user would see in OpenCode.
+function cleanHeading(value: string): string {
+  return value
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[*_~]+/g, "")
+    .trim();
+}
+
+function reasoningHeading(text: string): string | undefined {
+  const markdown = text.replace(/\r\n?/g, "\n");
+
+  const html = markdown.match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i);
+  if (html?.[1]) {
+    const value = cleanHeading(html[1].replace(/<[^>]+>/g, " "));
+    if (value) return value;
+  }
+
+  const atx = markdown.match(/^\s{0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/m);
+  if (atx?.[1]) {
+    const value = cleanHeading(atx[1]);
+    if (value) return value;
+  }
+
+  const setext = markdown.match(/^([^\n]+)\n(?:=+|-+)\s*$/m);
+  if (setext?.[1]) {
+    const value = cleanHeading(setext[1]);
+    if (value) return value;
+  }
+
+  const strong = markdown.match(/^\s*(?:\*\*|__)(.+?)(?:\*\*|__)\s*$/m);
+  if (strong?.[1]) {
+    const value = cleanHeading(strong[1]);
+    if (value) return value;
+  }
+
+  return undefined;
+}
+
+function firstReasoningHeading(items: AssistantItem[]): string | undefined {
+  for (const item of items) {
+    for (const part of item.parts) {
+      if (part.kind !== "reasoning" || !part.text) continue;
+      const heading = reasoningHeading(part.text);
+      if (heading) return heading;
+    }
+  }
+  return undefined;
+}
+
+// OpenCode groups all assistant messages of a turn into one assistant part stream before
+// folding context runs. Orbit renders a contiguous run of assistant transcript items through
+// this component so context runs can span message boundaries.
+function AssistantRun({
+  items,
   streaming,
-  session,
-  statusText
+  session
 }: {
-  item: AssistantItem;
+  items: AssistantItem[];
   streaming: boolean;
   session: SessionInfo | null;
-  statusText?: string | null;
 }): ReactNode {
   const { stageRevert } = useStore();
   const rows: ReactNode[] = [];
-  const visibleParts = item.parts.filter((part) =>
-    part.kind === "tool"
-      ? toolKey(part.tool.title) !== "todowrite"
-      : Boolean(part.text.trim())
-  );
-  const responseText = item.parts
+  const parts = items.flatMap((item) => item.parts);
+  const visibleParts = parts.filter(renderableAssistantPart);
+  const responseText = parts
     .filter((part): part is Extract<AssistantPart, { kind: "text" }> => part.kind === "text")
     .map((part) => part.text)
     .join("\n\n");
-  const lastPart = visibleParts.at(-1);
-  type ActivityGroup = { kind: "activity"; entries: Exclude<AssistantPart, { kind: "text" }>[] };
+  type ActivityGroup = { kind: "activity"; entries: ActivityPart[] };
   type TextGroup = { kind: "text"; part: Extract<AssistantPart, { kind: "text" }> };
   const groups: (ActivityGroup | TextGroup)[] = [];
   for (const part of visibleParts) {
@@ -1443,16 +1462,12 @@ function AssistantNode({
     if (lastGroup && lastGroup.kind === "activity") lastGroup.entries.push(part);
     else groups.push({ kind: "activity", entries: [part] });
   }
-  const showRevert = item.completed && !streaming && !item.retry && Boolean(session);
+  const lastItem = items.at(-1);
+  const revertMessageID = lastItem?.messageID;
+  const showRevert = Boolean(session) && items.every((item) => item.completed) && !streaming
+    && !items.some((item) => item.retry);
+  const revert = session && revertMessageID ? () => void stageRevert(session.workspace, revertMessageID) : undefined;
   let previous = false;
-  if (streaming && visibleParts.length === 0) {
-    rows.push(
-      <TimelineRow tag="AssistantWorking" key={`${item.id}:working`}>
-        <div data-slot="session-turn-assistant-content"><InlineWorking statusText={statusText} /></div>
-      </TimelineRow>
-    );
-    previous = true;
-  }
   for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
     const group = groups[groupIndex];
     const isLastGroup = groupIndex === groups.length - 1;
@@ -1466,7 +1481,7 @@ function AssistantNode({
               streaming={streaming}
               showLabel={showLabel}
               showRevert={showRevert && isLastGroup && Boolean(session)}
-              onRevert={session ? () => void stageRevert(session.workspace, item.messageID) : undefined}
+              onRevert={revert}
             />
           </div>
         </TimelineRow>
@@ -1475,7 +1490,7 @@ function AssistantNode({
       continue;
     }
     rows.push(
-      <TimelineRow tag="AssistantActivity" previous={previous} key={`${item.id}:activity:${group.entries[0]?.id ?? rows.length}`}>
+      <TimelineRow tag="AssistantActivity" previous={previous} key={`activity:${group.entries[0]?.id ?? rows.length}`}>
         <div data-slot="session-turn-assistant-content" data-component="assistant-activity-stack">
           {groupContextParts(group.entries).map((part) => {
             if (part.kind === "context-group") {
@@ -1486,41 +1501,27 @@ function AssistantNode({
                 </div>
               );
             }
-            const running = part.kind === "reasoning"
-              ? streaming && part.id === lastPart?.id && !part.complete
-              : part.tool.status === "running";
-            const failed = part.kind === "tool" && part.tool.status === "failed";
-            const marker = part.kind === "reasoning"
-              ? "codicon-lightbulb"
-              : running
-                ? ""
-                : failed
-                  ? "codicon-error"
-                  : "codicon-check";
+            const running = part.tool.status === "running";
+            const failed = part.tool.status === "failed";
+            const marker = running ? "" : failed ? "codicon-error" : "codicon-check";
             return (
               <div data-component="assistant-activity-entry" data-kind={part.kind} data-state={running ? "running" : failed ? "failed" : "complete"} key={part.id}>
                 <span data-slot="assistant-activity-marker" aria-hidden="true">
                   {marker ? <span className={`codicon ${marker}`} /> : <span data-slot="assistant-activity-pulse" />}
                 </span>
                 <div data-slot="assistant-activity-content">
-                  {part.kind === "reasoning"
-                    ? <ReasoningPart part={part} streaming={running} />
-                    : part.tool.status === "failed"
-                      ? <ToolErrorCard tool={part.tool} session={session} />
-                      : isEditCardTool(part.tool)
-                        ? <EditToolCard tool={part.tool} session={session} />
-                        : <ToolPart tool={part.tool} session={session} />}
+                  {failed
+                    ? <ToolErrorCard tool={part.tool} session={session} />
+                    : isEditCardTool(part.tool)
+                      ? <EditToolCard tool={part.tool} session={session} />
+                      : <ToolPart tool={part.tool} session={session} />}
                 </div>
               </div>
             );
           })}
           {showRevert && isLastGroup && session && (
             <div data-component="assistant-options-footer">
-              <ResponseOptions
-                text={responseText}
-                showRevert
-                onRevert={() => void stageRevert(session.workspace, item.messageID)}
-              />
+              <ResponseOptions text={responseText} showRevert onRevert={revert} />
             </div>
           )}
         </div>
@@ -1529,30 +1530,65 @@ function AssistantNode({
     previous = true;
   }
 
-  if (item.retry) {
-    rows.push(
-      <TimelineRow tag="Retry" previous key={`${item.id}:retry`}>
-        <div data-slot="session-turn-retry">
-          <span className="spinner" />
-          <div>
-            <div data-slot="session-turn-retry-message">{item.retry.message.slice(0, 80)}</div>
-            <div data-slot="session-turn-retry-info">Retrying · attempt {item.retry.attempt}</div>
+  for (const item of items) {
+    if (item.retry) {
+      rows.push(
+        <TimelineRow tag="Retry" previous key={`${item.id}:retry`}>
+          <div data-slot="session-turn-retry">
+            <span className="spinner" />
+            <div>
+              <div data-slot="session-turn-retry-message">{item.retry.message.slice(0, 80)}</div>
+              <div data-slot="session-turn-retry-info">Retrying · attempt {item.retry.attempt}</div>
+            </div>
           </div>
-        </div>
-      </TimelineRow>
-    );
-  }
-  if (item.error) {
-    rows.push(
-      <TimelineRow tag="Error" previous key={`${item.id}:error`}>
-        <div data-component="session-note" data-tone="error">
-          <span className="codicon codicon-error" data-slot="session-note-icon" />
-          <span data-slot="session-note-text">{item.error.replace(/^Error:\s*/, "")}</span>
-        </div>
-      </TimelineRow>
-    );
+        </TimelineRow>
+      );
+    }
+    if (item.error) {
+      rows.push(
+        <TimelineRow tag="Error" previous key={`${item.id}:error`}>
+          <div data-component="session-note" data-tone="error">
+            <span className="codicon codicon-error" data-slot="session-note-icon" />
+            <span data-slot="session-note-text">{item.error.replace(/^Error:\s*/, "")}</span>
+          </div>
+        </TimelineRow>
+      );
+    }
   }
   return <>{rows}</>;
+}
+
+function renderTurnBody(
+  body: TimelineTurn["body"],
+  busy: boolean,
+  lastAssistantId: string | null,
+  session: SessionInfo | null
+): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let run: AssistantItem[] = [];
+  const flush = (): void => {
+    if (run.length === 0) return;
+    const items = run;
+    run = [];
+    nodes.push(
+      <AssistantRun
+        items={items}
+        streaming={busy && items.some((item) => item.id === lastAssistantId)}
+        session={session}
+        key={`assistant-run:${items[0].id}`}
+      />
+    );
+  };
+  for (const item of body) {
+    if (item.kind === "assistant") {
+      run.push(item);
+      continue;
+    }
+    flush();
+    nodes.push(<TimelineEvent item={item} session={session} key={item.id} />);
+  }
+  flush();
+  return nodes;
 }
 
 type TimelineTurn = {
@@ -1705,14 +1741,12 @@ export const OpenCodeTimeline = memo(function OpenCodeTimeline({
   transcript,
   busy,
   lastAssistantId,
-  session,
-  statusText
+  session
 }: {
   transcript: TranscriptItem[];
   busy: boolean;
   lastAssistantId: string | null;
   session?: SessionInfo | null;
-  statusText?: string | null;
 }): ReactNode {
   const store = useStore();
   const activeSession = session === undefined ? store.session : session;
@@ -1758,9 +1792,14 @@ export const OpenCodeTimeline = memo(function OpenCodeTimeline({
     return visible;
   }, [consolidatedTranscript, representedSubagents, store.sessions, activeSession?.id]);
   const turns = useMemo(() => buildTurns(timeline), [timeline]);
-  const activeTurnHasAssistant = Boolean(lastAssistantId && turns.at(-1)?.body.some(
-    (item) => item.kind === "assistant" && item.id === lastAssistantId && !item.completed
-  ));
+  const activeAssistants = useMemo(
+    () => (turns.at(-1)?.body ?? []).filter((item): item is AssistantItem => item.kind === "assistant"),
+    [turns]
+  );
+  const thinkingHeading = useMemo(() => firstReasoningHeading(activeAssistants), [activeAssistants]);
+  const activeTurnError = activeAssistants.some((item) => Boolean(item.error));
+  const activeTurnRetry = activeAssistants.some((item) => Boolean(item.retry));
+  const showThinking = busy && !activeTurnError && !activeTurnRetry;
 
   return (
     <div data-slot="session-turn-list" className="opencode-timeline">
@@ -1769,23 +1808,11 @@ export const OpenCodeTimeline = memo(function OpenCodeTimeline({
           <div data-component="session-turn-group" key={turn.id}>
             {turn.user && index > 0 && <div data-timeline-row="TurnGap" aria-hidden="true" />}
             {turn.user && <UserMessage item={turn.user} />}
-            {turn.body.map((item) => item.kind === "assistant"
-              ? <AssistantNode
-                  item={item}
-                  streaming={busy && item.id === lastAssistantId}
-                  session={activeSession}
-                  statusText={statusText}
-                  key={`assistant:${item.id}`}
-                />
-              : <TimelineEvent item={item} session={activeSession} key={item.id} />)}
+            {renderTurnBody(turn.body, busy, lastAssistantId, activeSession)}
           </div>
         );
       })}
-      {busy && !activeTurnHasAssistant && (
-        <TimelineRow tag="AssistantWorking">
-          <div data-slot="session-turn-assistant-content"><InlineWorking statusText={statusText} /></div>
-        </TimelineRow>
-      )}
+      {showThinking && <SessionTurnThinking heading={thinkingHeading} />}
     </div>
   );
 });

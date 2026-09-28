@@ -128,8 +128,13 @@
 
 [data-slot="assistant-activity-pulse"] { width: 7px; height: 7px; border: 2px solid var(--v2-background-bg-base); border-radius: 50%; background: currentColor; box-sizing: content-box; animation: assistant-activity-pulse 1.5s ease-in-out infinite; }
 
-[data-component="inline-working"] { min-height: 26px; display: flex; align-items: center; gap: 9px; color: var(--v2-text-text-muted); font: var(--font-weight-medium) 12px/18px var(--font-family-sans); }
-[data-component="inline-working"] [data-slot="assistant-activity-pulse"] { flex: 0 0 auto; color: var(--accent); }
+[data-slot="session-turn-thinking"] [data-slot="session-turn-thinking-heading"] {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--v2-text-text-faint);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 
 @keyframes assistant-activity-pulse {
   0%, 100% { opacity: 0.45; transform: scale(0.8); }
@@ -254,73 +259,6 @@
 }
 
 [data-component="text-part"][data-copyable="true"] [data-slot="text-part-body"] { padding-right: 32px; }
-
-[data-component="reasoning-part"] {
-  width: 100%;
-  max-width: 100%;
-  color: var(--text-dim);
-  user-select: text;
-}
-
-[data-component="reasoning-part"] [data-slot="reasoning-part-trigger"] {
-  width: 100%;
-  max-width: 100%;
-  min-height: 26px;
-  padding: 3px 0;
-  border: 0;
-  background: transparent;
-  color: var(--text-dim);
-  display: flex;
-  align-items: flex-start;
-  gap: 0;
-  cursor: pointer;
-  font: var(--font-weight-regular) 12px/18px var(--font-family-sans);
-  text-align: left;
-  position: relative;
-  overflow: hidden;
-}
-
-[data-component="reasoning-part"] [data-slot="reasoning-part-title"] {
-  flex: 0 0 auto;
-  color: var(--v2-text-text-muted);
-  font-weight: var(--font-weight-medium);
-}
-
-[data-component="reasoning-part"] [data-slot="reasoning-part-title"] [data-component="text-shimmer"] { color: var(--accent); }
-
-[data-component="reasoning-part"] [data-slot="reasoning-part-separator"] {
-  width: 2px;
-  height: 2px;
-  flex: 0 0 2px;
-  margin: 0 8px;
-  border-radius: 1px;
-  background: var(--v2-text-text-faint);
-}
-
-[data-component="reasoning-part"] [data-slot="reasoning-part-summary"] {
-  min-width: 0;
-  display: -webkit-box;
-  flex: 1 1 auto;
-  overflow: hidden;
-  color: var(--v2-text-text-faint);
-  white-space: normal;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-[data-component="reasoning-part"] [data-slot="reasoning-part-summary"][data-follow-end="true"] {
-  -webkit-line-clamp: 2;
-}
-
-[data-component="reasoning-part"] [data-slot="reasoning-part-arrow"] {
-  flex: 0 0 auto;
-  margin-left: 7px;
-  color: var(--v2-icon-icon-muted);
-  font-size: 14px;
-  opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
 
 [data-component="context-tool-group"] {
   width: 100%;
@@ -663,28 +601,6 @@
   [data-component="animated-number"] [data-slot="animated-number-value"],
   [data-component="animated-number"] [data-slot="animated-number-strip"] { transition-duration: 0ms; }
 }
-
-[data-component="reasoning-part"]:hover [data-slot="reasoning-part-arrow"],
-[data-component="reasoning-part"]:focus-within [data-slot="reasoning-part-arrow"] { opacity: 1; }
-[data-component="reasoning-part"][data-expanded="true"] [data-slot="reasoning-part-arrow"] { opacity: 1; transform: rotate(180deg); }
-
-[data-component="reasoning-part"] [data-slot="reasoning-part-trigger"]:hover {
-  color: var(--accent);
-}
-
-[data-component="reasoning-part"] [data-slot="reasoning-part-content"] {
-  margin: 4px 0 6px;
-  padding: 8px 10px;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--v2-text-text-base) 3%, transparent);
-  color: var(--text-dim);
-  font: var(--font-weight-regular) 12px/18px var(--font-family-sans);
-  white-space: pre-wrap;
-  word-break: break-word;
-  cursor: pointer;
-}
-
-[data-component="reasoning-part"] [data-slot="reasoning-part-content"] [data-component="markdown"] { color: inherit; font-size: inherit; line-height: inherit; }
 
 [data-component="text-part"] [data-slot="text-part-copy-wrapper"] {
   position: absolute;

@@ -328,20 +328,21 @@ Key mechanisms:
   source, but the production app only opens OpenCode sessions. User messages use the right-aligned themed bubble
   (`colors.user`, exposed as `--agent-user-bubble`) and a first prose group in an
   assistant message (or the first prose after activity) is preceded by an accent-dot
-  `Orbit` name head; final assistant markdown remains flat. Reasoning and tool calls
-  form one calm work log. Context reads (read/list/glob/grep) always fold — as in
+  `Orbit` name head; final assistant markdown remains flat. Reasoning parts are
+  hidden (OpenCode's default `showReasoningSummaries: false`) and surface only as
+  a single turn-level thinking row while the turn is busy. Reasoning and tool calls
+  otherwise form one calm work log, with contiguous assistant messages flattened
+  into one run before grouping. Context reads (read/list/glob/grep) always fold — as in
   OpenCode's `groupParts` — into a `ContextToolGroup`: its trigger shows a
   `ToolStatusTitle` (`Exploring` while pending, `Explored` when settled) plus an
   `AnimatedCountList` summary (`N reads, N searches, N lists`) and expands to
   compact inline rows (action, target, and any offset/limit/pattern/include
   args). Every other tool renders as a compact inline trigger too, so a burst of
   exploration never fills the transcript; a running tool shimmers its title.
-  Final prose remains visually separate from that log. Each native step keeps a
-  stable keyed entry and chronological position. A running Thinking summary
-  follows the newest native reasoning or OpenCode commentary line. Native
-  deltas appear immediately; a one-shot summary is never made to resemble token
-  streaming. The full accumulated progress renders as Markdown when the user
-  expands it. Tool rows expose running, failed, done, or duration state;
+  Final prose remains visually separate from that log. Each assistant run keeps a
+  stable keyed entry and chronological position. Native deltas appear
+  immediately; a one-shot reasoning summary is never made to resemble token
+  streaming. Tool rows expose running, failed, done, or duration state;
   structured progress is reduced to a readable phrase; live command output
   opens automatically. Failed tools replace the inline row with OpenCode's
   `ToolErrorCard`: the error head becomes the subtitle, the cleaned error body
@@ -350,8 +351,8 @@ Key mechanisms:
   follows streamed height growth only while the reader remains at the floor.
   Programmatic positions are tracked separately
   so inertial or deliberate reader scrolling is not mistaken for stream movement.
-  A minimal inline working item exists only until the first concrete stream node
-  arrives; no footer mirrors active reasoning or tools. Recursive
+  The turn-level thinking row is the only ambient progress affordance; no footer
+  mirrors active reasoning or tools. Recursive
   dormant DeepSeek code-dispatch metadata stays nested beneath its root call;
   task calls use
   OpenCode's agent-colored delegation card and todo writes are hidden from the
@@ -428,7 +429,7 @@ express a cross-component invariant or non-obvious state contract.
 | `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, save/conflict UI, editor validation entry points |
 | `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status |
 | `AgentTui` | `AgentTui.tsx` | xterm view for the active runtime's PTY-backed TUI |
-| `OpenCodeTimeline` | `OpenCodeTimeline.tsx` | Runtime-neutral chronological rendering of assistant reasoning/text/tools/delegation |
+| `OpenCodeTimeline` | `OpenCodeTimeline.tsx` | Runtime-neutral chronological rendering of assistant text/tools/delegation with hidden reasoning |
 | `OpenCodeTodoDock` | `OpenCodeTodoDock.tsx` | Structured todo/checklist state near the composer |
 | `AgentTray` | `AgentTray.tsx` | Collapsed agent-panel affordance and session activity indication |
 | `TerminalTray` | `TerminalTray.tsx` | Integrated terminal tabs backed by main-process `node-pty` |
