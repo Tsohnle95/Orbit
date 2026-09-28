@@ -621,20 +621,20 @@ export function FileSidebar({
     <div className="sidebar files-sidebar">
       <div className="side-tabs" role="tablist" aria-label="Sidebar panels">
         <button
-          className={`side-tab ${activeTab === "sessions" ? "active" : ""}`}
-          role="tab"
-          aria-selected={activeTab === "sessions"}
-          onClick={() => switchTab("sessions")}
-        >
-          Sessions
-        </button>
-        <button
           className={`side-tab ${activeTab === "files" ? "active" : ""}`}
           role="tab"
           aria-selected={activeTab === "files"}
           onClick={() => switchTab("files")}
         >
           Files
+        </button>
+        <button
+          className={`side-tab ${activeTab === "sessions" ? "active" : ""}`}
+          role="tab"
+          aria-selected={activeTab === "sessions"}
+          onClick={() => switchTab("sessions")}
+        >
+          Sessions
         </button>
       </div>
 

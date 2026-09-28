@@ -10,7 +10,7 @@
 
 .main-row {
   display: grid;
-  grid-template-columns: 3.4em var(--pane-columns);
+  grid-template-columns: var(--pane-columns);
   grid-auto-rows: minmax(0, 1fr);
   flex: 1;
   min-width: 0;
@@ -21,7 +21,7 @@
 }
 
 .main-row.sidebar-closed {
-  grid-template-columns: 3.4em minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .main-row.sidebar-closed > .sidebar-slot,
@@ -30,12 +30,12 @@
 }
 
 .main-row > .workspace-area {
-  grid-column: 3 / 5;
+  grid-column: 2 / 4;
   grid-row: 1;
 }
 
 .main-row.sidebar-closed > .workspace-area {
-  grid-column: 2;
+  grid-column: 1;
 }
 
 .workspace-area {
@@ -78,59 +78,6 @@
 .sidebar-slot > .sidebar {
   width: 100%;
   height: 100%;
-}
-
-.activity-rail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  padding: 10px 5px;
-  color: var(--text-dim);
-  background: color-mix(in srgb, var(--rail-surface) 92%, transparent);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 0.8em 2.5em rgba(0, 0, 0, 0.2);
-}
-
-.activity-brand,
-.activity-tool {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  color: var(--text-dim);
-  background: transparent;
-  border: 0;
-  border-radius: 11px;
-  transition: color 120ms var(--ease), background 120ms var(--ease), box-shadow 120ms var(--ease);
-}
-
-.activity-tool { cursor: pointer; }
-
-.activity-brand {
-  margin-bottom: 5px;
-  color: var(--accent);
-  background: var(--bg-active-pill);
-  border: 1px solid var(--border-strong);
-}
-
-.activity-tool:hover,
-.activity-tool.active {
-  color: var(--accent);
-  background: var(--bg-active-pill);
-}
-
-.activity-tool.active { box-shadow: inset 0 0 0 1px var(--border-strong); }
-.activity-tool .os-icon { width: 17px; height: 17px; }
-.activity-spacer { flex: 1 1 auto; }
-
-.activity-tool:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 
 .agent-col {
@@ -223,7 +170,7 @@
 
 .divider {
   position: relative;
-  grid-column: 3;
+  grid-column: 2;
   grid-row: 1;
   cursor: col-resize;
   background: transparent;

@@ -440,7 +440,7 @@ express a cross-component invariant or non-obvious state contract.
 
 | Component | File | Responsibility |
 |---|---|---|
-| `App` | `App.tsx` | Prism workspace shell, profile-independent panel layout, panel geometry and focus routing; Files activity button toggles the file pane while preserving its grid slot so the editor expands in place |
+| `App` | `App.tsx` | Prism workspace shell, profile-independent panel layout, panel geometry and focus routing; the titlebar's leading toggle hides/shows the left panel while preserving its grid slot so the editor expands in place |
 | `Welcome` | `Welcome.tsx` | Landing view, recent sessions/workspaces, initial folder/file open |
 | `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation (defaults to Files when a workspace opens), Changes, Explorer, filesystem actions, terminal context actions |
 | `SettingsSidebar` | `SettingsSidebar.tsx` | Settings navigation |
@@ -542,7 +542,7 @@ released at that collapsed position.
 ## Monaco (`monaco.ts`)
 
 - Workers wired for editor/json/css/html/ts (`?worker` imports).
-- The persisted `orbit.theme` color profile defaults to Prism. Profile selection changes colors, not the activity rail, sidebar, editor/terminal stack, or agent-panel geometry.
+- The persisted `orbit.theme` color profile defaults to Prism. Profile selection changes colors, not the sidebar, editor/terminal stack, or agent-panel geometry.
 - `orbit-${appearanceId}` themes (diff insert/remove colors included) for the twelve persisted color profiles. Saved `kitty` and `original` selections keep their IDs rather than mapping to Blueprint or Control Deck. Monaco
   parses theme palette colors with `Color.fromHex`, which silently maps any
   non-hex value to pure red — every palette color must be hex

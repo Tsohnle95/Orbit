@@ -167,11 +167,11 @@ describe("Layout panel sizing", () => {
     expect(sideTab(container, "Sessions").className).not.toContain("active");
   });
 
-  it("toggles the file pane from the Files activity button and keeps the editor slot", async () => {
+  it("toggles the left panel from the titlebar button and keeps the editor slot", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
-    const toggle = container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!;
+    const toggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!;
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
     expect(container.querySelector(".main-row.sidebar-closed")).toBeNull();
     expect(container.querySelector(".sidebar.collapsed")).toBeNull();
@@ -200,20 +200,19 @@ describe("Layout panel sizing", () => {
     expect(container.querySelector(".sidebar")).not.toBeNull();
   });
 
-  it("keeps file navigation in the activity rail and agent visibility in the titlebar", async () => {
+  it("keeps the left-panel toggle and settings in the titlebar with no activity rail", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
-    const filesButton = container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!;
+    const sidebarToggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!;
     const panelToggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-agent-panel"]')!;
-    expect(filesButton.closest(".activity-rail")).not.toBeNull();
+    const settingsButton = container.querySelector<HTMLButtonElement>('.titlebar-actions button[aria-label="Settings"]')!;
+    expect(sidebarToggle.closest(".titlebar-leading-actions")).not.toBeNull();
     expect(panelToggle.closest(".titlebar-actions")).not.toBeNull();
-    expect(container.querySelector('[data-panel-action="toggle-sidebar"]')).toBeNull();
-    expect(container.querySelector('.activity-rail button[aria-label="Settings"]')).not.toBeNull();
-    expect(container.querySelector('.titlebar-actions button[aria-label="Settings"]')).toBeNull();
-    expect(container.querySelector('.activity-rail button[aria-label="Orbit files"]')).toBeNull();
-    expect(container.querySelector('.activity-rail button[aria-label="Agent Mode"]')).toBeNull();
-    expect(container.querySelector('.activity-rail button[aria-label="Show terminal"]')).toBeNull();
+    expect(settingsButton.closest(".titlebar-actions")).not.toBeNull();
+    expect(container.querySelector(".activity-rail")).toBeNull();
+    expect(container.querySelector('button[aria-label="Files"]')).toBeNull();
+    expect(container.querySelector('button[aria-label="Sessions"]')).toBeNull();
   });
 
   it("settles with both panels fitting when the window is narrower than their combined width", async () => {
@@ -338,7 +337,7 @@ describe("Layout panel sizing", () => {
       handle.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, clientX: 1000 }));
       window.dispatchEvent(new MouseEvent("mousemove", { clientX: 0 }));
       window.dispatchEvent(new MouseEvent("mouseup", {}));
-      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
+      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
@@ -346,7 +345,7 @@ describe("Layout panel sizing", () => {
     expect(agentWidths()[0]).toBeCloseTo(1480, 0);
 
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
+      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 
@@ -356,18 +355,18 @@ describe("Layout panel sizing", () => {
     expect(container.querySelector<HTMLElement>(".workspace-area")!.style.getPropertyValue("--editor-right")).toBe("1249px");
   });
 
-  it("reopens the file pane from the Files activity button after closing it", async () => {
+  it("reopens the file pane from the titlebar toggle after closing it", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
+      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
     expect(gridCols()).toEqual(["0px", "0px", "minmax(0,1fr)"]);
     expect(container.querySelector(".sidebar")).toBeNull();
 
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
+      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
     expect(gridCols()[0]).toBe("230px");
@@ -378,7 +377,7 @@ describe("Layout panel sizing", () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
+      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
       setWidth(500);
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
@@ -392,13 +391,13 @@ describe("Layout panel sizing", () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
+      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
     expect(gridCols()).toEqual(["0px", "0px", "minmax(0,1fr)"]);
 
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
+      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
     expect(gridCols()[0]).toBe("230px");
@@ -429,7 +428,7 @@ describe("Layout panel sizing", () => {
     expect(agentLefts()[0]).toBeCloseTo(0, 0);
 
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('.activity-tool[aria-label="Files"]')!.click();
+      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
 

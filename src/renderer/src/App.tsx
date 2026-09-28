@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { StoreProvider, useStore } from "./store";
-import { IconAdd, IconChevronDown, IconFolder, IconGear, IconHistory, IconRobot, IconSidebarRight, IconTerminal } from "./components/icons";
+import { IconAdd, IconChevronDown, IconGear, IconRobot, IconSidebarLeft, IconSidebarRight, IconTerminal } from "./components/icons";
 import type { SessionInfo } from "@shared/types";
 import { Welcome } from "./components/Welcome";
 import { FileSidebar, type SidebarTab } from "./components/FileSidebar";
@@ -870,14 +870,11 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     setSlotOpen(panel.workspace.id, false);
   };
 
-  const activateSidebarTab = (tab: SidebarTab, toggleFiles = false): void => {
-    const closeFiles = toggleFiles && tab === "files" && !settingsOpen && sideTab === "files" && sideOpen;
-    setSettingsOpen(false);
-    setSideTab(tab);
-    setSidebarOpen(!closeFiles);
-  };
-
-  const openSettings = (): void => {
+  const toggleSettings = (): void => {
+    if (settingsOpen) {
+      setSettingsOpen(false);
+      return;
+    }
     setSidebarOpen(true);
     setSettingsSection("appearance");
     setSettingsOpen(true);
@@ -902,6 +899,18 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   return (
     <div className={`app ${inAgentMode ? "agent-mode" : ""}`}>
       <div className="titlebar">
+        <span className="titlebar-leading-actions">
+          <button
+            className={`icon-btn ${sideOpen ? "on" : ""}`}
+            data-panel-action="toggle-sidebar"
+            title={sideOpen ? "Hide left panel" : "Show left panel"}
+            aria-label={sideOpen ? "Hide left panel" : "Show left panel"}
+            aria-pressed={sideOpen}
+            onClick={() => setSidebarOpen(!sideOpen)}
+          >
+            <IconSidebarLeft />
+          </button>
+        </span>
         <span className="titlebar-title"><OrbitMark size={16} />Orbit</span>
         <span className="titlebar-actions">
           {inAgentMode && (
@@ -944,6 +953,15 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             <IconTerminal />
           </button>
           <button
+            className={`icon-btn ${settingsOpen ? "on" : ""}`}
+            title={settingsOpen ? "Back to workspace" : "Settings"}
+            aria-label="Settings"
+            aria-pressed={settingsOpen}
+            onClick={toggleSettings}
+          >
+            <IconGear />
+          </button>
+          <button
             className={`icon-btn ${anchorOpen ? "on" : ""}`}
             data-panel-action="toggle-agent-panel"
             title={anchorOpen ? "Hide agent panel" : "Show agent panel"}
@@ -961,21 +979,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
         className={sideOpen ? "main-row" : "main-row sidebar-closed"}
         style={{ "--pane-columns": cols } as CSSProperties}
       >
-        <nav className="activity-rail" aria-label="Workspace views">
-          <span className="activity-brand" aria-hidden="true">
-            <OrbitMark size={19} />
-          </span>
-          <button className={`activity-tool ${sideOpen && !settingsOpen && sideTab === "files" ? "active" : ""}`} aria-label="Files" aria-pressed={sideOpen && !settingsOpen && sideTab === "files"} title={sideOpen && !settingsOpen && sideTab === "files" ? "Hide files" : "Files"} onClick={() => activateSidebarTab("files", true)}>
-            <IconFolder />
-          </button>
-          <button className={`activity-tool ${sideOpen && !settingsOpen && sideTab === "sessions" ? "active" : ""}`} aria-label="Sessions" aria-pressed={sideOpen && !settingsOpen && sideTab === "sessions"} title="Sessions" onClick={() => activateSidebarTab("sessions")}>
-            <IconHistory />
-          </button>
-          <span className="activity-spacer" />
-          <button className={`activity-tool ${settingsOpen ? "active" : ""}`} aria-label="Settings" aria-pressed={settingsOpen} title="Settings" onClick={openSettings}>
-            <IconGear />
-          </button>
-        </nav>
         <div className={`sidebar-slot ${sideOpen ? "" : "collapsed"}`}>
           {settingsOpen ? <SettingsSidebar
             section={settingsSection}
