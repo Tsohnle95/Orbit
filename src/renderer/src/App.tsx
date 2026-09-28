@@ -720,6 +720,13 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const anchorId = panels[0]?.workspace.id ?? null;
   const anchorOpen = anchorId ? slots[anchorId]?.open ?? true : emptyAgentOpen;
   const emptyAgentShown = Math.min(emptyAgentWidth, Math.max(0, areaW - EDITOR_MIN_VISIBLE_W - 10));
+  // Once the leftmost agent panel reaches the workspace's left edge the editor
+  // has no visible column left. Keep it mounted but stop painting so its 1px
+  // border cannot peek through the panel's rounded left corners.
+  const editorRight = ordered.length > 0
+    ? Math.max(0, areaW - slotFor(ordered[0]).left)
+    : emptyAgentOpen && !inAgentMode ? emptyAgentShown : 0;
+  const editorCovered = areaW > 0 && areaW - editorRight - 10 <= 2;
   const setSlotOpen = (id: string | null, open: boolean): void => {
     if (!id) return;
     setSlots((current) => {
@@ -901,18 +908,23 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     <div className={`app ${inAgentMode ? "agent-mode" : ""}`}>
       <div className="titlebar">
         <span className="titlebar-leading-actions">
-          {!inAgentMode && (
-            <button
-              className={`icon-btn ${sideOpen ? "on" : ""}`}
-              data-panel-action="toggle-sidebar"
-              title={sideOpen ? "Hide left panel" : "Show left panel"}
-              aria-label={sideOpen ? "Hide left panel" : "Show left panel"}
-              aria-pressed={sideOpen}
-              onClick={() => setSidebarOpen(!sideOpen)}
-            >
-              <IconSidebarLeft />
-            </button>
-          )}
+          <button
+            className={`icon-btn ${!inAgentMode && sideOpen ? "on" : ""}`}
+            data-panel-action="toggle-sidebar"
+            title={!inAgentMode && sideOpen ? "Hide left panel" : "Show left panel"}
+            aria-label={!inAgentMode && sideOpen ? "Hide left panel" : "Show left panel"}
+            aria-pressed={!inAgentMode && sideOpen}
+            onClick={() => {
+              if (inAgentMode) {
+                toggleAgentMode();
+                setSideOpen(true);
+              } else {
+                setSidebarOpen(!sideOpen);
+              }
+            }}
+          >
+            <IconSidebarLeft />
+          </button>
         </span>
         <span className="titlebar-title"><OrbitMark size={16} />Orbit</span>
         <span className="titlebar-actions">
@@ -1021,10 +1033,10 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
         <div className={`divider ${sideOpen ? "" : "collapsed"}`} onMouseDown={sideDrag} style={{ pointerEvents: sideOpen ? undefined : "none" }} />
         {settingsOpen ? <SettingsPage section={settingsSection} onClose={() => setSettingsOpen(false)} /> : <div
           ref={workspaceAreaRef}
-          className={`workspace-area ${ordered.some((panel) => slotShown(panel) > 0) || (panels.length === 0 && emptyAgentOpen) ? "agent-open" : ""} ${trayDragging ? "tray-dragging" : ""}`}
+          className={`workspace-area ${ordered.some((panel) => slotShown(panel) > 0) || (panels.length === 0 && emptyAgentOpen) ? "agent-open" : ""} ${editorCovered ? "editor-covered" : ""} ${trayDragging ? "tray-dragging" : ""}`}
           style={
             {
-              "--editor-right": `${ordered.length > 0 ? Math.max(0, areaW - slotFor(ordered[0]).left) : emptyAgentOpen && !inAgentMode ? emptyAgentShown : 0}px`,
+              "--editor-right": `${editorRight}px`,
               "--tray-row": trayOpen ? `${trayH}px` : "0px",
               "--tray-gap": trayOpen ? "10px" : "0px"
             } as CSSProperties

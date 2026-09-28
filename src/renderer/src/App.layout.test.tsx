@@ -254,7 +254,31 @@ describe("Layout panel sizing", () => {
     expect(container.querySelector(".app.agent-mode")).not.toBeNull();
     expect(container.querySelector(".activity-rail")).toBeNull();
     expect(container.querySelector(".sidebar")).toBeNull();
-    expect(container.querySelector('[data-panel-action="toggle-sidebar"]')).toBeNull();
+  });
+
+  it("keeps the left panel toggle available in agent mode and exits when used", async () => {
+    await act(async () => root.render(<App />));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-model-mode"]')!.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(container.querySelector(".app.agent-mode")).not.toBeNull();
+
+    const toggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]');
+    expect(toggle).not.toBeNull();
+    expect(toggle!.getAttribute("aria-pressed")).toBe("false");
+
+    await act(async () => {
+      toggle!.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    expect(container.querySelector(".app.agent-mode")).toBeNull();
+    expect(container.querySelector(".main-row.sidebar-closed")).toBeNull();
+    expect(container.querySelector(".activity-rail")).not.toBeNull();
+    expect(container.querySelector(".sidebar")).not.toBeNull();
   });
 
   it("settles with both panels fitting when the window is narrower than their combined width", async () => {
@@ -468,6 +492,7 @@ describe("Layout panel sizing", () => {
 
     expect(agentWidths()[0]).toBeCloseTo(1249, 0);
     expect(agentLefts()[0]).toBeCloseTo(0, 0);
+    expect(container.querySelector(".workspace-area.editor-covered")).not.toBeNull();
 
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!.click();
@@ -476,6 +501,7 @@ describe("Layout panel sizing", () => {
 
     expect(agentWidths()[0]).toBeCloseTo(1480, 0);
     expect(agentLefts()[0]).toBeCloseTo(0, 0);
+    expect(container.querySelector(".workspace-area.editor-covered")).not.toBeNull();
   });
 
   it("insets the editor area to the free space left of the agent panels", async () => {
@@ -488,6 +514,7 @@ describe("Layout panel sizing", () => {
       );
 
     expect(editorRight()).toBeCloseTo(325, 0);
+    expect(container.querySelector(".workspace-area.editor-covered")).toBeNull();
 
     await act(async () => {
       dispatch({ kind: "session", session: info("/two", 2) });

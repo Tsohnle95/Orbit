@@ -67,6 +67,13 @@
   width: calc(100% - var(--editor-right, 0px) - 10px);
 }
 
+// The editor is fully covered when the leftmost agent panel reaches the
+// workspace edge; hiding it keeps its border from showing through the panel's
+// rounded left corners.
+.workspace-area.editor-covered > .editor-pane {
+  visibility: hidden;
+}
+
 .workspace-area.tray-dragging { transition: none; }
 
 .sidebar-slot {
