@@ -18,6 +18,9 @@ export default defineConfig({
     css: {
       devSourcemap: true
     },
+    worker: {
+      format: "es"
+    },
     resolve: {
       alias: {
         "@": resolve(__dirname, "src/renderer/src"),
