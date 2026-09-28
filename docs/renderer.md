@@ -344,9 +344,14 @@ Key mechanisms:
   a burst of exploration never fills the transcript; a running tool shimmers its
   title.
   Final prose remains visually separate from that log. Each assistant run keeps a
-  stable keyed entry and chronological position. Native deltas appear
-  immediately; a one-shot reasoning summary is never made to resemble token
-  streaming. Assistant markdown mirrors OpenCode's paced projection
+  stable keyed entry and chronological position. Short native deltas appear
+  immediately; a text update more than 512 characters ahead of the visible text
+  advances every 24 ms with OpenCode's chunk sizes and word-boundary snapping.
+  Completing an assistant message flushes pending text immediately. Text and
+  copy actions follow the owning message's completion, even when a text part
+  finished earlier or another assistant message in the turn is still working.
+  A one-shot reasoning summary is never made to resemble token streaming.
+  Assistant markdown mirrors OpenCode's live projection
   (`markdown-stream.ts` / `markdown-projection.ts`): while streaming, the text is
   lexed (`marked`) into stable top-level blocks whose frozen prefix is memoized and
   whose trailing block is rendered live with `remend` healing, so incomplete

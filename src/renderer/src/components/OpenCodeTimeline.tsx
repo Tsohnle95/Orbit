@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useStore } from "../store";
@@ -102,6 +102,64 @@ function Markdown({ text, streaming }: { text: string; streaming: boolean }): Re
       ))}
     </div>
   );
+}
+
+const TEXT_RENDER_PACE_MS = 24;
+const TEXT_RENDER_IMMEDIATE = 512;
+const TEXT_RENDER_SNAP = /[\s.,!?;:)\]]/;
+
+function nextPacedEnd(text: string, start: number): number {
+  const remaining = text.length - start;
+  const step = remaining <= 12 ? 2 : remaining <= 48 ? 4 : remaining <= 96 ? 8 : Math.min(256, Math.ceil(remaining / 4));
+  const end = Math.min(text.length, start + step);
+  const max = Math.min(text.length, end + 8);
+  for (let index = end; index < max; index += 1) {
+    if (TEXT_RENDER_SNAP.test(text[index] ?? "")) return index + 1;
+  }
+  return end;
+}
+
+function PacedMarkdown({ text, streaming }: { text: string; streaming: boolean }): ReactNode {
+  const [visible, setVisible] = useState(text);
+  const shown = useRef(text);
+  const latest = useRef({ text, streaming });
+  const timeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  latest.current = { text, streaming };
+
+  const sync = (value: string): void => {
+    shown.current = value;
+    setVisible(value);
+  };
+  const clear = (): void => {
+    if (timeout.current === undefined) return;
+    clearTimeout(timeout.current);
+    timeout.current = undefined;
+  };
+  const run = (): void => {
+    timeout.current = undefined;
+    const current = latest.current;
+    if (!current.streaming || !current.text.startsWith(shown.current) || current.text.length <= shown.current.length
+      || current.text.length - shown.current.length <= TEXT_RENDER_IMMEDIATE) {
+      sync(current.text);
+      return;
+    }
+    const end = nextPacedEnd(current.text, shown.current.length);
+    sync(current.text.slice(0, end));
+    if (end < current.text.length) timeout.current = setTimeout(run, TEXT_RENDER_PACE_MS);
+  };
+
+  useLayoutEffect(() => {
+    if (!streaming || !text.startsWith(shown.current) || text.length <= shown.current.length
+      || text.length - shown.current.length <= TEXT_RENDER_IMMEDIATE) {
+      clear();
+      sync(text);
+      return;
+    }
+    if (timeout.current === undefined) timeout.current = setTimeout(run, TEXT_RENDER_PACE_MS);
+  }, [text, streaming]);
+
+  useEffect(() => () => clear(), []);
+  return <Markdown text={visible} streaming={streaming} />;
 }
 
 function CopyResponse({ text, target = "response" }: { text: string; target?: "response" | "code" }): ReactNode {
@@ -223,7 +281,8 @@ function TextPart({
   showRevert?: boolean;
   onRevert?: () => void;
 }): ReactNode {
-  if (!part.text) return null;
+  const text = part.text.trim();
+  if (!text) return null;
   return (
     <div data-component="text-part" data-copyable={!streaming ? "true" : undefined} data-timeline-part-id={part.id}>
       {showLabel && (
@@ -232,14 +291,14 @@ function TextPart({
           <span data-slot="assistant-name">Orbit</span>
         </div>
       )}
+      <div data-slot="text-part-body">
+        <PacedMarkdown text={text} streaming={streaming} />
+      </div>
       {!streaming && (
         <div data-slot="text-part-copy-wrapper">
-          <ResponseOptions text={part.text} showRevert={showRevert} onRevert={onRevert} />
+          <ResponseOptions text={text} showRevert={showRevert} onRevert={onRevert} />
         </div>
       )}
-      <div data-slot="text-part-body">
-        <Markdown text={part.text} streaming={streaming && !part.complete} />
-      </div>
     </div>
   );
 }
@@ -1491,17 +1550,19 @@ function AssistantRun({
   const { stageRevert } = useStore();
   const rows: ReactNode[] = [];
   const parts = items.flatMap((item) => item.parts);
-  const visibleParts = parts.filter(renderableAssistantPart);
+  const visibleParts = items.flatMap((item) => item.parts
+    .filter(renderableAssistantPart)
+    .map((part) => ({ part, messageCompleted: item.completed })));
   const responseText = parts
     .filter((part): part is Extract<AssistantPart, { kind: "text" }> => part.kind === "text")
     .map((part) => part.text)
     .join("\n\n");
   type ActivityGroup = { kind: "activity"; entries: ActivityPart[] };
-  type TextGroup = { kind: "text"; part: Extract<AssistantPart, { kind: "text" }> };
+  type TextGroup = { kind: "text"; part: Extract<AssistantPart, { kind: "text" }>; streaming: boolean };
   const groups: (ActivityGroup | TextGroup)[] = [];
-  for (const part of visibleParts) {
+  for (const { part, messageCompleted } of visibleParts) {
     if (part.kind === "text") {
-      groups.push({ kind: "text", part });
+      groups.push({ kind: "text", part, streaming: !messageCompleted });
       continue;
     }
     const lastGroup = groups.at(-1);
@@ -1524,7 +1585,7 @@ function AssistantRun({
           <div data-slot="session-turn-assistant-content">
             <TextPart
               part={group.part}
-              streaming={streaming}
+              streaming={group.streaming}
               showLabel={showLabel}
               showRevert={showRevert && isLastGroup && Boolean(session)}
               onRevert={revert}

@@ -275,7 +275,8 @@ describe("OpenCodeTimeline chronology", () => {
     expect(container.querySelector("[data-slot='session-turn-thinking']")).not.toBeNull();
   });
 
-  it("renders native text updates immediately without a client-side typewriter queue", () => {
+  it("paces large text updates using OpenCode's live text progression and flushes on completion", () => {
+    vi.useFakeTimers();
     const live = assistant("assistant-live") as Extract<TranscriptItem, { kind: "assistant" }>;
     live.completed = false;
     live.parts = [{ kind: "text", id: "text-live", text: "Start", complete: false }];
@@ -285,7 +286,56 @@ describe("OpenCodeTimeline chronology", () => {
     live.parts = [{ kind: "text", id: "text-live", text: update, complete: false }];
     act(() => root.render(<OpenCodeTimeline transcript={[{ ...live }]} busy lastAssistantId="assistant-live" />));
 
+    expect(container.querySelector("[data-component='markdown']")?.textContent).toBe("Start");
+    act(() => vi.advanceTimersByTime(24));
+    const first = container.querySelector("[data-component='markdown']")?.textContent ?? "";
+    expect(first.length).toBeGreaterThan("Start".length);
+    expect(first.length).toBeLessThan(update.trim().length);
+    expect(update.startsWith(first)).toBe(true);
+
+    act(() => vi.advanceTimersByTime(240));
     expect(container.querySelector("[data-component='markdown']")?.textContent).toBe(update.trim());
+
+    const larger = `${update} ${"more words ".repeat(80)}`;
+    live.parts = [{ kind: "text", id: "text-live", text: larger, complete: true }];
+    act(() => root.render(<OpenCodeTimeline transcript={[{ ...live }]} busy lastAssistantId="assistant-live" />));
+    expect(container.querySelector("[data-component='markdown']")?.textContent).toBe(update.trim());
+    live.completed = true;
+    act(() => root.render(<OpenCodeTimeline transcript={[{ ...live }]} busy={false} lastAssistantId={null} />));
+    expect(container.querySelector("[data-component='markdown']")?.textContent).toBe(larger.trim());
+  });
+
+  it("keeps a completed text part live until its assistant message completes", () => {
+    const live = assistant("assistant-live") as Extract<TranscriptItem, { kind: "assistant" }>;
+    live.completed = false;
+    live.parts = [{ kind: "text", id: "text-live", text: "An unfinished **answer", complete: true }];
+    act(() => root.render(<OpenCodeTimeline transcript={[live]} busy lastAssistantId="assistant-live" />));
+
+    expect(container.querySelector("[data-component='markdown']")?.getAttribute("data-streaming")).toBe("true");
+    expect(container.querySelector("[data-component='markdown'] strong")?.textContent).toBe("answer");
+    expect(container.querySelector("[data-slot='text-part-copy-wrapper']")).toBeNull();
+
+    live.completed = true;
+    act(() => root.render(<OpenCodeTimeline transcript={[{ ...live }]} busy={false} lastAssistantId={null} />));
+    expect(container.querySelector("[data-component='markdown']")?.getAttribute("data-streaming")).toBe("false");
+    expect(container.querySelector("[data-slot='text-part-copy-wrapper']")).not.toBeNull();
+  });
+
+  it("shows short deltas and non-prefix replacements immediately", () => {
+    vi.useFakeTimers();
+    const live = assistant("assistant-live") as Extract<TranscriptItem, { kind: "assistant" }>;
+    live.completed = false;
+    live.parts = [{ kind: "text", id: "text-live", text: "Start", complete: false }];
+    act(() => root.render(<OpenCodeTimeline transcript={[live]} busy lastAssistantId={live.id} />));
+
+    live.parts = [{ kind: "text", id: "text-live", text: "Start of an answer", complete: false }];
+    act(() => root.render(<OpenCodeTimeline transcript={[{ ...live }]} busy lastAssistantId={live.id} />));
+    expect(container.querySelector("[data-component='markdown']")?.textContent).toBe("Start of an answer");
+
+    live.parts = [{ kind: "text", id: "text-live", text: "A replacement answer", complete: false }];
+    act(() => root.render(<OpenCodeTimeline transcript={[{ ...live }]} busy lastAssistantId={live.id} />));
+    expect(container.querySelector("[data-component='markdown']")?.textContent).toBe("A replacement answer");
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("heals incomplete markdown in the streaming tail like OpenCode", () => {
