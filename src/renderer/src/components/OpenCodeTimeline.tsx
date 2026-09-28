@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useStore } from "../store";
@@ -1314,12 +1314,83 @@ function TimelineRow({ tag, children, previous }: { tag: string; children: React
 
 const THINKING_LABEL = "Thinking";
 
+function ThinkingHeading({ text }: { text: string }): ReactNode {
+  const [state, setState] = useState({ current: text, old: "", width: "auto", swapping: false });
+  const [ready, setReady] = useState(false);
+  const root = useRef<HTMLSpanElement>(null);
+  const entering = useRef<HTMLSpanElement>(null);
+  const leaving = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    setState((previous) => {
+      if (previous.current === text) return previous;
+      if (text.startsWith(previous.current)) return { ...previous, current: text };
+      return { ...previous, current: text, old: previous.current, swapping: true };
+    });
+  }, [text]);
+
+  useLayoutEffect(() => {
+    const width = Math.max(entering.current?.scrollWidth ?? 0, leaving.current?.scrollWidth ?? 0);
+    if (width > 0) setState((previous) => {
+      const prior = Number.parseFloat(previous.width);
+      return Number.isFinite(prior) && prior >= width ? previous : { ...previous, width: `${width}px` };
+    });
+    if (!state.swapping) return;
+    if (typeof requestAnimationFrame !== "function") {
+      setState((previous) => ({ ...previous, swapping: false }));
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      void root.current?.offsetHeight;
+      setState((previous) => ({ ...previous, swapping: false }));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [state.current, state.old, state.swapping]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let frame: number | undefined;
+    const finish = (): void => {
+      if (cancelled) return;
+      if (typeof requestAnimationFrame !== "function") {
+        setReady(true);
+        return;
+      }
+      frame = requestAnimationFrame(() => setReady(true));
+    };
+    const fonts = document.fonts;
+    if (fonts) void fonts.ready.finally(finish);
+    else finish();
+    return () => {
+      cancelled = true;
+      if (frame !== undefined) cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return (
+    <span
+      ref={root}
+      data-component="text-reveal"
+      data-slot="session-turn-thinking-heading"
+      data-ready={ready ? "true" : "false"}
+      data-swapping={state.swapping ? "true" : "false"}
+      aria-label={text}
+      style={{ "--text-reveal-duration": "700ms", "--text-reveal-travel": "25px" } as CSSProperties}
+    >
+      <span data-slot="text-reveal-track" style={{ width: state.width }}>
+        <span data-slot="text-reveal-entering" ref={entering} aria-hidden="true">{state.current}</span>
+        <span data-slot="text-reveal-leaving" ref={leaving} aria-hidden="true">{state.old}</span>
+      </span>
+    </span>
+  );
+}
+
 function SessionTurnThinking({ heading }: { heading?: string }): ReactNode {
   return (
     <TimelineRow tag="AssistantWorking">
       <div data-slot="session-turn-thinking" role="status" aria-live="polite">
         <TextShimmer text={THINKING_LABEL} tone="thinking" />
-        {heading && <span data-slot="session-turn-thinking-heading">{heading}</span>}
+        {heading && <ThinkingHeading text={heading} />}
       </div>
     </TimelineRow>
   );

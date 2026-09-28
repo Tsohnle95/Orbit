@@ -332,7 +332,9 @@ Key mechanisms:
   assistant message (or the first prose after activity) is preceded by an accent-dot
   `Orbit` name head; final assistant markdown remains flat. Reasoning parts are
   hidden (OpenCode's default `showReasoningSummaries: false`) and surface only as
-  a single turn-level thinking row while the turn is busy. Reasoning and tool calls
+  a single turn-level thinking row while the turn is busy. The latest reasoning
+  heading replaces the previous one with OpenCode's 700 ms masked reveal and
+  25 px travel; reduced-motion settings disable the transition. Reasoning and tool calls
   otherwise form one calm work log, with contiguous assistant messages flattened
   into one run before grouping. Context reads (read/list/glob/grep) always fold — as in
   OpenCode's `groupParts` — into a `ContextToolGroup`: its trigger shows a

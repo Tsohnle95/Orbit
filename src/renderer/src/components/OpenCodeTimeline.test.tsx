@@ -154,6 +154,21 @@ describe("OpenCodeTimeline chronology", () => {
     expect(container.querySelector("[data-slot='session-turn-thinking-heading']")?.textContent).toBe("Implementing");
   });
 
+  it("reveals a replacement reasoning heading with OpenCode's entering and leaving tracks", () => {
+    const live = reasoningAssistant(false) as Extract<TranscriptItem, { kind: "assistant" }>;
+    live.parts = [{ kind: "reasoning", id: "r1", text: "# Inspecting", complete: false }];
+    act(() => root.render(<OpenCodeTimeline transcript={[live]} busy lastAssistantId={live.id} />));
+
+    live.parts = [{ kind: "reasoning", id: "r1", text: "# Implementing", complete: false }];
+    act(() => root.render(<OpenCodeTimeline transcript={[{ ...live }]} busy lastAssistantId={live.id} />));
+
+    const reveal = container.querySelector("[data-slot='session-turn-thinking-heading']");
+    expect(reveal?.getAttribute("data-component")).toBe("text-reveal");
+    expect(reveal?.getAttribute("aria-label")).toBe("Implementing");
+    expect(reveal?.querySelector("[data-slot='text-reveal-entering']")?.textContent).toBe("Implementing");
+    expect(reveal?.querySelector("[data-slot='text-reveal-leaving']")?.textContent).toBe("Inspecting");
+  });
+
   it("hides the thinking row when the active turn errored", () => {
     const failed = reasoningAssistant(false) as Extract<TranscriptItem, { kind: "assistant" }>;
     failed.error = "Error: boom";
