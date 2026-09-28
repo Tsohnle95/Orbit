@@ -56,7 +56,8 @@ Implementation / tests:
 - Generic tool args must not leak arbitrary input values (Orbit privacy
   behavior); context-tool args are the documented `offset`/`limit`/`pattern`/
   `include` fields only.
-- No new runtime dependencies.
+- No new runtime dependencies, except the phase-4, user-approved `marked` +
+  `remend` port that matches OpenCode's exact stack.
 
 ## Affected surfaces
 
@@ -71,8 +72,8 @@ Implementation / tests:
 |---|---|---|---|---|
 | 1 | Context-tool streaming core: ToolStatusTitle, count summary, grouping semantics, ContextToolGroup DOM, inline tool triggers | done (72d232f) | unit tests + visual | 72d232f |
 | 2 | Non-context surfaces parity: shell/edit/write/patch body, generic "Called" trigger, tool error card, `partDefaultOpen` | done | unit tests + visual | 4850432 |
-| 3 | Assistant turn parity: parts grouping across messages, reasoning/text part parity | done | unit tests + visual | — |
-| 4 | Markdown streaming parity (paced projection / fence healing) | pending | unit + visual | — |
+| 3 | Assistant turn parity: parts grouping across messages, reasoning/text part parity | done | unit tests + visual | bc9fdde |
+| 4 | Markdown streaming parity (paced projection / fence healing) | done | unit tests + visual | b94a605 |
 | 5 | CSS parity pass + full visual sweep | pending | visual + `npm run check` | — |
 
 ## Validation plan
@@ -111,6 +112,12 @@ Implementation / tests:
   while the active turn is busy and error/retry-free. Orbit's collapsible
   per-part `Thought`, its statusText-driven `inline-working` row, and the related
   CSS were removed.
+- 2026-09-27 — Phase 4 adopts OpenCode's exact markdown streaming stack. Orbit's
+  declarative `react-markdown` stays the block renderer, but block boundaries and
+  healing come from a verbatim port of OpenCode's `markdown-stream.ts` +
+  `markdown-projection.ts` using OpenCode's pinned `marked` and `remend`; this is
+  the one approved exception to the no-new-dependency constraint. OpenCode's
+  imperative DOM/worker/cache renderer is not ported.
 
 ## Open risks / blockers
 

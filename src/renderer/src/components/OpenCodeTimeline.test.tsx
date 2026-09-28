@@ -288,6 +288,41 @@ describe("OpenCodeTimeline chronology", () => {
     expect(container.querySelector("[data-component='markdown']")?.textContent).toBe(update.trim());
   });
 
+  it("heals incomplete markdown in the streaming tail like OpenCode", () => {
+    const live = assistant("assistant-heal") as Extract<TranscriptItem, { kind: "assistant" }>;
+    live.completed = false;
+    live.parts = [{ kind: "text", id: "text-heal", text: "hello **world", complete: false }];
+    act(() => root.render(<OpenCodeTimeline transcript={[live]} busy lastAssistantId="assistant-heal" />));
+
+    expect(container.querySelector("[data-component='markdown'] strong")?.textContent).toBe("world");
+  });
+
+  it("freezes completed markdown blocks and keeps only the tail live", () => {
+    const live = assistant("assistant-blocks") as Extract<TranscriptItem, { kind: "assistant" }>;
+    live.completed = false;
+    live.parts = [
+      { kind: "text", id: "text-blocks", text: "# Plan\n\nFinished paragraph.\n\n- live item", complete: false }
+    ];
+    act(() => root.render(<OpenCodeTimeline transcript={[live]} busy lastAssistantId="assistant-blocks" />));
+
+    const blocks = container.querySelectorAll("[data-component='markdown'] [data-markdown-block]");
+    expect(blocks).toHaveLength(3);
+    expect(blocks[0]?.querySelector("h1")?.textContent).toBe("Plan");
+  });
+
+  it("renders an unfinished code fence as a code block while streaming", () => {
+    const live = assistant("assistant-code") as Extract<TranscriptItem, { kind: "assistant" }>;
+    live.completed = false;
+    live.parts = [{ kind: "text", id: "text-code", text: "before\n\n```ts\nconst x = 1", complete: false }];
+    act(() => root.render(<OpenCodeTimeline transcript={[live]} busy lastAssistantId="assistant-code" />));
+
+    const code = container.querySelector(
+      "[data-component='markdown'] [data-markdown-block][data-markdown-complete='false'] code"
+    );
+    expect(code?.getAttribute("data-code-language")).toBe("ts");
+    expect(code?.textContent).toContain("const x = 1");
+  });
+
   it("hides arbitrary generic tool arguments and exposes long details as a tooltip", () => {
     const generic = toolAssistant("tool", "tool", { limit: 40, content: "private" }) as Extract<TranscriptItem, { kind: "assistant" }>;
     const transcript: TranscriptItem[] = [{

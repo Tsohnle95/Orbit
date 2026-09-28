@@ -721,6 +721,8 @@
 
 [data-component="markdown"] > *:first-child { margin-top: 0; }
 [data-component="markdown"] > *:last-child { margin-bottom: 0; }
+[data-component="markdown"] > [data-markdown-block]:first-child > *:first-child { margin-top: 0; }
+[data-component="markdown"] > [data-markdown-block]:last-child > *:last-child { margin-bottom: 0; }
 [data-component="markdown"] p { margin-top: 0; margin-bottom: 12px; }
 [data-component="markdown"] h1 { font-size: 17px; font-weight: var(--font-weight-medium); margin: 28px 0 12px; line-height: 20px; }
 [data-component="markdown"] h2 { font-size: 15px; font-weight: var(--font-weight-medium); margin: 24px 0 10px; line-height: 20px; }

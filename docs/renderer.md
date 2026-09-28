@@ -342,7 +342,14 @@ Key mechanisms:
   Final prose remains visually separate from that log. Each assistant run keeps a
   stable keyed entry and chronological position. Native deltas appear
   immediately; a one-shot reasoning summary is never made to resemble token
-  streaming. Tool rows expose running, failed, done, or duration state;
+  streaming. Assistant markdown mirrors OpenCode's paced projection
+  (`markdown-stream.ts` / `markdown-projection.ts`): while streaming, the text is
+  lexed (`marked`) into stable top-level blocks whose frozen prefix is memoized and
+  whose trailing block is rendered live with `remend` healing, so incomplete
+  emphasis, links, and open code fences render sensibly and finished blocks never
+  re-render; when streaming stops the tail is finalized into a full block. Settled
+  text renders as a single parsed block. Tool rows expose running, failed, done, or
+  duration state;
   structured progress is reduced to a readable phrase; live command output
   opens automatically. Failed tools replace the inline row with OpenCode's
   `ToolErrorCard`: the error head becomes the subtitle, the cleaned error body

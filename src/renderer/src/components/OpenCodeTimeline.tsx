@@ -7,6 +7,7 @@ import { ExternalLink } from "./ExternalLink";
 import { TextShimmer } from "./TextShimmer";
 import { ToolStatusTitle } from "./ToolStatusTitle";
 import { AnimatedCountList, type CountItem } from "./ToolCountSummary";
+import { project, type Block, type Projection } from "../markdown-stream";
 
 const OUTPUT_LIMIT = 6000;
 
@@ -71,11 +72,34 @@ const MARKDOWN_COMPONENTS: Components = {
   }
 };
 
+// One projected markdown block. OpenCode keys/memoizes each block so frozen blocks never
+// re-render while the tail streams; `display: contents` keeps the wrapper out of layout.
+const MarkdownBlock = memo(function MarkdownBlock({ block }: { block: Block }): ReactNode {
+  const source = block.mode === "code" ? block.raw : block.src;
+  return (
+    <div
+      data-markdown-block=""
+      data-markdown-complete={block.mode === "code" ? (block.complete ? "true" : "false") : undefined}
+      style={{ display: "contents" }}
+    >
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{source}</ReactMarkdown>
+    </div>
+  );
+});
+
 function Markdown({ text, streaming }: { text: string; streaming: boolean }): ReactNode {
+  const projectionRef = useRef<Projection | undefined>(undefined);
+  const projection = useMemo(() => {
+    const next = project(projectionRef.current, text, streaming);
+    projectionRef.current = next;
+    return next;
+  }, [text, streaming]);
   if (!text) return null;
   return (
     <div data-component="markdown" data-streaming={streaming ? "true" : "false"}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{text}</ReactMarkdown>
+      {projection.blocks.map((block, index) => (
+        <MarkdownBlock block={block} key={`${index}:${block.mode}`} />
+      ))}
     </div>
   );
 }
