@@ -458,7 +458,7 @@ express a cross-component invariant or non-obvious state contract.
 | `SettingsPage` | `SettingsPage.tsx` | Ten design-direction palettes plus the restored Kitty Glass and Original Dark appearances, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and About with GitHub app update status/actions; missing update IPC handlers explain that Orbit must be reopened |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
 | `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
-| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, save/conflict UI, editor validation entry points, and an optional side-by-side secondary group whose selection follows the focused group |
+| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, save/conflict UI, editor validation entry points, and optional side-by-side editor groups with independent tab membership and selection |
 | `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status |
 | `AgentTui` | `AgentTui.tsx` | xterm view for the active runtime's PTY-backed TUI |
 | `OpenCodeTimeline` | `OpenCodeTimeline.tsx` | Runtime-neutral chronological rendering of assistant text/tools/delegation with hidden reasoning |

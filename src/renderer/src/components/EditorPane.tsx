@@ -48,7 +48,6 @@ function TabBar({
   tabs,
   activePath,
   ariaLabel,
-  disabledPath,
   onSelect,
   onClose,
   actions
@@ -56,7 +55,6 @@ function TabBar({
   tabs: Tab[];
   activePath: string | null;
   ariaLabel: string;
-  disabledPath: string | null;
   onSelect: (path: string) => void;
   onClose: (path: string) => void;
   actions: ReactNode;
@@ -68,7 +66,6 @@ function TabBar({
       <div className="tab-list" role="tablist" aria-label={ariaLabel}>
       {tabs.map((tab) => {
         const active = tab.path === activePath;
-        const visibleInOtherGroup = tab.path === disabledPath;
         const hasDiff =
           tab.baseline?.kind === "known" && !tab.deleted && tab.baseline.content !== tab.content;
         return (
@@ -76,9 +73,8 @@ function TabBar({
             key={tab.path}
             role="tab"
             aria-selected={active}
-            aria-disabled={visibleInOtherGroup || undefined}
-            className={"tab" + (active ? " active" : "") + (visibleInOtherGroup ? " visible-in-other-group" : "")}
-            onClick={() => { if (!visibleInOtherGroup) onSelect(tab.path); }}
+            className={"tab" + (active ? " active" : "")}
+            onClick={() => onSelect(tab.path)}
             title={tab.path}
           >
             <span className="tab-file-icon"><FileIcon name={tab.name} isDir={false} /></span>
@@ -94,7 +90,6 @@ function TabBar({
                   aria-label={`Toggle diff for ${tab.name}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (visibleInOtherGroup) return;
                     setTabMode(tab.path, active && tab.mode === "diff" ? "edit" : "diff");
                   }}
                 >
@@ -300,11 +295,14 @@ function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
 
 type EditorGroupID = "primary" | "secondary";
 
+function samePaths(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((path, index) => path === right[index]);
+}
+
 function EditorGroup({
   id,
   tabs,
   activePath,
-  otherGroupPath,
   directory,
   focused,
   splitEnabled,
@@ -317,7 +315,6 @@ function EditorGroup({
   id: EditorGroupID;
   tabs: Tab[];
   activePath: string | null;
-  otherGroupPath: string | null;
   directory: string | undefined;
   focused: boolean;
   splitEnabled: boolean;
@@ -359,7 +356,6 @@ function EditorGroup({
         tabs={tabs}
         activePath={activePath}
         ariaLabel={title + " tabs"}
-        disabledPath={otherGroupPath}
         onSelect={onSelect}
         onClose={onCloseTab}
         actions={actions}
@@ -380,70 +376,86 @@ function EditorGroup({
 
 export function EditorPane(): ReactNode {
   const { tabs, activePath, openPaths, session, setActive, closeTab } = useStore();
+  const workspaceID = session?.workspace.id ?? null;
   const [externalDrag, setExternalDrag] = useState(false);
   const [splitEnabled, setSplitEnabled] = useState(false);
   const [primaryPath, setPrimaryPath] = useState<string | null>(activePath ?? tabs[0]?.path ?? null);
   const [secondaryPath, setSecondaryPath] = useState<string | null>(null);
+  const [primaryTabPaths, setPrimaryTabPaths] = useState<string[]>(() => tabs.map((tab) => tab.path));
+  const [secondaryTabPaths, setSecondaryTabPaths] = useState<string[]>([]);
   const [activeGroup, setActiveGroup] = useState<EditorGroupID>("primary");
+  const [groupWorkspaceID, setGroupWorkspaceID] = useState(workspaceID);
   const activePathRef = useRef(activePath);
-  const workspaceID = session?.workspace.id ?? null;
-  const workspaceRef = useRef(workspaceID);
 
   useEffect(() => {
-    if (workspaceRef.current === workspaceID) return;
-    workspaceRef.current = workspaceID;
-    activePathRef.current = activePath;
-    setPrimaryPath(activePath ?? tabs[0]?.path ?? null);
-    setSecondaryPath(null);
-    setSplitEnabled(false);
-    setActiveGroup("primary");
-  }, [activePath, tabs, workspaceID]);
-
-  useEffect(() => {
+    if (groupWorkspaceID !== workspaceID) return;
     if (activePathRef.current === activePath) return;
     activePathRef.current = activePath;
-    if (activeGroup === "primary") setPrimaryPath(activePath);
-    else setSecondaryPath(activePath);
-  }, [activePath, activeGroup]);
+    if (activePath && primaryTabPaths.includes(activePath)) {
+      setPrimaryPath(activePath);
+      setActiveGroup("primary");
+    } else if (activePath && secondaryTabPaths.includes(activePath)) {
+      setSecondaryPath(activePath);
+      setActiveGroup("secondary");
+    } else if (activeGroup === "primary") {
+      setPrimaryPath(activePath);
+    } else {
+      setSecondaryPath(activePath);
+    }
+  }, [activeGroup, activePath, groupWorkspaceID, primaryTabPaths, secondaryTabPaths, workspaceID]);
 
   useEffect(() => {
-    const paths = new Set(tabs.map((tab) => tab.path));
-    const nextPrimary = primaryPath && paths.has(primaryPath)
+    const paths = tabs.map((tab) => tab.path);
+    if (groupWorkspaceID !== workspaceID) {
+      setGroupWorkspaceID(workspaceID);
+      activePathRef.current = activePath;
+      setPrimaryTabPaths(paths);
+      setSecondaryTabPaths([]);
+      setPrimaryPath(activePath ?? paths[0] ?? null);
+      setSecondaryPath(null);
+      setSplitEnabled(false);
+      setActiveGroup("primary");
+      return;
+    }
+
+    const livePaths = new Set(paths);
+    let nextPrimaryPaths = primaryTabPaths.filter((path) => livePaths.has(path));
+    let nextSecondaryPaths = secondaryTabPaths.filter((path) => livePaths.has(path) && !nextPrimaryPaths.includes(path));
+    const assigned = new Set([...nextPrimaryPaths, ...nextSecondaryPaths]);
+    const unassigned = paths.filter((path) => !assigned.has(path));
+    if (unassigned.length > 0) {
+      if (splitEnabled && activeGroup === "secondary") nextSecondaryPaths = [...nextSecondaryPaths, ...unassigned];
+      else nextPrimaryPaths = [...nextPrimaryPaths, ...unassigned];
+    }
+
+    if (!samePaths(primaryTabPaths, nextPrimaryPaths)) setPrimaryTabPaths(nextPrimaryPaths);
+    if (!samePaths(secondaryTabPaths, nextSecondaryPaths)) setSecondaryTabPaths(nextSecondaryPaths);
+
+    const nextPrimaryPath = primaryPath && nextPrimaryPaths.includes(primaryPath)
       ? primaryPath
-      : activePath && paths.has(activePath) && activePath !== secondaryPath
+      : activePath && nextPrimaryPaths.includes(activePath)
         ? activePath
-        : tabs.find((tab) => tab.path !== secondaryPath)?.path ?? null;
-    if (nextPrimary !== primaryPath) setPrimaryPath(nextPrimary);
+        : nextPrimaryPaths[0] ?? null;
+    const nextSecondaryPath = secondaryPath && nextSecondaryPaths.includes(secondaryPath)
+      ? secondaryPath
+      : activePath && nextSecondaryPaths.includes(activePath)
+        ? activePath
+        : nextSecondaryPaths[0] ?? null;
+    if (nextPrimaryPath !== primaryPath) setPrimaryPath(nextPrimaryPath);
+    if (nextSecondaryPath !== secondaryPath) setSecondaryPath(nextSecondaryPath);
 
-    const nextSecondary = splitEnabled
-      ? secondaryPath && paths.has(secondaryPath) && secondaryPath !== nextPrimary
-        ? secondaryPath
-        : tabs.find((tab) => tab.path !== nextPrimary)?.path ?? null
-      : null;
-    if (nextSecondary !== secondaryPath) setSecondaryPath(nextSecondary);
-  }, [activePath, primaryPath, secondaryPath, splitEnabled, tabs]);
+    if (paths.length === 0 && splitEnabled) {
+      setSplitEnabled(false);
+      setActiveGroup("primary");
+    }
+  }, [activeGroup, activePath, groupWorkspaceID, primaryPath, primaryTabPaths, secondaryPath, secondaryTabPaths, splitEnabled, tabs, workspaceID]);
 
-  useEffect(() => {
-    if (!splitEnabled || !primaryPath || primaryPath !== secondaryPath) return;
-    if (activeGroup === "primary") setSecondaryPath(tabs.find((tab) => tab.path !== primaryPath)?.path ?? null);
-    else setPrimaryPath(tabs.find((tab) => tab.path !== secondaryPath)?.path ?? null);
-  }, [activeGroup, primaryPath, secondaryPath, splitEnabled, tabs]);
-
-  useEffect(() => {
-    if (tabs.length > 0 || !splitEnabled) return;
-    setSplitEnabled(false);
-    setSecondaryPath(null);
-    setActiveGroup("primary");
-  }, [splitEnabled, tabs.length]);
+  const primaryTabs = tabs.filter((tab) => primaryTabPaths.includes(tab.path));
+  const secondaryTabs = tabs.filter((tab) => secondaryTabPaths.includes(tab.path));
 
   const selectPath = (group: EditorGroupID, path: string): void => {
-    if (group === "primary") {
-      setPrimaryPath(path);
-      if (path === secondaryPath) setSecondaryPath(primaryPath);
-    } else {
-      setSecondaryPath(path);
-      if (path === primaryPath) setPrimaryPath(secondaryPath);
-    }
+    if (group === "primary") setPrimaryPath(path);
+    else setSecondaryPath(path);
     setActiveGroup(group);
     if (path !== activePath) setActive(path);
   };
@@ -456,16 +468,26 @@ export function EditorPane(): ReactNode {
 
   const toggleSplit = (): void => {
     if (splitEnabled) {
+      setPrimaryTabPaths(tabs.map((tab) => tab.path));
+      setSecondaryTabPaths([]);
       setSplitEnabled(false);
       setSecondaryPath(null);
       setActiveGroup("primary");
       if (primaryPath && primaryPath !== activePath) setActive(primaryPath);
       return;
     }
-    const nextPrimary = primaryPath ?? activePath ?? tabs[0]?.path ?? null;
-    const nextSecondary = tabs.find((tab) => tab.path !== nextPrimary)?.path ?? null;
+    const nextPrimary = primaryPath && primaryTabPaths.includes(primaryPath)
+      ? primaryPath
+      : activePath && primaryTabPaths.includes(activePath)
+        ? activePath
+        : primaryTabs[0]?.path ?? null;
+    const nextSecondary = primaryTabs.find((tab) => tab.path !== nextPrimary)?.path ?? null;
     setPrimaryPath(nextPrimary);
     setSecondaryPath(nextSecondary);
+    if (nextSecondary) {
+      setPrimaryTabPaths((paths) => paths.filter((path) => path !== nextSecondary));
+      setSecondaryTabPaths([nextSecondary]);
+    }
     setSplitEnabled(true);
     setActiveGroup("secondary");
     if (nextSecondary && nextSecondary !== activePath) setActive(nextSecondary);
@@ -520,9 +542,8 @@ export function EditorPane(): ReactNode {
         <div className={"editor-groups" + (splitEnabled ? " editor-groups-split" : "")}>
           <EditorGroup
             id="primary"
-            tabs={tabs}
+            tabs={primaryTabs}
             activePath={primaryPath}
-            otherGroupPath={splitEnabled ? secondaryPath : null}
             directory={session?.directory}
             focused={activeGroup === "primary"}
             splitEnabled={splitEnabled}
@@ -534,9 +555,8 @@ export function EditorPane(): ReactNode {
           />
           {splitEnabled && <EditorGroup
             id="secondary"
-            tabs={tabs}
+            tabs={secondaryTabs}
             activePath={secondaryPath}
-            otherGroupPath={primaryPath}
             directory={session?.directory}
             focused={activeGroup === "secondary"}
             splitEnabled

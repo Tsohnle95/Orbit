@@ -78,10 +78,18 @@ describe("EditorPane split groups", () => {
     expect(groups[1].classList).toContain("editor-group-focused");
     expect(groups[0].querySelector("[data-testid=editor]")?.getAttribute("data-path")).toBe(firstTab.path);
     expect(groups[1].querySelector("[data-testid=editor]")?.getAttribute("data-path")).toBe(secondTab.path);
+    expect([...groups[0].querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.title)).toEqual([
+      firstTab.path,
+      thirdTab.path
+    ]);
+    expect([...groups[1].querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.title)).toEqual([
+      secondTab.path
+    ]);
 
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Close secondary editor group"]')!.click());
     expect(container.querySelectorAll(".editor-group")).toHaveLength(1);
     expect(container.querySelector("[data-testid=editor]")?.getAttribute("data-path")).toBe(firstTab.path);
+    expect(container.querySelectorAll('[role="tab"]')).toHaveLength(3);
   });
 
   it("keeps the two group selections independent and routes newly opened files to the focused group", () => {
@@ -98,13 +106,10 @@ describe("EditorPane split groups", () => {
     expect(paths).toEqual([thirdTab.path, secondTab.path]);
 
     const secondary = container.querySelector<HTMLElement>('[aria-label="Secondary editor"]')!;
-    act(() => {
-      [...secondary.querySelectorAll<HTMLElement>('[role="tab"]')]
-        .find((tab) => tab.getAttribute("title") === firstTab.path)!.click();
-    });
+    act(() => secondary.querySelector<HTMLElement>('[role="tab"]')!.click());
     expect(secondary.classList).toContain("editor-group-focused");
     paths = [...container.querySelectorAll<HTMLElement>("[data-testid=editor]")].map((editor) => editor.dataset.path);
-    expect(paths).toEqual([thirdTab.path, firstTab.path]);
+    expect(paths).toEqual([thirdTab.path, secondTab.path]);
 
     store.tabs = [...store.tabs, fourthTab];
     store.activePath = fourthTab.path;
@@ -112,6 +117,15 @@ describe("EditorPane split groups", () => {
 
     paths = [...container.querySelectorAll<HTMLElement>("[data-testid=editor]")].map((editor) => editor.dataset.path);
     expect(paths).toEqual([thirdTab.path, fourthTab.path]);
+    const groups = [...container.querySelectorAll<HTMLElement>(".editor-group")];
+    expect([...groups[0].querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.title)).toEqual([
+      firstTab.path,
+      thirdTab.path
+    ]);
+    expect([...groups[1].querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.title)).toEqual([
+      secondTab.path,
+      fourthTab.path
+    ]);
   });
 
   it("routes a newly opened file into an initially empty secondary group", () => {
@@ -129,5 +143,7 @@ describe("EditorPane split groups", () => {
     const groups = [...container.querySelectorAll<HTMLElement>(".editor-group")];
     expect(groups[0].querySelector("[data-testid=editor]")?.getAttribute("data-path")).toBe(firstTab.path);
     expect(groups[1].querySelector("[data-testid=editor]")?.getAttribute("data-path")).toBe(secondTab.path);
+    expect([...groups[0].querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.title)).toEqual([firstTab.path]);
+    expect([...groups[1].querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.title)).toEqual([secondTab.path]);
   });
 });
