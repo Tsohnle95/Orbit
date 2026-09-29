@@ -53,6 +53,11 @@ known good build after confirming). On macOS,
 `npm run install-app` drives the same script over the
 `shell:install-app` channel. `release/` and
 `build/` are gitignored builder outputs.
+Settings → About can check `origin/main` on the canonical Orbit GitHub remote.
+Updating is explicit, requires a clean `main` checkout, fast-forwards only,
+refreshes dependencies, compiles the app, then relaunches it. It does not stash
+or discard local changes; a dirty, diverged, non-main, or noncanonical checkout
+is reported as blocked.
 `npm run test:platform` also runs the hidden-window renderer trust smoke on
 macOS. Linux and Windows run the launcher and Electron PTY coverage but skip the
 GUI smoke because a normal `BrowserWindow` requires a display there; macOS CI is

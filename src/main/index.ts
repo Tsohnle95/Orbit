@@ -1,10 +1,11 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, shell, type IpcMainInvokeEvent, type WebContents } from "electron";
 import path from "node:path";
 import fsp from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { OpenShellBackend } from "./opencode";
+import { createOrbitAppUpdater } from "./app-updater";
 import { TerminalManager } from "./terminal";
 import { MobileServer } from "./mobile-server";
 import { defaultViteDeps, findHtmlEntry, resolveViteCommand, viteServerKey, VitePreviewManager } from "./vite-server";
@@ -81,6 +82,17 @@ const viteServers = new VitePreviewManager(defaultViteDeps(viteCommand.command, 
 let win: BrowserWindow | null = null;
 let trustedLocation: TrustedApplicationLocation | null = null;
 const pendingOpenPaths = new PendingOpenPaths();
+
+function installedNodePath(): string | undefined {
+  try {
+    const config = JSON.parse(readFileSync(path.join(app.getAppPath(), ".orbit-repo.json"), "utf8")) as { node?: unknown };
+    return typeof config.node === "string" && path.isAbsolute(config.node) ? config.node : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const orbitAppUpdater = createOrbitAppUpdater(path.resolve(__dirname, "../.."), { nodePath: installedNodePath() });
 
 function flushOpenPaths(): void {
   if (pendingOpenPaths.size === 0) return;
@@ -672,6 +684,19 @@ function registerIpc(): void {
   handleTrusted("shell:sync-opencode", async () => backend.syncOpenCode());
 
   handleTrusted("shell:update-opencode", async () => backend.updateOpenCode());
+
+  handleTrusted("shell:app-update-check", async () => orbitAppUpdater.check());
+
+  handleTrusted("shell:app-update", async () => {
+    const result = await orbitAppUpdater.update();
+    if (result.updated) {
+      setTimeout(() => {
+        app.relaunch();
+        app.exit(0);
+      }, 1_000);
+    }
+    return result;
+  });
 
   handleTrusted("shell:session-transcript", async (_e, sessionID: string) =>
     backend.sessionTranscript(sessionId(sessionID))

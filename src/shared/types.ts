@@ -28,6 +28,19 @@ export interface OpenCodeSyncResult {
   cliUpdated: boolean;
 }
 
+export type OrbitAppUpdateStatus =
+  | { state: "available"; branch: string; currentCommit: string; latestCommit: string; commitsBehind: number }
+  | { state: "current"; branch: string; currentCommit: string; latestCommit: string; commitsBehind: 0 }
+  | { state: "blocked"; message: string; branch?: string; currentCommit?: string };
+
+export interface OrbitAppUpdateResult {
+  ok: boolean;
+  updated: boolean;
+  currentCommit?: string;
+  latestCommit?: string;
+  message: string;
+}
+
 export interface SessionInfo {
   id: string;
   runtimeID?: RuntimeID;

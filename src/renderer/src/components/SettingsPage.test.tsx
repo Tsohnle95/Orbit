@@ -42,6 +42,8 @@ const mobilePairingQr = vi.fn().mockResolvedValue({
   expiresAt: "2099-01-01T00:00:00.000Z",
   serverLabel: "Orbit Desktop",
 });
+const checkAppUpdate = vi.fn();
+const updateApp = vi.fn();
 
 describe("SettingsPage", () => {
   let container: HTMLDivElement;
@@ -51,7 +53,7 @@ describe("SettingsPage", () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     window.localStorage.clear();
     delete document.documentElement.dataset.theme;
-    window.openshell = { setAppearance, mobileSetupStatus, mobilePairingQr } as unknown as typeof window.openshell;
+    window.openshell = { setAppearance, mobileSetupStatus, mobilePairingQr, checkAppUpdate, updateApp } as unknown as typeof window.openshell;
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -154,6 +156,42 @@ describe("SettingsPage", () => {
 
     act(() => container.querySelectorAll<HTMLButtonElement>(".settings-nav-item")[5].click());
     expect(onSectionChange).toHaveBeenCalledWith("model");
+  });
+
+  it("checks GitHub on About and updates then restarts Orbit when a commit is available", async () => {
+    checkAppUpdate.mockResolvedValue({
+      state: "available",
+      branch: "main",
+      currentCommit: "1111111111111111111111111111111111111111",
+      latestCommit: "2222222222222222222222222222222222222222",
+      commitsBehind: 2
+    });
+    updateApp.mockResolvedValue({
+      ok: true,
+      updated: true,
+      currentCommit: "1111111111111111111111111111111111111111",
+      latestCommit: "2222222222222222222222222222222222222222",
+      message: "Orbit updated to 2222222."
+    });
+    vi.stubGlobal("confirm", vi.fn(() => true));
+
+    await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={() => {}} /></ThemeProvider>));
+    expect(checkAppUpdate).toHaveBeenCalledOnce();
+    expect(container.textContent).toContain("2 commits ready · 1111111 → 2222222");
+    const updateButton = [...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
+      .find((button) => button.textContent === "Update now")!;
+    expect(updateButton).toBeTruthy();
+
+    await act(async () => {
+      updateButton.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(window.confirm).toHaveBeenCalled();
+    expect(updateApp).toHaveBeenCalledOnce();
+    expect(container.textContent).toContain("Orbit updated to 2222222.");
+    expect([...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
+      .some((button) => button.textContent === "Check for updates")).toBe(true);
   });
 
   it("keeps default model settings and removes runtime selection", async () => {

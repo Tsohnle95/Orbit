@@ -25,6 +25,8 @@ automatically.
 | `runtimes()` | `Promise<RuntimeManifest[]>` — OpenCode's version and normalized capability manifest; DeepSeek is currently dormant |
 | `syncOpenCode()` | `Promise<OpenCodeSyncResult>` — syncs the attached shared service to the exact version resolved from Orbit's PATH |
 | `updateOpenCode()` | `Promise<OpenCodeSyncResult>` — runs OpenCode's own updater, then syncs the attached service |
+| `checkAppUpdate()` | `Promise<OrbitAppUpdateStatus>` — checks canonical GitHub `main`; reports when the checkout is dirty, divergent, or on another branch |
+| `updateApp()` | `Promise<OrbitAppUpdateResult>` — fast-forwards Orbit's clean source checkout, refreshes npm dependencies, rebuilds, and relaunches |
 | `sessions()` | `Promise<SessionSummary[]>` — recent session list |
 | `activeSessions()` | `Promise<SessionInfo[]>` — currently open backend sessions in activation order; the last element is the most recently activated (used for startup restore) |
 | `closeSession(workspace)` | `Promise<void>` — tears down the backend context when a panel closes; the opencode session remains reopenable |

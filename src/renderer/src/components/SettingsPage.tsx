@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import type { CommandOption, McpServerOption, PluginOption, SkillOption } from "@shared/types";
+import type { CommandOption, McpServerOption, OrbitAppUpdateStatus, PluginOption, SkillOption } from "@shared/types";
 import { useStore } from "../store";
 import { APPEARANCES, type ThemeId, useTheme } from "../theme";
 import { OrbitMark } from "./OrbitMark";
@@ -59,6 +59,9 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   const [skills, setSkills] = useState<SkillOption[]>([]);
   const [openCodeAction, setOpenCodeAction] = useState<"sync" | "update" | null>(null);
   const [openCodeFeedback, setOpenCodeFeedback] = useState("");
+  const [orbitUpdateStatus, setOrbitUpdateStatus] = useState<OrbitAppUpdateStatus | null>(null);
+  const [orbitUpdateAction, setOrbitUpdateAction] = useState<"check" | "update" | null>(null);
+  const [orbitUpdateFeedback, setOrbitUpdateFeedback] = useState("");
   const copy = sectionCopy[section];
   const runtime = (runtimes ?? []).find((item) => item.id === (session?.runtimeID ?? "opencode"));
   const openCodeRuntime = (runtimes ?? []).find((item) => item.id === "opencode");
@@ -87,6 +90,60 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
       setOpenCodeAction(null);
     }
   };
+
+  const checkOrbitUpdate = async (): Promise<void> => {
+    if (orbitUpdateAction) return;
+    setOrbitUpdateAction("check");
+    setOrbitUpdateFeedback("");
+    try {
+      setOrbitUpdateStatus(await window.openshell.checkAppUpdate());
+    } catch (error) {
+      setOrbitUpdateFeedback(error instanceof Error ? error.message : String(error));
+    } finally {
+      setOrbitUpdateAction(null);
+    }
+  };
+
+  const updateOrbit = async (): Promise<void> => {
+    if (orbitUpdateAction) return;
+    if (!window.confirm("Orbit will fetch the latest main commit, update dependencies, rebuild, and restart. Active agent runs will stop while Orbit restarts. Continue?")) return;
+    setOrbitUpdateAction("update");
+    setOrbitUpdateFeedback("");
+    try {
+      const result = await window.openshell.updateApp();
+      setOrbitUpdateFeedback(result.message);
+      if (result.updated && result.latestCommit) {
+        setOrbitUpdateStatus({
+          state: "current",
+          branch: "main",
+          currentCommit: result.latestCommit,
+          latestCommit: result.latestCommit,
+          commitsBehind: 0
+        });
+      } else {
+        setOrbitUpdateStatus(await window.openshell.checkAppUpdate());
+      }
+    } catch (error) {
+      setOrbitUpdateFeedback(error instanceof Error ? error.message : String(error));
+    } finally {
+      setOrbitUpdateAction(null);
+    }
+  };
+
+  useEffect(() => {
+    if (section !== "about") return;
+    let cancelled = false;
+    setOrbitUpdateAction("check");
+    setOrbitUpdateFeedback("");
+    void window.openshell.checkAppUpdate().then((status) => {
+      if (!cancelled) setOrbitUpdateStatus(status);
+    }).catch((error: unknown) => {
+      if (!cancelled) setOrbitUpdateFeedback(error instanceof Error ? error.message : String(error));
+    }).finally(() => {
+      if (!cancelled) setOrbitUpdateAction(null);
+    });
+    return () => { cancelled = true; };
+  }, [section]);
 
   useEffect(() => {
     if (section !== "model") return;
@@ -254,6 +311,25 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
 
       {section === "about" && <section className="settings-section">
         <div className="settings-about"><OrbitMark size={72} /><div><h2>Orbit</h2><p>Version 0.1.0</p><small>A native desktop cockpit for coding agents.</small></div></div>
+        <h2 className="settings-group-title">App updates</h2>
+        <div className="settings-list">
+          <SettingRow
+            title="GitHub source"
+            detail="Check the latest commit on Orbit's main branch. Updates rebuild and restart the app."
+            control={<button
+              className="settings-action-button"
+              disabled={orbitUpdateAction !== null}
+              onClick={() => orbitUpdateStatus?.state === "available" ? void updateOrbit() : void checkOrbitUpdate()}
+            >{orbitUpdateAction === "check" ? "Checking…" : orbitUpdateAction === "update" ? "Updating…" : orbitUpdateStatus?.state === "available" ? "Update now" : "Check for updates"}</button>}
+          />
+        </div>
+        {(orbitUpdateFeedback || orbitUpdateStatus) && <p className="settings-action-feedback" role="status" aria-live="polite">
+          {orbitUpdateFeedback || (orbitUpdateStatus?.state === "available"
+            ? `${orbitUpdateStatus.commitsBehind} commit${orbitUpdateStatus.commitsBehind === 1 ? "" : "s"} ready · ${orbitUpdateStatus.currentCommit.slice(0, 7)} → ${orbitUpdateStatus.latestCommit.slice(0, 7)}`
+            : orbitUpdateStatus?.state === "current"
+              ? `Up to date · ${orbitUpdateStatus.branch} @ ${orbitUpdateStatus.currentCommit.slice(0, 7)}`
+              : orbitUpdateStatus?.message)}
+        </p>}
       </section>}
     </main>
   );

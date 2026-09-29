@@ -4,6 +4,8 @@
 
 `src/main/index.ts` (window + IPC wiring) and
 `src/main/opencode.ts` (the `OpenShellBackend` — all OpenCode traffic).
+Orbit's GitHub source updater lives in `src/main/app-updater.ts`; it is
+separate from the OpenCode CLI updater and never invokes Git from the renderer.
 
 `src/main/opencode.ts` is the only file that imports `@opencode/client`.
 Provider usage is a separate main-process integration with provider APIs in
@@ -252,6 +254,8 @@ Internals:
 | `shell:runtimes` | `() → RuntimeManifest[]` — installed status, native version, normalized protocol version, and capability bitmap |
 | `shell:sync-opencode` | `() → OpenCodeSyncResult` — restarts the attached shared OpenCode service only when needed to match the installed CLI version |
 | `shell:update-opencode` | `() → OpenCodeSyncResult` — runs OpenCode's updater, then syncs the shared service to the resulting CLI version |
+| `shell:app-update-check` | `() → OrbitAppUpdateStatus` — fetches canonical GitHub `main` and reports current, available, or blocked state for the clean source checkout |
+| `shell:app-update` | `() → OrbitAppUpdateResult` — fast-forwards the clean `main` checkout, runs `npm install` and the compile build, then relaunches Orbit on success |
 | `shell:active-sessions` | `() → SessionInfo[]` — open backend sessions, most recently activated last |
 | `shell:close-session` | `(workspace) → void` — tears down the backend context when a panel closes; the opencode session remains reopenable |
 | `shell:open-session-id` | `(sessionID, generation, runtimeID?) → ReopenedSession`; opens an OpenCode session and transcript. Legacy DeepSeek sessions cannot be reopened through the dormant adapter |
