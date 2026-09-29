@@ -54,10 +54,13 @@ known good build after confirming). On macOS,
 `shell:install-app` channel. `release/` and
 `build/` are gitignored builder outputs.
 Settings → About can check `origin/main` on the canonical Orbit GitHub remote.
-Updating is explicit, requires a clean `main` checkout, fast-forwards only,
-refreshes dependencies, compiles the app, then relaunches it. It does not stash
-or discard local changes; a dirty, diverged, non-main, or noncanonical checkout
-is reported as blocked.
+The About panel checks automatically when opened. Applying an available update
+opens a modal progress window, requires confirmation because active agent runs
+will stop on restart, fast-forwards only from a clean `main` checkout, refreshes
+dependencies, compiles the app, then closes Orbit and relaunches the new build.
+Build or update failures stay visible in the progress window and leave it
+closable. It does not stash or discard local changes; a dirty, diverged,
+non-main, or noncanonical checkout is reported as blocked.
 `npm run test:platform` also runs the hidden-window renderer trust smoke on
 macOS. Linux and Windows run the launcher and Electron PTY coverage but skip the
 GUI smoke because a normal `BrowserWindow` requires a display there; macOS CI is

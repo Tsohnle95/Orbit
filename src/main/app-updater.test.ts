@@ -73,8 +73,9 @@ describe("Orbit app updater", () => {
 
   it("fast-forwards, installs dependencies, and rebuilds before reporting success", async () => {
     const { updater, run } = makeUpdater();
+    const progress: string[] = [];
 
-    await expect(updater.update()).resolves.toEqual({
+    await expect(updater.update((message) => progress.push(message))).resolves.toEqual({
       ok: true,
       updated: true,
       currentCommit: current,
@@ -86,6 +87,13 @@ describe("Orbit app updater", () => {
     expect(calls).toContainEqual(["git", "merge", "--ff-only", "refs/remotes/origin/main"]);
     expect(calls).toContainEqual(["npm", "install", "--no-audit", "--no-fund"]);
     expect(calls).toContainEqual(["npm", "run", "build:compile"]);
+    expect(progress).toEqual([
+      "Checking GitHub for updates…",
+      "Checking the supported Node.js and npm versions…",
+      "Fast-forwarding Orbit to the latest GitHub commit…",
+      "Installing app dependencies…",
+      "Building the updated app…"
+    ]);
   });
 
   it("refuses to modify the checkout when the selected Node version is unsupported", async () => {

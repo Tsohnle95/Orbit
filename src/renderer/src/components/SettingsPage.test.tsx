@@ -194,6 +194,17 @@ describe("SettingsPage", () => {
       .some((button) => button.textContent === "Check for updates")).toBe(true);
   });
 
+  it("explains that Orbit must be reopened when the running main process has no updater handler", async () => {
+    checkAppUpdate.mockRejectedValueOnce(new Error(
+      "Error invoking remote method 'shell:app-update-check': Error: No handler registered for shell:app-update-check"
+    ));
+
+    await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={() => {}} /></ThemeProvider>));
+
+    expect(container.textContent).toContain("Quit Orbit completely and reopen it, then check again.");
+    expect(container.textContent).not.toContain("No handler registered");
+  });
+
   it("keeps default model settings and removes runtime selection", async () => {
     const workspace = { id: "workspace-1", generation: 1 };
     store.session = { directory: "/repo", workspace };

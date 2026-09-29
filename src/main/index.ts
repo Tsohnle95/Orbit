@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { OpenShellBackend } from "./opencode";
 import { createOrbitAppUpdater } from "./app-updater";
+import { appUpdaterWindowUrl, setAppUpdaterWindowStatus } from "./app-updater-window";
 import { TerminalManager } from "./terminal";
 import { MobileServer } from "./mobile-server";
 import { defaultViteDeps, findHtmlEntry, resolveViteCommand, viteServerKey, VitePreviewManager } from "./vite-server";
@@ -32,6 +33,7 @@ import { resolveAppSource } from "./source-resolver";
 import { InspectPickerState } from "./inspect-picker";
 import type {
   FileWriteIdentity,
+  OrbitAppUpdateResult,
   PermissionReply,
   FormAnswers,
   PromptDelivery,
@@ -80,6 +82,9 @@ let mobileServerStartup: Promise<void> = Promise.resolve();
 const viteCommand = resolveViteCommand(app.getAppPath(), __dirname);
 const viteServers = new VitePreviewManager(defaultViteDeps(viteCommand.command, viteCommand.prefix));
 let win: BrowserWindow | null = null;
+let appUpdaterWindow: BrowserWindow | null = null;
+let appUpdaterWindowCanClose = false;
+let appUpdateRunning = false;
 let trustedLocation: TrustedApplicationLocation | null = null;
 const pendingOpenPaths = new PendingOpenPaths();
 
@@ -568,6 +573,93 @@ function handleTrusted<Args extends unknown[], Result>(
   });
 }
 
+async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
+  if (appUpdateRunning) return { ok: false, updated: false, message: "An Orbit update is already running." };
+  appUpdateRunning = true;
+
+  if (appUpdaterWindow && !appUpdaterWindow.isDestroyed()) {
+    appUpdaterWindowCanClose = true;
+    appUpdaterWindow.close();
+  }
+
+  const parent = win && !win.isDestroyed() ? win : undefined;
+  const popup = new BrowserWindow({
+    ...(parent ? { parent, modal: true } : {}),
+    width: 460,
+    height: 270,
+    minWidth: 460,
+    minHeight: 270,
+    maxWidth: 460,
+    maxHeight: 270,
+    title: "Updating Orbit",
+    icon: appIconPath,
+    show: false,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    autoHideMenuBar: true,
+    backgroundColor: "#111214",
+    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      devTools: false
+    }
+  });
+  appUpdaterWindow = popup;
+  appUpdaterWindowCanClose = false;
+  popup.on("close", (event) => {
+    if (!appUpdaterWindowCanClose) event.preventDefault();
+  });
+  popup.on("closed", () => {
+    if (appUpdaterWindow === popup) appUpdaterWindow = null;
+  });
+  popup.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+
+  try {
+    await popup.loadURL(appUpdaterWindowUrl());
+    popup.show();
+    popup.focus();
+  } catch (error) {
+    appUpdaterWindowCanClose = true;
+    if (!popup.isDestroyed()) popup.destroy();
+    if (appUpdaterWindow === popup) appUpdaterWindow = null;
+    appUpdateRunning = false;
+    const detail = error instanceof Error ? error.message : String(error);
+    return { ok: false, updated: false, message: "Orbit could not open its update window. " + detail };
+  }
+
+  const report = (title: string, message: string, tone: "progress" | "success" | "error" = "progress"): void => {
+    if (!popup.isDestroyed()) popup.setTitle(`${title} — ${message}`);
+    setAppUpdaterWindowStatus(popup, { title, message, tone });
+  };
+
+  try {
+    const result = await orbitAppUpdater.update((message) => report("Updating Orbit", message));
+    if (result.updated) {
+      report("Update complete", "Orbit will relaunch shortly.", "success");
+      setTimeout(() => {
+        app.relaunch();
+        app.exit(0);
+      }, 1_400);
+    } else if (result.ok) {
+      report("Already up to date", result.message, "success");
+      appUpdaterWindowCanClose = true;
+      setTimeout(() => {
+        if (!popup.isDestroyed()) popup.close();
+      }, 1_800);
+    } else {
+      report("Update could not be completed", result.message, "error");
+      appUpdaterWindowCanClose = true;
+    }
+    return result;
+  } finally {
+    appUpdateRunning = false;
+  }
+}
+
 function viteEntry(fileName: string): string {
   return fileName.toLowerCase() === "index.html" ? "" : fileName;
 }
@@ -687,16 +779,7 @@ function registerIpc(): void {
 
   handleTrusted("shell:app-update-check", async () => orbitAppUpdater.check());
 
-  handleTrusted("shell:app-update", async () => {
-    const result = await orbitAppUpdater.update();
-    if (result.updated) {
-      setTimeout(() => {
-        app.relaunch();
-        app.exit(0);
-      }, 1_000);
-    }
-    return result;
-  });
+  handleTrusted("shell:app-update", async () => updateOrbitApp());
 
   handleTrusted("shell:session-transcript", async (_e, sessionID: string) =>
     backend.sessionTranscript(sessionId(sessionID))

@@ -161,17 +161,26 @@ export function createOrbitAppUpdater(projectRoot: string, options: OrbitAppUpda
     return readStatus();
   }
 
-  async function update(): Promise<OrbitAppUpdateResult> {
+  async function update(onProgress?: (message: string) => void): Promise<OrbitAppUpdateResult> {
     if (updateInProgress) return { ok: false, updated: false, message: "An Orbit update is already running." };
     updateInProgress = true;
+    const reportProgress = (message: string): void => {
+      try {
+        onProgress?.(message);
+      } catch {
+        // A closed progress window must not interrupt the source update.
+      }
+    };
     let sourceCommit: string | null = null;
     try {
+      reportProgress("Checking GitHub for updates…");
       const status = await readStatus(true);
       if (status.state === "current") {
         return { ok: true, updated: false, message: `Orbit is already current (${shortCommit(status.currentCommit)}).` };
       }
       if (status.state === "blocked") return { ok: false, updated: false, message: status.message };
 
+      reportProgress("Checking the supported Node.js and npm versions…");
       const nodeVersion = await command(options.nodePath ?? "node", ["--version"], 10_000);
       const version = /^v?(\d+)\.(\d+)\.(\d+)/.exec(nodeVersion);
       if (!version || Number(version[1]) !== 22 || Number(version[2]) < 23 || (Number(version[2]) === 23 && Number(version[3]) < 2)) {
@@ -194,13 +203,16 @@ export function createOrbitAppUpdater(projectRoot: string, options: OrbitAppUpda
         };
       }
 
+      reportProgress("Fast-forwarding Orbit to the latest GitHub commit…");
       await git(["merge", "--ff-only", "refs/remotes/origin/main"]);
       sourceCommit = await git(["rev-parse", "HEAD"]);
       if (sourceCommit !== status.latestCommit) {
         throw new Error("GitHub main changed while Orbit was updating. Check for updates and try again.");
       }
 
+      reportProgress("Installing app dependencies…");
       await command("npm", ["install", "--no-audit", "--no-fund"], 10 * 60_000);
+      reportProgress("Building the updated app…");
       await command("npm", ["run", "build:compile"], 10 * 60_000);
       return {
         ok: true,

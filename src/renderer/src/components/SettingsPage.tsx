@@ -36,6 +36,14 @@ function SettingRow({ title, detail, control }: { title: string; detail: string;
   );
 }
 
+function orbitUpdateErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/No handler registered for ['"]?shell:app-update(?:-check)?['"]?/.test(message)) {
+    return "The updater is not available in this running Orbit process. Quit Orbit completely and reopen it, then check again.";
+  }
+  return message;
+}
+
 export function SettingsPage({ section, onClose }: { section: SettingsSection; onClose: () => void }): ReactNode {
   const { theme, setTheme } = useTheme();
   const {
@@ -98,7 +106,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
     try {
       setOrbitUpdateStatus(await window.openshell.checkAppUpdate());
     } catch (error) {
-      setOrbitUpdateFeedback(error instanceof Error ? error.message : String(error));
+      setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
     } finally {
       setOrbitUpdateAction(null);
     }
@@ -106,7 +114,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
 
   const updateOrbit = async (): Promise<void> => {
     if (orbitUpdateAction) return;
-    if (!window.confirm("Orbit will fetch the latest main commit, update dependencies, rebuild, and restart. Active agent runs will stop while Orbit restarts. Continue?")) return;
+    if (!window.confirm("Orbit will open an update window, fetch the latest main commit, update dependencies, rebuild, and restart. Active agent runs will stop while Orbit restarts. Continue?")) return;
     setOrbitUpdateAction("update");
     setOrbitUpdateFeedback("");
     try {
@@ -124,7 +132,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
         setOrbitUpdateStatus(await window.openshell.checkAppUpdate());
       }
     } catch (error) {
-      setOrbitUpdateFeedback(error instanceof Error ? error.message : String(error));
+      setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
     } finally {
       setOrbitUpdateAction(null);
     }
@@ -138,7 +146,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
     void window.openshell.checkAppUpdate().then((status) => {
       if (!cancelled) setOrbitUpdateStatus(status);
     }).catch((error: unknown) => {
-      if (!cancelled) setOrbitUpdateFeedback(error instanceof Error ? error.message : String(error));
+      if (!cancelled) setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
     }).finally(() => {
       if (!cancelled) setOrbitUpdateAction(null);
     });
