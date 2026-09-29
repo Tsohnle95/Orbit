@@ -531,6 +531,15 @@
 
 .composer-menu-star:hover, .composer-menu-star.on { color: var(--yellow); }
 
+.composer-menu-value {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
 .composer-completions {
   position: absolute;
   bottom: calc(100% - 4px);

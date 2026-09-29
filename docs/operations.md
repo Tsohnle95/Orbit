@@ -195,6 +195,33 @@ median or jsdom timing as a cross-machine browser benchmark.
    cards appear with names and elapsed timers, and a file the agent
    touches shows a diff.
 
+## Connecting Orbit Mobile
+
+1. Keep Orbit Desktop open and open **Settings → Mobile Setup**.
+2. Follow the three on-screen steps, then choose **Generate pairing QR**.
+3. Open Orbit Mobile on the phone, choose **Scan QR code**, and scan the code shown by Orbit Desktop.
+
+The pairing QR is single-use and expires after 10 minutes. It advertises a
+reachable direct address and an Orbit Relay route when available; use a network
+path that both devices can reach (for example, the same Wi-Fi or a shared
+Tailnet). Keep Orbit Desktop open while using the phone. When Orbit can attach
+the companion server to its shared OpenCode service, desktop and phone use the
+same sessions.
+
+If Mobile Setup reports that the companion checkout is missing, a source
+checkout looks first for `../orbit-mobile` beside the Orbit checkout and then
+for `~/coding-projects/orbit-mobile`. A packaged installation uses the latter
+default. Set `ORBIT_MOBILE_HOME` to the `orbit-mobile` repository containing
+`scripts/desktop-service.mjs` and restart Orbit to use another location. If it
+reports missing Node.js, install Node 22 or set `ORBIT_NODE_BIN` before
+launching Orbit. An offline status includes the companion folder and server log
+path; restart Orbit after correcting the setup. If QR generation says the
+companion server is out of date, quit and reopen Orbit Desktop so it restarts
+the service from the current companion checkout.
+
+The manual URL/password flow remains available in Orbit Mobile for standalone
+server deployments. Do not use `localhost` as the phone's server address.
+
 ## Manual recovery
 
 Orbit stores save and file-rename transactions in

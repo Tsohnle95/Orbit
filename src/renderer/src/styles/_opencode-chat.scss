@@ -15,7 +15,12 @@
 @use "opencode/file-icon";
 @use "opencode/sticky-accordion-header";
 
-.agent-panel {
+// Orbit's agent palette reaches the ported partials through the --v2-* semantic tokens.
+// opencode/theme declares the same tokens on .agent-scroll; as a descendant it would
+// otherwise win with its dark-fallback values, so re-assert the mapping on .agent-scroll
+// too, at equal specificity and later in source order.
+:root .agent-panel,
+:root .agent-panel .agent-scroll {
   --v2-background-bg-base: var(--agent-bg-base);
   --v2-background-bg-deep: var(--agent-bg-deep);
   --v2-background-bg-layer-01: var(--agent-bg-layer);
@@ -42,6 +47,44 @@
   --line-height-large: 21px;
 }
 
+
+// Fenced code reads --background-stronger (via --color-background-stronger) and a few
+// raised surfaces read it directly; opencode/theme leaves it at its dark fallback, so
+// map it to the themed agent layer.
+:root .agent-panel .agent-scroll {
+  --background-stronger: var(--agent-bg-layer);
+  // The ported foreground/syntax tokens are likewise tuned for the dark palette in every
+  // Orbit theme, which leaves code light-on-light once the block background is themed.
+  // Point them at Orbit's themed semantic colors (the pre-port transcript palette).
+  --text-base: var(--v2-text-text-base);
+  --syntax-string: var(--green);
+  --syntax-keyword: var(--accent);
+  --syntax-primitive: var(--accent);
+  --syntax-type: var(--accent);
+  --syntax-constant: var(--yellow);
+  --syntax-property: var(--v2-text-text-base);
+  --syntax-object: var(--v2-text-text-base);
+  --syntax-variable: var(--v2-text-text-base);
+  --syntax-regexp: var(--v2-text-text-base);
+  --syntax-operator: var(--v2-text-text-muted);
+  --syntax-punctuation: var(--v2-text-text-muted);
+  --syntax-info: var(--accent);
+  --syntax-warning: var(--yellow);
+  --syntax-critical: var(--v2-state-fg-danger);
+  --syntax-diff-unknown: var(--accent);
+}
+
+// Fenced code wraps instead of scrolling sideways so a narrow agent panel still
+// shows the whole snippet. pre-wrap keeps indentation; anywhere breaks long
+// unbroken tokens (paths, hashes, minified JSON).
+.opencode-timeline [data-component="markdown-code"] pre {
+  overflow-x: hidden;
+}
+
+.opencode-timeline [data-component="markdown-code"] code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 .agent-panel .agent-scroll {
   padding: 12px 0 24px;

@@ -96,6 +96,8 @@ automatically.
 | `providerIntegrations(workspace)` | `Promise<ProviderIntegration[]>` — supported-provider catalog (OpenCode Go, Command Code, OpenAI) and secret-free OpenCode connection state |
 | `connectProviderKey(workspace, integrationID, key, label, answers)` | `Promise<void>` — sends a write-only key and provider-specific form answers; the key is never returned to the renderer |
 | `removeProviderCredential(workspace, credentialID)` | `Promise<void>` — removes one stored credential by opaque id |
+| `mobileSetupStatus()` | `Promise<MobileServerSetupStatus>` — reports the local companion server state without returning its UI password |
+| `mobilePairingQr()` | `Promise<MobilePairingQr>` — returns only a short-lived one-time Orbit pairing URI for rendering in Desktop Mobile Setup |
 | `health()` | `Promise<boolean>` |
 | `windowView(view)` | `Promise<void>` — asks the main process to switch between the `"landing"` and `"session"` window profiles |
 | `setAppearance(appearance)` | `Promise<void>` — reports the selected color profile's native appearance (`"dark"` or `"light"`) so window vibrancy and native chrome follow its color scheme |

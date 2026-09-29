@@ -1,9 +1,14 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import QRCode from "qrcode";
 import { ThemeProvider } from "../theme";
 import { SettingsPage } from "./SettingsPage";
 import { SettingsSidebar } from "./SettingsSidebar";
+
+vi.mock("qrcode", () => ({
+  default: { toDataURL: vi.fn(async () => "data:image/png;base64,test-pairing-code") },
+}));
 
 type MockModel = { id: string; providerID: string; name: string };
 type MockSession = { directory: string; workspace: { id: string; generation: number } };
@@ -27,6 +32,16 @@ const store = {
 vi.mock("../store", () => ({ useStore: () => store }));
 
 const setAppearance = vi.fn().mockResolvedValue(undefined);
+const mobileSetupStatus = vi.fn().mockResolvedValue({
+  state: "ready",
+  workspacePath: "/work/orbit-mobile",
+  port: 3011,
+});
+const mobilePairingQr = vi.fn().mockResolvedValue({
+  connectionUrl: "orbit://connect?v=2&p=one-time",
+  expiresAt: "2099-01-01T00:00:00.000Z",
+  serverLabel: "Orbit Desktop",
+});
 
 describe("SettingsPage", () => {
   let container: HTMLDivElement;
@@ -36,7 +51,7 @@ describe("SettingsPage", () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     window.localStorage.clear();
     delete document.documentElement.dataset.theme;
-    window.openshell = { setAppearance } as unknown as typeof window.openshell;
+    window.openshell = { setAppearance, mobileSetupStatus, mobilePairingQr } as unknown as typeof window.openshell;
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -157,5 +172,43 @@ describe("SettingsPage", () => {
     store.session = null;
     store.models = [];
     store.currentModel = null;
+  });
+
+  it("shows the desktop-to-phone pairing walkthrough in Mobile Setup", async () => {
+    await act(async () => {
+      root.render(<ThemeProvider><SettingsPage section="mobile" onClose={() => {}} /></ThemeProvider>);
+    });
+
+    expect(container.textContent).toContain("Continue your workspace on your phone.");
+    expect(container.textContent).toContain("Prepare this Mac");
+    expect(container.textContent).toContain("Open Orbit Mobile");
+    expect(container.textContent).toContain("Scan the code from this page");
+    expect(container.querySelector<HTMLButtonElement>(".mobile-setup-generate")?.disabled).toBe(false);
+    expect(container.textContent).toContain("Generate pairing QR");
+    expect(mobileSetupStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("generates the pairing QR from the one-time URI returned by main", async () => {
+    await act(async () => {
+      root.render(<ThemeProvider><SettingsPage section="mobile" onClose={() => {}} /></ThemeProvider>);
+    });
+    const generate = container.querySelector<HTMLButtonElement>(".mobile-setup-generate");
+    expect(generate?.disabled).toBe(false);
+
+    await act(async () => {
+      generate?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const qr = container.querySelector<HTMLImageElement>(".mobile-setup-qr-result img");
+    expect(mobilePairingQr).toHaveBeenCalledTimes(1);
+    expect(QRCode.toDataURL).toHaveBeenCalledWith("orbit://connect?v=2&p=one-time", {
+      width: 480,
+      margin: 2,
+      errorCorrectionLevel: "L",
+    });
+    expect(qr?.src).toBe("data:image/png;base64,test-pairing-code");
+    expect(qr?.alt).toContain("One-time Orbit Mobile pairing QR");
+    expect(container.textContent).toContain("One use · expires in 10 minutes");
   });
 });

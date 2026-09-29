@@ -37,6 +37,15 @@ to keep the code in focus.
 3. Watch the plan, tools, and file changes arrive live.
 4. Review the diff, edit directly, validate, and continue the conversation.
 
+## Orbit Mobile
+
+To continue the same workspace on your phone, keep Orbit Desktop open and open
+**Settings → Mobile Setup**. Follow the three steps there and choose
+**Generate pairing QR**. In Orbit Mobile, choose **Scan QR code** and point the
+camera at the code on this page. The pairing code is single-use and expires
+after 10 minutes. See [`docs/operations.md`](docs/operations.md#connecting-orbit-mobile)
+if Mobile Setup reports that the companion server is missing or offline.
+
 ## Core Capabilities
 
 | Workspace | Agent | Review |

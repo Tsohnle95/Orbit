@@ -74,7 +74,8 @@ applyExecPath();
 
 const backend = new OpenShellBackend();
 const terminals = new TerminalManager();
-const mobileServer = new MobileServer();
+const mobileServer = new MobileServer({ cwd: app.getAppPath() });
+let mobileServerStartup: Promise<void> = Promise.resolve();
 const viteCommand = resolveViteCommand(app.getAppPath(), __dirname);
 const viteServers = new VitePreviewManager(defaultViteDeps(viteCommand.command, viteCommand.prefix));
 let win: BrowserWindow | null = null;
@@ -978,6 +979,15 @@ function registerIpc(): void {
     return backend.removeProviderCredential(workspace, selectionId(credentialID, "provider credential id"));
   });
 
+  handleTrusted("shell:mobile-setup-status", async () => {
+    await mobileServerStartup;
+    return mobileServer.getSetupStatus();
+  });
+  handleTrusted("shell:mobile-pairing-qr", async () => {
+    await mobileServerStartup;
+    return mobileServer.createPairingQr();
+  });
+
   handleTrusted("shell:health", async () => backend.connect().catch(() => false));
 
   handleTrusted("shell:window-view", (_e, view: unknown) => {
@@ -1116,7 +1126,7 @@ if (!app.requestSingleInstanceLock()) {
     }
     createWindow();
     if (app.isPackaged) pendingOpenPaths.push(collectLaunchPaths(process.argv.slice(1), existsSync, process.execPath));
-    void backend.connect()
+    mobileServerStartup = backend.connect()
       .then((connected) => {
         // Share the desktop's OpenCode daemon (and therefore its sessions) with
         // the mobile server when available.

@@ -183,4 +183,23 @@ describe("composer agent menu", () => {
     expect(favoritesGroup).not.toBeNull();
     expect(favoritesGroup!.textContent).toContain("GPT");
   });
+
+  it("reaches response strength from the model menu when the model has variants", async () => {
+    currentModels = [{ id: "gpt", name: "GPT", providerID: "openai", variants: ["low", "high"] }];
+    currentModel = { id: "gpt", name: "GPT", providerID: "openai", variants: ["low", "high"], variant: "high" };
+    await act(async () => root.render(<Composer />));
+    const modelButton = container.querySelector<HTMLButtonElement>(
+      'button[title="Change model and response strength"]'
+    )!;
+    await act(async () => modelButton.click());
+
+    const menu = container.querySelector<HTMLElement>(".composer-menu")!;
+    const strength = menu.querySelector<HTMLButtonElement>('button[title="Change response strength"]')!;
+    expect(strength).not.toBeNull();
+    expect(strength.textContent).toContain("Response strength");
+    expect(strength.textContent).toContain("High");
+
+    await act(async () => strength.click());
+    expect(container.querySelector(".variant-menu")).not.toBeNull();
+  });
 });

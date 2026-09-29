@@ -5,6 +5,7 @@ import { APPEARANCES, type ThemeId, useTheme } from "../theme";
 import { OrbitMark } from "./OrbitMark";
 import { ProviderSettings } from "./ProviderSettings";
 import { ServerSettings } from "./ServerSettings";
+import { MobileSetup } from "./MobileSetup";
 import type { SettingsSection } from "./SettingsSidebar";
 
 const themes: Array<{ id: ThemeId; name: string; description: string; colors: { base: string; pane: string; editor: string; agent: string; terminal: string; accent: string; good: string; muted: string } }> = APPEARANCES.map(({ id, name, description, colors }) => ({
@@ -249,9 +250,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
 
       {section === "servers" && <ServerSettings />}
 
-      {section === "mobile" && <section className="settings-section">
-        <div className="settings-callout"><strong>Mobile access is on while Orbit is open.</strong><p>Orbit runs the mobile server for as long as this app is open, and stops it when you quit. Sessions are shared: pick up a conversation on the phone where you left off on desktop, and start new ones from either. On your phone, connect to this Mac's Tailscale address at port 3011 (for example <code>http://100.x.y.z:3011</code>) using your mobile password. If the phone can't connect, make sure Orbit is running.</p></div>
-      </section>}
+      {section === "mobile" && <MobileSetup />}
 
       {section === "about" && <section className="settings-section">
         <div className="settings-about"><OrbitMark size={72} /><div><h2>Orbit</h2><p>Version 0.1.0</p><small>A native desktop cockpit for coding agents.</small></div></div>

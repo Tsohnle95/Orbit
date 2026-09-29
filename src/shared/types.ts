@@ -64,6 +64,20 @@ export interface ViteToggleResult {
   server?: ViteServerInfo;
 }
 
+export interface MobileServerSetupStatus {
+  state: "ready" | "starting" | "offline" | "setup-required";
+  reason?: "companion-checkout-missing" | "node-runtime-missing" | "server-not-running";
+  workspacePath: string;
+  port: number;
+}
+
+export interface MobilePairingQr {
+  /** Versioned, one-time Orbit connection URI; never a reusable password/token. */
+  connectionUrl: string;
+  expiresAt: string;
+  serverLabel: string;
+}
+
 export interface SessionSummary {
   id: string;
   runtimeID?: RuntimeID;

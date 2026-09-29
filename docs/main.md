@@ -314,6 +314,8 @@ Internals:
 | `shell:provider-integrations` | `(workspace) → ProviderIntegration[]` — the runtime provider catalog filtered to Orbit's supported providers (OpenCode Go, Command Code, OpenAI) with secret-free connection metadata |
 | `shell:provider-key-connect` | `(workspace, integrationID, key, label, answers) → void` — validates and forwards a write-only provider key and bounded form answers |
 | `shell:provider-credential-remove` | `(workspace, credentialID) → void` — removes a stored credential by opaque id |
+| `shell:mobile-setup-status` | `() → MobileServerSetupStatus` — reports companion checkout, Node, and local server readiness without exposing its password |
+| `shell:mobile-pairing-qr` | `() → MobilePairingQr` — authenticates to the loopback companion server in main and returns only its short-lived one-time pairing URI |
 | `shell:health` | `() → boolean` |
 | `shell:window-view` | `(view: "landing" \| "session") → void` — switches the window between the fixed landing size and the persisted session size (see Window sizing) |
 | `shell:set-appearance` | `(appearance: "dark" \| "light") → void` — sets `nativeTheme.themeSource` so window vibrancy and native chrome follow the selected color profile; the renderer reports it on boot and on every profile change |
@@ -467,6 +469,16 @@ Gotcha: `highlightConfig` is a required
 parameter even for `mode: "none"`; omitting it makes Chromium reject
 the command and leaves the overlay stuck in search mode, flashing
 highlights forever.
+
+`MobileServer` (`src/main/mobile-server.ts`) owns the companion checkout and
+local service credentials. In development it checks for a sibling
+`orbit-mobile` checkout before `~/coding-projects/orbit-mobile`; packaged
+installations use that historical default unless `ORBIT_MOBILE_HOME` is set.
+The `shell:mobile-setup-status` response contains only status/path/port. Pairing
+uses the password from the mode-0600 local `desktop-status.json` only inside
+main to obtain an authenticated UI session and ask the server for a one-time
+pairing URI; neither the UI password nor a reusable mobile token crosses IPC.
+The renderer generates a QR image from that URI.
 
 Startup (`app.whenReady`): `start()` → register backend and terminal forwarders
 → register IPC → `createWindow()` → begin asynchronous `connect()`. On

@@ -23,6 +23,8 @@ import type {
   ProviderOAuthAttempt,
   ProviderOAuthPoll,
   McpServerOption,
+  MobilePairingQr,
+  MobileServerSetupStatus,
   PluginOption,
   SessionRevertStage,
   SkillOption,
@@ -191,6 +193,8 @@ const api = {
   removeProviderCredential: (workspace: WorkspaceIdentity, credentialID: string): Promise<void> =>
     ipcRenderer.invoke("shell:provider-credential-remove", workspace, credentialID),
   health: (): Promise<boolean> => ipcRenderer.invoke("shell:health"),
+  mobileSetupStatus: (): Promise<MobileServerSetupStatus> => ipcRenderer.invoke("shell:mobile-setup-status"),
+  mobilePairingQr: (): Promise<MobilePairingQr> => ipcRenderer.invoke("shell:mobile-pairing-qr"),
   installApp: (): Promise<{ ok: boolean; message: string }> => ipcRenderer.invoke("shell:install-app"),
   windowView: (view: "landing" | "session"): Promise<void> => ipcRenderer.invoke("shell:window-view", view),
   setAppearance: (appearance: "dark" | "light"): Promise<void> => ipcRenderer.invoke("shell:set-appearance", appearance),

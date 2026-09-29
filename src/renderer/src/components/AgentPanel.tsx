@@ -1047,6 +1047,20 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
                     placeholder="Search models"
                     aria-label="Search models"
                   />
+                  {currentModel?.variants && currentModel.variants.length > 0 && (
+                    <button
+                      className="composer-menu-item"
+                      title="Change response strength"
+                      onClick={() => setModelView("strength")}
+                    >
+                      <span className="composer-menu-check" />
+                      Response strength
+                      <span className="composer-menu-value">
+                        {variantLabel}
+                        <IconChevronRight />
+                      </span>
+                    </button>
+                  )}
                   {favoriteList.length > 0 && (
                     <div className="composer-menu-group composer-menu-favorites">
                       <button
