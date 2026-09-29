@@ -80,6 +80,7 @@ describe("TerminalTray integration", () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -116,7 +117,9 @@ describe("TerminalTray integration", () => {
     expect(window.openshell.terminalStart).toHaveBeenCalledWith(
       session.workspace,
       "term-aaaaaaaa-aaaa-4aaa-8aaa-000000000002",
-      "packages/web"
+      "packages/web",
+      100,
+      24
     );
     expect(window.openshell.terminalInput).toHaveBeenCalledWith(
       session.workspace,
@@ -124,6 +127,29 @@ describe("TerminalTray integration", () => {
       "cd -- '/workspace/packages/web'\r"
     );
     expect(container.textContent).toContain("web");
+  });
+
+  it("starts a shell with the measured terminal viewport", async () => {
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains("terminal-body")) return 610;
+      if (this.classList.contains("terminal-tray")) return 612;
+      return 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains("terminal-body")) return 190;
+      if (this.classList.contains("terminal-tray")) return 226;
+      return 0;
+    });
+
+    await act(async () => root.render(<TerminalTray height={240} snapped={false} onClose={onClose} onExpand={() => {}} />));
+
+    expect(window.openshell.terminalStart).toHaveBeenCalledWith(
+      session.workspace,
+      "term-aaaaaaaa-aaaa-4aaa-8aaa-000000000001",
+      "",
+      79,
+      11
+    );
   });
 
   it("shows a server button in the terminal header", async () => {

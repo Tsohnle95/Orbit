@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PendingTerminalOutput, removeTerminal, terminalDirectoryCommand, type TerminalTabs } from "./terminal-state";
+import { PendingTerminalOutput, removeTerminal, terminalDirectoryCommand, terminalSizeForViewport, type TerminalTabs } from "./terminal-state";
 
 const tabs: TerminalTabs = {
   terms: [
@@ -45,6 +45,16 @@ describe("terminal directory fallback", () => {
 
   it("does nothing for the workspace root", () => {
     expect(terminalDirectoryCommand("linux", "/workspace", "")).toBeNull();
+  });
+});
+
+describe("initial terminal sizing", () => {
+  it("uses the available terminal viewport with room for xterm padding and its ruler", () => {
+    expect(terminalSizeForViewport(610, 190, 7.2, 15)).toEqual({ cols: 79, rows: 11 });
+  });
+
+  it("keeps a minimum valid PTY size for a very small viewport", () => {
+    expect(terminalSizeForViewport(10, 10, 7.2, 15)).toEqual({ cols: 2, rows: 1 });
   });
 });
 

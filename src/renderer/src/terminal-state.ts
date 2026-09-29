@@ -8,6 +8,25 @@ export interface TerminalTabs {
   activeId: string | null;
 }
 
+export interface TerminalSize {
+  cols: number;
+  rows: number;
+}
+
+export function terminalSizeForViewport(
+  width: number,
+  height: number,
+  cellWidth: number,
+  cellHeight: number
+): TerminalSize {
+  // Match FitAddon's 16px host padding + 14px overview ruler, then leave one
+  // extra column so the shell's first prompt cannot wrap before the first resize.
+  return {
+    cols: Math.max(2, Math.floor((width - 30) / cellWidth) - 1),
+    rows: Math.max(1, Math.floor((height - 12) / cellHeight))
+  };
+}
+
 export function terminalDirectoryCommand(platform: string, workspaceDirectory: string, relativeDirectory: string): string | null {
   if (!relativeDirectory) return null;
   if (platform === "win32") {

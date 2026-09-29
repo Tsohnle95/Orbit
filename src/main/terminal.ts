@@ -1,6 +1,11 @@
 import { spawn, type IDisposable, type IPty } from "node-pty";
 import type { WorkspaceIdentity } from "@shared/types";
 
+interface TerminalSize {
+  cols: number;
+  rows: number;
+}
+
 export interface PtyHandle {
   id: string;
   pty: IPty;
@@ -37,14 +42,20 @@ export class TerminalManager {
     for (const cb of this.listeners) cb(msg);
   }
 
-  async start(id: string, directory: string, workspace: WorkspaceIdentity, command?: TerminalCommand): Promise<void> {
+  async start(
+    id: string,
+    directory: string,
+    workspace: WorkspaceIdentity,
+    command?: TerminalCommand,
+    initialSize: TerminalSize = { cols: 100, rows: 24 }
+  ): Promise<void> {
     if (this.terminals.has(id)) throw new Error("terminal already exists");
     const executable = command?.command ?? defaultShell(process.platform, process.env);
     const args = command?.args ?? [];
     const pty = this.spawnPty(executable, args, {
       name: "xterm-256color",
-      cols: 100,
-      rows: 24,
+      cols: initialSize.cols,
+      rows: initialSize.rows,
       cwd: directory,
       env: { ...process.env, TERM: "xterm-256color", COLORTERM: "truecolor" }
     });

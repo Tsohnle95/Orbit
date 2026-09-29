@@ -508,8 +508,11 @@ measurements are passed as inline CSS custom-property values; their actual
 presentational declarations remain in the owning SCSS partial.
 
 Terminal input flows: keystrokes → `terminalInput(id, data)`; output
-streams back via `onMessage` (`terminal-data`). The xterm `fit` addon +
-`ResizeObserver` keep the PTY dimensions in sync (`terminalResize`), and the
+streams back via `onMessage` (`terminal-data`). The renderer measures the
+visible terminal viewport and supplies its initial columns/rows to
+`terminalStart`, so the shell's first prompt is laid out at xterm's width;
+after startup, the xterm `fit` addon + `ResizeObserver` keep the PTY dimensions
+in sync (`terminalResize`), and the
 agent TUI re-sends its fitted size once `agentTuiStart` resolves — a resize
 that arrives before the PTY is registered is dropped by the terminal manager,
 which would leave the TUI drawing only the spawn-default rows.

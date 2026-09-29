@@ -298,7 +298,7 @@ Internals:
 | `shell:switch-model` | `(workspace, id, providerID, variant?) → void` |
 | `shell:agents` | `(workspace) → AgentOption[]` |
 | `shell:switch-agent` | `(workspace, id) → void` |
-| `shell:terminal-start` | `(workspace, id, directory?) → resolved cwd`; renderer allocates a validated UUID id before invoking, main confines the optional relative directory to the addressed workspace and uses it as cwd |
+| `shell:terminal-start` | `(workspace, id, directory?, cols?, rows?) → resolved cwd`; renderer allocates a validated UUID id and supplies the measured xterm viewport before invoking, main confines the optional relative directory to the addressed workspace, validates initial dimensions, and uses them for PTY spawn |
 | `shell:agent-tui-start` | `(workspace, id) → void`; starts the addressed runtime's TUI command in the workspace's canonical cwd |
 | `shell:terminal-input` | `(workspace, id, data) → void` |
 | `shell:terminal-resize` | `(workspace, id, cols, rows) → void` |

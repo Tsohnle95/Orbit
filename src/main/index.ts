@@ -856,14 +856,15 @@ function registerIpc(): void {
   handleTrusted("shell:switch-agent", async (_e, workspace: WorkspaceIdentity, id: string) =>
     backend.switchAgent(workspace, selectionId(id, "agent id")));
 
-  handleTrusted("shell:terminal-start", async (_e, workspace: WorkspaceIdentity, requestedId: string, rel = "") => {
+  handleTrusted("shell:terminal-start", async (_e, workspace: WorkspaceIdentity, requestedId: string, rel = "", cols = 100, rows = 24) => {
     const target = workspacePath(workspace, rel, true);
     const root = await backend.workspaceDirectory(target.workspace);
     const directory = await confinedPath(root, target.rel, true);
     const stat = await fsp.stat(directory);
     if (!stat.isDirectory()) throw new Error("terminal path is not a directory");
     const id = terminalId(requestedId);
-    await terminals.start(id, directory, target.workspace);
+    const dimensions = terminalDimensions(cols, rows);
+    await terminals.start(id, directory, target.workspace, undefined, dimensions);
     try {
       await backend.workspaceDirectory(target.workspace);
     } catch (error) {

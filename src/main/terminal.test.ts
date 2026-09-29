@@ -65,6 +65,16 @@ describe("TerminalManager capability ownership", () => {
     expect(spawnPty).toHaveBeenCalledWith("opencode", ["--session", "session-1"], expect.objectContaining({ cwd: "/tmp" }));
   });
 
+  it("uses the renderer's initial dimensions before the shell emits its first prompt", async () => {
+    const pty = { onData: () => ({ dispose() {} }), onExit: () => ({ dispose() {} }), write() {}, resize() {}, kill() {} } as unknown as IPty;
+    const spawnPty = vi.fn(() => pty);
+    const manager = new TerminalManager(spawnPty as never);
+
+    await manager.start("term-sized", "/tmp", workspace, undefined, { cols: 73, rows: 18 });
+
+    expect(spawnPty).toHaveBeenCalledWith(expect.any(String), [], expect.objectContaining({ cols: 73, rows: 18 }));
+  });
+
   it("stopAll kills, waits for exits, then detaches callbacks", async () => {
     const listeners = new Map<string, Array<(event: { exitCode: number }) => void>>();
     const killed: string[] = [];

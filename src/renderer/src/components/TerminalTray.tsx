@@ -7,7 +7,35 @@ import { useOptionalTheme } from "../theme";
 import { terminalThemeForAppearance } from "../appearances";
 import { IconAdd, IconChevronDown, IconChevronUp, IconGlobe } from "./icons";
 import type { ViteServerInfo, WorkspaceIdentity } from "@shared/types";
-import { PendingTerminalOutput, removeTerminal, terminalDirectoryCommand, type TerminalTabs } from "../terminal-state";
+import { PendingTerminalOutput, removeTerminal, terminalDirectoryCommand, terminalSizeForViewport, type TerminalSize, type TerminalTabs } from "../terminal-state";
+
+const TERMINAL_FONT_FAMILY = "'SF Mono', Menlo, Consolas, monospace";
+const TERMINAL_FONT_SIZE = 12;
+const TERMINAL_LINE_HEIGHT = 1.25;
+
+function initialTerminalSize(tray: HTMLElement | null): TerminalSize {
+  const body = tray?.querySelector<HTMLElement>(".terminal-body");
+  if (!tray || !body) return { cols: 100, rows: 24 };
+
+  const width = body.clientWidth || Math.max(0, tray.clientWidth - 2);
+  const header = tray.querySelector<HTMLElement>(".terminal-header");
+  const height = body.clientHeight || Math.max(0, tray.clientHeight - (header?.offsetHeight ?? 0) - 2);
+  if (width <= 0) return { cols: 100, rows: 24 };
+
+  const probe = document.createElement("span");
+  probe.textContent = "W";
+  probe.style.cssText = `position:fixed;visibility:hidden;white-space:pre;font:${TERMINAL_FONT_SIZE}px/${TERMINAL_FONT_SIZE * TERMINAL_LINE_HEIGHT}px ${TERMINAL_FONT_FAMILY}`;
+  document.body.append(probe);
+  const measuredCellWidth = probe.getBoundingClientRect().width;
+  probe.remove();
+
+  return terminalSizeForViewport(
+    width,
+    height > 0 ? height : 24 * TERMINAL_FONT_SIZE * TERMINAL_LINE_HEIGHT + 12,
+    measuredCellWidth > 0 ? measuredCellWidth : TERMINAL_FONT_SIZE * 0.6,
+    TERMINAL_FONT_SIZE * TERMINAL_LINE_HEIGHT
+  );
+}
 
 function relativeServerDirectory(root: string, directory: string): string {
   const base = root.replace(/[\\/]+$/, "");
@@ -43,9 +71,9 @@ function TermInstance({ id, active, height, workspace, onRegister, onUnregister 
     const host = hostRef.current;
     if (!host) return;
     const term = new Terminal({
-      fontFamily: "'SF Mono', Menlo, Consolas, monospace",
-      fontSize: 12,
-      lineHeight: 1.25,
+      fontFamily: TERMINAL_FONT_FAMILY,
+      fontSize: TERMINAL_FONT_SIZE,
+      lineHeight: TERMINAL_LINE_HEIGHT,
       cursorBlink: true,
       scrollback: 5000,
       allowTransparency: true,
@@ -141,6 +169,7 @@ export function TerminalTray({
   const counterRef = useRef(0);
   const bootTokenRef = useRef(0);
   const handledRequestRef = useRef<number | null>(null);
+  const trayRef = useRef<HTMLDivElement>(null);
   const writersRef = useRef<Map<string, (data: string) => void>>(new Map());
   const pendingOutputRef = useRef(new PendingTerminalOutput());
 
@@ -198,7 +227,8 @@ export function TerminalTray({
     const name = directory.split("/").filter(Boolean).pop() ?? `Terminal ${count}`;
     setTabs((current) => ({ terms: [...current.terms, { id, name }], activeId: id }));
     try {
-      const startedDirectory = await window.openshell.terminalStart(workspace, id, directory);
+      const size = initialTerminalSize(trayRef.current);
+      const startedDirectory = await window.openshell.terminalStart(workspace, id, directory, size.cols, size.rows);
       if (directory && !startedDirectory) {
         const command = terminalDirectoryCommand(window.openshell.platform, sessionDirectory, directory);
         if (command) await window.openshell.terminalInput(workspace, id, command);
@@ -221,7 +251,8 @@ export function TerminalTray({
       const name = `Terminal ${++counterRef.current}`;
       setTabs({ terms: [{ id, name }], activeId: id });
       try {
-        await window.openshell.terminalStart(workspace, id, "");
+        const size = initialTerminalSize(trayRef.current);
+        await window.openshell.terminalStart(workspace, id, "", size.cols, size.rows);
         if (token !== bootTokenRef.current) {
           void window.openshell.terminalStop(workspace, id).catch(() => {});
           return;
@@ -288,7 +319,7 @@ export function TerminalTray({
   };
 
   return (
-    <div className="terminal-tray" style={{ "--terminal-height": `${height}px` } as CSSProperties}>
+    <div ref={trayRef} className="terminal-tray" style={{ "--terminal-height": `${height}px` } as CSSProperties}>
       <div
         className={`terminal-header ${snapped ? "snapped" : ""}`}
         title={snapped ? "Click to expand terminal" : undefined}
