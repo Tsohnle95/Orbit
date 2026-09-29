@@ -1,6 +1,5 @@
 import type { ToolContentView } from "./types";
 
-export const MAX_RETAINED_OUTPUT_CHARS = 8 * 1024;
 export const MAX_INACTIVE_SESSION_RECORDS = 4;
 export const SESSION_RETENTION_DAYS = 30;
 export const SESSION_RETENTION_MS = SESSION_RETENTION_DAYS * 24 * 60 * 60 * 1000;
@@ -35,21 +34,6 @@ export function disposableSession(
   now: number
 ): boolean {
   return !hasConversation(title, tokens) && expiredSession(time, now, EMPTY_SESSION_RETENTION_MS);
-}
-
-export function retainOutput(value: string): string {
-  if (value.length <= MAX_RETAINED_OUTPUT_CHARS) return value;
-  let omitted = value.length - MAX_RETAINED_OUTPUT_CHARS;
-  let marker = "";
-  while (true) {
-    marker = `\n... ${omitted} characters omitted ...\n`;
-    const actual = value.length - (MAX_RETAINED_OUTPUT_CHARS - marker.length);
-    if (actual === omitted) break;
-    omitted = actual;
-  }
-  const retained = MAX_RETAINED_OUTPUT_CHARS - marker.length;
-  const head = Math.ceil(retained / 2);
-  return value.slice(0, head) + marker + value.slice(value.length - (retained - head));
 }
 
 export function retainMatchingSessionRecords<T>(

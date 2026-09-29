@@ -2,7 +2,7 @@ import { performance } from "node:perf_hooks";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { largeSessionEvents, reduceLargeSession, retainedOutputChars, timelineDomSizeProxy } from "./large-session-fixture";
+import { LARGE_SESSION_OUTPUT_CHARS, largeSessionEvents, reduceLargeSession, retainedOutputChars, timelineDomSizeProxy } from "./large-session-fixture";
 import { OpenCodeTimeline } from "./components/OpenCodeTimeline";
 
 vi.mock("./store", () => ({
@@ -51,7 +51,7 @@ describe("large session performance fixture", () => {
     expect(reducerMs).toBeLessThan(100);
     expect(derivedTimelineMs).toBeLessThan(10);
     expect(domRows).toBeLessThanOrEqual(1_000);
-    expect(retainedChars).toBeLessThanOrEqual(400 * 8 * 1024);
+    expect(retainedChars).toBe(400 * LARGE_SESSION_OUTPUT_CHARS);
   });
 
   it("constructs the representative timeline React tree and jsdom rows within a generous budget", () => {

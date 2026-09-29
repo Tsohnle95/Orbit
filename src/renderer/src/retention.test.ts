@@ -1,23 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  MAX_RETAINED_OUTPUT_CHARS,
-  retainOutput,
   retainMatchingSessionRecords,
   retainSessionRecord,
   retainToolContent
 } from "@shared/retention";
 
 describe("transcript retention", () => {
-  it("keeps short output unchanged and summarizes the middle of large output", () => {
-    expect(retainOutput("short")).toBe("short");
-    const retained = retainOutput("a".repeat(10_000) + "z".repeat(10_000));
-    expect(retained).toHaveLength(MAX_RETAINED_OUTPUT_CHARS);
-    expect(retained).toMatch(/^a+/);
-    const omitted = Number(retained.match(/(\d+) characters omitted/)?.[1]);
-    expect(omitted).toBe(20_000 - retained.replace(/\n\.\.\. \d+ characters omitted \.\.\.\n/, "").length);
-    expect(retained).toMatch(/z+$/);
-  });
-
   it("evicts busy state for sessions evicted from transcript retention", () => {
     const busy = { active: true, retained: false, evicted: true };
     expect(retainMatchingSessionRecords(busy, { active: [], retained: [] }, "active"))

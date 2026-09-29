@@ -1,7 +1,7 @@
 import type { AssistantPartView, ToolCallView, ToolContentView, TranscriptItem } from "@shared/types";
 import { messagePresentation } from "@shared/message-presentation";
 import { formatFailure } from "@shared/errors";
-import { retainOutput, retainToolContent } from "@shared/retention";
+import { retainToolContent } from "@shared/retention";
 
 export interface ChatStreamEvent {
   id: string;
@@ -129,13 +129,13 @@ export function partFromProjection(part: Record<string, any>, created: number): 
       : "running";
   const startedAt = Number(part.time?.created ?? state.time?.start ?? created);
   const completedAt = Number(part.time?.completed ?? state.time?.end ?? 0);
-  const output = retainOutput(Array.isArray(state.content)
+  const output = Array.isArray(state.content)
     ? toolOutput({ content: state.content })
     : status === "success"
       ? stringify(state.output)
       : status === "failed"
         ? errorText(state.error, "ORBIT_TOOL_FAILED", "Tool failed")
-        : stringify(state.output));
+        : stringify(state.output);
   const callID = String(part.callID ?? part.id);
   return {
     kind: "tool",
@@ -317,7 +317,7 @@ export function reduceChatStream(items: TranscriptItem[], event: ChatStreamEvent
         status: ["exited", "timeout", "killed"].includes(String(shell.status))
           ? shell.status as "exited" | "timeout" | "killed"
           : "exited",
-        ...(typeof output?.output === "string" ? { output: retainOutput(output.output) } : {}),
+        ...(typeof output?.output === "string" ? { output: output.output } : {}),
         ...(typeof shell.exit === "number" ? { exit: shell.exit } : {})
       };
       return index >= 0

@@ -3,11 +3,11 @@ import type { TranscriptItem } from "@shared/types";
 import {
   hasCompletedPromptResponse,
   mergeChatHistory,
+  partFromProjection,
   reconcilePromptHistory,
   reduceChatStream,
   type ChatStreamEvent
 } from "./chat-stream";
-import { MAX_RETAINED_OUTPUT_CHARS } from "@shared/retention";
 
 function event(id: string, type: string, data: Record<string, unknown>): ChatStreamEvent {
   return { id, type, created: 100, data };
@@ -30,15 +30,23 @@ describe("chat stream auxiliary items", () => {
     }]);
   });
 
-  it("bounds completed live shell output", () => {
-    const output = "x".repeat(MAX_RETAINED_OUTPUT_CHARS * 2);
+  it("preserves complete live shell output", () => {
+    const output = "start\n" + "x".repeat(32 * 1024) + "\nend";
     const transcript = reduceChatStream([], event("shell-end", "session.shell.ended", {
       shell: { id: "shell-1", command: "build", status: "exited", exit: 0 },
       output: { output }
     }));
 
-    expect(transcript[0]).toMatchObject({ kind: "shell", output: expect.stringContaining("characters omitted") });
-    expect(transcript[0].kind === "shell" ? transcript[0].output?.length : 0).toBe(MAX_RETAINED_OUTPUT_CHARS);
+    expect(transcript[0]).toMatchObject({ kind: "shell", output });
+  });
+
+  it("preserves complete streamed tool output across completion", () => {
+    const output = "start\n" + "x".repeat(32 * 1024) + "\nend";
+    for (const status of ["running", "completed"]) {
+      expect(partFromProjection({
+        id: "tool-1", type: "tool", tool: "bash", state: { status, output }
+      }, 100)).toMatchObject({ kind: "tool", tool: { output } });
+    }
   });
 
   it("preserves live semantic chronology around replayed assistants", () => {

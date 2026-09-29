@@ -33,8 +33,9 @@ Make the agent panel response surface match the pinned OpenCode GUI implementati
 
 | Phase | Scope | Status | Validation | Commit |
 |---|---|---|---|---|
-| 1 | Audit actual default upstream path and replace response layout/style/Markdown approximations | complete | Source audit; real Markdown/Pierre and lifecycle tests; Node 22.23.2 canonical gate, 110 files / 870 tests | this checkpoint |
+| 1 | Audit actual default upstream path and replace response layout/style/Markdown approximations | complete | Source audit; real Markdown/Pierre and lifecycle tests; Node 22.23.2 canonical gate, 110 files / 870 tests | `75b2710` |
 | 2 | Compare reference and Orbit intermediate/final response UI and correct discrepancies | active; final live checks blocked by UI connection | Equal-width reference at 420 px done; narrow/wide, light appearance, latest tools and actual Electron panel pending | — |
+| 3 | Preserve complete OpenCode tool/shell output through live projection and replay | complete | Four long-output regressions failed on the old cap; 18 targeted tests and Node 22.23.2 canonical gate pass | this checkpoint |
 
 ## Decisions
 
@@ -50,7 +51,8 @@ Make the agent panel response surface match the pinned OpenCode GUI implementati
 - The upstream and Orbit fixtures at width 420 matched measured user bubble, assistant text, heading and code-block positions/sizes. Corrected inherited line height/weight and old narrow-padding overrides afterward. Shiki tokens rendered in the browser under Orbit's unchanged CSP. Wrapping is an explicit user exception.
 - Latest supported gate: `npm run check`, Node 22.23.2, 110 test files / 870 tests, typecheck/docs/production build pass. Log `/private/tmp/orbit-response-parity-check.log`.
 - The staged port also passes independently of concurrent mobile/menu/palette edits: 109 test files / 861 tests plus typecheck/docs/build. Log `/private/tmp/orbit-parity-checkpoint-check.log`. The temporary snapshot's Vitest filesystem allowlist includes the symlinked dependency directory; product configuration is unchanged.
+- Complete-output gate: `npm run check`, Node 22.23.2, 110 files / 871 tests plus typecheck/docs/build. Log `/private/tmp/orbit-output-parity-check.log`. The 400-turn fixture retains 13,107,200 supplied characters exactly once with 6.05 ms median reduction and 0.16 ms derivation in the targeted run. Operations docs were then aligned and `npm run docs:check` rerun.
 - Native UI failed repeatedly with `Sky Computer Use native pipe startup failed`, including after reset and the latest continuation. Inventory has no apps/browsers. Do not claim full visual equivalence or completion while final live checks remain unavailable.
 - Pending direct checks: repeat 320/420/700 comparison after final tool/CSS edits; light appearance; streaming code and copy/tooltip interactions; file accordions; actual restarted Electron agent panel. Real upstream harness `/private/tmp/orbit-opencode-visual-reference` uses port 8766; actual Orbit renderer harness `/private/tmp/orbit-parity-fixture` uses port 8767.
 - Preserve other agents' mobile/menu changes and the user's palette/wrapping overrides without staging or committing their work.
-- Orbit's external-link bridge and bounded tool-output retention remain architectural constraints; the presentation port does not establish complete upstream application equivalence.
+- Orbit's external-link bridge remains an architectural constraint; the presentation port does not establish complete upstream application equivalence. The 8 KiB output cap was an observable mismatch and is removed while preserving session LRU eviction and duplicate-content cleanup.

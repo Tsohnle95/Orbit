@@ -60,7 +60,6 @@ import {
   disposableSession,
   expiredSession,
   hasConversation,
-  retainOutput,
   retainToolContent,
   SESSION_RETENTION_MS,
   type SessionTokenUsage
@@ -278,12 +277,11 @@ function replayToolCard(part: Record<string, unknown>): ToolCallView {
     detail: toolDetailText(input),
     status,
     input: toolInputText(input),
-    output: retainOutput(
+    output:
       toolContentText(state.content as unknown[] | undefined) ||
       (state.error !== undefined
         ? formatFailure(state.error, "ORBIT_TOOL_FAILED", "Tool failed")
-        : String(state.output ?? ""))
-    ),
+        : String(state.output ?? "")),
     startedAt: time.created ?? Date.now(),
     duration: completed ? Math.max(0, completed - ran) : undefined,
     paths: collectFilePaths(input),
@@ -437,7 +435,7 @@ export function replayTranscript(messages: unknown[]): TranscriptItem[] {
         shellID: String(info.shellID ?? info.id),
         command: String(info.command ?? ""),
         status,
-        ...(typeof output?.output === "string" ? { output: retainOutput(output.output) } : {}),
+        ...(typeof output?.output === "string" ? { output: output.output } : {}),
         ...(["number", "string"].includes(typeof info.exit) ? { exit: info.exit as number | string } : {})
       });
       continue;

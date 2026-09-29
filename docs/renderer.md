@@ -259,9 +259,9 @@ Key mechanisms:
   Adjacent authoritative snapshots of the same legacy part collapse to the
   latest snapshot. A timer is used instead of animation frames so background
   windows continue draining the stream.
-- **Session retention** — completed tool and shell output retains at most 8 KiB,
-  split between the beginning and end with the omitted character count in the
-  middle. Text tool content is discarded after it is projected into `output`;
+- **Session retention** — tool and shell output retains the complete text supplied
+  by OpenCode, including after completion, replay, and reopening. Text tool
+  content is discarded after it is projected into `output`;
   file content blocks remain available. Live reduction and replay hydration use
   the same policy. The active stream plus the four most recently updated
   inactive streams are retained in memory; usage records follow the same LRU
@@ -397,7 +397,7 @@ Key mechanisms:
   reduces 2,400 events into 400 assistant messages and measures timeline-row
   derivation and retained output. After one warmup, median-of-five proxy budgets
   are 100 ms reducer/update time, 10 ms derived timeline time, at most 1,000
-  estimated rows, and 8 KiB retained output per completed tool or shell result.
+  estimated rows, and exactly one copy of each supplied tool result's output.
   A separate generous 5,000 ms budget measures React reconciliation and 800
   actual rows constructed in jsdom. It does not cover Chromium layout, paint,
   compositor work, or browser memory and is not a browser render budget.

@@ -160,15 +160,16 @@ npx vitest run src/renderer/src/large-session.performance.test.ts --reporter=ver
 
 The JSON lines report reducer/update latency, derived timeline latency, an
 estimated timeline-row proxy, retained output characters, and actual React/jsdom
-rendering for 2,400 fixed events. On 2026-08-12,
-before retention changes, the fixture measured 11.79 ms, 0.64 ms, 800 rows, and
-26,214,400 retained characters. With retention enabled it measured 11.42 ms,
-0.45 ms, 800 rows, and 3,276,800 retained characters. The test performs one
+rendering for 2,400 fixed events. On 2026-09-29, with complete supplied output
+retained once per tool result, the fixture measured 6.05 ms, 0.16 ms, 800 rows,
+and 13,107,200 retained characters. See [renderer retention](renderer.md) for
+the transcript lifecycle policy. The test performs one
 warmup and gates the median of five measured runs, reducing scheduler and JIT
 noise seen in the full suite. Its deliberately generous CI budgets are a
 100 ms median reducer/update time and 10 ms median derivation time. The
-structural proxy budgets are at most 1,000 estimated rows and 8 KiB per completed
-tool/shell result. The representative 400-turn timeline produces 800 actual
+structural proxy budget is at most 1,000 estimated rows; an output assertion
+also checks that no supplied text is lost or duplicated. The representative
+400-turn timeline produces 800 actual
 `data-timeline-row` DOM nodes. Its deliberately generous 5,000 ms budget covers
 React reconciliation and jsdom DOM construction and is intended to catch gross
 regressions without becoming machine-speed flaky. It explicitly does not
