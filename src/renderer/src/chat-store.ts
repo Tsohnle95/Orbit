@@ -1,5 +1,6 @@
-import type { AssistantPartView, TranscriptItem } from "@shared/types";
+import type { AssistantPartView, MessagePresentation, TranscriptItem } from "@shared/types";
 import { formatFailure, normalizeFailure } from "@shared/errors";
+import { messagePresentation } from "@shared/message-presentation";
 import { partFromProjection, type ChatStreamEvent } from "./chat-stream";
 import { Binary } from "./binary";
 
@@ -248,9 +249,10 @@ function areJsonEquivalent(left: unknown, right: unknown): boolean {
 function areMessageUpdateFieldsEqual(existing: ChatMessageRecord, next: ChatMessageRecord): boolean {
   if (existing.role !== next.role) return false;
   if (existing.finish !== next.finish) return false;
+  if (existing.time?.created !== next.time?.created) return false;
   if (existing.time?.completed !== next.time?.completed) return false;
 
-  const fields = ["summary", "error", "cost", "tokens", "structured", "model", "tools", "format", "variant", "agent", "system"];
+  const fields = ["summary", "error", "cost", "tokens", "structured", "model", "modelID", "providerID", "parentID", "tools", "format", "variant", "agent", "system"];
   for (const field of fields) {
     if (!areJsonEquivalent(existing[field], next[field])) return false;
   }
@@ -290,14 +292,16 @@ export function insertUserMessage(
   sessionID: string,
   id: string,
   text: string,
-  model?: Record<string, unknown>
+  model?: Record<string, unknown>,
+  presentation?: MessagePresentation
 ): void {
   insertMessage(draft, sessionID, {
     id,
     sessionID,
     role: "user",
-    time: { created: Date.now() },
-    ...(model && typeof model === "object" ? { model } : {})
+    time: { created: presentation?.createdAt ?? Date.now() },
+    ...(model && typeof model === "object" ? { model } : {}),
+    ...(presentation?.agent !== undefined ? { agent: presentation.agent } : {})
   });
 }
 
@@ -633,11 +637,20 @@ export function applyChatEvent(draft: ChatDirectoryState, routedSessionID: strin
         return { ...message, retry: undefined, time: { ...message.time, completed: event.created } };
       });
       draft.message[sessionID] = next;
+      const previous = messages.find((message) => message.id === messageID);
       insertMessage(draft, sessionID, {
+        ...previous,
         id: messageID,
         sessionID,
         role: "assistant",
-        time: { created: event.created }
+        ...(typeof data.agent === "string" ? { agent: data.agent } : {}),
+        ...(data.model && typeof data.model === "object" ? { model: data.model } : {}),
+        ...(typeof data.parentID === "string" ? { parentID: data.parentID } : {}),
+        time: { created: previous?.time.created ?? event.created },
+        finish: undefined,
+        error: undefined,
+        retry: undefined,
+        interrupted: undefined
       });
       setChatSessionStatus(draft, sessionID, { type: "busy" });
       return true;
@@ -645,11 +658,13 @@ export function applyChatEvent(draft: ChatDirectoryState, routedSessionID: strin
     case "session.step.ended": {
       const messageID = eventMessageID(data);
       if (!messageID) return false;
+      const previous = draft.message[sessionID]?.find((message) => message.id === messageID);
       insertMessage(draft, sessionID, {
+        ...previous,
         id: messageID,
         sessionID,
         role: "assistant",
-        time: { created: event.created, completed: event.created },
+        time: { created: previous?.time.created ?? event.created, completed: event.created },
         finish: data.finish
       });
       if (TERMINAL_TURN_FINISHES.has(String(data.finish ?? ""))) {
@@ -660,12 +675,17 @@ export function applyChatEvent(draft: ChatDirectoryState, routedSessionID: strin
     case "session.step.failed": {
       const messageID = eventMessageID(data);
       if (!messageID) return false;
+      const previous = draft.message[sessionID]?.find((message) => message.id === messageID);
       insertMessage(draft, sessionID, {
+        ...previous,
         id: messageID,
         sessionID,
         role: "assistant",
-        time: { created: event.created, completed: event.created },
-        error: normalizeFailure(data.error, "ORBIT_STEP_FAILED", "Step failed")
+        time: { created: previous?.time.created ?? event.created, completed: event.created },
+        ...messagePresentation({ error: data.error }),
+        finish: "error",
+        error: normalizeFailure(data.error, "ORBIT_STEP_FAILED", "Step failed"),
+        retry: undefined
       });
       setChatSessionStatus(draft, sessionID, { type: "error" });
       return true;
@@ -1003,6 +1023,7 @@ export function projectAssistantItems(draft: ChatDirectoryState, sessionID: stri
       messageID: message.id,
       parts,
       completed: Boolean(message.time?.completed ?? message.finish ?? (message.error && !message.retry)),
+      ...messagePresentation(message),
       ...(retry && typeof retry === "object"
         ? {
             retry: {
@@ -1055,16 +1076,21 @@ function recordFromView(messageID: string, sessionID: string, view: Extract<Tran
 
 export function hydrateChatState(draft: ChatDirectoryState, sessionID: string, transcript: TranscriptItem[]): void {
   for (const item of transcript) {
-    if (item.kind !== "assistant") continue;
+    if (item.kind !== "assistant" && item.kind !== "user") continue;
     const messages = draft.message[sessionID] ?? [];
     const messageResult = Binary.search(messages, item.id, (message) => message.id);
     const hydratedMessage: ChatMessageRecord = {
       id: item.id,
       sessionID,
-      role: "assistant",
-      time: { ...(item.completed ? { completed: 1 } : {}) },
-      ...(item.error ? { error: { message: item.error } } : {}),
-      ...(item.retry ? { retry: item.retry } : {})
+      role: item.kind,
+      ...messagePresentation(item),
+      time: {
+        ...(typeof item.createdAt === "number" ? { created: item.createdAt } : {}),
+        ...(typeof item.completedAt === "number" ? { completed: item.completedAt } : {})
+      },
+      ...(item.kind === "assistant" && item.completed ? { finish: "stop" } : {}),
+      ...(item.kind === "assistant" && item.error ? { error: { message: item.error } } : {}),
+      ...(item.kind === "assistant" && item.retry ? { retry: item.retry } : {})
     };
     if (messageResult.found) {
       const previous = messages[messageResult.index];
@@ -1072,9 +1098,7 @@ export function hydrateChatState(draft: ChatDirectoryState, sessionID: string, t
       next[messageResult.index] = {
         ...previous,
         ...hydratedMessage,
-        time: hydratedMessage.time.completed
-          ? { ...previous.time, completed: previous.time?.completed ?? hydratedMessage.time.completed }
-          : previous.time,
+        time: { ...previous.time, ...hydratedMessage.time },
         error: previous.error ?? hydratedMessage.error,
         retry: previous.retry ?? hydratedMessage.retry
       };
@@ -1082,6 +1106,7 @@ export function hydrateChatState(draft: ChatDirectoryState, sessionID: string, t
     } else {
       insertMessage(draft, sessionID, hydratedMessage);
     }
+    if (item.kind !== "assistant") continue;
     for (const view of item.parts) {
       const record = recordFromView(item.id, sessionID, view);
       const parts = draft.part[item.id] ?? [];

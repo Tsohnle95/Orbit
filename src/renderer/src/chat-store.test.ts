@@ -35,6 +35,103 @@ describe("findTurnStartedAt", () => {
 });
 
 describe("applyChatEvent", () => {
+  it("preserves the started model, agent, and timestamp through completion and hydration", () => {
+    const draft = state();
+    applyChatEvent(draft, "s", {
+      ...event("start", "session.step.started", {
+        sessionID: "s", assistantMessageID: "a", agent: "build",
+        model: { id: "model-a", providerID: "provider-a" }, started: 900
+      }),
+      created: 1000
+    });
+    expect(projectAssistantItems(draft, "s")[0]).toMatchObject({
+      agent: "build", model: { id: "model-a", providerID: "provider-a" }, createdAt: 1000, completed: false
+    });
+    applyChatEvent(draft, "s", {
+      ...event("end", "session.step.ended", { sessionID: "s", assistantMessageID: "a", finish: "stop" }),
+      created: 4500
+    });
+    const projected = projectAssistantItems(draft, "s");
+    expect(projected[0]).toMatchObject({
+      agent: "build", model: { id: "model-a", providerID: "provider-a" },
+      createdAt: 1000, completedAt: 4500, completed: true
+    });
+    const restored = state();
+    hydrateChatState(restored, "s", projected);
+    expect(projectAssistantItems(restored, "s")).toEqual(projected);
+  });
+
+  it("reopens a failed step without losing the original creation time", () => {
+    const draft = state();
+    applyChatEvent(draft, "s", {
+      ...event("start", "session.step.started", {
+        sessionID: "s", assistantMessageID: "a", agent: "build", model: { id: "m", providerID: "p" }, started: 900
+      }), created: 1000
+    });
+    applyChatEvent(draft, "s", {
+      ...event("failed", "session.step.failed", {
+        sessionID: "s", assistantMessageID: "a", error: { type: "Interrupted", message: "Stopped" }
+      }), created: 2000
+    });
+    expect(projectAssistantItems(draft, "s")[0]).toMatchObject({ interrupted: true, completed: true });
+    applyChatEvent(draft, "s", {
+      ...event("restart", "session.step.started", {
+        sessionID: "s", assistantMessageID: "a", agent: "plan", model: { id: "m2", providerID: "p" }, started: 2900
+      }), created: 3000
+    });
+    const item = projectAssistantItems(draft, "s")[0];
+    expect(item).toMatchObject({ createdAt: 1000, completed: false, agent: "plan", model: { id: "m2", providerID: "p" } });
+    expect(item).not.toHaveProperty("interrupted");
+    expect(item).not.toHaveProperty("error");
+    expect(item).not.toHaveProperty("completedAt");
+  });
+
+  it("retains canonical legacy model, parent, and interruption metadata", () => {
+    const draft = state();
+    applyChatEvent(draft, "s", event("first", "message.updated", {
+      info: { id: "a", sessionID: "s", role: "assistant", time: { created: 1000 } }
+    }));
+    applyChatEvent(draft, "s", event("metadata", "message.updated", {
+      info: {
+        id: "a", sessionID: "s", role: "assistant", time: { created: 900 },
+        modelID: "m", providerID: "p", parentID: "u"
+      }
+    }));
+    expect(projectAssistantItems(draft, "s")[0]).toMatchObject({
+      model: { id: "m", providerID: "p" }, parentID: "u", createdAt: 900
+    });
+    applyChatEvent(draft, "s", event("abort", "message.updated", {
+      info: {
+        id: "a", sessionID: "s", role: "assistant", time: { created: 900, completed: 1500 },
+        modelID: "m", providerID: "p", parentID: "u", error: { name: "MessageAbortedError", data: { message: "Stopped" } }
+      }
+    }));
+    const projected = projectAssistantItems(draft, "s");
+    expect(projected[0]).toMatchObject({ interrupted: true, completedAt: 1500 });
+    const restored = state();
+    hydrateChatState(restored, "s", projected);
+    expect(projectAssistantItems(restored, "s")[0]).toMatchObject({ interrupted: true, completedAt: 1500 });
+  });
+
+  it("replaces hydrated message timestamps with canonical history without inventing missing duration", () => {
+    const draft = state();
+    hydrateChatState(draft, "s", [
+      { kind: "user", id: "u", text: "hello", createdAt: 1000, agent: "build", model: { id: "m", providerID: "p" } },
+      { kind: "assistant", id: "a", messageID: "a", parts: [], completed: true }
+    ]);
+    expect(draft.message.s.find((message) => message.id === "u")).toMatchObject({
+      time: { created: 1000 }, model: { id: "m", providerID: "p" }
+    });
+    expect(projectAssistantItems(draft, "s")[0]).not.toHaveProperty("completedAt");
+    hydrateChatState(draft, "s", [{
+      kind: "assistant", id: "a", messageID: "a", parts: [], completed: true,
+      createdAt: 1100, completedAt: 3500, agent: "plan", model: { id: "m", providerID: "p" }, parentID: "u"
+    }]);
+    expect(projectAssistantItems(draft, "s")[0]).toMatchObject({
+      createdAt: 1100, completedAt: 3500, agent: "plan", model: { id: "m", providerID: "p" }, parentID: "u"
+    });
+  });
+
   it("reports orphan materialization when a delta arrives before parts", () => {
     const result = applyChatEvent(state(), "s", event("d", "message.part.delta", {
       sessionID: "s", messageID: "msg_1", partID: "prt_1", field: "text", delta: "hello"

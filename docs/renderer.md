@@ -327,10 +327,14 @@ Key mechanisms:
 
 - **Runtime-neutral transcript presentation** — `OpenCodeTimeline.tsx` renders
   the shared transcript shape; dormant DeepSeek metadata rendering remains in
-  source, but the production app only opens OpenCode sessions. User messages use the right-aligned themed bubble
-  (`colors.user`, exposed as `--agent-user-bubble`) and a first prose group in an
-  assistant message (or the first prose after activity) is preceded by an accent-dot
-  `Orbit` name head; final assistant markdown remains flat. Reasoning parts are
+  source, but the production app only opens OpenCode sessions. The response layout
+  follows OpenCode V2’s message timeline: a right-aligned user bubble, flat assistant
+  parts, and a hover footer with copy plus the owning message’s agent/model and turn
+  duration. Revert belongs to the user-message footer. The source styles under
+  `styles/opencode/` are pinned to upstream revision `03e67171`; Orbit’s theme colors
+  and responsive code wrapping remain intentional overrides in `_opencode-chat.scss`.
+  The ported semantic tokens follow the active appearance’s light/dark scheme.
+  Reasoning parts are
   hidden (OpenCode's default `showReasoningSummaries: false`) and surface only as
   a single turn-level thinking row while the turn is busy. The latest reasoning
   heading replaces the previous one with OpenCode's 700 ms masked reveal and
@@ -351,20 +355,19 @@ Key mechanisms:
   stable keyed entry and chronological position. Short native deltas appear
   immediately; a text update more than 512 characters ahead of the visible text
   advances every 24 ms with OpenCode's chunk sizes and word-boundary snapping.
-  Completing an assistant message flushes pending text immediately. Text and
-  copy actions follow the owning message's completion, even when a text part
-  finished earlier or another assistant message in the turn is still working.
+  Completing an assistant message flushes pending text immediately. Text
+  rendering follows the owning message’s completion, even when a text part
+  finished earlier. Copy appears only on the final text part of a settled turn.
   A one-shot reasoning summary is never made to resemble token streaming.
-  Assistant markdown mirrors OpenCode's live projection
-  (`markdown-stream.ts` / `markdown-projection.ts`): while streaming, the text is
-  lexed (`marked`) into stable top-level blocks whose frozen prefix is memoized and
-  whose trailing block is rendered live with `remend` healing, so incomplete
-  emphasis, links, and open code fences render sensibly and finished blocks never
-  re-render; when streaming stops the tail is finalized into a full block. Settled
-  text renders as a single parsed block. Tool rows expose running, failed, done, or
-  duration state;
-  structured progress is reduced to a readable phrase; live command output
-  opens automatically. Failed tools replace the inline row with OpenCode's
+  `OpenCodeMarkdown.tsx` adapts the upstream Markdown lifecycle to React. The
+  `opencode-markdown/` worker owns marked parsing, remend tail healing, KaTeX, and
+  Shiki streaming tokens. Completed prose blocks retain their DOM via morphdom;
+  code retains stable tokens while its unfinished suffix changes. Per-part cache
+  keys distinguish healed live blocks from finalized blocks. Worker revisions
+  prevent stale asynchronous results from replacing newer content; completed
+  messages flush pending text. HTML is sanitized and external links retain Orbit’s
+  URL policy. Tool disclosures start collapsed like upstream; running titles
+  shimmer without an additional status badge. Failed tools replace the inline row with OpenCode's
   `ToolErrorCard`: the capitalized error head becomes the subtitle, the cleaned
   error body expands on demand in the card's sans-serif body style, a flat 2px
   inset left accent bar marks the failure, and a copy affordance appears on hover. Bottom-follow uses a stable signature to follow
@@ -377,12 +380,17 @@ Key mechanisms:
   dormant DeepSeek code-dispatch metadata stays nested beneath its root call;
   task calls use
   OpenCode's agent-colored delegation card and todo writes are hidden from the
-  transcript in favor of the live prompt-dock checklist; edit/write/patch parts
-  with `metadata.files` render an inline diff body (full path, +/− stat chips,
-  expandable colorized unified diff, click-to-open in the editor pane); shell
-  parts render `$ command` plus output in one scrollable pre; and any other
-  unrecognized tool uses OpenCode's `Called \`{tool}\`` trigger. No non-error
-  tool surface renders as a bordered card.
+  transcript in favor of the live prompt-dock checklist. Edit/write/patch parts
+  use the upstream file accordions and `OpenCodeFile.tsx` / `opencode-file/`
+  Pierre renderer: unified diff rows and gutters, syntax tokens, and partial/full
+  patch semantics. File metadata retains before/after contents and patch paths;
+  write tools show the input file contents. Shell parts render `$ command` plus
+  output in one scrollable pre. `OpenCodeSpecialTool.tsx` owns the upstream
+  webfetch, search-link, skill, answered-question, and generic trigger layouts.
+  Pending questions are hidden; generic tools show the label and up to three
+  scalar arguments without a custom input/output body. Copy controls use the
+  upstream tooltip timing and positioning. No non-error tool surface renders as
+  a bordered card.
   Assistant prose carries no bubble; there is no typing-dot placeholder or
   stream cursor path.
 - **Large-session fixture** — `large-session.performance.test.ts` deterministically

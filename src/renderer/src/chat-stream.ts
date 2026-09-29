@@ -1,4 +1,5 @@
 import type { AssistantPartView, ToolCallView, ToolContentView, TranscriptItem } from "@shared/types";
+import { messagePresentation } from "@shared/message-presentation";
 import { formatFailure } from "@shared/errors";
 import { retainOutput, retainToolContent } from "@shared/retention";
 
@@ -178,6 +179,7 @@ function promoteInput(items: TranscriptItem[], inputID: string): TranscriptItem[
     kind: "user",
     id: pending.id,
     text: pending.text,
+    ...messagePresentation(pending),
     ...(pending.attachments?.length ? { attachments: pending.attachments } : {})
   };
   const optimisticIndex = items.findIndex((item) =>
@@ -187,7 +189,7 @@ function promoteInput(items: TranscriptItem[], inputID: string): TranscriptItem[
     return items.map((item, index) => index === pendingIndex ? promoted : item);
   }
   return items.flatMap((item, index) => {
-    if (index === optimisticIndex) return [promoted];
+    if (index === optimisticIndex) return [{ ...messagePresentation(item), ...promoted }];
     if (index === pendingIndex) return [];
     return [item];
   });
@@ -234,6 +236,8 @@ export function reduceChatStream(items: TranscriptItem[], event: ChatStreamEvent
           id: inputID,
           inputType: "user",
           text: String(payload.text ?? ""),
+          createdAt: event.created,
+          ...messagePresentation(payload),
           ...(attachments.length > 0 ? { attachments } : {})
         });
       }
@@ -426,6 +430,7 @@ export function mergeChatHistory(history: TranscriptItem[], live: TranscriptItem
     );
   const result = live.map((item) => {
     const current = history.find((candidate) => matches(candidate, item));
+    if (current?.kind === "user" && item.kind === "user") return { ...item, ...current };
     return current?.kind === "assistant" && item.kind === "assistant"
       ? mergeAssistant(current, item)
       : current ?? item;

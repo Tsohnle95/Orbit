@@ -25,14 +25,14 @@ const PATCH = [
   "===================================================================",
   "--- src/renderer/src/styles/_foundation.scss",
   "+++ src/renderer/src/styles/_foundation.scss",
-  "@@ -3,7 +3,8 @@",
+  "@@ -3,4 +3,5 @@",
   "   --bg-panel: rgba(27, 25, 21, 0.82);",
   "-  --sidebar-surface-color: rgba(23, 23, 27, 0.72);",
   "+  --panel-surface-color: rgba(23, 23, 27, 0.72);",
   "+  --panel-aura-x: 50%;",
   " ",
   "   --text: #ece7dc;"
-].join("\n");
+].join("\n") + "\n";
 
 const editTool = (
   id: string,
@@ -63,6 +63,14 @@ describe("edit tool diff cards", () => {
   let root: Root;
 
   beforeEach(() => {
+    const report = console.error;
+    vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      if (String(args[0]).includes("Could not parse CSS stylesheet")) return;
+      report(...args);
+    });
+    vi.stubGlobal("Worker", undefined);
+    vi.stubGlobal("ResizeObserver", class { observe(): void {} unobserve(): void {} disconnect(): void {} });
+    Object.defineProperty(CSSStyleSheet.prototype, "replaceSync", { configurable: true, value: vi.fn() });
     storeState.agents = [];
     storeState.sessions = [];
     storeState.session = null;
@@ -78,6 +86,8 @@ describe("edit tool diff cards", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("renders the full path and addition/deletion stats from metadata.files", () => {
@@ -93,12 +103,13 @@ describe("edit tool diff cards", () => {
 
     const card = container.querySelector("[data-component='edit-tool']");
     expect(card).not.toBeNull();
-    expect(card?.textContent).toContain("src/renderer/src/styles/_foundation.scss");
-    expect(card?.querySelector("[data-slot='edit-stat-add']")?.textContent).toBe("+2");
-    expect(card?.querySelector("[data-slot='edit-stat-del']")?.textContent).toBe("-1");
+    expect(card?.querySelector("[data-slot='message-part-title-filename']")?.textContent).toBe("_foundation.scss");
+    expect(card?.querySelector("[data-slot='message-part-directory']")?.textContent).toBe("src/renderer/src/styles/");
+    expect(card?.querySelector("[data-slot='diff-changes-additions']")?.textContent).toBe("+2");
+    expect(card?.querySelector("[data-slot='diff-changes-deletions']")?.textContent).toBe("-1");
   });
 
-  it("expands into a colorized unified diff without the patch header", () => {
+  it("expands into the real unified file diff without patch headers", async () => {
     act(() => root.render(
       <OpenCodeTimeline
         transcript={[editTool("assistant-1", {
@@ -115,10 +126,11 @@ describe("edit tool diff cards", () => {
 
     act(() => trigger?.click());
 
-    const lines = [...container.querySelectorAll("[data-component='patch-diff-line']")];
-    expect(lines.map((line) => line.getAttribute("data-kind"))).toEqual(["hunk", "context", "del", "add", "add", "context", "context"]);
-    expect(container.querySelector("[data-component='patch-diff']")?.textContent).not.toContain("Index:");
-    expect(container.querySelector("[data-component='patch-diff']")?.textContent).not.toContain("+++");
+    const shadow = container.querySelector("diffs-container")?.shadowRoot;
+    await vi.waitFor(() => expect(shadow?.querySelectorAll('[data-line][data-line-type="change-addition"]')).toHaveLength(2));
+    expect(shadow?.querySelectorAll('[data-line][data-line-type="change-deletion"]')).toHaveLength(1);
+    expect(shadow?.textContent).not.toContain("Index:");
+    expect(shadow?.querySelector('[data-line][data-line-type="change-deletion"]')?.textContent).toContain("--sidebar-surface-color");
   });
 
   it("opens the edited file in the editor pane from the path subtitle", () => {
@@ -134,7 +146,7 @@ describe("edit tool diff cards", () => {
       />
     ));
 
-    const subtitle = container.querySelector("[data-slot='basic-tool-tool-subtitle']") as HTMLElement | null;
+    const subtitle = container.querySelector("[data-slot='message-part-title-filename']") as HTMLElement | null;
     act(() => subtitle?.click());
     expect(storeState.focusSession).toHaveBeenCalledWith("session-1");
     expect(storeState.openFile).toHaveBeenCalledWith("src/app.ts", undefined, storeState.session.workspace);
@@ -154,28 +166,24 @@ describe("edit tool diff cards", () => {
       />
     ));
 
-    const card = container.querySelector("[data-component='edit-tool']");
+    const card = container.querySelector("[data-component='apply-patch-tool']");
     expect(card?.textContent).toContain("2 files");
-    const groupedSummary = card?.querySelector("[data-slot='edit-tool-summary']");
-    expect(groupedSummary?.textContent).toBe("src/a.ts2 files+4-1");
-    expect(groupedSummary?.querySelector("[data-slot='basic-tool-tool-subtitle']")).not.toBeNull();
-    expect(groupedSummary?.querySelector("[data-slot='edit-tool-meta']")).not.toBeNull();
+    expect(card?.querySelector("[data-component='diff-changes']")).toBeNull();
 
     const trigger = container.querySelector("[data-slot='collapsible-trigger']") as HTMLButtonElement | null;
     act(() => trigger?.click());
 
-    expect(container.querySelectorAll("[data-component='edit-tool-file']")).toHaveLength(2);
-    expect([...container.querySelectorAll("[data-slot='edit-tool-file-status']")].map((node) => node.textContent))
-      .toEqual(["modified", "added"]);
+    expect(container.querySelectorAll("[data-slot='accordion-item']")).toHaveLength(2);
+    expect([...container.querySelectorAll("[data-slot='apply-patch-filename']")].map((node) => node.textContent)).toEqual(["a.ts", "b.ts"]);
   });
 
-  it("delegates to the generic tool card for edit parts without file metadata", () => {
+  it("keeps the edit trigger when file metadata has not arrived", () => {
     act(() => root.render(
       <OpenCodeTimeline transcript={[editTool("assistant-1", undefined)]} busy={false} lastAssistantId={null} />
     ));
 
-    expect(container.querySelector("[data-component='tool-part-wrapper']")).not.toBeNull();
-    expect(container.querySelector("[data-slot='edit-tool-stats']")).toBeNull();
+    expect(container.querySelector("[data-component='edit-tool']")).not.toBeNull();
+    expect(container.querySelector("[data-component='diff-changes']")).toBeNull();
     expect(container.querySelector("[data-component='patch-diff']")).toBeNull();
   });
 });

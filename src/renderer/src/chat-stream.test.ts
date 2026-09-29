@@ -14,6 +14,22 @@ function event(id: string, type: string, data: Record<string, unknown>): ChatStr
 }
 
 describe("chat stream auxiliary items", () => {
+  it("promotes the canonical input timestamp while retaining the optimistic selection", () => {
+    const optimistic: TranscriptItem = {
+      kind: "user", id: "user-90", text: "hello", createdAt: 90, agent: "build", model: { id: "m", providerID: "p" }
+    };
+    const enqueued = reduceChatStream([optimistic], event("e", "session.inbox.enqueued", {
+      inboxID: "u", item: { type: "user", payload: { text: "hello" } }
+    }));
+    const delivered = reduceChatStream(enqueued, event("d", "session.inbox.delivered", { inboxID: "u" }));
+    expect(delivered).toEqual([{
+      kind: "user", id: "u", text: "hello", createdAt: 100, agent: "build", model: { id: "m", providerID: "p" }
+    }]);
+    expect(mergeChatHistory([{ kind: "user", id: "u", text: "hello", createdAt: 95 }], delivered)).toEqual([{
+      kind: "user", id: "u", text: "hello", createdAt: 95, agent: "build", model: { id: "m", providerID: "p" }
+    }]);
+  });
+
   it("bounds completed live shell output", () => {
     const output = "x".repeat(MAX_RETAINED_OUTPUT_CHARS * 2);
     const transcript = reduceChatStream([], event("shell-end", "session.shell.ended", {

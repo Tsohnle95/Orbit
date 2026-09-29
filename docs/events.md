@@ -85,8 +85,8 @@ regressing longer live text.
 | `session.error` | Records the structured failure on the active assistant, marks the chat session errored, sets `busy = false`, and adds a persistent error status line so a failed run cannot disappear or leave the composer stuck on the running/stop icon |
 | `global.error` | Shows a structured background/transport failure in the error toast when no session can be safely attached |
 | `session.status` | Mirrors OpenCode `busy` / `idle` / `retry` / `error`; an `error` status clears `busy` (and the chat store records a non-busy `error` status); retry details attach to the latest assistant. A retry carrying a `free_tier_limit` or `account_rate_limit` action appends an error `status` transcript item (`buildRateLimitNotice` in `src/renderer/src/chat-store.ts`) on the first attempt so the user sees the rate-limit reason and resolution link inline |
-| `session.step.started` | Creates or reopens the addressed assistant message in the authoritative chat store, marks the chat session busy, clears its retry/error state, and completes a different unfinished assistant |
-| `session.step.ended` | Completes the addressed assistant message; a terminal finish marks the chat session idle while `tool-calls` keeps the multi-step turn active |
+| `session.step.started` | Creates or reopens the addressed assistant message with its agent, model, and server start time in the authoritative chat store, marks the chat session busy, clears its retry/error state, and completes a different unfinished assistant |
+| `session.step.ended` | Completes the addressed assistant message while preserving its start time and selection metadata; a terminal finish marks the chat session idle while `tool-calls` keeps the multi-step turn active |
 | `session.step.failed` | Completes the assistant, records the structured failure, and marks the session errored so a failed step cannot remain busy |
 | `session.text.started` | Adds one ordered text part for the message/ordinal |
 | `session.text.delta` | Appends streamed text to that part (materializing the session if the message or part is unknown) |

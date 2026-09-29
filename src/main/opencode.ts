@@ -9,6 +9,7 @@ import { shell } from "electron";
 import { OpenCode } from "@opencode/client";
 import { Service, type Endpoint } from "@opencode/client/service";
 import { LatestGeneration, sameWorkspace } from "@shared/generation";
+import { messagePresentation } from "@shared/message-presentation";
 import type {
   AssistantPartView,
   AgentOption,
@@ -346,12 +347,16 @@ function replayTodos(messages: unknown[]): TodoItem[] {
 
 export function replayTranscript(messages: unknown[]): TranscriptItem[] {
   const out: TranscriptItem[] = [];
+  let agent: string | undefined;
+  let model: { id: string; providerID: string } | undefined;
+  let parentID: string | undefined;
   for (const raw of messages) {
     const msg = raw as Record<string, unknown>;
     const info = (msg.info ?? msg) as Record<string, unknown>;
     const parts = Array.isArray(msg.parts) ? (msg.parts as Record<string, unknown>[]) : [];
     const type = info.type ?? info.role;
     if (type === "user") {
+      parentID = String(info.id);
       const text = String(
         info.text ?? parts.filter((part) => part.type === "text").map((part) => part.text ?? "").join("\n")
       );
@@ -364,12 +369,16 @@ export function replayTranscript(messages: unknown[]): TranscriptItem[] {
           kind: "user",
           id: String(info.id),
           text,
+          ...(agent !== undefined ? { agent } : {}),
+          ...(model ? { model } : {}),
+          ...messagePresentation(info),
           ...(attachments.length > 0 ? { attachments } : {})
         });
       }
       continue;
     }
     if (type === "agent-switched") {
+      agent = typeof info.agent === "string" ? info.agent : undefined;
       out.push({
         kind: "selection",
         id: String(info.id),
@@ -380,9 +389,9 @@ export function replayTranscript(messages: unknown[]): TranscriptItem[] {
       continue;
     }
     if (type === "model-switched") {
-      const model = record(info.model);
-      const id = String(model?.id ?? "");
-      const provider = String(model?.providerID ?? "");
+      model = messagePresentation(info).model;
+      const id = model?.id ?? "";
+      const provider = model?.providerID ?? "";
       out.push({
         kind: "selection",
         id: String(info.id),
@@ -393,6 +402,7 @@ export function replayTranscript(messages: unknown[]): TranscriptItem[] {
       continue;
     }
     if (type === "synthetic") {
+      if (typeof info.description === "string" && info.description.trim()) parentID = String(info.id);
       out.push({
         kind: "synthetic",
         id: String(info.id),
@@ -416,6 +426,7 @@ export function replayTranscript(messages: unknown[]): TranscriptItem[] {
       continue;
     }
     if (type === "shell") {
+      parentID = undefined;
       const output = record(info.output);
       const status = ["running", "exited", "timeout", "killed"].includes(String(info.status))
         ? String(info.status) as "running" | "exited" | "timeout" | "killed"
@@ -432,6 +443,14 @@ export function replayTranscript(messages: unknown[]): TranscriptItem[] {
       continue;
     }
     if (type === "assistant") {
+      const presentation = messagePresentation(info);
+      agent = presentation.agent ?? agent;
+      model = presentation.model ?? model;
+      const parent = out.findLast((item) => item.id === (presentation.parentID ?? parentID));
+      if (parent?.kind === "user") {
+        if (presentation.agent !== undefined) parent.agent = presentation.agent;
+        if (presentation.model) parent.model = presentation.model;
+      }
       const content = parts.length > 0
         ? parts
         : Array.isArray(info.content) ? (info.content as Record<string, unknown>[]) : [];
@@ -459,6 +478,8 @@ export function replayTranscript(messages: unknown[]): TranscriptItem[] {
           messageID: String(info.id),
           parts: assistantParts,
           completed,
+          ...(parentID ? { parentID } : {}),
+          ...presentation,
           ...(info.retry && typeof info.retry === "object"
             ? {
                 retry: {

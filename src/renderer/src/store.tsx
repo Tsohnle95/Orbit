@@ -41,6 +41,7 @@ import type {
   WorkspaceIdentity
 } from "@shared/types";
 import { mergeChatHistory, reconcilePromptHistory, reduceChatStream, type ChatStreamEvent } from "./chat-stream";
+import { messagePresentation } from "@shared/message-presentation";
 import {
   applyChatEvent,
   attachRetryToLatestAssistant,
@@ -897,6 +898,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const state = chatStatesRef.current.get(sessionID);
     if (!state) return;
     const projected = projectAssistantItems(state, sessionID);
+    const userMetadata = new Map((state.message[sessionID] ?? [])
+      .filter((message) => message.role === "user")
+      .map((message) => [message.id, messagePresentation(message)]));
     updateSessionTranscript(sessionID, (prev) => {
       const pending = new Map(projected.map((item) => [item.id, item] as const));
       const result: TranscriptItem[] = [];
@@ -909,12 +913,32 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           }
           continue;
         }
-        result.push(item);
+        result.push(item.kind === "user" ? { ...item, ...userMetadata.get(item.id) } : item);
       }
       for (const item of projected) {
         if (pending.has(item.id)) result.push(item);
       }
-      return result;
+      let parentID: string | undefined;
+      const users = new Map<string, Extract<TranscriptItem, { kind: "user" }>>();
+      return result.map((item) => {
+        if (item.kind === "user") {
+          parentID = item.id;
+          users.set(item.id, item);
+        } else if (item.kind === "synthetic" && item.description?.trim()) {
+          parentID = item.id;
+        } else if (item.kind === "shell") {
+          parentID = undefined;
+        } else if (item.kind === "assistant") {
+          const ownerID = item.parentID ?? parentID;
+          const user = ownerID ? users.get(ownerID) : undefined;
+          if (user) {
+            if (item.agent !== undefined) user.agent = item.agent;
+            if (item.model) user.model = item.model;
+          }
+          return ownerID ? { ...item, parentID: ownerID } : item;
+        }
+        return item;
+      });
     });
   }, [updateSessionTranscript]);
 
@@ -1186,12 +1210,18 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const attachments: UserAttachment[] = (popped.attachments ?? []).map((file) => ({
       name: file.path.split(/[\\/]/).pop() ?? file.path
     }));
+    const createdAt = Date.now();
+    const selectedAgent = currentAgentByWorkspace[panel.workspace.id];
+    const selectedModel = currentModelByWorkspace[panel.workspace.id];
     updateSessionTranscript(panel.id, (prev) => [
       ...prev,
       {
         kind: "user",
-        id: `user-${Date.now()}`,
+        id: `user-${createdAt}`,
         text: promptText,
+        createdAt,
+        ...(selectedAgent ? { agent: selectedAgent.id } : {}),
+        ...(selectedModel ? { model: { id: selectedModel.id, providerID: selectedModel.providerID } } : {}),
         ...(attachments.length > 0 ? { attachments } : {})
       }
     ]);
@@ -1210,7 +1240,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       ]);
       if (panelFor(workspace)) toast(failure, "error");
     }
-  }, [panelFor, popQueuedMessage, updateSessionTranscript, toast, refreshInbox, commitQueue]);
+  }, [panelFor, popQueuedMessage, updateSessionTranscript, toast, refreshInbox, commitQueue, currentAgentByWorkspace, currentModelByWorkspace]);
 
   const attachPanel = useCallback((info: SessionInfo, saveWorkspace = true): void => {
     if (saveWorkspace) rememberWorkspace(info.directory);
@@ -1885,14 +1915,20 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       const attachments: UserAttachment[] = files.map((file) => ({
         name: file.path.split(/[\\/]/).pop() ?? file.path
       }));
+      const createdAt = Date.now();
+      const selectedAgent = currentAgentByWorkspace[panel.workspace.id];
+      const selectedModel = currentModelByWorkspace[panel.workspace.id];
       const userItem: TranscriptItem = {
         kind: "user",
-        id: `user-${Date.now()}`,
+        id: `user-${createdAt}`,
         text: promptText,
+        createdAt,
+        ...(selectedAgent ? { agent: selectedAgent.id } : {}),
+        ...(selectedModel ? { model: { id: selectedModel.id, providerID: selectedModel.providerID } } : {}),
         ...(attachments.length > 0 ? { attachments } : {})
       };
       updateSessionTranscript(panel.id, (prev) => [...prev, userItem]);
-      insertUserMessage(chatStateFor(panel.id), panel.id, userItem.id, promptText);
+      insertUserMessage(chatStateFor(panel.id), panel.id, userItem.id, promptText, userItem.model, userItem);
       setTodosFor(panel.workspace.id, []);
       setSessionBusy(panel.id, true);
       const applyCanonicalTranscript = (refreshed: Awaited<ReturnType<typeof window.openshell.prompt>>): void => {
@@ -1934,7 +1970,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
       }
     },
-    [toast, panelFor, setTodosFor, updateSessionTranscript, setSessionBusy, commitQueue, chatStateFor, reconcileStreaming]
+    [toast, panelFor, setTodosFor, updateSessionTranscript, setSessionBusy, commitQueue, chatStateFor, reconcileStreaming, currentAgentByWorkspace, currentModelByWorkspace]
   );
 
   const runCommand = useCallback(async (name: string, args = "", workspace?: WorkspaceIdentity) => {
@@ -2940,7 +2976,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
             chatStateFor(targetSessionID),
             targetSessionID,
             data.inboxID,
-            buffered.text
+            buffered.text,
+            buffered.model,
+            buffered
           );
         }
       }

@@ -1,15 +1,44 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { useStore } from "../store";
 import type { ToolCallView, TranscriptItem, SessionSummary, SessionInfo } from "@shared/types";
 import { ExternalLink } from "./ExternalLink";
 import { TextShimmer } from "./TextShimmer";
 import { ToolStatusTitle } from "./ToolStatusTitle";
 import { AnimatedCountList, type CountItem } from "./ToolCountSummary";
-import { project, type Block, type Projection } from "../markdown-stream";
+import { OpenCodeMarkdown as Markdown } from "./OpenCodeMarkdown";
+import { OpenCodeIcon } from "./OpenCodeIcon";
+import { mountTooltip } from "../opencode-markdown/tooltip";
+import { animate } from "motion";
+import { OpenCodeFile } from "./OpenCodeFile";
+import { OpenCodeFileIcon } from "./OpenCodeFileIcon";
+import { OpenCodeSpecialTool, isDismissedOpenCodeQuestion, openCodeSpecialToolTitle } from "./OpenCodeSpecialTool";
+import { resolveOpenCodeTaskAgent } from "../opencode-task-agent";
+import stripAnsi from "strip-ansi";
 
 const OUTPUT_LIMIT = 6000;
+
+async function writeClipboard(text: string): Promise<boolean> {
+  const clipboard = typeof navigator === "undefined" ? undefined : navigator.clipboard;
+  if (!clipboard?.writeText) return false;
+  return clipboard.writeText(text).then(() => true, () => false);
+}
+
+function ShellSubmessage({ text, animate: reveal }: { text: string; animate: boolean }): ReactNode {
+  const width = useRef<HTMLSpanElement>(null);
+  const value = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    if (!reveal) return;
+    const animations: Array<ReturnType<typeof animate>> = [];
+    const frame = requestAnimationFrame(() => {
+      if (width.current) animations.push(animate(width.current, { width: "auto" }, { type: "spring", visualDuration: 0.25, bounce: 0 }));
+      if (value.current) animations.push(animate(value.current, { opacity: 1, filter: "blur(0px)" }, { duration: 0.32, ease: [0.16, 1, 0.3, 1] }));
+    });
+    return () => { cancelAnimationFrame(frame); animations.forEach((animation) => animation.stop()); };
+  }, []);
+  return <span data-component="shell-submessage" dir="ltr"><span ref={width} data-slot="shell-submessage-width" style={reveal ? { width: "0px" } : undefined}>
+    <span data-slot="basic-tool-tool-subtitle"><span ref={value} data-slot="shell-submessage-value" style={reveal ? { opacity: 0, filter: "blur(2px)" } : undefined}>{text}</span></span>
+  </span></span>;
+}
 
 type AssistantItem = Extract<TranscriptItem, { kind: "assistant" }>;
 type AssistantPart = AssistantItem["parts"][number];
@@ -17,91 +46,6 @@ type VisibleTimelineItem = Exclude<TranscriptItem, { kind: "permission" | "pendi
 
 function isInternalSystemReminder(item: Extract<TranscriptItem, { kind: "synthetic" }>): boolean {
   return /<system-reminder(?:\s[^>]*)?>[\s\S]*<\/system-reminder>/i.test(item.text);
-}
-
-const CODE_TOKEN_PATTERN = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*|\b(?:as|async|await|break|case|catch|class|const|continue|def|else|export|extends|for|from|function|if|import|in|interface|let|new|of|return|static|switch|throw|try|type|var|while|with|yield)\b|\b\d+(?:\.\d+)?\b|\b[A-Za-z_$][\w$]*(?=\s*\())/g;
-const CODE_KEYWORDS = new Set([
-  "as", "async", "await", "break", "case", "catch", "class", "const", "continue", "def", "else", "export",
-  "extends", "for", "from", "function", "if", "import", "in", "interface", "let", "new", "of", "return",
-  "static", "switch", "throw", "try", "type", "var", "while", "with", "yield"
-]);
-
-function highlightCode(text: string): ReactNode {
-  const nodes: ReactNode[] = [];
-  let cursor = 0;
-  for (const match of text.matchAll(CODE_TOKEN_PATTERN)) {
-    const value = match[0];
-    const index = match.index ?? cursor;
-    if (index > cursor) nodes.push(text.slice(cursor, index));
-    const kind = value.startsWith("//") || value.startsWith("/*") || value.startsWith("#")
-      ? "comment"
-      : value.startsWith("\"") || value.startsWith("'") || value.startsWith("`")
-        ? "string"
-        : /^\d/.test(value)
-          ? "number"
-          : CODE_KEYWORDS.has(value)
-            ? "keyword"
-            : "function";
-    nodes.push(<span data-code-token={kind} key={`${index}:${kind}`}>{value}</span>);
-    cursor = index + value.length;
-  }
-  if (cursor < text.length) nodes.push(text.slice(cursor));
-  return nodes;
-}
-
-const MARKDOWN_COMPONENTS: Components = {
-  a: ExternalLink,
-  code({ children, className }) {
-    const value = String(children ?? "");
-    const block = Boolean(className) || value.includes("\n");
-    const codeText = value.replace(/\n$/, "");
-    return (
-      block ? (
-        <>
-          <code className={className} data-code-language={className?.match(/language-([\w+-]+)/)?.[1] ?? "text"}>
-            {highlightCode(codeText)}
-          </code>
-          <CopyResponse text={codeText} target="code" />
-        </>
-      ) : (
-        <code className={className} data-code-language={className?.match(/language-([\w+-]+)/)?.[1] ?? "text"}>
-          {children}
-        </code>
-      )
-    );
-  }
-};
-
-// One projected markdown block. OpenCode keys/memoizes each block so frozen blocks never
-// re-render while the tail streams; `display: contents` keeps the wrapper out of layout.
-const MarkdownBlock = memo(function MarkdownBlock({ block }: { block: Block }): ReactNode {
-  const source = block.mode === "code" ? block.raw : block.src;
-  return (
-    <div
-      data-markdown-block=""
-      data-markdown-complete={block.mode === "code" ? (block.complete ? "true" : "false") : undefined}
-      style={{ display: "contents" }}
-    >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>{source}</ReactMarkdown>
-    </div>
-  );
-});
-
-function Markdown({ text, streaming }: { text: string; streaming: boolean }): ReactNode {
-  const projectionRef = useRef<Projection | undefined>(undefined);
-  const projection = useMemo(() => {
-    const next = project(projectionRef.current, text, streaming);
-    projectionRef.current = next;
-    return next;
-  }, [text, streaming]);
-  if (!text) return null;
-  return (
-    <div data-component="markdown" data-streaming={streaming ? "true" : "false"}>
-      {projection.blocks.map((block, index) => (
-        <MarkdownBlock block={block} key={`${index}:${block.mode}`} />
-      ))}
-    </div>
-  );
 }
 
 const TEXT_RENDER_PACE_MS = 24;
@@ -119,7 +63,7 @@ function nextPacedEnd(text: string, start: number): number {
   return end;
 }
 
-function PacedMarkdown({ text, streaming }: { text: string; streaming: boolean }): ReactNode {
+function PacedMarkdown({ text, streaming, cacheKey }: { text: string; streaming: boolean; cacheKey: string }): ReactNode {
   const [visible, setVisible] = useState(text);
   const shown = useRef(text);
   const latest = useRef({ text, streaming });
@@ -159,146 +103,51 @@ function PacedMarkdown({ text, streaming }: { text: string; streaming: boolean }
   }, [text, streaming]);
 
   useEffect(() => () => clear(), []);
-  return <Markdown text={visible} streaming={streaming} />;
+  return <Markdown text={visible} streaming={streaming} cacheKey={cacheKey} />;
 }
 
-function CopyResponse({ text, target = "response" }: { text: string; target?: "response" | "code" }): ReactNode {
+function CopyResponse({ text, target = "response" }: { text: string; target?: "response" | "message" }): ReactNode {
   const [copied, setCopied] = useState(false);
-  const label = target === "code" ? "code" : "response";
   const copy = async (): Promise<void> => {
     if (!text) return;
-    const ok = await navigator.clipboard.writeText(text).then(() => true, () => false);
-    if (!ok) return;
+    if (!await writeClipboard(text)) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+  const label = copied ? "Copied" : `Copy ${target}`;
   return (
-    <button
-      data-slot={target === "code" ? "code-block-copy-button" : "text-part-copy-button"}
-      className="icon-btn"
-      aria-label={copied ? "Copied" : `Copy ${label}`}
-      title={copied ? "Copied" : `Copy ${label}`}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => void copy()}
-    >
-      <span className={`codicon codicon-${copied ? "check" : "copy"}`} />
+    <div data-component="tooltip-v2-trigger" data-tooltip={label}>
+    <button data-component="icon-button-v2" data-size="normal" data-variant="ghost-muted"
+      data-slot={target === "message" ? "user-message-copy-button" : "text-part-copy-button"}
+      aria-label={label} onMouseDown={(event) => event.preventDefault()} onClick={() => void copy()}>
+      <OpenCodeIcon name={copied ? "check" : "outline-copy"} />
     </button>
-  );
-}
-
-function ResponseOptions({
-  text,
-  showRevert,
-  onRevert
-}: {
-  text: string;
-  showRevert: boolean;
-  onRevert?: () => void;
-}): ReactNode {
-  const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onMouseDown = (event: MouseEvent): void => {
-      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
-  const copy = async (): Promise<void> => {
-    if (!text) return;
-    const ok = await navigator.clipboard.writeText(text).then(() => true, () => false);
-    if (!ok) return;
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    setOpen(false);
-  };
-
-  return (
-    <div data-component="response-options" ref={menuRef}>
-      <button
-        data-slot="response-options-button"
-        className="icon-btn"
-        aria-label="Response options"
-        title="Response options"
-        aria-expanded={open}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <span className="codicon codicon-kebab-vertical" />
-      </button>
-      {open && (
-        <div data-slot="response-options-menu" role="menu">
-          <button
-            data-slot="response-options-item"
-            className="response-option"
-            role="menuitem"
-            disabled={!text}
-            onClick={() => void copy()}
-          >
-            <span className={`codicon codicon-${copied ? "check" : "copy"}`} />
-            {copied ? "Copied" : "Copy response"}
-          </button>
-          {showRevert && onRevert && (
-            <button
-              data-slot="response-options-item"
-              className="response-option"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onRevert();
-              }}
-            >
-              <span className="codicon codicon-discard" />
-              Revert from here
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 }
 
-function TextPart({
-  part,
-  streaming,
-  showCopy,
-  showLabel = false,
-  showRevert = false,
-  onRevert
-}: {
+function TextPart({ part, streaming, showCopy, message, duration }: {
   part: Extract<AssistantPart, { kind: "text" }>;
   streaming: boolean;
   showCopy: boolean;
-  showLabel?: boolean;
-  showRevert?: boolean;
-  onRevert?: () => void;
+  message: AssistantItem;
+  duration?: number;
 }): ReactNode {
+  const { models } = useStore();
   const text = part.text.trim();
   if (!text) return null;
+  const model = models?.find((model) => model.id === message.model?.id && model.providerID === message.model?.providerID)?.name ?? message.model?.id;
+  const elapsed = duration ?? (message.completedAt !== undefined && message.createdAt !== undefined ? message.completedAt - message.createdAt : undefined);
+  const seconds = elapsed !== undefined && elapsed >= 0 ? Math.round(elapsed / 1000) : undefined;
+  const time = seconds === undefined ? "" : seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  const meta = [message.agent && message.agent[0].toUpperCase() + message.agent.slice(1), model, time, message.interrupted && "Interrupted"].filter(Boolean).join(" · ");
   return (
-    <div data-component="text-part" data-copyable={showCopy ? "true" : undefined} data-timeline-part-id={part.id}>
-      {showLabel && (
-        <div data-slot="assistant-message-head">
-          <span data-slot="assistant-avatar" aria-hidden="true" />
-          <span data-slot="assistant-name">Orbit</span>
-        </div>
-      )}
-      <div data-slot="text-part-body">
-        <PacedMarkdown text={text} streaming={streaming} />
-      </div>
+    <div data-component="text-part" data-timeline-part-id={part.id}>
+      <div data-slot="text-part-body"><PacedMarkdown text={text} streaming={streaming} cacheKey={`${message.id}:${part.id}`} /></div>
       {showCopy && (
-        <div data-slot="text-part-copy-wrapper">
-          <ResponseOptions text={text} showRevert={showRevert} onRevert={onRevert} />
+        <div data-slot="text-part-copy-wrapper" data-interrupted={message.interrupted ? "" : undefined}>
+          <CopyResponse text={part.text} />
+          {meta && <span data-slot="text-part-meta" className="text-12-regular text-text-weak">{meta}</span>}
         </div>
       )}
     </div>
@@ -363,7 +212,7 @@ function titleCase(value: string): string {
 }
 
 function toolKey(value: string): string {
-  return value.toLowerCase().replace(/[^a-z]/g, "");
+  return value.toLowerCase().replace(/[^a-z_]/g, "");
 }
 
 function toolInput(tool: ToolCallView): Record<string, unknown> {
@@ -375,6 +224,7 @@ function toolInput(tool: ToolCallView): Record<string, unknown> {
 
 function effectiveToolKey(tool: ToolCallView): string {
   const explicit = toolKey(tool.title);
+  if (!tool.metadata?.deepseek) return explicit || "tool";
   if (explicit && explicit !== "tool") return explicit;
   const input = toolInput(tool);
   if (typeof input.command === "string") return "shell";
@@ -703,193 +553,145 @@ function progressText(progress: string): string {
 interface EditFileEntry {
   file: string;
   patch?: string;
+  before?: string;
+  after?: string;
+  content?: string;
   status?: string;
   additions?: number;
   deletions?: number;
 }
 
 function editFileEntries(tool: ToolCallView): EditFileEntry[] {
-  const files = tool.metadata?.files;
-  if (!Array.isArray(files)) {
-    const native = tool.metadata?.deepseek;
-    const nativeRecord = native && typeof native === "object" && !Array.isArray(native) ? native as Record<string, unknown> : null;
-    const rawView = nativeRecord?.resultView ?? nativeRecord?.callView;
-    const view = rawView && typeof rawView === "object" && !Array.isArray(rawView) ? rawView as Record<string, unknown> : null;
-    if (view?.card !== "diff" || !Array.isArray(view.diffs)) return [];
-    return view.diffs.flatMap((entry): EditFileEntry[] => {
-      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
-      const diff = entry as Record<string, unknown>;
-      if (typeof diff.path !== "string" || typeof diff.newText !== "string") return [];
-      const oldText = typeof diff.oldText === "string" ? diff.oldText : "";
-      const oldLines = oldText.split("\n");
-      const newLines = diff.newText.split("\n");
-      return [{
-        file: diff.path,
-        patch: [`--- ${diff.path}`, `+++ ${diff.path}`, `@@ -1,${oldLines.length} +1,${newLines.length} @@`, ...oldLines.map((line) => `-${line}`), ...newLines.map((line) => `+${line}`)].join("\n"),
-        status: oldText ? "modified" : "created",
-        additions: newLines.length,
-        deletions: oldText ? oldLines.length : 0
-      }];
-    });
-  }
-  return files.flatMap((entry): EditFileEntry[] => {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
-    const record = entry as Record<string, unknown>;
-    if (typeof record.file !== "string" || !record.file) return [];
+  const input = toolInput(tool);
+  const path = typeof input.filePath === "string" ? input.filePath : typeof input.path === "string" ? input.path : tool.paths?.[0] ?? "";
+  const candidates = Array.isArray(tool.metadata?.files) ? tool.metadata.files
+    : tool.metadata?.filediff ? [tool.metadata.filediff] : [];
+  const entries = candidates.flatMap((entry): EditFileEntry[] => {
+    if (!entry || typeof entry !== "object") return [];
+    const value = entry as Record<string, unknown>;
+    const file = [value.relativePath, value.file, value.filePath, path].find((field): field is string => typeof field === "string" && !!field);
+    if (!file) return [];
     return [{
-      file: record.file,
-      ...(typeof record.patch === "string" && record.patch ? { patch: record.patch } : {}),
-      ...(typeof record.status === "string" && record.status ? { status: record.status } : {}),
-      ...(typeof record.additions === "number" ? { additions: record.additions } : {}),
-      ...(typeof record.deletions === "number" ? { deletions: record.deletions } : {})
+      file,
+      patch: typeof value.patch === "string" ? value.patch : typeof value.diff === "string" ? value.diff : undefined,
+      before: typeof value.before === "string" ? value.before : undefined,
+      after: typeof value.after === "string" ? value.after : undefined,
+      status: typeof value.type === "string" ? value.type : typeof value.status === "string" ? value.status : undefined,
+      additions: typeof value.additions === "number" ? value.additions : undefined,
+      deletions: typeof value.deletions === "number" ? value.deletions : undefined
     }];
   });
-}
-
-const PATCH_HEADER_PATTERN = /^(Index: |={4,}|--- |\+\+\+ )/;
-
-function patchBody(patch: string): string[] {
-  const lines = patch.split("\n");
-  while (lines.length > 0 && lines.at(-1) === "") lines.pop();
-  let hunkStarted = false;
-  return lines.filter((line) => {
-    if (line.startsWith("@@")) {
-      hunkStarted = true;
-      return true;
-    }
-    return hunkStarted || !PATCH_HEADER_PATTERN.test(line);
+  if (entries.length) return entries;
+  const native = tool.metadata?.deepseek as { resultView?: { diffs?: unknown[] }; callView?: { diffs?: unknown[] } } | undefined;
+  const diffs = native?.resultView?.diffs ?? native?.callView?.diffs;
+  if (Array.isArray(diffs)) return diffs.flatMap((entry): EditFileEntry[] => {
+    if (!entry || typeof entry !== "object") return [];
+    const value = entry as Record<string, unknown>;
+    if (typeof value.path !== "string" || typeof value.newText !== "string") return [];
+    return [{ file: value.path, before: typeof value.oldText === "string" ? value.oldText : "", after: value.newText }];
   });
-}
-
-function PatchDiff({ patch }: { patch: string }): ReactNode {
-  return (
-    <div data-component="patch-diff">
-      {patchBody(patch).map((line, index) => (
-        <div
-          data-component="patch-diff-line"
-          data-kind={line.startsWith("@@") ? "hunk" : line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : "context"}
-          key={index}
-        >
-          {line || " "}
-        </div>
-      ))}
-    </div>
-  );
+  return [{
+    file: path,
+    before: typeof input.oldString === "string" ? input.oldString : "",
+    after: typeof input.newString === "string" ? input.newString : "",
+    content: typeof input.content === "string" ? input.content : undefined
+  }];
 }
 
 function isEditCardTool(tool: ToolCallView): boolean {
-  if (["edit", "write", "patch", "apply_patch"].includes(toolKey(tool.title))) return editFileEntries(tool).length > 0;
-  return false;
+  return ["edit", "write", "patch", "apply_patch"].includes(toolKey(tool.title));
+}
+
+function DiffChanges({ file }: { file: Pick<EditFileEntry, "additions" | "deletions"> }): ReactNode {
+  return <div data-component="diff-changes" data-variant="numbers">
+    <span data-slot="diff-changes-additions">+{file.additions ?? 0}</span>
+    <span data-slot="diff-changes-deletions">-{file.deletions ?? 0}</span>
+  </div>;
+}
+
+function ToolFileAccordion({ file, write = false, patch = false, activatePath }: {
+  file: EditFileEntry; write?: boolean; patch?: boolean; activatePath: () => void;
+}): ReactNode {
+  const [open, setOpen] = useState(!["delete", "deleted", "removed"].includes(file.status ?? ""));
+  const slash = file.file.lastIndexOf("/");
+  const action = ["add", "added", "created"].includes(file.status ?? "") ? "Created"
+    : ["delete", "deleted", "removed"].includes(file.status ?? "") ? "Deleted" : file.status === "move" ? "Moved" : null;
+  return <div data-slot="accordion-item" data-type={file.status} data-expanded={open ? "" : undefined}>
+    <h3 data-slot="accordion-header" data-component="sticky-accordion-header">
+      <button type="button" data-slot="accordion-trigger" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <div data-slot="apply-patch-trigger-content">
+          <div data-slot="apply-patch-file-info">
+            <OpenCodeFileIcon path={file.file} />
+            <div data-slot="apply-patch-file-name-container">
+              {slash >= 0 && <span data-slot="apply-patch-directory">{"\u202a" + file.file.slice(0, slash + 1) + "\u202c"}</span>}
+              <span data-slot="apply-patch-filename" onClick={(event) => { event.stopPropagation(); activatePath(); }}>{fileName(file.file)}</span>
+            </div>
+          </div>
+          <div data-slot="apply-patch-trigger-actions">
+            {!write && (patch && action ? <span data-slot="apply-patch-change" data-type={action === "Deleted" ? "removed" : action === "Created" ? "added" : "modified"}>{action}</span> : <DiffChanges file={file} />)}
+            <OpenCodeIcon name="chevron-grabber-vertical" />
+          </div>
+        </div>
+      </button>
+    </h3>
+    {open && <div data-slot="accordion-content" data-expanded="">
+      <div data-component={write ? "write-content" : patch ? "apply-patch-file-diff" : "edit-content"}>
+        {write ? <OpenCodeFile mode="text" file={file.file} contents={file.content ?? file.after ?? ""} />
+          : <OpenCodeFile mode="diff" file={file.file} patch={file.patch} before={file.before} after={file.after} />}
+      </div>
+    </div>}
+  </div>;
 }
 
 function EditToolCard({ tool, session }: { tool: ToolCallView; session: SessionInfo | null }): ReactNode {
   const { openFile, focusSession } = useStore();
   const [open, setOpen] = useState(false);
   const files = editFileEntries(tool);
-  const additions = files.reduce((sum, file) => sum + (file.additions ?? 0), 0);
-  const deletions = files.reduce((sum, file) => sum + (file.deletions ?? 0), 0);
-  const path = files[0]?.file ?? tool.paths?.[0];
-  const expandable = files.some((file) => file.patch);
-  if (files.length === 0) return <ToolPart tool={tool} session={session} />;
-  const activatePath = (): void => {
-    if (!path) return;
+  const name = toolKey(tool.title);
+  const write = name === "write";
+  const patch = name === "patch" || name === "apply_patch";
+  const pending = tool.status === "running";
+  const path = files[0]?.file ?? "";
+  const multi = files.length > 1;
+  const activatePath = (path: string): void => {
     const target = workspaceFilePath(path, session);
     if (!target) return;
     if (session) focusSession?.(session.id);
     void openFile(target, undefined, session?.workspace);
   };
-  return (
-    <div data-component="edit-tool" data-variant="inline" data-tool={toolKey(tool.title)} data-status={tool.status} data-timeline-part-id={tool.id}>
-      <div className="tool-collapsible" data-expanded={open ? "true" : undefined}>
-        <button
-          data-slot="collapsible-trigger"
-          disabled={!expandable}
-          onClick={() => expandable && setOpen((value) => !value)}
-        >
-          <div data-component="tool-trigger" data-clickable={expandable ? "true" : undefined}>
-            <span data-slot="tool-status-icon" data-state={tool.status} aria-hidden="true">
-              {tool.status === "running"
-                ? <span className="spinner" />
-                : <span className={`codicon codicon-${tool.status === "failed" ? "error" : "check"}`} />}
-            </span>
-            <div data-slot="basic-tool-tool-trigger-content">
-              <div data-slot="basic-tool-tool-info">
-                <div data-slot="basic-tool-tool-info-structured">
-                  <div data-slot="basic-tool-tool-info-main" data-layout="edit">
-                    <span data-slot="basic-tool-tool-title">
-                      <TextShimmer text={titleCase(tool.title)} active={tool.status === "running"} />
-                    </span>
-                    <span data-slot="edit-tool-summary">
-                      {path && (
-                        <span
-                          data-slot="basic-tool-tool-subtitle"
-                          className="clickable"
-                          title={`${path} · open in editor`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            activatePath();
-                          }}
-                        >
-                          {path}
-                        </span>
-                      )}
-                      {(files.length > 1 || additions > 0 || deletions > 0) && (
-                        <span data-slot="edit-tool-meta">
-                          {files.length > 1 && <span data-slot="edit-tool-file-count">{files.length} files</span>}
-                          {(additions > 0 || deletions > 0) && (
-                            <span data-slot="edit-tool-stats">
-                              {additions > 0 && <span data-slot="edit-stat-add">+{additions}</span>}
-                              {deletions > 0 && <span data-slot="edit-stat-del">-{deletions}</span>}
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                </div>
+  const diagnostics = tool.metadata?.diagnostics;
+  const messages = diagnostics && typeof diagnostics === "object" && path
+    ? (diagnostics as Record<string, unknown>)[path] : undefined;
+  const errors = Array.isArray(messages) ? messages.filter((value) => value?.severity === 1).slice(0, 3) : [];
+  return <div data-component={write ? "write-tool" : patch || multi ? "apply-patch-tool" : "edit-tool"} data-tool={name} data-status={tool.status} data-timeline-part-id={tool.id}>
+    <div data-component="collapsible" className="tool-collapsible" data-expanded={open ? "" : undefined}>
+      <button type="button" data-slot="collapsible-trigger" aria-expanded={open} onClick={() => { if (!pending) setOpen((value) => !value); }}>
+        <div data-component="tool-trigger"><div data-slot="basic-tool-tool-trigger-content"><div data-slot="basic-tool-tool-info">
+          {multi ? <div data-slot="basic-tool-tool-info-structured"><div data-slot="basic-tool-tool-info-main">
+            <span data-slot="basic-tool-tool-title"><TextShimmer text="Patch" active={pending} /></span>
+            <span data-slot="basic-tool-tool-subtitle">{files.length + " files"}</span>
+          </div></div> : <div data-component={write ? "write-trigger" : "edit-trigger"}>
+            <div data-slot="message-part-title-area">
+              <div data-slot="message-part-title">
+                <span data-slot="message-part-title-text"><TextShimmer text={write ? "Write" : patch ? "Patch" : "Edit"} active={pending} /></span>
+                {!pending && <span data-slot="message-part-title-filename" onClick={(event) => { event.stopPropagation(); activatePath(path); }}>{fileName(path)}</span>}
               </div>
+              {!pending && path.includes("/") && <div data-slot="message-part-path"><span data-slot="message-part-directory">{path.slice(0, path.lastIndexOf("/") + 1)}</span></div>}
             </div>
-            <ToolState tool={tool} />
-            {expandable && <span data-slot="collapsible-arrow" className="codicon codicon-chevron-down" />}
-          </div>
-        </button>
-        {expandable && open && (
-          <div data-slot="collapsible-content">
-            {files.map((file) => (
-              <div data-component="edit-tool-file" key={file.file}>
-                {(files.length > 1 || file.status) && (
-                  <div data-slot="edit-tool-file-head">
-                    <span data-slot="edit-tool-file-path">{file.file}</span>
-                    {file.status && <span data-slot="edit-tool-file-status">{file.status}</span>}
-                    {(file.additions ?? 0) > 0 && <span data-slot="edit-stat-add">+{file.additions}</span>}
-                    {(file.deletions ?? 0) > 0 && <span data-slot="edit-stat-del">-{file.deletions}</span>}
-                  </div>
-                )}
-                {file.patch && <PatchDiff patch={file.patch} />}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+            <div data-slot="message-part-actions">{!pending && !write && (patch || files[0]?.additions !== undefined) && <DiffChanges file={files[0]} />}</div>
+          </div>}
+        </div></div>{!pending && <span data-slot="collapsible-arrow"><span data-slot="collapsible-arrow-icon"><OpenCodeIcon name="chevron-down" /></span></span>}</div>
+      </button>
+      {open && <div data-slot="collapsible-content" data-expanded="">
+        {path && <div data-component="accordion" data-scope="apply-patch" style={{ "--sticky-accordion-offset": "calc(32px + var(--tool-content-gap))" } as CSSProperties}>
+          {files.map((file) => <ToolFileAccordion key={file.file} file={file} write={write} patch={patch} activatePath={() => activatePath(file.file)} />)}
+        </div>}
+        {errors.length > 0 && <div data-component="diagnostics">{errors.map((value, index) => <div data-slot="diagnostic" key={index}>
+          <span data-slot="diagnostic-label">Error</span><span data-slot="diagnostic-location">{"[" + (value.range.start.line + 1) + ":" + (value.range.start.character + 1) + "]"}</span><span data-slot="diagnostic-message">{value.message}</span>
+        </div>)}</div>}
+      </div>}
     </div>
-  );
-}
-
-function ToolState({ tool }: { tool: ToolCallView }): ReactNode {
-  if (tool.status === "success" && (tool.duration === undefined || tool.duration < 1000)) return null;
-  const label = tool.status === "running"
-    ? "Running"
-    : tool.status === "failed"
-      ? "Failed"
-      : tool.duration !== undefined
-        ? formatDuration(tool.duration)
-        : "Done";
-  return (
-    <span data-slot="tool-state" data-state={tool.status}>
-      {tool.status === "running" && <span data-slot="tool-state-pulse" aria-hidden="true" />}
-      {label}
-    </span>
-  );
+  </div>;
 }
 
 function ToolErrorCard({ tool, session }: { tool: ToolCallView; session: SessionInfo | null }): ReactNode {
@@ -897,6 +699,8 @@ function ToolErrorCard({ tool, session }: { tool: ToolCallView; session: Session
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const presentation = toolPresentation(tool);
+  const errorTitles: Record<string, string> = { read: "Read", list: "List", glob: "Glob", grep: "Grep", task: "Task", webfetch: "Webfetch", bash: "Shell", shell: "Shell", patch: "Patch", apply_patch: "Patch", question: "Questions" };
+  presentation.title = tool.title === "websearch" ? openCodeSpecialToolTitle(tool)! : errorTitles[tool.title] ?? tool.title;
   const failurePath = presentation.path;
   const cleaned = (tool.output ?? "").replace(/^Error:\s*/, "").trim();
   const prefix = `${effectiveToolKey(tool)} `;
@@ -923,11 +727,12 @@ function ToolErrorCard({ tool, session }: { tool: ToolCallView; session: Session
   };
   return (
     <div data-component="tool-part-wrapper" data-tool={effectiveToolKey(tool)} data-variant="inline" data-status="failed" data-timeline-part-id={tool.id}>
-      <div data-kind="tool-error-card" data-open={open ? "true" : "false"} className="tool-collapsible" data-expanded={open ? "true" : undefined}>
+      <div data-component="card" data-kind="tool-error-card" data-variant="error" data-open={open ? "true" : "false"}>
+      <div data-component="collapsible" className="tool-collapsible" data-open={open ? "true" : "false"}>
         <button data-slot="collapsible-trigger" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
           <div data-component="tool-trigger" data-clickable="true">
-            <span data-slot="tool-status-icon" data-state="failed" aria-hidden="true"><span className="codicon codicon-error" /></span>
             <div data-slot="basic-tool-tool-trigger-content">
+              <span data-slot="basic-tool-tool-indicator" data-component="tool-error-card-icon" style={{ strokeWidth: 1.5 }}><OpenCodeIcon name="circle-ban-sign" /></span>
               <div data-slot="basic-tool-tool-info">
                 <div data-slot="basic-tool-tool-info-structured">
                   <div data-slot="basic-tool-tool-info-main">
@@ -948,27 +753,29 @@ function ToolErrorCard({ tool, session }: { tool: ToolCallView; session: Session
                 </div>
               </div>
             </div>
-            <span data-slot="collapsible-arrow" className="codicon codicon-chevron-down" />
+            <span data-slot="collapsible-arrow"><span data-slot="collapsible-arrow-icon"><OpenCodeIcon name="chevron-down" /></span></span>
           </div>
         </button>
         {open && (
           <div data-slot="collapsible-content">
             <div data-slot="tool-error-card-content">
               <div data-slot="tool-error-card-copy">
-                <button
-                  data-slot="tool-error-card-copy-button"
+                <div data-component="tooltip-trigger" data-tooltip={copied ? "Copied" : "Copy error"}><button
+                  data-component="icon-button" data-size="normal" data-variant="ghost" aria-label={copied ? "Copied" : "Copy error"}
+                  data-slot="tool-error-card-copy-button" onMouseDown={(event) => event.preventDefault()}
                   onClick={(event) => {
                     event.stopPropagation();
                     copy();
                   }}
                 >
-                  {copied ? "Copied" : "Copy error"}
-                </button>
+                  <OpenCodeIcon name={copied ? "check" : "copy"} />
+                </button></div>
               </div>
               <div data-slot="tool-error-card-description">{body}</div>
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
@@ -997,59 +804,47 @@ function SubagentIcon(): ReactNode {
 }
 
 function DelegatedAgentCard({
-  component,
-  surface,
   id,
   title,
   agent,
   description,
-  status,
   state,
   tone,
   childID,
   onOpen
 }: {
-  component: "task-tool-card" | "subagent-link-card";
-  surface: "task-tool-surface" | "subagent-link-surface";
   id: string;
   title: string;
   agent: string;
   description: string;
-  status: string;
   state: string;
   tone: "working" | "complete" | "failed";
   childID: string;
   onOpen: () => void;
 }): ReactNode {
-  const detail = description.trim() && description.trim() !== title.trim() ? description.trim() : "";
+  const { agents } = useStore();
+  const appearance = resolveOpenCodeTaskAgent(agent, agents);
+  const agentTitle = appearance.name ?? "Agent";
   return (
-    <div data-component={component} data-state={state} data-timeline-part-id={id}>
-      <button
-        data-component={surface}
-        className="delegated-agent-surface"
-        disabled={!childID}
-        aria-label={childID ? `Open delegated agent session: ${title}` : `Delegated agent: ${title}`}
-        title={childID ? `Open ${title} session` : undefined}
-        onClick={onOpen}
-      >
-        <span data-component={tone === "working" ? "task-tool-spinner" : tone === "failed" ? "subagent-link-state" : "task-tool-icon"}>
-          {tone === "working" ? <SessionProgressIndicator /> : tone === "failed" ? <span className="codicon codicon-error" /> : <SubagentIcon />}
-        </span>
-        <span data-slot="delegated-agent-content">
-          <span data-slot="delegated-agent-meta">
-            <span data-component="task-tool-kind">Delegated agent</span>
-            {agent && <span data-component="task-tool-agent">@{agent}</span>}
-          </span>
-          <span data-component="task-tool-title">{title}</span>
-          {detail && <span data-slot="basic-tool-tool-subtitle">{detail}</span>}
-        </span>
-        <span data-slot="delegated-agent-tail">
-          <span data-component="task-tool-status" data-status={tone} title={status}>
-            <span data-slot="task-tool-status-dot" />
-            <span data-slot="task-tool-status-label">{status}</span>
-          </span>
-          {childID && <span className="codicon codicon-chevron-right" data-slot="task-tool-open" />}
-        </span>
+    <div data-component="collapsible" className="tool-collapsible">
+      <button data-slot="collapsible-trigger" data-hide-details="true" disabled={!childID}
+        aria-label={childID ? `Open delegated agent session: ${title}` : `Delegated agent: ${title}`} onClick={onOpen}>
+        <div data-component="tool-trigger" data-hide-details="true" data-clickable={childID ? "true" : undefined}>
+          <div data-slot="basic-tool-tool-trigger-content"><div data-slot="basic-tool-tool-info">
+            <div data-component="task-tool-card" data-state={state} data-timeline-part-id={id} style={{ "--task-agent-color": appearance.v2Color, "--task-agent-legacy-color": appearance.color } as CSSProperties}>
+              <div data-component="task-tool-surface">
+                <div data-slot="basic-tool-tool-info-structured"><div data-slot="basic-tool-tool-info-main">
+                  <span data-component={tone === "working" ? "task-tool-spinner" : "task-tool-icon"}>
+                    {tone === "working" ? <SessionProgressIndicator /> : <SubagentIcon />}
+                  </span>
+                  <span data-component="task-tool-title">{agentTitle}</span>
+                  {description && <span data-slot="basic-tool-tool-subtitle">{description}</span>}
+                </div></div>
+              </div>
+              {childID && <span data-component="task-tool-action"><OpenCodeIcon name="square-arrow-top-right" /></span>}
+            </div>
+          </div></div>
+        </div>
       </button>
     </div>
   );
@@ -1073,7 +868,7 @@ function TaskTool({ tool, session }: { tool: ToolCallView; session: SessionInfo 
       : "";
   const childSession = taskChildID(tool, sessions, session?.id);
   const resolved = sessions.find((candidate) => candidate.id === childSession);
-  const agentName = resolved?.agent ?? configured?.name ?? requested;
+  const agentName = configured?.name ?? requested;
   const title = resolved?.title.trim()
     ? resolved.title
     : agentName
@@ -1083,13 +878,10 @@ function TaskTool({ tool, session }: { tool: ToolCallView; session: SessionInfo 
   const subtitle = tool.metadata?.background === true && detail ? `${detail} (background)` : detail;
   const running = tool.status === "running";
   return <DelegatedAgentCard
-    component="task-tool-card"
-    surface="task-tool-surface"
     id={tool.id}
     title={title}
     agent={agentName}
     description={subtitle}
-    status={running ? "Working" : tool.status === "failed" ? "Failed" : "Complete"}
     state={tool.status}
     tone={running ? "working" : tool.status === "failed" ? "failed" : "complete"}
     childID={childSession}
@@ -1111,7 +903,6 @@ function SubagentLink({ item, session }: { item: Extract<TranscriptItem, { kind:
   const state = ref?.state ?? "";
   const failed = state === "error" || state === "cancelled";
   const running = !state || state === "running";
-  const statusLabel = state ? titleCase(state) : "Running";
   const title = resolved?.title.trim()
     ? resolved.title
     : ref?.id
@@ -1123,13 +914,10 @@ function SubagentLink({ item, session }: { item: Extract<TranscriptItem, { kind:
     ? (ref.description.length > 100 ? `${ref.description.slice(0, 100)}…` : ref.description)
     : "";
   return <DelegatedAgentCard
-    component="subagent-link-card"
-    surface="subagent-link-surface"
     id={item.id}
     title={title}
     agent={agentName}
     description={detail}
-    status={statusLabel}
     state={state || "running"}
     tone={failed ? "failed" : running ? "working" : "complete"}
     childID={childID}
@@ -1167,22 +955,19 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
     }];
   }) : [];
   const expandable = input.length > 0 || output.length > 0 || files.length > 0 || subCalls.length > 0;
-  const autoExpandedRef = useRef(false);
-  useEffect(() => {
-    if (autoExpandedRef.current || !output || tool.status !== "running") return;
-    autoExpandedRef.current = true;
-    setOpen(true);
-  }, [output, tool.status]);
   const displayInput = input.length > OUTPUT_LIMIT ? `${input.slice(0, OUTPUT_LIMIT)}\n… (truncated)` : input;
   const displayOutput = output.length > OUTPUT_LIMIT ? `${output.slice(0, OUTPUT_LIMIT)}\n… (truncated)` : output;
   const shellInput = toolInput(tool);
   const shell = ["bash", "shell"].includes(effectiveToolKey(tool));
   const shellCommand = typeof shellInput.command === "string" ? shellInput.command : "";
-  const shellText = `$ ${shellCommand}${displayOutput ? `\n\n${displayOutput}` : ""}`;
+  const shellOutput = stripAnsi(output || (typeof tool.metadata?.output === "string" ? tool.metadata.output : "")).replace(/\r\n?/g, "\n");
+  const shellText = `$ ${shellCommand || (typeof tool.metadata?.command === "string" ? tool.metadata.command : "")}${shellOutput ? `\n\n${shellOutput}` : ""}`;
+  const sawPending = useRef(tool.status === "running").current;
   const [copied, setCopied] = useState(false);
   const copyShell = (): void => {
     if (!shellText.trim()) return;
-    void navigator.clipboard?.writeText(shellText).then(() => {
+    void writeClipboard(shellText).then((success) => {
+      if (!success) return;
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -1196,31 +981,30 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
   };
 
   if (toolKey(tool.title) === "todowrite") return null;
+  if (isDismissedOpenCodeQuestion(tool)) return <OpenCodeSpecialTool tool={tool} />;
   if (tool.status === "failed") return <ToolErrorCard tool={tool} session={session} />;
   if (toolKey(tool.title) === "task" || toolKey(tool.title) === "subagent") return <TaskTool tool={tool} session={session} />;
+  if (isEditCardTool(tool)) return <EditToolCard tool={tool} session={session} />;
+  if (!shell && !nativeRecord) return <OpenCodeSpecialTool tool={tool} />;
 
   return (
     <div data-component="tool-part-wrapper" data-tool={effectiveToolKey(tool)} data-variant="inline" data-status={tool.status} data-timeline-part-id={tool.id}>
-      <div className="tool-collapsible" data-expanded={open ? "true" : undefined}>
+      <div data-component="collapsible" className="tool-collapsible" data-expanded={open ? "true" : undefined}>
         <button
           data-slot="collapsible-trigger"
+          aria-expanded={open}
           disabled={!expandable}
           onClick={() => expandable && setOpen((value) => !value)}
         >
           <div data-component="tool-trigger" data-clickable={expandable ? "true" : undefined}>
-            <span data-slot="tool-status-icon" data-state={tool.status} aria-hidden="true">
-              {tool.status === "running"
-                ? <span className="spinner" />
-                : <span className="codicon codicon-check" />}
-            </span>
             <div data-slot="basic-tool-tool-trigger-content">
               <div data-slot="basic-tool-tool-info">
                 <div data-slot="basic-tool-tool-info-structured">
                   <div data-slot="basic-tool-tool-info-main">
                     <span data-slot="basic-tool-tool-title">
-                      {presentation.title}
+                      <TextShimmer text={presentation.title} active={tool.status === "running"} />
                     </span>
-                    {presentation.subtitle && (
+                    {shell ? !open && shellCommand && <ShellSubmessage text={shellCommand} animate={sawPending} /> : presentation.subtitle && (
                       <span
                         data-slot="basic-tool-tool-subtitle"
                         className={presentation.path ? "clickable" : undefined}
@@ -1238,8 +1022,7 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
                 </div>
               </div>
             </div>
-            <ToolState tool={tool} />
-            {expandable && <span data-slot="collapsible-arrow" className="codicon codicon-chevron-down" />}
+            {expandable && <span data-slot="collapsible-arrow"><span data-slot="collapsible-arrow-icon"><OpenCodeIcon name="chevron-down" /></span></span>}
           </div>
         </button>
         {tool.progress && tool.status === "running" && (
@@ -1250,17 +1033,18 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
             {shell && (input || output) ? (
               <div data-component="bash-output" dir="ltr">
                 <div data-slot="bash-copy">
-                  <button
+                  <div data-component="tooltip-v2-trigger" data-tooltip={copied ? "Copied" : "Copy"}><button
+                    data-component="icon-button-v2" data-size="normal" data-variant="ghost-muted" aria-label={copied ? "Copied" : "Copy"} onMouseDown={(event) => event.preventDefault()}
                     data-slot="bash-copy-button"
                     onClick={(event) => {
                       event.stopPropagation();
                       copyShell();
                     }}
                   >
-                    {copied ? "Copied" : "Copy"}
-                  </button>
+                    <OpenCodeIcon name={copied ? "check" : "outline-copy"} />
+                  </button></div>
                 </div>
-                <pre data-slot="bash-pre">{shellText}</pre>
+                <div data-slot="bash-scroll" data-scrollable="" tabIndex={0} role="region" aria-label="Scrollable content"><pre data-slot="bash-pre"><code>{shellText}</code></pre></div>
               </div>
             ) : (input || output) ? (
               <div data-component="tool-io">
@@ -1304,7 +1088,7 @@ function ToolPart({ tool, session }: { tool: ToolCallView; session: SessionInfo 
 
 function TimelineRow({ tag, children, previous }: { tag: string; children: ReactNode; previous?: boolean }): ReactNode {
   return (
-    <div data-timeline-row={tag} className="opencode-row">
+    <div data-timeline-row={tag} data-previous-assistant-part={previous ? "true" : undefined} className="opencode-row">
       <div data-component="session-turn">
         <div data-slot="session-turn-message-container">{children}</div>
       </div>
@@ -1396,26 +1180,35 @@ function SessionTurnThinking({ heading }: { heading?: string }): ReactNode {
   );
 }
 
-function UserMessage({ item }: { item: Extract<TranscriptItem, { kind: "user" }> }): ReactNode {
+function UserMessage({ item, session, busy }: { item: Extract<TranscriptItem, { kind: "user" }>; session: SessionInfo | null; busy: boolean }): ReactNode {
+  const { stageRevert, models } = useStore();
+  const model = models?.find((model) => model.id === item.model?.id && model.providerID === item.model?.providerID)?.name ?? item.model?.id;
+  const head = [item.agent && item.agent[0].toUpperCase() + item.agent.slice(1), model].filter(Boolean).join("\u00a0·\u00a0");
+  const stamp = item.createdAt === undefined ? "" : new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(item.createdAt);
   return (
     <TimelineRow tag="UserMessage">
       <div data-slot="session-turn-message-content" aria-live="off">
         <div data-component="user-message">
+          {item.text && <div data-slot="user-message-body"><div data-slot="user-message-text" dir="auto">{item.text}</div></div>}
           {item.attachments && item.attachments.length > 0 && (
             <div data-slot="user-message-attachments">
               {item.attachments.map((attachment) => (
                 <div data-slot="user-message-attachment" data-type="file" key={attachment.name}>
-                  <div data-slot="user-message-attachment-file">
-                    <span className="codicon codicon-file" />
-                    <span data-slot="user-message-attachment-name">{attachment.name}</span>
-                  </div>
+                  <div data-slot="user-message-attachment-file"><span className="codicon codicon-file" /><span data-slot="user-message-attachment-name">{attachment.name}</span></div>
                 </div>
               ))}
             </div>
           )}
-          <div data-slot="user-message-body">
-            <div data-slot="user-message-text">{item.text}</div>
-          </div>
+          {item.text && <div data-slot="user-message-copy-wrapper">
+            {(head || stamp) && <span data-slot="user-message-meta-wrap">
+              {head && <span data-slot="user-message-meta" className="text-12-regular text-text-weak">{head}</span>}
+              {head && stamp && <span className="text-12-regular text-text-weak">{ "\u00a0·\u00a0" }</span>}
+              {stamp && <span data-slot="user-message-meta-tail" className="text-12-regular text-text-weak">{stamp}</span>}
+            </span>}
+            {session && <div data-component="tooltip-v2-trigger" data-tooltip="Revert message"><button data-component="icon-button-v2" data-size="normal" data-variant="ghost-muted" aria-label="Revert message" disabled={busy}
+              onMouseDown={(event) => event.preventDefault()} onClick={() => void stageRevert(session.workspace, item.id)}><OpenCodeIcon name="reset" /></button></div>}
+            <CopyResponse text={item.text} target="message" />
+          </div>}
         </div>
       </div>
     </TimelineRow>
@@ -1426,32 +1219,8 @@ function UserMessage({ item }: { item: Extract<TranscriptItem, { kind: "user" }>
 // turn-level thinking heading reflects them. `ActivityPart` therefore excludes reasoning.
 type RenderablePart = Exclude<AssistantPart, { kind: "reasoning" }>;
 type ActivityPart = Extract<RenderablePart, { kind: "tool" }>;
-type ActivityEntry = ActivityPart | { kind: "context-group"; id: string; tools: ToolCallView[] };
-
-function isContextActivityPart(part: ActivityPart): part is Extract<ActivityPart, { kind: "tool" }> {
-  return part.kind === "tool" && isContextTool(part.tool);
-}
-
-function groupContextParts(parts: ActivityPart[]): ActivityEntry[] {
-  const grouped: ActivityEntry[] = [];
-  let index = 0;
-  while (index < parts.length) {
-    const part = parts[index];
-    if (!isContextActivityPart(part)) {
-      grouped.push(part);
-      index += 1;
-      continue;
-    }
-    const context: Extract<ActivityPart, { kind: "tool" }>[] = [part];
-    let cursor = index + 1;
-    while (cursor < parts.length && isContextActivityPart(parts[cursor])) {
-      context.push(parts[cursor] as Extract<ActivityPart, { kind: "tool" }>);
-      cursor += 1;
-    }
-    grouped.push({ kind: "context-group", id: `context:${context[0].id}`, tools: context.map((entry) => entry.tool) });
-    index = cursor;
-  }
-  return grouped;
+function isContextActivityPart(part: ActivityPart): boolean {
+  return isContextTool(part.tool);
 }
 
 function ContextToolRow({ tool, session }: { tool: ToolCallView; session: SessionInfo | null }): ReactNode {
@@ -1509,10 +1278,10 @@ function ContextToolRow({ tool, session }: { tool: ToolCallView; session: Sessio
   );
 }
 
-function ContextToolGroup({ tools, session }: { tools: ToolCallView[]; session: SessionInfo | null }): ReactNode {
+function ContextToolGroup({ tools, session, working = false }: { tools: ToolCallView[]; session: SessionInfo | null; working?: boolean }): ReactNode {
   const [open, setOpen] = useState(false);
   const summary = contextToolSummary(tools);
-  const pending = tools.some((tool) => tool.status === "running");
+  const pending = working || tools.some((tool) => tool.status === "running");
   const items: CountItem[] = [
     { key: "read", count: summary.read },
     { key: "search", count: summary.search },
@@ -1535,7 +1304,7 @@ function ContextToolGroup({ tools, session }: { tools: ToolCallView[]; session: 
               <AnimatedCountList items={items} fallback="" />
             </span>
           </span>
-          <span data-slot="collapsible-arrow" className="codicon codicon-chevron-down" />
+          <span data-slot="collapsible-arrow"><span data-slot="collapsible-arrow-icon"><OpenCodeIcon name="chevron-down" /></span></span>
         </div>
       </button>
       {open && (
@@ -1553,7 +1322,7 @@ function ContextToolGroup({ tools, session }: { tools: ToolCallView[]; session: 
 // rendered as a part, `todowrite` is hidden, and empty text parts are dropped.
 function renderableAssistantPart(part: AssistantPart): part is RenderablePart {
   if (part.kind === "reasoning") return false;
-  if (part.kind === "tool") return toolKey(part.tool.title) !== "todowrite";
+  if (part.kind === "tool") return toolKey(part.tool.title) !== "todowrite" && !(part.tool.title === "question" && part.tool.status === "running");
   return Boolean(part.text.trim());
 }
 
@@ -1616,102 +1385,39 @@ function AssistantRun({
   items,
   streaming,
   copyPartID,
-  session
+  session,
+  duration
 }: {
   items: AssistantItem[];
   streaming: boolean;
   copyPartID: string | null;
   session: SessionInfo | null;
+  duration?: number;
 }): ReactNode {
-  const { stageRevert } = useStore();
   const rows: ReactNode[] = [];
-  const parts = items.flatMap((item) => item.parts);
-  const visibleParts = items.flatMap((item) => item.parts
-    .filter(renderableAssistantPart)
-    .map((part) => ({ part, messageCompleted: item.completed })));
-  const responseText = parts
-    .filter((part): part is Extract<AssistantPart, { kind: "text" }> => part.kind === "text")
-    .map((part) => part.text)
-    .join("\n\n");
-  type ActivityGroup = { kind: "activity"; entries: ActivityPart[] };
-  type TextGroup = { kind: "text"; part: Extract<AssistantPart, { kind: "text" }>; streaming: boolean };
-  const groups: (ActivityGroup | TextGroup)[] = [];
-  for (const { part, messageCompleted } of visibleParts) {
-    if (part.kind === "text") {
-      groups.push({ kind: "text", part, streaming: !messageCompleted });
-      continue;
-    }
-    const lastGroup = groups.at(-1);
-    if (lastGroup && lastGroup.kind === "activity") lastGroup.entries.push(part);
-    else groups.push({ kind: "activity", entries: [part] });
+  type Entry = { kind: "part"; part: RenderablePart; message: AssistantItem } | { kind: "context"; id: string; tools: ToolCallView[] };
+  const groups: Entry[] = [];
+  for (const message of items) for (const part of message.parts.filter(renderableAssistantPart)) {
+    if (part.kind === "tool" && isContextActivityPart(part)) {
+      const last = groups.at(-1);
+      if (last?.kind === "context") last.tools.push(part.tool);
+      else groups.push({ kind: "context", id: part.id, tools: [part.tool] });
+    } else groups.push({ kind: "part", part, message });
   }
-  const lastItem = items.at(-1);
-  const revertMessageID = lastItem?.messageID;
-  const showRevert = Boolean(session) && items.every((item) => item.completed) && !streaming
-    && !items.some((item) => item.retry);
-  const revert = session && revertMessageID ? () => void stageRevert(session.workspace, revertMessageID) : undefined;
-  let previous = false;
-  for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
-    const group = groups[groupIndex];
-    const isLastGroup = groupIndex === groups.length - 1;
-    if (group.kind === "text") {
-      const showLabel = groupIndex === 0 || groups[groupIndex - 1]?.kind === "activity";
-      rows.push(
-        <TimelineRow tag="AssistantMessage" previous={previous} key={group.part.id}>
-          <div data-slot="session-turn-assistant-content">
-            <TextPart
-              part={group.part}
-              streaming={group.streaming}
-              showCopy={!group.streaming && group.part.id === copyPartID}
-              showLabel={showLabel}
-              showRevert={showRevert && isLastGroup && Boolean(session)}
-              onRevert={revert}
-            />
-          </div>
-        </TimelineRow>
-      );
-      previous = true;
-      continue;
-    }
+  for (let index = 0; index < groups.length; index += 1) {
+    const group = groups[index];
+    const part = group.kind === "part" ? group.part : undefined;
+    const key = group.kind === "context" ? group.id : group.part.id;
     rows.push(
-      <TimelineRow tag="AssistantActivity" previous={previous} key={`activity:${group.entries[0]?.id ?? rows.length}`}>
-        <div data-slot="session-turn-assistant-content" data-component="assistant-activity-stack">
-          {groupContextParts(group.entries).map((part) => {
-            if (part.kind === "context-group") {
-              return (
-                <div data-component="assistant-activity-entry" data-kind="context" data-state="complete" key={part.id}>
-                  <span data-slot="assistant-activity-marker" aria-hidden="true"><span className="codicon codicon-check" /></span>
-                  <div data-slot="assistant-activity-content"><ContextToolGroup tools={part.tools} session={session} /></div>
-                </div>
-              );
-            }
-            const running = part.tool.status === "running";
-            const failed = part.tool.status === "failed";
-            const marker = running ? "" : failed ? "codicon-error" : "codicon-check";
-            return (
-              <div data-component="assistant-activity-entry" data-kind={part.kind} data-state={running ? "running" : failed ? "failed" : "complete"} key={part.id}>
-                <span data-slot="assistant-activity-marker" aria-hidden="true">
-                  {marker ? <span className={`codicon ${marker}`} /> : <span data-slot="assistant-activity-pulse" />}
-                </span>
-                <div data-slot="assistant-activity-content">
-                  {failed
-                    ? <ToolErrorCard tool={part.tool} session={session} />
-                    : isEditCardTool(part.tool)
-                      ? <EditToolCard tool={part.tool} session={session} />
-                      : <ToolPart tool={part.tool} session={session} />}
-                </div>
-              </div>
-            );
-          })}
-          {showRevert && isLastGroup && session && (
-            <div data-component="assistant-options-footer">
-              <ResponseOptions text={responseText} showRevert onRevert={revert} />
-            </div>
-          )}
+      <TimelineRow tag={part?.kind === "text" ? "AssistantMessage" : "AssistantActivity"} previous={index > 0} key={key}>
+        <div data-slot="session-turn-assistant-content">
+          {group.kind === "context" ? <ContextToolGroup tools={group.tools} session={session} working={streaming && index === groups.length - 1} />
+            : group.part.kind === "text" ? <TextPart part={group.part} streaming={!group.message.completed}
+                showCopy={group.part.id === copyPartID} message={group.message} duration={duration} />
+            : <ToolPart tool={group.part.tool} session={session} />}
         </div>
       </TimelineRow>
     );
-    previous = true;
   }
 
   for (const item of items) {
@@ -1731,10 +1437,7 @@ function AssistantRun({
     if (item.error) {
       rows.push(
         <TimelineRow tag="Error" previous key={`${item.id}:error`}>
-          <div data-component="session-note" data-tone="error">
-            <span className="codicon codicon-error" data-slot="session-note-icon" />
-            <span data-slot="session-note-text">{item.error.replace(/^Error:\s*/, "")}</span>
-          </div>
+          <div data-component="card" data-variant="error" className="error-card">{item.error.replace(/^Error:\s*/, "")}</div>
         </TimelineRow>
       );
     }
@@ -1746,9 +1449,12 @@ function renderTurnBody(
   body: TimelineTurn["body"],
   busy: boolean,
   lastAssistantId: string | null,
-  session: SessionInfo | null
+  session: SessionInfo | null,
+  turnStartedAt?: number
 ): ReactNode[] {
   const nodes: ReactNode[] = [];
+  const completedAt = body.filter((item): item is AssistantItem => item.kind === "assistant").at(-1)?.completedAt;
+  const duration = turnStartedAt !== undefined && completedAt !== undefined ? completedAt - turnStartedAt : undefined;
   const copyPartID = busy ? null : body
     .flatMap((item) => item.kind === "assistant" ? item.parts : [])
     .filter((part): part is Extract<AssistantPart, { kind: "text" }> => part.kind === "text" && Boolean(part.text.trim()))
@@ -1763,6 +1469,7 @@ function renderTurnBody(
         items={items}
         streaming={busy && items.some((item) => item.id === lastAssistantId)}
         copyPartID={copyPartID}
+        duration={duration}
         session={session}
         key={`assistant-run:${items[0].id}`}
       />
@@ -1938,6 +1645,18 @@ export const OpenCodeTimeline = memo(function OpenCodeTimeline({
   session?: SessionInfo | null;
 }): ReactNode {
   const store = useStore();
+  const root = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => root.current ? mountTooltip(root.current) : undefined, []);
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    const sync = (): void => {
+      if (root.current) root.current.dataset.colorScheme = getComputedStyle(html).colorScheme === "light" ? "light" : "dark";
+    };
+    const observer = new MutationObserver(sync);
+    observer.observe(html, { attributes: true, attributeFilter: ["style", "class", "data-theme"] });
+    sync();
+    return () => observer.disconnect();
+  }, []);
   const activeSession = session === undefined ? store.session : session;
   const consolidatedTranscript = useMemo(
     () => consolidateSubagentTools(transcript, store.sessions, activeSession?.id),
@@ -1991,13 +1710,13 @@ export const OpenCodeTimeline = memo(function OpenCodeTimeline({
   const showThinking = busy && !activeTurnError && !activeTurnRetry;
 
   return (
-    <div data-slot="session-turn-list" className="opencode-timeline">
+    <div ref={root} data-slot="session-turn-list" className="opencode-timeline" data-new-layout="">
       {turns.map((turn, index) => {
         return (
           <div data-component="session-turn-group" key={turn.id}>
             {turn.user && index > 0 && <div data-timeline-row="TurnGap" aria-hidden="true" />}
-            {turn.user && <UserMessage item={turn.user} />}
-            {renderTurnBody(turn.body, busy, lastAssistantId, activeSession)}
+            {turn.user && <UserMessage item={turn.user} session={activeSession} busy={busy} />}
+            {renderTurnBody(turn.body, busy && index === turns.length - 1, lastAssistantId, activeSession, turn.user?.createdAt)}
           </div>
         );
       })}

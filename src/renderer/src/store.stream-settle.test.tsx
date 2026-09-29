@@ -86,6 +86,31 @@ describe("store stream settle", () => {
     vi.restoreAllMocks();
   });
 
+  it("projects canonical user time and the responding model through a live turn", async () => {
+    const sessionID = store.activeSessionID!;
+    const emit = (type: string, created: number, data: Record<string, unknown>) => {
+      messageHandler!({ kind: "event", type, data: { id: `${type}-${created}`, created, data: { sessionID, ...data } } });
+    };
+    await act(async () => {
+      emit("message.updated", 1000, {
+        info: { id: "user-1", sessionID, role: "user", time: { created: 950 } }
+      });
+      emit("session.step.started", 1100, {
+        assistantMessageID: "msg_2", agent: "build", model: { id: "m", providerID: "p" }, started: 1050
+      });
+    });
+    expect(store.transcript.find((item) => item.id === "user-1")).toMatchObject({
+      createdAt: 950, agent: "build", model: { id: "m", providerID: "p" }
+    });
+    expect(store.transcript.find((item) => item.id === "msg_2")).toMatchObject({
+      parentID: "user-1", createdAt: 1100, agent: "build", model: { id: "m", providerID: "p" }, completed: false
+    });
+    await act(async () => { emit("session.step.ended", 4500, { assistantMessageID: "msg_2", finish: "stop" }); });
+    expect(store.transcript.find((item) => item.id === "msg_2")).toMatchObject({
+      parentID: "user-1", createdAt: 1100, completedAt: 4500, agent: "build", model: { id: "m", providerID: "p" }, completed: true
+    });
+  });
+
   it("marks a reopened stale turn busy and settles it after the quiet window", async () => {
     expect(store.busy).toBe(true);
 

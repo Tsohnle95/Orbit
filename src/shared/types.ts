@@ -438,17 +438,26 @@ export type AssistantPartView =
   | { kind: "reasoning"; id: string; text: string; complete: boolean }
   | { kind: "tool"; id: string; tool: ToolCallView };
 
+export interface MessagePresentation {
+  agent?: string;
+  model?: { id: string; providerID: string };
+  createdAt?: number;
+  completedAt?: number;
+  parentID?: string;
+  interrupted?: boolean;
+}
+
 export type TranscriptItem =
-  | { kind: "user"; id: string; text: string; attachments?: UserAttachment[] }
-  | {
+  | ({ kind: "user"; id: string; text: string; attachments?: UserAttachment[] } & MessagePresentation)
+  | ({
       kind: "pending-input";
       id: string;
       inputType: "user" | "synthetic";
       text: string;
       attachments?: UserAttachment[];
       description?: string;
-    }
-  | {
+    } & MessagePresentation)
+  | ({
       kind: "assistant";
       id: string;
       messageID: string;
@@ -456,7 +465,7 @@ export type TranscriptItem =
       completed: boolean;
       retry?: { attempt: number; message: string; next?: number };
       error?: string;
-    }
+    } & MessagePresentation)
   | {
       kind: "permission";
       id: string;

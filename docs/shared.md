@@ -64,6 +64,14 @@ Union discriminated on `kind`:
 - `status` — `{ id, text, tone: "info" \| "success" \| "error" }`
 - `divider` — `{ id }` visual separator per execution
 
+User, pending input, and assistant items retain optional `MessagePresentation`
+metadata: agent, provider/model identity, creation/completion timestamps, parent
+message identity, and interruption state. The renderer uses these server values
+for the message footer; hydration and history merges preserve them. OpenCode V2
+user messages inherit the responding assistant's agent and model, matching
+upstream normalization. Missing timestamps remain absent instead of producing
+an invented duration.
+
 `AssistantPartView` is discriminated on `kind`: `text` and `reasoning`
 parts carry `{ id, text, complete }`; `tool` parts carry
 `{ id, tool: ToolCallView }`. Keeping these parts in event order lets the
