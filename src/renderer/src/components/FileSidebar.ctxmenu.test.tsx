@@ -5,6 +5,9 @@ import { FileSidebar } from "./FileSidebar";
 
 const store = {
   session: { id: "session", directory: "/workspace", workspace: { id: "11111111-1111-4111-8111-111111111111", generation: 1 } },
+  panels: [] as Array<{ id: string; directory: string; workspace: { id: string; generation: number } }>,
+  focusSession: vi.fn(),
+  closePanel: vi.fn(),
   selectFolder: vi.fn(),
   tree: { "": [{ path: "dir", type: "directory" as const }, { path: "a.txt", type: "file" as const }] },
   toggleDir: vi.fn(),
@@ -25,7 +28,7 @@ const store = {
 };
 
 const ctxMenuApi = {
-  ctxMenu: null as { x: number; y: number; target: { path: string; type: "file" | "directory" } | null } | null,
+  ctxMenu: null as { x: number; y: number; target: { path: string; type: "file" | "directory" } | null; workspaceSessionID?: string } | null,
   openCtxMenu: vi.fn(),
   closeCtxMenu: vi.fn()
 };
@@ -42,6 +45,8 @@ describe("FileSidebar context menu open/close", () => {
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     ctxMenuApi.ctxMenu = null;
+    store.panels = [];
+    store.session = { id: "session", directory: "/workspace", workspace: { id: "11111111-1111-4111-8111-111111111111", generation: 1 } };
     vi.clearAllMocks();
     container = document.createElement("div");
     document.body.append(container);
@@ -100,6 +105,33 @@ describe("FileSidebar context menu open/close", () => {
     expect(item).toBeTruthy();
     act(() => item.click());
     expect(store.revealInFileManager).toHaveBeenCalledWith("dir/a.txt");
+  });
+
+  it("removes the right-clicked nonfocused workspace root", () => {
+    const active = { id: "active", directory: "/workspace", workspace: { id: "active-workspace", generation: 1 } };
+    const secondary = { id: "secondary", directory: "/second", workspace: { id: "second-workspace", generation: 2 } };
+    store.session = active;
+    store.panels = [active, secondary];
+    act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
+
+    const row = [...container.querySelectorAll<HTMLElement>(".tree-row.workspace-root")]
+      .find((item) => item.title === secondary.directory)!;
+    act(() => row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 30, clientY: 40 })));
+
+    expect(ctxMenuApi.openCtxMenu).toHaveBeenCalledWith(30, 40, { path: "", type: "directory" }, secondary.id);
+    ctxMenuApi.ctxMenu = {
+      x: 30,
+      y: 40,
+      target: { path: "", type: "directory" },
+      workspaceSessionID: secondary.id
+    };
+    act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
+    const remove = [...document.body.querySelectorAll<HTMLButtonElement>(".ctx-item")]
+      .find((button) => button.textContent === "Remove Workspace")!;
+    act(() => remove.click());
+
+    expect(store.closePanel).toHaveBeenCalledWith(secondary.id);
+    expect(store.closePanel).not.toHaveBeenCalledWith(active.id);
   });
 
   it("renders the menu outside the sidebar so ancestors cannot clip it", () => {

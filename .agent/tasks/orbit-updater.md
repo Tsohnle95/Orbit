@@ -54,8 +54,8 @@ Implementation / tests:
 
 | Phase | Scope | Status | Validation | Commit |
 |---|---|---|---|---|
-| 1 | GitHub updater contract, main implementation, About UI | complete | targeted updater/settings tests; `npm run check` on Node 22.23.2 | — |
-| 2 | Workspace-root context target and removal | pending | targeted FileSidebar context-menu test, then `npm run check` | — |
+| 1 | GitHub updater contract, main implementation, About UI | complete | targeted updater/settings tests; `npm run check` on Node 22.23.2 | `745b234` |
+| 2 | Workspace-root context target and removal | complete | targeted FileSidebar context-menu test; `npm run check` on Node 22.23.2 | — |
 | 3 | Restore titlebar Settings entry and update docs | pending | App layout test, docs check, then `npm run check` | — |
 
 ## Validation plan

@@ -452,7 +452,7 @@ express a cross-component invariant or non-obvious state contract.
 |---|---|---|
 | `App` | `App.tsx` | Prism workspace shell, profile-independent panel layout, panel geometry and focus routing; the activity rail and the Files/Sessions sidebar share one open state, so the titlebar's leading toggle collapses both while preserving the editor slot, and Agent Mode hides both |
 | `Welcome` | `Welcome.tsx` | Landing view, recent sessions/workspaces, initial folder/file open |
-| `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation (defaults to Files when a workspace opens), Changes, Explorer, filesystem actions, terminal context actions |
+| `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation (defaults to Files when a workspace opens), Changes, Explorer, filesystem actions, open-workspace root removal, terminal context actions |
 | `SettingsSidebar` | `SettingsSidebar.tsx` | Settings navigation |
 | `SettingsPage` | `SettingsPage.tsx` | Ten design-direction palettes plus the restored Kitty Glass and Original Dark appearances, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and About with GitHub app update status/actions |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
@@ -479,6 +479,8 @@ when the app quits.
 
 Key cross-component invariants:
 
+- Every open Explorer root's context menu removes the panel identified by that
+  root; it never deletes files or removes a saved-workspace bookmark.
 - Every panel acts on its own session/workspace identity; background panels keep
   streaming independently.
 - Opening a file/tool link from a background panel must address/focus the owning

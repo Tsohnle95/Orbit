@@ -104,11 +104,12 @@ export interface CtxMenuState {
   x: number;
   y: number;
   target: TreeEntry | null;
+  workspaceSessionID?: string;
 }
 
 export interface CtxMenuApi {
   ctxMenu: CtxMenuState | null;
-  openCtxMenu: (x: number, y: number, target: TreeEntry | null) => void;
+  openCtxMenu: (x: number, y: number, target: TreeEntry | null, workspaceSessionID?: string) => void;
   closeCtxMenu: () => void;
 }
 
@@ -476,8 +477,8 @@ function readSavedWorkspaces(): ProjectInfo[] {
 
 export function StoreProvider({ children }: { children: ReactNode }): ReactNode {
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null);
-  const openCtxMenu = useCallback((x: number, y: number, target: TreeEntry | null) => {
-    setCtxMenu({ x, y, target });
+  const openCtxMenu = useCallback((x: number, y: number, target: TreeEntry | null, workspaceSessionID?: string) => {
+    setCtxMenu({ x, y, target, workspaceSessionID });
   }, []);
   const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
   const ctxMenuApi = useMemo<CtxMenuApi>(

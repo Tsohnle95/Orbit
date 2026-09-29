@@ -283,6 +283,7 @@ function ExplorerMenu({ onOpenTerminal }: { onOpenTerminal?: (directory: string)
   if (!ctxMenu) return null;
   const target = ctxMenu.target;
   const workspaceRoot = target?.type === "directory" && target.path === "";
+  const workspaceSessionID = workspaceRoot ? ctxMenu.workspaceSessionID ?? session?.id : undefined;
   const parent = target
     ? target.type === "directory"
       ? target.path
@@ -311,8 +312,8 @@ function ExplorerMenu({ onOpenTerminal }: { onOpenTerminal?: (directory: string)
           Reveal in File Manager
         </button>
       )}
-      {workspaceRoot && session && (
-        <button className="ctx-item" onClick={() => { closeCtxMenu(); closePanel(session.id); }}>
+      {workspaceSessionID && (
+        <button className="ctx-item" onClick={() => { closeCtxMenu(); closePanel(workspaceSessionID); }}>
           Remove Workspace
         </button>
       )}
@@ -772,6 +773,11 @@ export function FileSidebar({
                 key={panel.id}
                  className={`tree-row dir workspace-root ${index > 0 ? "workspace-root-secondary" : ""}`}
                 onClick={() => focusSession(panel.id)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  openCtxMenu(event.clientX, event.clientY, { path: "", type: "directory" }, panel.id);
+                }}
                 title={panel.directory}
               >
                 <FileIcon name={panel.directory} isDir />
