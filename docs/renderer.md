@@ -100,11 +100,12 @@ latching. Authoritative end-of-turn signals (`session.idle`, `session.error`,
 `session.execution.*`) materialize completion of the trailing assistant in
 the chat store even if its completion marker was lost. Terminal message/part
 snapshots cannot promote an already-idle session back to busy; prompt
-submission inserts the optimistic user message into both the transcript and
-authoritative chat store before marking the session busy, so the elapsed clock
-starts from the current turn instead of an older prompt. Only events that
-represent active work can restore busy after a quiet settle. Terminal message
-finishes also clear busy directly, so the composer and turn status do not
+submission clears the composer before inserting the optimistic user message
+into both the transcript and authoritative chat store, then marks the session
+busy, so the input does not briefly duplicate the new transcript row and the
+elapsed clock starts from the current turn instead of an older prompt. Only
+events that represent active work can restore busy after a quiet settle.
+Terminal message finishes also clear busy directly, so the composer and turn status do not
 depend on a later `session.idle` event. Finally, a 1s settle
 watchdog finalizes any panel whose trailing assistant stays incomplete without
 stream activity for 60s (or immediately once the runtime reported idle), which

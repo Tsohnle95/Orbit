@@ -1,4 +1,5 @@
 import { act } from "react";
+import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionInfo } from "@shared/types";
@@ -167,6 +168,26 @@ describe("composer slash and mention completions", () => {
     await pressEnter(input);
     expect(runCommand).not.toHaveBeenCalled();
     expect(sendPrompt).toHaveBeenCalledWith("//", [], currentSession.workspace);
+  });
+
+  it("clears ordinary text before the optimistic session update can rerender the composer", async () => {
+    window.openshell = {} as Window["openshell"];
+    await act(async () => root.render(<Composer />));
+    const input = container.querySelector<HTMLTextAreaElement>("textarea")!;
+    await act(async () => {
+      type(input, "ordinary prompt");
+    });
+
+    let inputDuringSubmission = "";
+    sendPrompt.mockImplementationOnce(async () => {
+      flushSync(() => root.render(<Composer />));
+      inputDuringSubmission = container.querySelector<HTMLTextAreaElement>("textarea")!.value;
+    });
+
+    await pressEnter(input);
+    expect(sendPrompt).toHaveBeenCalledOnce();
+    expect(inputDuringSubmission).toBe("");
+    expect(input.value).toBe("");
   });
 
   it("assembles a PromptFile with a mention span for a chosen file mention", async () => {

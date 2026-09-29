@@ -440,36 +440,32 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
     const text = input.trim();
     const command = /^\/([^/\s]\S*)(?:\s+([\s\S]*))?$/.exec(text);
     if (command && supportsCommands) {
-      void runCommand(command[1], command[2] ?? "", workspace ?? undefined).catch((err) =>
-        setNotice(err instanceof Error ? err.message : String(err))
-      );
       setInput("");
       setFiles([]);
       setPreviews({});
       setMentions([]);
       setCompletion(null);
       const el = inputRef.current;
-      if (el) {
-        el.style.removeProperty("--composer-input-height");
-        el.focus();
-      }
+      if (el) el.style.removeProperty("--composer-input-height");
+      void runCommand(command[1], command[2] ?? "", workspace ?? undefined).catch((err) =>
+        setNotice(err instanceof Error ? err.message : String(err))
+      );
+      el?.focus();
       return;
     }
     const promptFiles: PromptFile[] = [
       ...buildPromptFiles(text, mentions),
       ...files.map((file) => ({ path: file.path }))
     ];
-    void sendPrompt(text, promptFiles, workspace ?? undefined);
     setInput("");
     setFiles([]);
     setPreviews({});
     setMentions([]);
     setCompletion(null);
     const el = inputRef.current;
-    if (el) {
-      el.style.removeProperty("--composer-input-height");
-      el.focus();
-    }
+    if (el) el.style.removeProperty("--composer-input-height");
+    void sendPrompt(text, promptFiles, workspace ?? undefined);
+    el?.focus();
   };
 
   const loadPreview = async (path: string): Promise<void> => {
