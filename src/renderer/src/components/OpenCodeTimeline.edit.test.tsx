@@ -109,6 +109,22 @@ describe("edit tool diff cards", () => {
     expect(card?.querySelector("[data-slot='diff-changes-deletions']")?.textContent).toBe("-1");
   });
 
+  it.each([
+    ["/repo/src/app.ts", "/src/"],
+    ["src/app.ts", "src/"]
+  ])("uses the input directory and the metadata accordion path %s", (file, directory) => {
+    const session = { id: "session-1", directory: "/repo", workspace: { id: "workspace-1", generation: 1 } } as SessionInfo;
+    act(() => root.render(<OpenCodeTimeline
+      transcript={[editTool("assistant-1", {
+        filediff: { file, before: "old", after: "new", additions: 1, deletions: 1 }
+      }, { filePath: "/repo/src/app.ts" })]}
+      busy={false} lastAssistantId={null} session={session}
+    />));
+    expect(container.querySelector("[data-slot='message-part-directory']")?.textContent).toBe("/src/");
+    act(() => (container.querySelector("[data-slot='collapsible-trigger']") as HTMLButtonElement).click());
+    expect(container.querySelector("[data-slot='apply-patch-directory']")?.textContent).toBe(`\u202a${directory}\u202c`);
+  });
+
   it("expands into the real unified file diff without patch headers", async () => {
     act(() => root.render(
       <OpenCodeTimeline

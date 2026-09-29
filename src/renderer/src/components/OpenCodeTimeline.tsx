@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useStore } from "../store";
 import type { ToolCallView, TranscriptItem, SessionSummary, SessionInfo } from "@shared/types";
 import { ExternalLink } from "./ExternalLink";
@@ -609,21 +609,22 @@ function DiffChanges({ file }: { file: Pick<EditFileEntry, "additions" | "deleti
   </div>;
 }
 
-function ToolFileAccordion({ file, write = false, patch = false, activatePath }: {
-  file: EditFileEntry; write?: boolean; patch?: boolean; activatePath: () => void;
+function ToolFileAccordion({ file, write = false, patch = false, session, activatePath }: {
+  file: EditFileEntry; write?: boolean; patch?: boolean; session: SessionInfo | null; activatePath: () => void;
 }): ReactNode {
   const [open, setOpen] = useState(!["delete", "deleted", "removed"].includes(file.status ?? ""));
+  const triggerId = useId();
   const slash = file.file.lastIndexOf("/");
   const action = ["add", "added", "created"].includes(file.status ?? "") ? "Created"
     : ["delete", "deleted", "removed"].includes(file.status ?? "") ? "Deleted" : file.status === "move" ? "Moved" : null;
   return <div data-slot="accordion-item" data-type={file.status} data-expanded={open ? "" : undefined}>
     <h3 data-slot="accordion-header" data-component="sticky-accordion-header">
-      <button type="button" data-slot="accordion-trigger" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      <button type="button" id={triggerId} data-slot="accordion-trigger" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         <div data-slot="apply-patch-trigger-content">
           <div data-slot="apply-patch-file-info">
             <OpenCodeFileIcon path={file.file} />
             <div data-slot="apply-patch-file-name-container">
-              {slash >= 0 && <span data-slot="apply-patch-directory">{"\u202a" + file.file.slice(0, slash + 1) + "\u202c"}</span>}
+              {slash >= 0 && <span data-slot="apply-patch-directory">{"\u202a" + contextDirectory(file.file, session) + "\u202c"}</span>}
               <span data-slot="apply-patch-filename" onClick={(event) => { event.stopPropagation(); activatePath(); }}>{fileName(file.file)}</span>
             </div>
           </div>
@@ -634,7 +635,7 @@ function ToolFileAccordion({ file, write = false, patch = false, activatePath }:
         </div>
       </button>
     </h3>
-    {open && <div data-slot="accordion-content" data-expanded="">
+    {open && <div role="region" aria-labelledby={triggerId} data-slot="accordion-content" data-expanded="">
       <div data-component={write ? "write-content" : patch ? "apply-patch-file-diff" : "edit-content"}>
         {write ? <OpenCodeFile mode="text" file={file.file} contents={file.content ?? file.after ?? ""} />
           : <OpenCodeFile mode="diff" file={file.file} patch={file.patch} before={file.before} after={file.after} />}
@@ -652,6 +653,8 @@ function EditToolCard({ tool, session }: { tool: ToolCallView; session: SessionI
   const patch = name === "patch" || name === "apply_patch";
   const pending = tool.status === "running";
   const path = files[0]?.file ?? "";
+  const inputPath = toolInput(tool).filePath;
+  const triggerPath = !patch && (write || tool.metadata?.filediff) && typeof inputPath === "string" ? inputPath : path;
   const multi = files.length > 1;
   const activatePath = (path: string): void => {
     const target = workspaceFilePath(path, session);
@@ -674,9 +677,9 @@ function EditToolCard({ tool, session }: { tool: ToolCallView; session: SessionI
             <div data-slot="message-part-title-area">
               <div data-slot="message-part-title">
                 <span data-slot="message-part-title-text"><TextShimmer text={write ? "Write" : patch ? "Patch" : "Edit"} active={pending} /></span>
-                {!pending && <span data-slot="message-part-title-filename" onClick={(event) => { event.stopPropagation(); activatePath(path); }}>{fileName(path)}</span>}
+                {!pending && <span data-slot="message-part-title-filename" onClick={(event) => { event.stopPropagation(); activatePath(path); }}>{fileName(triggerPath)}</span>}
               </div>
-              {!pending && path.includes("/") && <div data-slot="message-part-path"><span data-slot="message-part-directory">{path.slice(0, path.lastIndexOf("/") + 1)}</span></div>}
+              {!pending && triggerPath.includes("/") && <div data-slot="message-part-path"><span data-slot="message-part-directory">{contextDirectory(triggerPath, session)}</span></div>}
             </div>
             <div data-slot="message-part-actions">{!pending && !write && (patch || files[0]?.additions !== undefined) && <DiffChanges file={files[0]} />}</div>
           </div>}
@@ -684,7 +687,7 @@ function EditToolCard({ tool, session }: { tool: ToolCallView; session: SessionI
       </button>
       {open && <div data-slot="collapsible-content" data-expanded="">
         {path && <div data-component="accordion" data-scope="apply-patch" style={{ "--sticky-accordion-offset": "calc(32px + var(--tool-content-gap))" } as CSSProperties}>
-          {files.map((file) => <ToolFileAccordion key={file.file} file={file} write={write} patch={patch} activatePath={() => activatePath(file.file)} />)}
+          {files.map((file) => <ToolFileAccordion key={file.file} file={file} write={write} patch={patch} session={session} activatePath={() => activatePath(file.file)} />)}
         </div>}
         {errors.length > 0 && <div data-component="diagnostics">{errors.map((value, index) => <div data-slot="diagnostic" key={index}>
           <span data-slot="diagnostic-label">Error</span><span data-slot="diagnostic-location">{"[" + (value.range.start.line + 1) + ":" + (value.range.start.character + 1) + "]"}</span><span data-slot="diagnostic-message">{value.message}</span>

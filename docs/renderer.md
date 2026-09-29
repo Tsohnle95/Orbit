@@ -383,7 +383,9 @@ Key mechanisms:
   transcript in favor of the live prompt-dock checklist. Edit/write/patch parts
   use the upstream file accordions and `OpenCodeFile.tsx` / `opencode-file/`
   Pierre renderer: unified diff rows and gutters, syntax tokens, and partial/full
-  patch semantics. File metadata retains before/after contents and patch paths;
+  patch semantics. Its Shiki worker uses the JavaScript regex engine so previews
+  render under Orbit's existing CSP, which disallows Wasm compilation.
+  File metadata retains before/after contents and patch paths;
   write tools show the input file contents. Shell parts render `$ command` plus
   output in one scrollable pre. `OpenCodeSpecialTool.tsx` owns the upstream
   webfetch, search-link, skill, answered-question, and generic trigger layouts.
