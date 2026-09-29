@@ -438,7 +438,7 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
   const send = (): void => {
     if (!canSend) return;
     const text = input.trim();
-    const command = /^\/(\S+)(?:\s+([\s\S]*))?$/.exec(text);
+    const command = /^\/([^/\s]\S*)(?:\s+([\s\S]*))?$/.exec(text);
     if (command && supportsCommands) {
       void runCommand(command[1], command[2] ?? "", workspace ?? undefined).catch((err) =>
         setNotice(err instanceof Error ? err.message : String(err))

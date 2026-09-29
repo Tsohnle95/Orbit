@@ -152,6 +152,23 @@ describe("composer slash and mention completions", () => {
     expect(runCommand).toHaveBeenCalledWith("compact", "please", currentSession.workspace);
   });
 
+  it("sends double-slash text as a prompt instead of running `/` as a command", async () => {
+    window.openshell = {
+      commands: vi.fn(async () => [
+        { name: "compact", description: "Summarize the session to free up context", kind: "command" }
+      ])
+    } as unknown as Window["openshell"];
+    await act(async () => root.render(<Composer />));
+    const input = container.querySelector("textarea")!;
+    await act(async () => {
+      type(input, "//");
+    });
+
+    await pressEnter(input);
+    expect(runCommand).not.toHaveBeenCalled();
+    expect(sendPrompt).toHaveBeenCalledWith("//", [], currentSession.workspace);
+  });
+
   it("assembles a PromptFile with a mention span for a chosen file mention", async () => {
     window.openshell = {
       references: vi.fn(async () => [
