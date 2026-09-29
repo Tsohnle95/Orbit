@@ -968,6 +968,15 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             <IconTerminal />
           </button>
           <button
+            className={`icon-btn ${settingsOpen ? "on" : ""}`}
+            title={settingsOpen ? "Close settings" : "Settings"}
+            aria-label="Settings"
+            aria-pressed={settingsOpen}
+            onClick={() => settingsOpen ? setSettingsOpen(false) : openSettings()}
+          >
+            <IconGear />
+          </button>
+          <button
             className={`icon-btn ${anchorOpen ? "on" : ""}`}
             data-panel-action="toggle-agent-panel"
             title={anchorOpen ? "Hide agent panel" : "Show agent panel"}
@@ -995,16 +1004,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
               onClick={() => activateSidebarTab("files")}
             >
               <IconFolder />
-            </button>
-            <span className="activity-spacer" />
-            <button
-              className={`activity-tool ${settingsOpen ? "active" : ""}`}
-              aria-label="Settings"
-              aria-pressed={settingsOpen}
-              title="Settings"
-              onClick={openSettings}
-            >
-              <IconGear />
             </button>
           </nav>
         )}

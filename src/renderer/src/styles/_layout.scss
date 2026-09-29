@@ -125,8 +125,6 @@
 
 .activity-tool.active { box-shadow: inset 0 0 0 1px var(--border-strong); }
 .activity-tool .os-icon { width: 17px; height: 17px; }
-.activity-spacer { flex: 1 1 auto; }
-
 .activity-tool:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

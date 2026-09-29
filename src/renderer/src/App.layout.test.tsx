@@ -200,21 +200,24 @@ describe("Layout panel sizing", () => {
     expect(container.querySelector(".sidebar")).not.toBeNull();
   });
 
-  it("restores the activity rail with settings while keeping the sidebar tabs", async () => {
+  it("opens Settings from the titlebar after Terminal and keeps Files on the activity rail", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
     const sidebarToggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!;
     const panelToggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-agent-panel"]')!;
+    const settingsButton = container.querySelector<HTMLButtonElement>('.titlebar-actions button[aria-label="Settings"]')!;
     expect(sidebarToggle.closest(".titlebar-leading-actions")).not.toBeNull();
     expect(panelToggle.closest(".titlebar-actions")).not.toBeNull();
-    expect(container.querySelector('.titlebar-actions button[aria-label="Settings"]')).toBeNull();
+    expect(settingsButton).not.toBeNull();
+    expect(settingsButton.previousElementSibling?.getAttribute("title")).toContain("terminal");
+    expect(settingsButton.getAttribute("aria-pressed")).toBe("false");
 
     const rail = container.querySelector<HTMLElement>(".activity-rail")!;
     expect(rail).not.toBeNull();
     expect(rail.querySelector('button[aria-label="Files"]')).not.toBeNull();
     expect(rail.querySelector('button[aria-label="Sessions"]')).toBeNull();
-    expect(rail.querySelector('button[aria-label="Settings"]')).not.toBeNull();
+    expect(rail.querySelector('button[aria-label="Settings"]')).toBeNull();
     expect(sideTab(container, "Files")).not.toBeNull();
     expect(sideTab(container, "Sessions")).not.toBeNull();
 
@@ -224,6 +227,20 @@ describe("Layout panel sizing", () => {
     });
     expect(sideTab(container, "Sessions").className).toContain("active");
     expect(container.querySelector(".activity-rail")).not.toBeNull();
+
+    await act(async () => {
+      settingsButton.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(settingsButton.getAttribute("aria-pressed")).toBe("true");
+    expect(container.querySelector(".settings-sidebar")).not.toBeNull();
+
+    await act(async () => {
+      settingsButton.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(settingsButton.getAttribute("aria-pressed")).toBe("false");
+    expect(container.querySelector(".settings-sidebar")).toBeNull();
 
     await act(async () => {
       sidebarToggle.click();

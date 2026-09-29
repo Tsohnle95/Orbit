@@ -450,7 +450,7 @@ express a cross-component invariant or non-obvious state contract.
 
 | Component | File | Responsibility |
 |---|---|---|
-| `App` | `App.tsx` | Prism workspace shell, profile-independent panel layout, panel geometry and focus routing; the activity rail and the Files/Sessions sidebar share one open state, so the titlebar's leading toggle collapses both while preserving the editor slot, and Agent Mode hides both |
+| `App` | `App.tsx` | Prism workspace shell, profile-independent panel layout, panel geometry and focus routing; the titlebar Settings control opens preferences, the activity rail and Files/Sessions sidebar share one open state, and Agent Mode hides both |
 | `Welcome` | `Welcome.tsx` | Landing view, recent sessions/workspaces, initial folder/file open |
 | `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation (defaults to Files when a workspace opens), Changes, Explorer, filesystem actions, open-workspace root removal, terminal context actions |
 | `SettingsSidebar` | `SettingsSidebar.tsx` | Settings navigation |
