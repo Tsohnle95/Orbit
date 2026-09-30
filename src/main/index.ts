@@ -85,6 +85,8 @@ let win: BrowserWindow | null = null;
 let appUpdaterWindow: BrowserWindow | null = null;
 let appUpdaterWindowCanClose = false;
 let appUpdateRunning = false;
+let closeRequestPending = false;
+let appQuitRequested = false;
 let trustedLocation: TrustedApplicationLocation | null = null;
 const pendingOpenPaths = new PendingOpenPaths();
 
@@ -322,6 +324,27 @@ function createWindow(show = true): BrowserWindow {
   newWin.center();
   const wc = newWin.webContents;
 
+  wc.on("will-prevent-unload", (event) => {
+    const shortcut = process.platform === "darwin" ? "⌘S" : "Ctrl+S";
+    const closingWindow = closeRequestPending;
+    const choice = dialog.showMessageBoxSync(newWin, {
+      type: "warning",
+      title: "Unsaved Changes",
+      message: "Orbit has unsaved changes in one or more files.",
+      detail: closingWindow
+        ? `Save your files with ${shortcut}, or close Orbit without saving.`
+        : `Save your files with ${shortcut}, or continue without saving.`,
+      buttons: ["Stay Open", closingWindow ? "Close Without Saving" : "Continue Without Saving"],
+      defaultId: 0,
+      cancelId: 0
+    });
+    if (choice === 1) event.preventDefault();
+    else {
+      closeRequestPending = false;
+      appQuitRequested = false;
+    }
+  });
+
   wc.on("console-message", (event) => {
     console.log(`[renderer:${event.level}] ${event.message} (${event.sourceId}:${event.lineNumber})`);
   });
@@ -335,10 +358,18 @@ function createWindow(show = true): BrowserWindow {
   });
 
   newWin.on("closed", () => {
+    closeRequestPending = false;
     if (win === newWin) {
       win = null;
       trustedLocation = null;
     }
+    if (appQuitRequested) {
+      appQuitRequested = false;
+      app.quit();
+    }
+  });
+  newWin.on("close", () => {
+    closeRequestPending = true;
   });
 
   newWin.webContents.setWindowOpenHandler(({ url }) => {
@@ -1261,13 +1292,23 @@ app.on("window-all-closed", () => {
 });
 
 let quitting = false;
+let shutdownStarted = false;
 
 const QUIT_TIMEOUT_MS = 10_000;
 
 app.on("before-quit", (event) => {
   if (quitting) return;
   event.preventDefault();
-  quitting = true;
+  if (win && !win.isDestroyed()) {
+    appQuitRequested = true;
+    if (!closeRequestPending) {
+      closeRequestPending = true;
+      win.close();
+    }
+    return;
+  }
+  if (shutdownStarted) return;
+  shutdownStarted = true;
   void (async () => {
     // Bounded shutdown: terminals must reap their children before Node
     // teardown (a late pty exit callback aborts the process), but a wedged
@@ -1282,6 +1323,7 @@ app.on("before-quit", (event) => {
       shutdown,
       new Promise<void>((resolve) => setTimeout(resolve, QUIT_TIMEOUT_MS))
     ]);
+    quitting = true;
     app.quit();
   })();
 });

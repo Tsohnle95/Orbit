@@ -407,8 +407,13 @@ stops its own terminals as the user switches focus — `stopAll()` only runs
 at quit, where it kills each child, waits (bounded, 3s per terminal) for the
 exit events to drain, then detaches the callbacks so no pty callback can
 fire into Node teardown and abort the process. The `before-quit` handler
-bounds the whole shutdown at 10s and always proceeds to `app.quit()`. `before-input-event` intercepts
-⌘W / Ctrl+W so it never closes the window. Editor word wrap is always enabled.
+bounds the whole shutdown at 10s and always proceeds to `app.quit()`. On a
+window close or app quit, the renderer cancels unload while any editor tab is
+dirty. `will-prevent-unload` shows a native warning; choosing Stay Open cancels
+the close before shutdown, and choosing Close Without Saving allows it.
+Backend and terminal shutdown starts only after the window has closed.
+`before-input-event` intercepts ⌘W / Ctrl+W so it never closes the window.
+Editor word wrap is always enabled.
 DevTools follow the browser conventions: F12 toggles a
 bottom-docked inspector (never detached) and ⌘⇧C (Ctrl+Shift+C) toggles
 element-picking mode. Hover highlighting runs over the Chrome DevTools
@@ -487,7 +492,8 @@ The renderer generates a QR image from that URI.
 Startup (`app.whenReady`): `start()` → register backend and terminal forwarders
 → register IPC → `createWindow()` → begin asynchronous `connect()`. On
 `window-all-closed` the app quits on every platform and the backend is
-stopped in `before-quit`; the window is created hidden and shown on
+stopped in `before-quit` after renderer unload approval; the window is created
+hidden and shown on
 `ready-to-show` (5s fallback), renderer console output is forwarded to
 main stdout, and a renderer crash logs and reloads (once per 10s) instead
 of leaving a dead black window. On macOS activate: re-creates only the

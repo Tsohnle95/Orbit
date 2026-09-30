@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useStore } from "../store";
 import { applyW3cMarkers } from "../w3c-validation";
+import type { EditorStatus } from "./editor-status";
 
 const W3C_FILE = /\.(?:html?|css)$/i;
 
@@ -10,9 +11,10 @@ interface ValidateResult {
   failed: boolean;
 }
 
-export function StatusBar(): ReactNode {
+export function StatusBar({ editorStatus = null }: { editorStatus?: EditorStatus | null }): ReactNode {
   const { tabs, activePath } = useStore();
   const activeTab = tabs.find((tab) => tab.path === activePath);
+  const cursorStatus = editorStatus?.path === activeTab?.path ? editorStatus : null;
   const w3cFile = activeTab !== undefined && W3C_FILE.test(activeTab.path);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<ValidateResult | null>(null);
@@ -66,13 +68,7 @@ export function StatusBar(): ReactNode {
 
   return (
     <div className="statusbar">
-      <div className="statusbar-left" />
-      <div className="statusbar-right">
-        {activeTab && (
-          <span className="statusbar-item statusbar-path" title={activeTab.path}>
-            {activeTab.path}
-          </span>
-        )}
+      <div className="statusbar-left">
         {w3cFile && resultText && (
           <span className={`validate-result ${resultTone}`} data-testid="validate-result">
             {resultText}
@@ -89,6 +85,22 @@ export function StatusBar(): ReactNode {
             {running && <span className="validate-spinner" aria-hidden="true" />}
             {running ? "Validating…" : "Validate"}
           </button>
+        )}
+      </div>
+      <div className="statusbar-right">
+        {activeTab && (
+          <>
+            <span className="statusbar-item statusbar-metadata" data-testid="cursor-position">
+              Ln {cursorStatus?.lineNumber ?? 1}, Col {cursorStatus?.column ?? 1}
+            </span>
+            <span className="statusbar-item statusbar-metadata" data-testid="indentation-status">
+              {cursorStatus?.insertSpaces === false ? "Tab Size" : "Spaces"}: {cursorStatus?.tabSize ?? 2}
+            </span>
+            <span className="statusbar-item statusbar-metadata" data-testid="encoding-status">UTF-8</span>
+            <span className="statusbar-item statusbar-path" title={activeTab.path}>
+              {activeTab.path}
+            </span>
+          </>
         )}
       </div>
     </div>

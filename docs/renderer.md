@@ -291,12 +291,14 @@ Key mechanisms:
   state retains parsed input, content blocks, metadata, execution state, and
   provider state. Durable end/snapshot events are authoritative; terminal
   tool states cannot regress when events arrive late.
-- **Revision-safe persistence** — `EditorPersistence` receives immutable
-  workspace/path/content/revision snapshots, debounces 900ms, serializes each
-  workspace/file, and strongly identifies echoes. Dirty clears only for the
-  matching current revision; ⌘S cancels the timer and saves that revision.
+- **Manual, revision-safe persistence** — editing updates the in-memory tab and
+  marks it dirty; it does not write to disk. `EditorPersistence` receives an
+  immutable workspace/path/content/revision snapshot only when the user clicks
+  Save or presses ⌘S/Ctrl+S, serializes writes per workspace/file, and strongly
+  identifies echoes. Dirty clears only for the matching current revision.
 - **Lifecycle and conflicts** — reset, close, delete, rename, switch, and
-  unmount invalidate relevant timers, expected echoes, and completions.
+  unmount invalidate expected echoes and in-flight completions. Any dirty tab
+  in any workspace blocks window unload until the user confirms discarding it.
   External updates advance a per-path conflict generation, so completion of a
   write already in flight cannot clear the newer conflict.
   External updates preserve edits and pause saving until explicit Reload,
@@ -458,7 +460,7 @@ express a cross-component invariant or non-obvious state contract.
 | `SettingsPage` | `SettingsPage.tsx` | Ten design-direction palettes plus the restored Kitty Glass and Original Dark appearances, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and About with GitHub app update status/actions; missing update IPC handlers explain that Orbit must be reopened |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
 | `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
-| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, save/conflict UI, editor validation entry points, and optional side-by-side editor groups with independent tab membership and selection |
+| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and optional side-by-side groups with independent tab membership and selection; new tabs route to the focused group |
 | `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status |
 | `AgentTui` | `AgentTui.tsx` | xterm view for the active runtime's PTY-backed TUI |
 | `OpenCodeTimeline` | `OpenCodeTimeline.tsx` | Runtime-neutral chronological rendering of assistant text/tools/delegation with hidden reasoning |
@@ -588,13 +590,17 @@ released at that collapsed position.
   provider's noise checks (unknown tags, unresolved CSS values, unknown
   `.class` fragments) so Enter/Tab only expands genuine abbreviations.
 
-## W3C editor validation
+## Status bar and W3C editor validation
+
+- The status bar's right side reports the focused Monaco editor's line and
+  column, indentation width, and UTF-8 encoding. Cursor updates from an
+  unfocused split group do not replace the focused editor's status.
 
 - The W3C checkers never run automatically. The **Validate** button appears at
-  the bottom-right of `StatusBar` only for an open HTML or CSS file and runs them on demand for that
-  HTML or CSS file. Preprocessor stylesheets (SCSS, LESS, Sass) are not
-  validated — the W3C CSS Validator cannot parse them and would flag valid
-  syntax as errors.
+  the bottom-left of `StatusBar` only for an open HTML or CSS file and runs
+  them on demand for that file. Preprocessor stylesheets (SCSS, LESS, Sass)
+  are not validated — the W3C CSS Validator cannot parse them and would flag
+  valid syntax as errors.
 - `StatusBar` sends the active tab's content through
   `window.openshell.validateW3c`, applies the returned diagnostics as
   `w3c`-owner Monaco markers via `w3c-validation.ts`, and shows error and

@@ -12,6 +12,7 @@ import { useTheme } from "../theme";
 import { registerEditor, unregisterEditor } from "../reveal";
 import { droppedFilePaths, isExternalFileDrag } from "../drop";
 import type { Tab } from "@shared/types";
+import type { EditorStatus } from "./editor-status";
 import { IconChevronRight, IconClose } from "./icons";
 
 const EDITOR_OPTIONS = {
@@ -34,6 +35,7 @@ const EDITOR_OPTIONS = {
   lineDecorationsWidth: 0,
   wordWrap: "on" as const
 };
+const ignoreEditorStatus = (): void => {};
 
 function SplitRightIcon(): ReactNode {
   return (
@@ -117,7 +119,7 @@ function TabBar({
 }
 
 function BreadcrumbBar({ tab, directory }: { tab: Tab; directory: string | undefined }): ReactNode {
-  const { setTabMode } = useStore();
+  const { setTabMode, saveTab } = useStore();
   const root = directory?.split(/[\\/]/).filter(Boolean).at(-1) ?? "workspace";
   const segments = tab.path.replace(/\\/g, "/").split("/").filter(Boolean);
   const diffAvailable = tab.baseline?.kind === "known";
@@ -137,6 +139,15 @@ function BreadcrumbBar({ tab, directory }: { tab: Tab; directory: string | undef
       </nav>
       <div className="editor-breadcrumb-actions">
         {tab.dirty && <span className="editor-dirty">unsaved</span>}
+        {tab.dirty && !tab.conflict && (
+          <button
+            type="button"
+            className="toolbar-btn"
+            aria-label={`Save ${tab.name}`}
+            title="Save this file"
+            onClick={() => void saveTab(tab.path)}
+          >Save</button>
+        )}
         {tab.stale && <span className="editor-stale">changed on disk</span>}
         {tab.deleted && <span className="editor-deleted">deleted on disk</span>}
         {diffAvailable && (
@@ -151,7 +162,15 @@ function BreadcrumbBar({ tab, directory }: { tab: Tab; directory: string | undef
   );
 }
 
-function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
+function EditorWithSave({
+  tab,
+  focused,
+  onStatusChange
+}: {
+  tab: Tab;
+  focused: boolean;
+  onStatusChange: (status: EditorStatus) => void;
+}): ReactNode {
   const { theme } = useTheme();
   const {
     editContent,
@@ -163,14 +182,14 @@ function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+      if (focused && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         void saveTab(tab.path);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [saveTab, tab.path]);
+  }, [focused, saveTab, tab.path]);
 
   const language = useMemo(() => languageForPath(tab.path), [tab.path]);
   const w3cFile = useMemo(() => /\.(?:html?|css)$/i.test(tab.path), [tab.path]);
@@ -179,10 +198,34 @@ function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
   const options = EDITOR_OPTIONS;
 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const cursorListenerRef = useRef<{ dispose: () => void } | null>(null);
+  const focusedRef = useRef(focused);
+  focusedRef.current = focused;
   const tabContent = tab.content;
   const tabPath = tab.path;
   const tabContentRef = useRef(tabContent);
   tabContentRef.current = tabContent;
+
+  const publishStatus = useCallback((ed: editor.IStandaloneCodeEditor | null = editorRef.current): void => {
+    if (!focusedRef.current || !ed) return;
+    const position = ed.getPosition();
+    const model = ed.getModel();
+    if (!position || !model) return;
+    const modelOptions = model.getOptions();
+    onStatusChange({
+      path: tabPath,
+      lineNumber: position.lineNumber,
+      column: position.column,
+      tabSize: modelOptions.tabSize,
+      insertSpaces: modelOptions.insertSpaces
+    });
+  }, [onStatusChange, tabPath]);
+
+  const watchCursor = useCallback((ed: editor.IStandaloneCodeEditor): void => {
+    cursorListenerRef.current?.dispose();
+    cursorListenerRef.current = ed.onDidChangeCursorPosition(() => publishStatus(ed));
+    publishStatus(ed);
+  }, [publishStatus]);
 
   const handleChange = useCallback((value: string | undefined): void => {
     if (value !== undefined) editContent(tabPath, value);
@@ -201,7 +244,12 @@ function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
         text: latest
       }], () => null);
     }
-  }, [tabPath]);
+    watchCursor(ed);
+  }, [tabPath, watchCursor]);
+
+  useEffect(() => {
+    if (focused) publishStatus();
+  }, [focused, publishStatus]);
 
   useEffect(() => {
     const ed = editorRef.current;
@@ -232,7 +280,11 @@ function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
     return () => clearW3cMarkers(tab.path);
   }, [tab.content, tab.path, w3cFile]);
 
-  useEffect(() => () => unregisterEditor(tab.path), [tab.path]);
+  useEffect(() => () => {
+    cursorListenerRef.current?.dispose();
+    cursorListenerRef.current = null;
+    unregisterEditor(tabPath);
+  }, [tabPath]);
 
   return (
     <div className="editor-wrap">
@@ -267,7 +319,12 @@ function EditorWithSave({ tab }: { tab: Tab }): ReactNode {
           language={language}
           original={tab.baseline?.kind === "known" ? tab.baseline.content : ""}
           modified={tab.content}
-          onMount={(ed) => registerEditor(tab.path, ed.getModifiedEditor())}
+          onMount={(ed) => {
+            const modifiedEditor = ed.getModifiedEditor();
+            editorRef.current = modifiedEditor;
+            registerEditor(tab.path, modifiedEditor);
+            watchCursor(modifiedEditor);
+          }}
           options={{
             ...options,
             readOnly: true,
@@ -306,6 +363,7 @@ function EditorGroup({
   directory,
   focused,
   splitEnabled,
+  onStatusChange,
   onSelect,
   onCloseTab,
   onActivate,
@@ -318,6 +376,7 @@ function EditorGroup({
   directory: string | undefined;
   focused: boolean;
   splitEnabled: boolean;
+  onStatusChange: (status: EditorStatus) => void;
   onSelect: (path: string) => void;
   onCloseTab: (path: string) => void;
   onActivate: (id: EditorGroupID) => void;
@@ -363,7 +422,7 @@ function EditorGroup({
       {activeTab
         ? <>
             <BreadcrumbBar tab={activeTab} directory={directory} />
-            <EditorWithSave key={id + ":" + activeTab.path} tab={activeTab} />
+            <EditorWithSave key={id + ":" + activeTab.path} tab={activeTab} focused={focused} onStatusChange={onStatusChange} />
           </>
         : <div className="editor-group-empty">
             <OrbitMark size={30} />
@@ -374,7 +433,7 @@ function EditorGroup({
   );
 }
 
-export function EditorPane(): ReactNode {
+export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusChange?: (status: EditorStatus) => void }): ReactNode {
   const { tabs, activePath, openPaths, session, setActive, closeTab } = useStore();
   const workspaceID = session?.workspace.id ?? null;
   const [externalDrag, setExternalDrag] = useState(false);
@@ -384,8 +443,14 @@ export function EditorPane(): ReactNode {
   const [primaryTabPaths, setPrimaryTabPaths] = useState<string[]>(() => tabs.map((tab) => tab.path));
   const [secondaryTabPaths, setSecondaryTabPaths] = useState<string[]>([]);
   const [activeGroup, setActiveGroup] = useState<EditorGroupID>("primary");
+  const activeGroupRef = useRef<EditorGroupID>("primary");
   const [groupWorkspaceID, setGroupWorkspaceID] = useState(workspaceID);
   const activePathRef = useRef(activePath);
+
+  const focusGroup = (group: EditorGroupID): void => {
+    activeGroupRef.current = group;
+    setActiveGroup(group);
+  };
 
   useEffect(() => {
     if (groupWorkspaceID !== workspaceID) return;
@@ -393,11 +458,11 @@ export function EditorPane(): ReactNode {
     activePathRef.current = activePath;
     if (activePath && primaryTabPaths.includes(activePath)) {
       setPrimaryPath(activePath);
-      setActiveGroup("primary");
+      focusGroup("primary");
     } else if (activePath && secondaryTabPaths.includes(activePath)) {
       setSecondaryPath(activePath);
-      setActiveGroup("secondary");
-    } else if (activeGroup === "primary") {
+      focusGroup("secondary");
+    } else if (activeGroupRef.current === "primary") {
       setPrimaryPath(activePath);
     } else {
       setSecondaryPath(activePath);
@@ -414,7 +479,7 @@ export function EditorPane(): ReactNode {
       setPrimaryPath(activePath ?? paths[0] ?? null);
       setSecondaryPath(null);
       setSplitEnabled(false);
-      setActiveGroup("primary");
+      focusGroup("primary");
       return;
     }
 
@@ -424,7 +489,7 @@ export function EditorPane(): ReactNode {
     const assigned = new Set([...nextPrimaryPaths, ...nextSecondaryPaths]);
     const unassigned = paths.filter((path) => !assigned.has(path));
     if (unassigned.length > 0) {
-      if (splitEnabled && activeGroup === "secondary") nextSecondaryPaths = [...nextSecondaryPaths, ...unassigned];
+      if (splitEnabled && activeGroupRef.current === "secondary") nextSecondaryPaths = [...nextSecondaryPaths, ...unassigned];
       else nextPrimaryPaths = [...nextPrimaryPaths, ...unassigned];
     }
 
@@ -446,7 +511,7 @@ export function EditorPane(): ReactNode {
 
     if (paths.length === 0 && splitEnabled) {
       setSplitEnabled(false);
-      setActiveGroup("primary");
+      focusGroup("primary");
     }
   }, [activeGroup, activePath, groupWorkspaceID, primaryPath, primaryTabPaths, secondaryPath, secondaryTabPaths, splitEnabled, tabs, workspaceID]);
 
@@ -456,12 +521,12 @@ export function EditorPane(): ReactNode {
   const selectPath = (group: EditorGroupID, path: string): void => {
     if (group === "primary") setPrimaryPath(path);
     else setSecondaryPath(path);
-    setActiveGroup(group);
+    focusGroup(group);
     if (path !== activePath) setActive(path);
   };
 
   const activateGroup = (group: EditorGroupID): void => {
-    setActiveGroup(group);
+    focusGroup(group);
     const path = group === "primary" ? primaryPath : secondaryPath;
     if (path && path !== activePath) setActive(path);
   };
@@ -472,7 +537,7 @@ export function EditorPane(): ReactNode {
       setSecondaryTabPaths([]);
       setSplitEnabled(false);
       setSecondaryPath(null);
-      setActiveGroup("primary");
+      focusGroup("primary");
       if (primaryPath && primaryPath !== activePath) setActive(primaryPath);
       return;
     }
@@ -489,7 +554,7 @@ export function EditorPane(): ReactNode {
       setSecondaryTabPaths([nextSecondary]);
     }
     setSplitEnabled(true);
-    setActiveGroup("secondary");
+    focusGroup("secondary");
     if (nextSecondary && nextSecondary !== activePath) setActive(nextSecondary);
   };
 
@@ -508,7 +573,7 @@ export function EditorPane(): ReactNode {
     const group = e.target instanceof Element
       ? e.target.closest<HTMLElement>("[data-editor-group]")?.dataset.editorGroup
       : undefined;
-    if (group === "primary" || group === "secondary") setActiveGroup(group);
+    if (group === "primary" || group === "secondary") activateGroup(group);
     const files = droppedFilePaths(e);
     if (files.length > 0) void openPaths(files);
   };
@@ -547,6 +612,7 @@ export function EditorPane(): ReactNode {
             directory={session?.directory}
             focused={activeGroup === "primary"}
             splitEnabled={splitEnabled}
+            onStatusChange={onStatusChange}
             onSelect={(path) => selectPath("primary", path)}
             onCloseTab={closeTab}
             onActivate={activateGroup}
@@ -560,6 +626,7 @@ export function EditorPane(): ReactNode {
             directory={session?.directory}
             focused={activeGroup === "secondary"}
             splitEnabled
+            onStatusChange={onStatusChange}
             onSelect={(path) => selectPath("secondary", path)}
             onCloseTab={closeTab}
             onActivate={activateGroup}

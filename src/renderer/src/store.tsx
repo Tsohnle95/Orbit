@@ -168,6 +168,7 @@ interface Store {
   providerUsage: ProviderUsageResult[];
   providerUsageLoading: boolean;
   tabs: Tab[];
+  unsavedEditorFileCount: number;
   activePath: string | null;
   singleFile: string | null;
   agentFiles: Map<string, AgentFileState>;
@@ -582,6 +583,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const transcript = session ? transcriptsBySession[session.id] ?? [] : [];
   const sessionUsage = session ? usageBySession[session.id] ?? null : null;
   const tabs = session ? tabsByWorkspace[session.workspace.id] ?? EMPTY_TABS : EMPTY_TABS;
+  const unsavedEditorFileCount = Object.values(tabsByWorkspace).reduce(
+    (count, workspaceTabs) => count + workspaceTabs.filter((tab) => tab.dirty).length,
+    0
+  );
   const activePath = session ? activePathByWorkspace[session.workspace.id] ?? null : null;
   const singleFile = session ? singleFileByWorkspace[session.workspace.id] ?? null : null;
   const agentFiles = session ? agentFilesByWorkspace[session.workspace.id] ?? EMPTY_AGENT_FILES : EMPTY_AGENT_FILES;
@@ -2720,7 +2725,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         ? (tabsByWorkspaceRef.current[target.id] ?? []).find((candidate) => candidate.path === path)
         : undefined;
       if (!target || !tab || tab.conflict) return;
-      persistence.cancelTimer(target, path);
       await doSave({
         workspace: target,
         path,
@@ -2730,7 +2734,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         standalone: tab.standalone
       });
     },
-    [doSave, persistence]
+    [doSave]
   );
 
   const editContent = useCallback(
@@ -2740,20 +2744,11 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         ? (tabsByWorkspaceRef.current[target.id] ?? []).find((candidate) => candidate.path === path)
         : undefined;
       if (!target || !tab || tab.content === content) return;
-      const snapshot = {
-        workspace: target,
-        path,
-        content,
-        expectedContent: tab.saved,
-        revision: tab.revision + 1,
-        standalone: tab.standalone
-      };
       setTabsFor(target.id, (prev) => prev.map((candidate) => candidate.path === path
-        ? { ...candidate, content, revision: snapshot.revision, dirty: true }
+        ? { ...candidate, content, revision: candidate.revision + 1, dirty: true }
         : candidate));
-      if (!tab.conflict) persistence.schedule(snapshot, (next) => void doSave(next));
     },
-    [doSave, persistence, setTabsFor]
+    [setTabsFor]
   );
 
   const reloadTab = useCallback((path: string) => {
@@ -2782,7 +2777,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       ? (tabsByWorkspaceRef.current[target.id] ?? []).find((candidate) => candidate.path === path)
       : undefined;
     if (!target || !tab?.conflict) return;
-    persistence.cancelTimer(target, path);
     await doSave({
       workspace: target,
       path,
@@ -2792,7 +2786,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       overwrite: true,
       standalone: tab.standalone
     }, true);
-  }, [doSave, persistence]);
+  }, [doSave]);
 
   const mergeTab = useCallback((path: string) => {
     const target = sessionRef.current?.workspace;
@@ -2880,7 +2874,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
             if (tab.path !== f.path) return tab;
             if (origin === "echo") return tab;
             if (tab.dirty) {
-              persistence.cancelTimer(f.workspace, f.path);
               return {
                 ...tab,
                 baseline: f.baseline,
@@ -3615,6 +3608,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       providerUsage,
       providerUsageLoading,
       tabs,
+      unsavedEditorFileCount,
       activePath,
       singleFile,
       agentFiles,
@@ -3705,7 +3699,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       acknowledgeRecovery
     }),
     [
-      session, connected, runtimes, refreshRuntimes, busy, todos, transcript, sessionUsage, providerUsage, providerUsageLoading, tabs, activePath, singleFile, agentFiles, tree, expanded, hiddenPaths, toasts, recoveryRecords,
+      session, connected, runtimes, refreshRuntimes, busy, todos, transcript, sessionUsage, providerUsage, providerUsageLoading, tabs, unsavedEditorFileCount, activePath, singleFile, agentFiles, tree, expanded, hiddenPaths, toasts, recoveryRecords,
       models, availableModels, lastModel, currentModel, agents, currentAgent, approvalMode, messageQueue.followUpBehavior, setFollowUpBehavior, sessions, savedWorkspaces, saveWorkspace, removeWorkspace, activeSessions, panels, workspaceOnlyPanelIDs, panelViews, activeSessionID,
       focusSession, closePanel, openSession, addModelPanel, openWorkspacePanel, selectAddPanel, selectFolder, selectFile, openFileWorkspace, openExternalPath, importPaths, dropIntoExplorer, selectPanelDirectory, changePanelDirectory, reopenSession, loadSessions, sendPrompt, runCommand, stop, refreshProviderUsage, loadModels, switchModel,
       loadAgents, switchAgent, toggleApprovalMode,

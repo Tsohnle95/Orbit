@@ -124,11 +124,34 @@ describe("store external files", () => {
     await act(async () => store.openSession("/one"));
     await act(async () => store.openExternalPath("/outside/notes.txt"));
     act(() => store.editContent("/outside/notes.txt", "v2"));
+
+    expect(writeStandalone).not.toHaveBeenCalled();
+    expect(store.tabs.find((t) => t.path === "/outside/notes.txt")?.dirty).toBe(true);
+    expect(store.unsavedEditorFileCount).toBe(1);
+
     await act(async () => store.saveTab("/outside/notes.txt"));
 
     expect(writeStandalone).toHaveBeenCalledWith("/outside/notes.txt", "v2", "v1", false);
     const tab = store.tabs.find((t) => t.path === "/outside/notes.txt")!;
     expect(tab.dirty).toBe(false);
+    expect(store.unsavedEditorFileCount).toBe(0);
+  });
+
+  it("keeps inactive-workspace dirty files in the close warning count", async () => {
+    const openExternal = vi.fn(async (): Promise<ExternalOpenResult> => ({
+      kind: "standalone", path: "/outside/notes.txt", content: "v1"
+    }));
+    window.openshell = api({ openExternal });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openExternalPath("/outside/notes.txt"));
+    act(() => store.editContent("/outside/notes.txt", "unfinished"));
+    expect(store.unsavedEditorFileCount).toBe(1);
+
+    await act(async () => store.openSession("/two"));
+
+    expect(store.session?.directory).toBe("/two");
+    expect(store.unsavedEditorFileCount).toBe(1);
   });
 
   it("opens a single file as a single-file workspace and marks the sidebar", async () => {

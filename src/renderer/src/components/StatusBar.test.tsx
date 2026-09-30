@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Tab } from "@shared/types";
 import { StatusBar } from "./StatusBar";
 import { applyW3cMarkers } from "../w3c-validation";
+import type { EditorStatus } from "./editor-status";
 
 const htmlTab: Tab = {
   path: "index.html",
@@ -76,7 +77,7 @@ describe("StatusBar validation", () => {
     act(() => root.render(<StatusBar />));
     const button = container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!;
     expect(button.disabled).toBe(false);
-    expect(button.closest(".statusbar-right")).not.toBeNull();
+    expect(button.closest(".statusbar-left")).not.toBeNull();
 
     await act(async () => {
       button.click();
@@ -113,5 +114,35 @@ describe("StatusBar validation", () => {
     });
 
     expect(container.querySelector('[data-testid="validate-result"]')?.textContent).toBe("Validation failed");
+  });
+
+  it("shows cursor, indentation, and encoding details for the active editor", () => {
+    const status: EditorStatus = {
+      path: htmlTab.path,
+      lineNumber: 123,
+      column: 61,
+      tabSize: 4,
+      insertSpaces: true
+    };
+    act(() => root.render(<StatusBar editorStatus={status} />));
+
+    expect(container.querySelector('[data-testid="cursor-position"]')?.textContent).toBe("Ln 123, Col 61");
+    expect(container.querySelector('[data-testid="indentation-status"]')?.textContent).toBe("Spaces: 4");
+    expect(container.querySelector('[data-testid="encoding-status"]')?.textContent).toBe("UTF-8");
+    expect(container.querySelector('[data-testid="cursor-position"]')?.closest(".statusbar-right")).not.toBeNull();
+  });
+
+  it("does not display cursor details from another file", () => {
+    const status: EditorStatus = {
+      path: "other.ts",
+      lineNumber: 99,
+      column: 40,
+      tabSize: 8,
+      insertSpaces: false
+    };
+    act(() => root.render(<StatusBar editorStatus={status} />));
+
+    expect(container.querySelector('[data-testid="cursor-position"]')?.textContent).toBe("Ln 1, Col 1");
+    expect(container.querySelector('[data-testid="indentation-status"]')?.textContent).toBe("Spaces: 2");
   });
 });

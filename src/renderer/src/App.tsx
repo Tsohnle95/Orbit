@@ -12,6 +12,8 @@ import { OrbitMark } from "./components/OrbitMark";
 import { SettingsPage } from "./components/SettingsPage";
 import { SettingsSidebar, type SettingsSection } from "./components/SettingsSidebar";
 import { StatusBar } from "./components/StatusBar";
+import type { EditorStatus } from "./components/editor-status";
+import { protectEditorUnload } from "./editor-close-guard";
 import { ThemeProvider } from "./theme";
 import { agentPanelGrid, MAX_AGENT_PANELS } from "./agent-panels";
 
@@ -347,6 +349,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const [sideTab, setSideTab] = useState<SidebarTab>("files");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("appearance");
+  const [editorStatus, setEditorStatus] = useState<EditorStatus | null>(null);
   const [agentModeActive, setAgentModeActive] = useState(false);
   const [agentModePanelIDs, setAgentModePanelIDs] = useState<string[]>([]);
   const [emptyAgentOpen, setEmptyAgentOpen] = useState(true);
@@ -357,6 +360,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const emptyAgentRef = useRef<HTMLDivElement>(null);
   const prevSidebarRef = useRef<{ open: boolean; width: number } | null>(null);
   const inAgentMode = agentModeActive;
+
   const codingPanel = useMemo(
     () => allPanels.find((panel) => panel.id === activeSessionID) ?? agentPanels[0] ?? null,
     [activeSessionID, agentPanels, allPanels]
@@ -1038,7 +1042,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             } as CSSProperties
           }
         >
-          <EditorPane />
+          <EditorPane onStatusChange={setEditorStatus} />
           {ordered.map((panel, index) => {
             const s = slotFor(panel);
             const anchorId = panels[0]?.workspace.id ?? null;
@@ -1105,7 +1109,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
         </div>}
       </div>
 
-      {!settingsOpen && <StatusBar />}
+      {!settingsOpen && <StatusBar editorStatus={editorStatus} />}
       <Toasts />
       <RecoveryNotice />
     </div>
@@ -1143,10 +1147,19 @@ export default function App(): ReactNode {
 }
 
 function Root(): ReactNode {
-  const { session } = useStore();
+  const { session, unsavedEditorFileCount } = useStore();
   const wasOpen = useRef(false);
   const [enteredIde, setEnteredIde] = useState(false);
   const pendingView = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (unsavedEditorFileCount === 0) return;
+    const preventClose = (event: BeforeUnloadEvent): void => {
+      protectEditorUnload(event, unsavedEditorFileCount);
+    };
+    window.addEventListener("beforeunload", preventClose);
+    return () => window.removeEventListener("beforeunload", preventClose);
+  }, [unsavedEditorFileCount]);
 
   useEffect(() => {
     if (session && !enteredIde) setEnteredIde(true);

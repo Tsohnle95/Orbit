@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { FileWriteIdentity, WorkspaceIdentity } from "@shared/types";
 import { EditorPersistence, type SaveSnapshot } from "./editor-persistence";
 
@@ -27,32 +27,12 @@ async function flushPromises(): Promise<void> {
   await Promise.resolve();
 }
 
-afterEach(() => vi.useRealTimers());
-
 describe("EditorPersistence", () => {
-  it("autosaves the latest typed snapshot instead of a render closure", async () => {
-    vi.useFakeTimers();
-    const writes: SaveSnapshot[] = [];
-    const persistence = new EditorPersistence(async (value) => { writes.push(value); });
-    const save = (value: SaveSnapshot): void => { void persistence.save(value); };
-
-    persistence.schedule(snapshot("one", "file.ts", "first", 1), save);
-    persistence.schedule(snapshot("one", "file.ts", "latest", 2), save);
-    await vi.advanceTimersByTimeAsync(900);
-    await persistence.idle(workspace("one"), "file.ts");
-
-    expect(writes).toEqual([snapshot("one", "file.ts", "latest", 2)]);
-  });
-
-  it("cancels autosave before a manual save and preserves the exact manual revision", async () => {
-    vi.useFakeTimers();
+  it("writes only the snapshot passed to an explicit save", async () => {
     const writes: SaveSnapshot[] = [];
     const persistence = new EditorPersistence(async (value) => { writes.push(value); });
     const value = snapshot("one", "file.ts", "manual", 3);
-    persistence.schedule(value, (next) => { void persistence.save(next); });
-    persistence.cancelTimer(value.workspace, value.path);
     await persistence.save(value);
-    await vi.runAllTimersAsync();
 
     expect(writes).toEqual([value]);
   });
@@ -187,8 +167,7 @@ describe("EditorPersistence", () => {
     ["rename", (p: EditorPersistence) => p.cancelPrefix(workspace("one"), "dir")],
     ["workspace switch", (p: EditorPersistence) => p.cancelWorkspace(workspace("one"))],
     ["reset or unmount", (p: EditorPersistence) => p.cancelAll()]
-  ])("cancels timers and invalidates deferred completion on %s", async (_name, cancel) => {
-    vi.useFakeTimers();
+  ])("invalidates deferred completion on %s", async (_name, cancel) => {
     const pending = deferred();
     const writes: string[] = [];
     const persistence = new EditorPersistence(async (value) => {
@@ -196,12 +175,10 @@ describe("EditorPersistence", () => {
       await pending.promise;
     });
     const value = snapshot("one", "dir/file.ts", "content", 1);
-    persistence.schedule(value, (next) => { void persistence.save(next); });
     const saving = persistence.save(value);
     await flushPromises();
 
     cancel(persistence);
-    await vi.runAllTimersAsync();
     pending.resolve();
     expect(await saving).toBe("cancelled");
     expect(writes).toEqual(["content"]);

@@ -16,7 +16,6 @@ export type FileUpdateOrigin = "echo" | "external";
 type Writer = (snapshot: SaveSnapshot, write: FileWriteIdentity) => Promise<void>;
 
 export class EditorPersistence {
-  private timers = new Map<string, ReturnType<typeof setTimeout>>();
   private queues = new Map<string, Promise<void>>();
   private epochs = new Map<string, number>();
   private expected = new Map<string, FileWriteIdentity & { content: string }>();
@@ -24,20 +23,7 @@ export class EditorPersistence {
   private conflicts = new Map<string, number>();
   private sequence = 0;
 
-  constructor(private readonly writer: Writer, private readonly delay = 900) {}
-
-  schedule(snapshot: SaveSnapshot, save: (snapshot: SaveSnapshot) => void): void {
-    const key = this.key(snapshot.workspace, snapshot.path);
-    this.clearTimer(key);
-    this.timers.set(key, setTimeout(() => {
-      this.timers.delete(key);
-      save(snapshot);
-    }, this.delay));
-  }
-
-  cancelTimer(workspace: WorkspaceIdentity, path: string): void {
-    this.clearTimer(this.key(workspace, path));
-  }
+  constructor(private readonly writer: Writer) {}
 
   async save(snapshot: SaveSnapshot): Promise<SaveResult> {
     const key = this.key(snapshot.workspace, snapshot.path);
@@ -129,7 +115,6 @@ export class EditorPersistence {
 
   private keys(): Set<string> {
     return new Set([
-      ...this.timers.keys(),
       ...this.queues.keys(),
       ...this.expected.keys(),
       ...this.persisted.keys(),
@@ -139,16 +124,10 @@ export class EditorPersistence {
   }
 
   private cancelKey(key: string): void {
-    this.clearTimer(key);
     this.expected.delete(key);
     this.persisted.delete(key);
     this.epochs.set(key, (this.epochs.get(key) ?? 0) + 1);
     this.conflicts.delete(key);
   }
 
-  private clearTimer(key: string): void {
-    const timer = this.timers.get(key);
-    if (timer) clearTimeout(timer);
-    this.timers.delete(key);
-  }
 }
