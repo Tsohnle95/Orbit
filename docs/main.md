@@ -74,7 +74,7 @@ Public methods (all used by IPC):
 | `statExternal(absolutePath)` | Probes an absolute path (`file` / `directory` / `missing`) so a mixed file/folder drop can be routed: files open as standalone tabs, folders import into the workspace |
 | `writeStandaloneFile(absolutePath, content, expectedContent, overwrite)` | Bounded atomic write (temp-file + rename in the file's own directory) for standalone tabs; rejects mismatched `expectedContent` unless `overwrite` |
 | `importExternal(workspace, destDir, sources)` | Copies external files/folders into the workspace at `destDir` (per-workspace serialized, symbolically linked entries skipped, file/byte caps), seeding the watcher's known baselines so imported files never surface in Changes |
-| `listSessions()` | `session.list` (paged, newest first) → `{id, title, directory, updatedAt, parentID?, agent?}`; hides sessions older than 30 days and sessions with no conversation (no title and zero token usage) |
+| `listSessions()` | `session.list` (paged newest first, up to 5,000 conversations) → `{id, title, directory, updatedAt, parentID?, agent?}`; hides sessions without a title or token usage, but keeps conversation history regardless of age |
 | `activeSessions()` | The open contexts' `SessionInfo` in activation order, primary last (startup restore) |
 | `closeSession(workspace)` | Tears down the addressed context (stops its watcher, removes it from the context map) when its panel closes; the opencode session itself stays alive so recents can reopen it |
 | `deleteSession(sessionID)` | Closes the panel context when open, then permanently destroys the OpenCode session via `session.remove`; legacy DeepSeek sessions are unavailable |
@@ -195,17 +195,12 @@ Internals:
   at 200) so conversations longer than the server's default page size load
   completely. A persistent failure throws so reopen surfaces an error instead of
   materializing an empty conversation (which would block later rehydration).
-- Session retention (`scheduleRetentionPrune` / `pruneExpiredSessions`) — after
-  every successful connect (throttled to once per 24h), pages through all
-  sessions and permanently deletes those whose last activity is older than 30
-  days (`SESSION_RETENTION_MS` in `@shared/retention`). Conversation-less
-  sessions (no title and zero token usage — e.g. workspaces opened but never
-  prompted) are deleted after only 24 hours (`EMPTY_SESSION_RETENTION_MS`) so
-  auto-created empties never accumulate. Sessions currently open in Orbit
-  and sessions with unknown timestamps are never deleted; per-session removal
-  failures are skipped. `listSessions` applies the same 30-day window and
-  additionally hides never-prompted sessions, so they cannot crowd real history
-  out of recents.
+- Session history — `listSessions` pages newest first through up to 100 pages
+  of OpenCode history and retains every titled or token-bearing conversation,
+  regardless of age. Orbit does not automatically delete sessions; permanent
+  removal is available only through the user's explicit Delete Session action.
+  Conversation-less sessions remain out of recents so empty workspace opens
+  do not crowd the history list.
 - `snapshotInputs(context, input)` — recursively walks the tool-call input for
   `filePath`/`file_path`/`path` keys and snapshots those files
   (skips http URLs, dedupes) into the addressed context.
@@ -242,7 +237,7 @@ Internals:
 | Channel | Args → Returns |
 |---|---|
 | `shell:select-folder` | `(generation, runtimeID?) → SessionInfo \| null` (generation accepted before native dialog; only OpenCode is enabled); the returned session is mounted by the caller — replacing the displayed panels, added as a new panel, or swapped into an existing panel — depending on the store action that opened the dialog |
-| `shell:select-directory` | `() → string \| null` — returns the canonical folder chosen in a native dialog without opening a runtime context; workspace bookmarks are renderer-owned and this channel never mutates the selected folder |
+| `shell:select-directory` | `() → string \| null` — returns the canonical folder chosen in a native dialog without opening a runtime context |
 | `shell:open-session` | `(dir, generation, runtimeID?) → SessionInfo` — creates an OpenCode session for `dir`; non-OpenCode runtime ids are rejected |
 | `shell:select-file` | `(generation, runtimeID?) → OpenFileWorkspaceResult \| null` (generation accepted before native `openFile` dialog); opens the file's parent directory as an OpenCode session |
 | `shell:open-file` | `(file, generation, runtimeID?) → OpenFileWorkspaceResult` — opens an absolute path in a single-file workspace backed by OpenCode |
@@ -251,6 +246,8 @@ Internals:
 | `shell:fs-write-standalone` | `(file, content, expectedContent, overwrite) → void` — atomic standalone-file write for external tabs |
 | `shell:fs-import` | `(workspace, destDir, sources) → ImportResult[]` — copies external files/folders into the workspace at `destDir` (empty `destDir` is the workspace root) |
 | `shell:sessions` | `() → SessionSummary[]` |
+| `shell:saved-workspaces` | `() → SavedWorkspaceSnapshot` — reads Orbit's durable bookmarks and reports whether a saved list exists, falling back to the last good backup |
+| `shell:saved-workspaces-save` | `(ProjectInfo[]) → ProjectInfo[]` — normalizes and atomically saves bookmarks under Electron's user data directory, retaining a backup |
 | `shell:runtimes` | `() → RuntimeManifest[]` — installed status, native version, normalized protocol version, and capability bitmap |
 | `shell:sync-opencode` | `() → OpenCodeSyncResult` — restarts the attached shared OpenCode service only when needed to match the installed CLI version |
 | `shell:update-opencode` | `() → OpenCodeSyncResult` — runs OpenCode's updater, then syncs the shared service to the resulting CLI version |

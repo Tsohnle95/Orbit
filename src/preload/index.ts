@@ -41,6 +41,7 @@ import type {
   SessionSelection,
   SessionSummary,
   SessionTranscript,
+  SavedWorkspaceSnapshot,
   ViteServerInfo,
   ViteToggleResult,
   W3cDiagnostic,
@@ -140,6 +141,9 @@ const api = {
   acknowledgeRecovery: (workspace: WorkspaceIdentity, id: string): Promise<void> =>
     ipcRenderer.invoke("shell:recovery-acknowledge", workspace, id),
   projects: (): Promise<ProjectInfo[]> => ipcRenderer.invoke("shell:projects"),
+  savedWorkspaces: (): Promise<SavedWorkspaceSnapshot> => ipcRenderer.invoke("shell:saved-workspaces"),
+  saveSavedWorkspaces: (workspaces: ProjectInfo[]): Promise<ProjectInfo[]> =>
+    ipcRenderer.invoke("shell:saved-workspaces-save", workspaces),
   models: (workspace: WorkspaceIdentity): Promise<ModelOption[]> => ipcRenderer.invoke("shell:models", workspace),
   modelDefault: (workspace: WorkspaceIdentity): Promise<ModelOption | null> => ipcRenderer.invoke("shell:model-default", workspace),
   switchModel: (workspace: WorkspaceIdentity, id: string, providerID: string, variant?: string): Promise<void> =>

@@ -15,7 +15,7 @@ Exposed via `useStore()` (context). State:
 | `session` | `SessionInfo \| null` | the focused session (derived from `panels` + `activeSessionID`); null → Welcome screen on first launch, otherwise an empty IDE whose explorer offers an open-workspace CTA |
 | `panels` | `SessionInfo[]` | all attached/live sessions in panel order; each panel continues streaming even when normal coding mode renders only the focused coding session |
 | `activeSessions` | `SessionInfo[]` | backend-owned open contexts, reconciled every second independently of visible panels; drives the complete **Open now** inventory |
-| `savedWorkspaces` | `ProjectInfo[]` | Orbit-owned workspace bookmarks persisted in `localStorage` ("orbit.savedWorkspaces"); the Welcome screen can add one directly, and user-initiated opens, attachments, and swaps bookmark their workspace automatically; removing one changes only this list and never touches the filesystem |
+| `savedWorkspaces` | `ProjectInfo[]` | Orbit-owned workspace bookmarks stored in the main process under Electron user data with an atomic backup; startup migrates the legacy `localStorage` key and, only on first use without that key, OpenCode's validated project catalog; a failed read never overwrites the saved list with an empty value |
 | `panelViews` | `Record<workspaceID, PanelView>` | per-panel scoped projection (`session`, `busy`, `transcript`, `todos`, `sessionUsage`, `models`, `currentModel`, `agents`, `currentAgent`) consumed through `usePanel(workspace)` |
 | `activeSessionID` | `string \| null` | focused session id; the editor, sidebar, tree, and terminal tray bind to the focused panel while every panel keeps streaming |
 | `connected` | `boolean` | from `health()` on mount |

@@ -1,10 +1,6 @@
 import type { ToolContentView } from "./types";
 
 export const MAX_INACTIVE_SESSION_RECORDS = 4;
-export const SESSION_RETENTION_DAYS = 30;
-export const SESSION_RETENTION_MS = SESSION_RETENTION_DAYS * 24 * 60 * 60 * 1000;
-export const EMPTY_SESSION_RETENTION_MS = 24 * 60 * 60 * 1000;
-
 export interface SessionTokenUsage {
   input?: number;
   output?: number;
@@ -12,28 +8,10 @@ export interface SessionTokenUsage {
   cache?: { read?: number; write?: number };
 }
 
-export function expiredSession(
-  time: { updated?: number; created?: number } | undefined,
-  now: number,
-  maxAgeMs = SESSION_RETENTION_MS
-): boolean {
-  const lastActivity = Math.max(time?.updated ?? 0, time?.created ?? 0);
-  return lastActivity > 0 && now - lastActivity >= maxAgeMs;
-}
-
 export function hasConversation(title: string | undefined, tokens: SessionTokenUsage | undefined): boolean {
   if (typeof title === "string" && title.trim()) return true;
   if (!tokens) return false;
   return Boolean(tokens.input || tokens.output || tokens.reasoning || tokens.cache?.read || tokens.cache?.write);
-}
-
-export function disposableSession(
-  time: { updated?: number; created?: number } | undefined,
-  title: string | undefined,
-  tokens: SessionTokenUsage | undefined,
-  now: number
-): boolean {
-  return !hasConversation(title, tokens) && expiredSession(time, now, EMPTY_SESSION_RETENTION_MS);
 }
 
 export function retainMatchingSessionRecords<T>(

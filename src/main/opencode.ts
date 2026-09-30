@@ -57,11 +57,8 @@ import type {
   ModelOption
 } from "@shared/types";
 import {
-  disposableSession,
-  expiredSession,
   hasConversation,
   retainToolContent,
-  SESSION_RETENTION_MS,
   type SessionTokenUsage
 } from "@shared/retention";
 import type { WorkspaceIdentity } from "@shared/types";
@@ -606,9 +603,6 @@ export class OpenShellBackend {
   private readonly mutations = new WorkspaceOperationCoordinator();
   private lastEnsureAt = 0;
   private readonly ensureCooldownMs = 30_000;
-  private lastPruneAt = 0;
-  private pruning = false;
-  private readonly pruneCooldownMs = 24 * 60 * 60 * 1000;
   private streamConnectedOnce = false;
   private readonly runtimeAdapters = new Map<string, RuntimeAdapter>();
   private readonly runtimeSubscriptions = new Map<string, AbortController>();
@@ -720,7 +714,6 @@ export class OpenShellBackend {
       baseUrl: endpoint.url,
       headers: Service.headers(endpoint)
     });
-    this.scheduleRetentionPrune();
     return true;
   }
 
@@ -815,7 +808,6 @@ export class OpenShellBackend {
           baseUrl: endpoint.url,
           headers: Service.headers(endpoint)
         });
-        this.scheduleRetentionPrune();
         this.emit({ kind: "event", type: "server.connected", data: {} });
       } finally {
         if (resumeEventLoop && !this.stopped) this.start();
@@ -838,44 +830,6 @@ export class OpenShellBackend {
       username: endpoint.auth?.username ?? "opencode",
       password: endpoint.auth?.password ?? ""
     };
-  }
-
-  private scheduleRetentionPrune(): void {
-    if (this.pruning || Date.now() - this.lastPruneAt < this.pruneCooldownMs) return;
-    this.lastPruneAt = Date.now();
-    this.pruning = true;
-    void this.pruneExpiredSessions()
-      .catch(() => {})
-      .finally(() => {
-        this.pruning = false;
-      });
-  }
-
-  private async pruneExpiredSessions(): Promise<number> {
-    if (!this.client) return 0;
-    const now = Date.now();
-    let removed = 0;
-    let cursor: string | undefined;
-    for (let page = 0; page < 100; page += 1) {
-      const res = await this.client.session.list({ limit: 100, order: "asc", ...(cursor ? { cursor } : {}) });
-      const arr = Array.isArray(res) ? res : (res as { data?: unknown }).data ?? [];
-      for (const s of arr as Array<{
-        id?: string;
-        title?: string;
-        tokens?: SessionTokenUsage;
-        time?: { updated?: number; created?: number };
-      }>) {
-        if (!s.id || this.contextBySessionID(s.id)) continue;
-        if (!expiredSession(s.time, now) && !disposableSession(s.time, s.title, s.tokens, now)) continue;
-        await this.client.session.remove({ sessionID: s.id }).then(() => {
-          removed += 1;
-        }).catch(() => {});
-      }
-      const next = Array.isArray(res) ? undefined : (res as { cursor?: { next?: string | null } }).cursor?.next;
-      if (!next) break;
-      cursor = next;
-    }
-    return removed;
   }
 
   private async ensureBounded(version: (value: string) => boolean): Promise<Endpoint | null> {
@@ -1859,10 +1813,10 @@ export class OpenShellBackend {
     const runtimeSummaries = [...new Map([...persistedRuntimeSummaries, ...liveRuntimeSummaries]
       .filter((summary) => summary.runtimeID !== "deepseek")
       .map((summary) => [summary.id, summary])).values()];
-    if (!this.client) return runtimeSummaries.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 30);
+    if (!this.client) return runtimeSummaries.sort((a, b) => b.updatedAt - a.updatedAt);
     const summaries: SessionSummary[] = [];
     let cursor: string | undefined;
-    for (let page = 0; page < 10 && summaries.length < 30; page += 1) {
+    for (let page = 0; page < 100; page += 1) {
       const res = await this.client.session.list({ limit: 50, order: "desc", ...(cursor ? { cursor } : {}) });
       const arr = Array.isArray(res) ? res : (res as { data?: unknown }).data ?? [];
       for (const s of arr as Array<{
@@ -1877,7 +1831,6 @@ export class OpenShellBackend {
         const directory = s.location?.directory;
         if (!s.id || !directory) continue;
         const updated = s.time?.updated ?? s.time?.created ?? 0;
-        if (expiredSession(s.time, Date.now())) continue;
         if (!hasConversation(s.title, s.tokens)) continue;
         summaries.push({
           id: s.id,
@@ -1888,13 +1841,12 @@ export class OpenShellBackend {
           ...(s.parentID ? { parentID: s.parentID } : {}),
           ...(s.agent ? { agent: s.agent } : {})
         });
-        if (summaries.length >= 30) break;
       }
       const next = Array.isArray(res) ? undefined : (res as { cursor?: { next?: string | null } }).cursor?.next;
       if (!next) break;
       cursor = next;
     }
-    return [...runtimeSummaries, ...summaries].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 30);
+    return [...runtimeSummaries, ...summaries].sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
   private async loadSessionMessages(sessionID: string): Promise<unknown[]> {

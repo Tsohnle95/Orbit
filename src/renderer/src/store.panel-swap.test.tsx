@@ -2,7 +2,7 @@ import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenShellApi } from "../../preload";
-import type { BackendMessage, SessionInfo } from "@shared/types";
+import type { BackendMessage, ProjectInfo, SessionInfo } from "@shared/types";
 import { StoreProvider, useStore } from "./store";
 
 type Store = ReturnType<typeof useStore>;
@@ -40,6 +40,9 @@ function api(overrides: Partial<OpenShellApi> = {}): OpenShellApi {
     takePendingPaths: async () => [],
     state: async () => null,
     activeSessions: async () => [],
+    projects: async () => [],
+    savedWorkspaces: async () => ({ workspaces: [], initialized: true }),
+    saveSavedWorkspaces: async (workspaces: ProjectInfo[]) => workspaces,
     models: async () => [],
     modelDefault: async () => null,
     sessionSelection: async () => null,
@@ -81,19 +84,66 @@ describe("per-panel workspace selection", () => {
 
   it("persists and removes Orbit workspace bookmarks without touching the folder", async () => {
     const selectDirectory = vi.fn(async () => "/saved/workspace");
+    const saveSavedWorkspaces = vi.fn(async (workspaces: ProjectInfo[]) => workspaces);
     const deletePath = vi.fn(async () => {});
     const detachPath = vi.fn(async () => {});
-    window.openshell = api({ selectDirectory, deletePath, detachPath });
+    window.openshell = api({ selectDirectory, deletePath, detachPath, saveSavedWorkspaces });
     await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
 
     await act(async () => store.saveWorkspace());
     expect(store.savedWorkspaces).toEqual([{ directory: "/saved/workspace", name: "workspace" }]);
     expect(JSON.parse(window.localStorage.getItem("orbit.savedWorkspaces") ?? "[]")).toEqual(store.savedWorkspaces);
+    expect(window.openshell.saveSavedWorkspaces).toHaveBeenLastCalledWith(store.savedWorkspaces);
 
     await act(async () => store.removeWorkspace("/saved/workspace"));
     expect(store.savedWorkspaces).toEqual([]);
     expect(deletePath).not.toHaveBeenCalled();
     expect(detachPath).not.toHaveBeenCalled();
+  });
+
+  it("waits for app storage and preserves explicitly removed OpenCode projects", async () => {
+    const stored = deferred<{ workspaces: ProjectInfo[]; initialized: boolean }>();
+    const saveSavedWorkspaces = vi.fn(async (workspaces: ProjectInfo[]) => workspaces);
+    const projects = vi.fn(async () => [{ directory: "/opencode", name: "OpenCode" }]);
+    window.localStorage.setItem("orbit.savedWorkspaces", JSON.stringify([
+      { directory: "/legacy", name: "Legacy" }
+    ]));
+    window.openshell = api({
+      savedWorkspaces: () => stored.promise,
+      saveSavedWorkspaces,
+      projects
+    });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+
+    expect(saveSavedWorkspaces).not.toHaveBeenCalled();
+
+    await act(async () => {
+      stored.resolve({ workspaces: [{ directory: "/durable", name: "Durable" }], initialized: true });
+      await stored.promise;
+    });
+
+    const expected = [
+      { directory: "/durable", name: "Durable" },
+      { directory: "/legacy", name: "Legacy" }
+    ];
+    expect(store.savedWorkspaces).toEqual(expected);
+    expect(saveSavedWorkspaces).toHaveBeenLastCalledWith(expected);
+    expect(JSON.parse(window.localStorage.getItem("orbit.savedWorkspaces") ?? "[]")).toEqual(expected);
+    expect(projects).not.toHaveBeenCalled();
+  });
+
+  it("imports OpenCode projects on first use when no legacy bookmark list exists", async () => {
+    const projects = [{ directory: "/recovered", name: "Recovered" }];
+    const saveSavedWorkspaces = vi.fn(async (workspaces: ProjectInfo[]) => workspaces);
+    window.openshell = api({
+      savedWorkspaces: async () => ({ workspaces: [], initialized: false }),
+      saveSavedWorkspaces,
+      projects: vi.fn(async () => projects)
+    });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+
+    expect(store.savedWorkspaces).toEqual(projects);
+    expect(saveSavedWorkspaces).toHaveBeenLastCalledWith(projects);
   });
 
   it("adds a panel from the folder picker without closing existing panels", async () => {

@@ -455,13 +455,14 @@ function workspaceName(directory: string): string {
   return directory.split(/[\\/]/).filter(Boolean).pop() ?? directory;
 }
 
-function readSavedWorkspaces(): ProjectInfo[] {
+function readSavedWorkspaceData(): { workspaces: ProjectInfo[]; present: boolean } {
   try {
     const raw = window.localStorage.getItem(SAVED_WORKSPACES_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) return [];
+    if (raw === null) return { workspaces: [], present: false };
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return { workspaces: [], present: false };
     const seen = new Set<string>();
-    return parsed.flatMap((item): ProjectInfo[] => {
+    const workspaces = parsed.flatMap((item): ProjectInfo[] => {
       if (!item || typeof item !== "object") return [];
       const value = item as { directory?: unknown; name?: unknown };
       if (typeof value.directory !== "string" || !value.directory || seen.has(value.directory)) return [];
@@ -471,9 +472,28 @@ function readSavedWorkspaces(): ProjectInfo[] {
         name: typeof value.name === "string" && value.name.trim() ? value.name : workspaceName(value.directory)
       }];
     });
+    return { workspaces, present: true };
   } catch {
-    return [];
+    return { workspaces: [], present: false };
   }
+}
+
+function readSavedWorkspaces(): ProjectInfo[] {
+  return readSavedWorkspaceData().workspaces;
+}
+
+function mergeSavedWorkspaces(...lists: ProjectInfo[][]): ProjectInfo[] {
+  const merged = new Map<string, ProjectInfo>();
+  for (const list of lists) {
+    for (const workspace of list) {
+      if (!workspace?.directory || merged.has(workspace.directory)) continue;
+      merged.set(workspace.directory, {
+        directory: workspace.directory,
+        name: workspace.name?.trim() || workspaceName(workspace.directory)
+      });
+    }
+  }
+  return [...merged.values()];
 }
 
 export function StoreProvider({ children }: { children: ReactNode }): ReactNode {
@@ -527,6 +547,14 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   );
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [savedWorkspaces, setSavedWorkspaces] = useState<ProjectInfo[]>(() => readSavedWorkspaces());
+  const savedWorkspacesRef = useRef(savedWorkspaces);
+  savedWorkspacesRef.current = savedWorkspaces;
+  const savedWorkspacesHydratedRef = useRef(false);
+  const updateSavedWorkspaces = useCallback((update: (current: ProjectInfo[]) => ProjectInfo[]): void => {
+    const next = update(savedWorkspacesRef.current);
+    savedWorkspacesRef.current = next;
+    setSavedWorkspaces(next);
+  }, []);
   const [usageBySession, setUsageBySession] = useState<Record<string, SessionUsage>>({});
   const [compactionBaselineBySession, setCompactionBaselineBySession] = useState<Record<string, number>>(() => {
     try {
@@ -554,10 +582,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const rememberWorkspace = useCallback((directory: string): void => {
     if (!directory) return;
     const saved = { directory, name: workspaceName(directory) };
-    setSavedWorkspaces((current) =>
+    updateSavedWorkspaces((current) =>
       current.some((workspace) => workspace.directory === directory) ? current : [...current, saved]
     );
-  }, []);
+  }, [updateSavedWorkspaces]);
 
   useEffect(() => {
     if (!session) return;
@@ -573,11 +601,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       window.localStorage.setItem("compactionBaseline", JSON.stringify(compactionBaselineBySession));
     } catch {}
   }, [compactionBaselineBySession]);
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(SAVED_WORKSPACES_KEY, JSON.stringify(savedWorkspaces));
-    } catch {}
-  }, [savedWorkspaces]);
   const busy = session ? Boolean(busyBySession[session.id]) : false;
   const todos = session ? (todosByWorkspace[session.workspace.id] ?? []) : [];
   const transcript = session ? transcriptsBySession[session.id] ?? [] : [];
@@ -1043,6 +1066,46 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     setToasts((prev) => [...prev.slice(-3), { id, text, tone }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const legacy = readSavedWorkspaceData();
+    const storedWorkspaces = window.openshell.savedWorkspaces?.();
+    if (!storedWorkspaces) {
+      toast("Restart Orbit to load saved workspaces from app storage.", "error");
+      return () => { cancelled = true; };
+    }
+    void storedWorkspaces
+      .then(async (stored) => {
+        const projects = !stored.initialized && !legacy.present
+          ? await window.openshell.projects().catch(() => [])
+          : [];
+        if (cancelled) return;
+        const merged = mergeSavedWorkspaces(stored.workspaces, legacy.workspaces, savedWorkspacesRef.current, projects);
+        savedWorkspacesRef.current = merged;
+        savedWorkspacesHydratedRef.current = true;
+        setSavedWorkspaces(merged);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        const detail = error instanceof Error ? error.message : String(error);
+        toast(`Saved workspaces could not be loaded; their stored data was left untouched. ${detail}`, "error");
+      });
+    return () => { cancelled = true; };
+  }, [toast]);
+
+  useEffect(() => {
+    if (!savedWorkspacesHydratedRef.current) return;
+    try {
+      window.localStorage.setItem(SAVED_WORKSPACES_KEY, JSON.stringify(savedWorkspaces));
+    } catch {}
+    const save = window.openshell.saveSavedWorkspaces?.(savedWorkspaces);
+    if (!save) return;
+    void save.catch((error) => {
+      const detail = error instanceof Error ? error.message : String(error);
+      toast(`Saved workspaces could not be written to app storage. ${detail}`, "error");
+    });
+  }, [savedWorkspaces, toast]);
 
   const refreshInbox = useCallback(async (sessionID: string): Promise<void> => {
     const panel = panelsRef.current.find((candidate) => candidate.id === sessionID);
@@ -1553,7 +1616,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       const directory = await window.openshell.selectDirectory();
       if (!directory) return;
       const saved = { directory, name: workspaceName(directory) };
-      setSavedWorkspaces((current) => {
+      updateSavedWorkspaces((current) => {
         if (current.some((workspace) => workspace.directory === directory)) return current;
         return [...current, saved];
       });
@@ -1561,11 +1624,11 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     } catch (err) {
       toast(err instanceof Error ? err.message : String(err), "error");
     }
-  }, [toast]);
+  }, [toast, updateSavedWorkspaces]);
 
   const removeWorkspace = useCallback((directory: string): void => {
-    setSavedWorkspaces((current) => current.filter((workspace) => workspace.directory !== directory));
-  }, []);
+    updateSavedWorkspaces((current) => current.filter((workspace) => workspace.directory !== directory));
+  }, [updateSavedWorkspaces]);
 
   const deleteSession = useCallback(async (sessionID: string): Promise<void> => {
     const panel = panelForSession(sessionID);

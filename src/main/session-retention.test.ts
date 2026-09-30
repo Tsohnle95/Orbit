@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -11,7 +11,6 @@ vi.mock("electron", () => ({
 vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
 vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
-import { SESSION_RETENTION_MS } from "@shared/retention";
 import { OpenShellBackend } from "./opencode";
 import { RuntimeSessionIndex } from "./runtimes/runtime-session-index";
 
@@ -39,18 +38,17 @@ function recent(): RawSession["time"] {
   return { updated: Date.now() - 60_000, created: Date.now() - 120_000 };
 }
 
-function expired(): RawSession["time"] {
-  return { updated: Date.now() - SESSION_RETENTION_MS - 60_000, created: Date.now() - SESSION_RETENTION_MS - 120_000 };
+function old(): RawSession["time"] {
+  const ago = Date.now() - 45 * 24 * 60 * 60 * 1000;
+  return { updated: ago, created: ago };
 }
 
 function usedTokens(): RawSession["tokens"] {
   return { input: 100, output: 50, reasoning: 0, cache: { read: 10, write: 0 } };
 }
 
-function pagedClient(pages: Array<{ data: RawSession[]; next?: string | null }>, removed: string[] = []): unknown {
-  const remove = vi.fn(async ({ sessionID }: { sessionID: string }) => {
-    removed.push(sessionID);
-  });
+function pagedClient(pages: Array<{ data: RawSession[]; next?: string | null }>): unknown {
+  const remove = vi.fn(async () => {});
   const list = vi.fn(async (...calls: unknown[]) => {
     const input = calls[0] as { cursor?: string } | undefined;
     const index = input?.cursor ? Number(input.cursor) : 0;
@@ -72,36 +70,37 @@ async function fixture(client: unknown): Promise<OpenShellBackend> {
 }
 
 describe("session retention", () => {
-  it("hides conversation-less and expired sessions from recents", async () => {
+  it("keeps old conversations in history and hides conversation-less sessions", async () => {
     const time = recent();
     const keep = session({ title: "Real work", tokens: undefined, location: { directory: "/w/keep" }, time });
     const promptedButUntitled = session({ tokens: usedTokens(), location: { directory: "/w/prompted" }, time });
     const phantom = session({ location: { directory: "/w/phantom" }, time: recent() });
-    const old = session({ title: "Old chat", tokens: usedTokens(), location: { directory: "/w/old" }, time: expired() });
-    const backend = await fixture(pagedClient([{ data: [keep, promptedButUntitled, phantom, old] }]));
+    const oldSession = session({ title: "Old chat", tokens: usedTokens(), location: { directory: "/w/old" }, time: old() });
+    const client = pagedClient([{ data: [keep, promptedButUntitled, phantom, oldSession] }]);
+    const backend = await fixture(client);
 
     const summaries = await backend.listSessions();
 
-    expect(summaries.map((s) => s.id)).toEqual([keep.id, promptedButUntitled.id]);
+    expect(summaries.map((s) => s.id)).toEqual([keep.id, promptedButUntitled.id, oldSession.id]);
     expect(summaries[0].title).toBe("Real work");
     expect(summaries[1].title).toBe("prompted");
+    expect(summaries[2].title).toBe("Old chat");
+    expect((client as { session: { remove: ReturnType<typeof vi.fn> } }).session.remove).not.toHaveBeenCalled();
   });
 
-  it("keeps paging until recents are full or pages run out", async () => {
+  it("keeps paging until the session service has no more pages", async () => {
     const time = recent();
     const fillers = Array.from({ length: 3 }, () =>
       session({ title: "Filler", tokens: usedTokens(), location: { directory: "/w/fill" }, time })
     );
     const late = session({ title: "Late find", tokens: usedTokens(), location: { directory: "/w/late" }, time });
     const phantoms = Array.from({ length: 4 }, () => session({ location: { directory: "/w/x" }, time: recent() }));
-    const removed: string[] = [];
     const client = pagedClient(
       [
         { data: [...phantoms.slice(0, 2), fillers[0]], next: "1" },
         { data: [...phantoms.slice(2), fillers[1]], next: "2" },
         { data: [fillers[2], late], next: null }
-      ],
-      removed
+      ]
     );
     const backend = await fixture(client);
 
@@ -111,70 +110,24 @@ describe("session retention", () => {
     expect((client as { session: { list: ReturnType<typeof vi.fn> } }).session.list).toHaveBeenCalledTimes(3);
   });
 
-  it("prunes only expired sessions across pages, skipping active ones and tolerating failures", async () => {
-    const root = await realpath(await mkdtemp(path.join(tmpdir(), "openshell-retention-")));
-    roots.push(root);
-    await writeFile(path.join(root, "keep.txt"), "content");
-    const backend = new OpenShellBackend();
-    const activeID = "ses_active";
-    (backend as unknown as { client: unknown }).client = {
-      session: {
-        create: vi.fn(async () => ({ id: activeID })),
-        get: vi.fn(async () => ({ id: activeID, location: { directory: root } })),
-        list: vi.fn(async () => []),
-        remove: vi.fn(async () => {})
-      },
-      message: { list: vi.fn(async () => []) }
-    };
-    await backend.openSession(root, 1);
+  it("returns conversation history beyond the former 30-session cap", async () => {
+    const firstPage = Array.from({ length: 31 }, (_, index) => session({
+      id: `ses_${index}`,
+      title: `Chat ${index}`,
+      tokens: usedTokens(),
+      location: { directory: `/w/${index}` },
+      time: recent()
+    }));
+    const older = session({ id: "ses_older", title: "Older chat", tokens: usedTokens(), location: { directory: "/w/older" }, time: old() });
+    const backend = await fixture(pagedClient([
+      { data: firstPage, next: "1" },
+      { data: [older], next: null }
+    ]));
 
-    const goneA = session({ id: "ses_gone-a", title: "Old A", tokens: usedTokens(), location: { directory: "/w/a" }, time: expired() });
-    const goneB = session({ id: "ses_gone-b", title: "Old B", tokens: usedTokens(), location: { directory: "/w/b" }, time: expired() });
-    const keptRecent = session({ id: "ses_recent", title: "New", tokens: usedTokens(), location: { directory: "/w/c" }, time: recent() });
-    const undated = session({ id: "ses_undated", title: "Undated", tokens: usedTokens(), location: { directory: "/w/d" }, time: undefined });
-    const removed: string[] = [];
-    const failingRemove = vi.fn(async ({ sessionID }: { sessionID: string }) => {
-      if (sessionID === "ses_gone-a") throw new Error("remove failed");
-      removed.push(sessionID);
-    });
-    (backend as unknown as { client: { session: { list: ReturnType<typeof vi.fn>; remove: typeof failingRemove } } }).client.session = {
-      list: vi.fn(async (...calls: unknown[]) => {
-        const input = calls[0] as { cursor?: string } | undefined;
-        const page = !input?.cursor ? { data: [goneA, keptRecent], next: "p2" } : { data: [goneB, undated, { id: activeID, title: "Active", time: expired() }], next: null };
-        return { data: page.data, cursor: { next: page.next ?? null } };
-      }),
-      remove: failingRemove
-    };
+    const summaries = await backend.listSessions();
 
-    const pruned = await (backend as unknown as { pruneExpiredSessions: () => Promise<number> }).pruneExpiredSessions();
-
-    expect(pruned).toBe(1);
-    expect(removed).toEqual(["ses_gone-b"]);
-    expect(failingRemove).toHaveBeenCalledWith({ sessionID: "ses_gone-a" });
-    expect(failingRemove).not.toHaveBeenCalledWith({ sessionID: activeID });
-    expect(failingRemove).not.toHaveBeenCalledWith({ sessionID: "ses_recent" });
-    expect(failingRemove).not.toHaveBeenCalledWith({ sessionID: "ses_undated" });
-  });
-
-  it("prunes conversation-less sessions after a day while keeping real conversations for 30 days", async () => {
-    const removed: string[] = [];
-    const staleEmpty = session({ id: "ses_stale-empty", location: { directory: "/w/e" }, time: { updated: Date.now() - 25 * 60 * 60 * 1000, created: Date.now() - 25 * 60 * 60 * 1000 } });
-    const freshEmpty = session({ id: "ses_fresh-empty", location: { directory: "/w/f" }, time: recent() });
-    const staleTitled = session({ id: "ses_stale-titled", title: "Still young", tokens: usedTokens(), location: { directory: "/w/g" }, time: { updated: Date.now() - 25 * 60 * 60 * 1000, created: Date.now() - 25 * 60 * 60 * 1000 } });
-    const backend = await fixture({
-      session: {
-        list: vi.fn(async () => ({ data: [staleEmpty, freshEmpty, staleTitled], cursor: { next: null } })),
-        remove: vi.fn(async ({ sessionID }: { sessionID: string }) => {
-          removed.push(sessionID);
-        })
-      },
-      message: { list: vi.fn(async () => []) }
-    });
-
-    const pruned = await (backend as unknown as { pruneExpiredSessions: () => Promise<number> }).pruneExpiredSessions();
-
-    expect(pruned).toBe(1);
-    expect(removed).toEqual(["ses_stale-empty"]);
+    expect(summaries).toHaveLength(32);
+    expect(summaries.some((summary) => summary.id === older.id)).toBe(true);
   });
 
   it("retries a failed history fetch once and throws instead of returning an empty transcript", async () => {
@@ -218,23 +171,4 @@ describe("session retention", () => {
     expect(recovered.transcript.at(-1)).toMatchObject({ kind: "user", text: "page item 88" });
   });
 
-  it("throttles retention pruning to once per cooldown", async () => {
-    const backend = new OpenShellBackend();
-    const prune = vi.fn(async () => 0);
-    const internals = backend as unknown as { pruneExpiredSessions: () => Promise<number>; lastPruneAt: number; pruning: boolean; scheduleRetentionPrune: () => void };
-    internals.pruneExpiredSessions = prune;
-    internals.lastPruneAt = 0;
-
-    internals.scheduleRetentionPrune();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    internals.scheduleRetentionPrune();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(prune).toHaveBeenCalledTimes(1);
-
-    internals.lastPruneAt = 0;
-    internals.scheduleRetentionPrune();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(prune).toHaveBeenCalledTimes(2);
-  });
 });

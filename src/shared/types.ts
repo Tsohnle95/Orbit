@@ -325,6 +325,11 @@ export interface ProjectInfo {
   name: string;
 }
 
+export interface SavedWorkspaceSnapshot {
+  workspaces: ProjectInfo[];
+  initialized: boolean;
+}
+
 export interface ModelOption {
   id: string;
   providerID: string;

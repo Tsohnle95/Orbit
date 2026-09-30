@@ -21,7 +21,8 @@ Imported everywhere as `@shared/types` (alias in both tsconfigs and
 | `RecoveryRecord` | `{ id, artifact, originalPath, recoveryPath, createdAt, acknowledged, reason }` | Actionable durable save/rename artifact; acknowledgment does not remove bytes |
 | `FileBaseline` | `{ kind: "known", content, exists? } \| { kind: "unknown" }` | First established pre-change state; existing-file baselines omit `exists`, while `exists: false` represents a path absent from Git or a newly created file; unknown never substitutes post-change bytes |
 | `FileUpdate` | `{ workspace, sessionID, path, movedFrom?, baseline: FileBaseline, content: string \| null, deleted }` | Identity-bound observed workspace change payload; `movedFrom` is present only when main confirms that an opened file's filesystem identity moved to `path`; the renderer derives clean state from content and baseline existence |
-| `ProjectInfo` | `{ directory, name }` | Recent-projects list on Welcome |
+| `ProjectInfo` | `{ directory, name }` | Saved workspace bookmark or validated OpenCode project on Welcome |
+| `SavedWorkspaceSnapshot` | `{ workspaces, initialized }` | Durable saved workspace list plus a marker distinguishing first-run migration from a user-saved empty list |
 | `ModelOption` | `{ id, providerID, name, variants?, variant?, limit? }` | Model picker options + current model/strength selection; `limit = { context }` is the model's total context-window size from the catalog, used for the usage popup's context fill |
 | `AgentOption` | `{ id, name }` | Agent picker options + current selection |
 | `CommandOption` | `{ name, description?, kind? }` | Slash commands and skills offered by `/` completion and run via `runCommand` (`kind: "command" \| "skill"`) |

@@ -31,9 +31,11 @@ import {
 } from "./window-sizing";
 import { resolveAppSource } from "./source-resolver";
 import { InspectPickerState } from "./inspect-picker";
+import { SavedWorkspaceStore } from "./saved-workspaces";
 import type {
   FileWriteIdentity,
   OrbitAppUpdateResult,
+  ProjectInfo,
   PermissionReply,
   FormAnswers,
   PromptDelivery,
@@ -76,6 +78,7 @@ import { applyExecPath } from "./exec-path";
 applyExecPath();
 
 const backend = new OpenShellBackend();
+const savedWorkspaceStore = new SavedWorkspaceStore(path.join(app.getPath("userData"), "saved-workspaces.json"));
 const terminals = new TerminalManager();
 const mobileServer = new MobileServer({ cwd: app.getAppPath() });
 let mobileServerStartup: Promise<void> = Promise.resolve();
@@ -952,6 +955,10 @@ function registerIpc(): void {
   );
 
   handleTrusted("shell:projects", async () => backend.listProjects());
+
+  handleTrusted("shell:saved-workspaces", async () => savedWorkspaceStore.load());
+
+  handleTrusted("shell:saved-workspaces-save", async (_e, workspaces: ProjectInfo[]) => savedWorkspaceStore.save(workspaces));
 
   handleTrusted("shell:models", async (_e, workspace: WorkspaceIdentity) => {
     workspaceId(workspace);

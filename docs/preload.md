@@ -77,6 +77,8 @@ automatically.
 | `openRecovery(workspace, id)` | `Promise<void>` — opens a validated artifact selected by record id |
 | `acknowledgeRecovery(workspace, id)` | `Promise<void>` — persists acknowledgment without deleting bytes |
 | `projects()` | `Promise<ProjectInfo[]>` |
+| `savedWorkspaces()` | `Promise<SavedWorkspaceSnapshot>` — durable bookmarks plus an initialized marker; the renderer migrates legacy storage/catalog data only on first use |
+| `saveSavedWorkspaces(workspaces)` | `Promise<ProjectInfo[]>` — writes normalized bookmarks atomically and retains a last-known-good backup |
 | `models(workspace)` | `Promise<ModelOption[]>` |
 | `modelDefault(workspace)` | `Promise<ModelOption \| null>` |
 | `switchModel(workspace, id, providerID, variant?)` | `Promise<void>` |
