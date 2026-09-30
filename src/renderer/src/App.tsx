@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { StoreProvider, useStore } from "./store";
 import { IconAdd, IconChevronDown, IconFolder, IconGear, IconRobot, IconSidebarLeft, IconSidebarRight, IconTerminal } from "./components/icons";
 import type { SessionInfo } from "@shared/types";
+import type { ValidationReport } from "./validation-report";
 import { Welcome } from "./components/Welcome";
 import { FileSidebar, type SidebarTab } from "./components/FileSidebar";
 import { EditorPane } from "./components/EditorPane";
@@ -350,6 +351,8 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("appearance");
   const [editorStatus, setEditorStatus] = useState<EditorStatus | null>(null);
+  const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
+  const [terminalPanel, setTerminalPanel] = useState<"terminal" | "problems">("terminal");
   const [agentModeActive, setAgentModeActive] = useState(false);
   const [agentModePanelIDs, setAgentModePanelIDs] = useState<string[]>([]);
   const [emptyAgentOpen, setEmptyAgentOpen] = useState(true);
@@ -1100,7 +1103,16 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             <div className="tray-inner">
               <div className="tray-divider" onMouseDown={trayDrag} title="Drag to resize" />
               {session ? (
-                <TerminalTray height={trayH} snapped={traySnapped} request={terminalRequest} onClose={closeTray} onExpand={expandTray} />
+                <TerminalTray
+                  height={trayH}
+                  snapped={traySnapped}
+                  request={terminalRequest}
+                  validationReport={validationReport}
+                  activePanel={terminalPanel}
+                  onPanelChange={setTerminalPanel}
+                  onClose={closeTray}
+                  onExpand={expandTray}
+                />
               ) : (
                 <EmptyTerminalTray onClose={closeTray} />
               )}
@@ -1109,7 +1121,14 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
         </div>}
       </div>
 
-      {!settingsOpen && <StatusBar editorStatus={editorStatus} />}
+      {!settingsOpen && <StatusBar
+        editorStatus={editorStatus}
+        onValidationComplete={(report) => {
+          setValidationReport(report);
+          setTerminalPanel("problems");
+          showTray();
+        }}
+      />}
       <Toasts />
       <RecoveryNotice />
     </div>

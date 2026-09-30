@@ -8,6 +8,8 @@ import { terminalThemeForAppearance } from "../appearances";
 import { IconAdd, IconChevronDown, IconChevronUp, IconGlobe } from "./icons";
 import type { ViteServerInfo, WorkspaceIdentity } from "@shared/types";
 import { PendingTerminalOutput, removeTerminal, terminalDirectoryCommand, terminalSizeForViewport, type TerminalSize, type TerminalTabs } from "../terminal-state";
+import { requestReveal } from "../reveal";
+import type { ValidationReport } from "../validation-report";
 
 const TERMINAL_FONT_FAMILY = "'SF Mono', Menlo, Consolas, monospace";
 const TERMINAL_FONT_SIZE = 12;
@@ -149,16 +151,22 @@ export function TerminalTray({
   height,
   snapped,
   request,
+  validationReport = null,
+  activePanel = "terminal",
+  onPanelChange = () => {},
   onClose,
   onExpand
 }: {
   height: number;
   snapped: boolean;
   request?: { id: number; directory: string } | null;
+  validationReport?: ValidationReport | null;
+  activePanel?: "terminal" | "problems";
+  onPanelChange?: (panel: "terminal" | "problems") => void;
   onClose: () => void;
   onExpand: () => void;
 }): ReactNode {
-  const { session, activePath } = useStore();
+  const { session, activePath, openFile } = useStore();
   const workspace = session!.workspace;
   const sessionDirectory = session!.directory;
   const [{ terms, activeId }, setTabs] = useState<TerminalTabs>({ terms: [], activeId: null });
@@ -330,11 +338,31 @@ export function TerminalTray({
             <IconChevronUp />
           </span>
         )}
+        <button
+          type="button"
+          className={`terminal-tab ${activePanel === "terminal" ? "active" : ""}`}
+          aria-pressed={activePanel === "terminal"}
+          onClick={() => onPanelChange("terminal")}
+        >
+          Terminal
+        </button>
+        <button
+          type="button"
+          className={`terminal-tab ${activePanel === "problems" ? "active" : ""}`}
+          aria-pressed={activePanel === "problems"}
+          data-testid="problems-tab"
+          onClick={() => onPanelChange("problems")}
+        >
+          Problems{validationReport?.diagnostics.length ? ` ${validationReport.diagnostics.length}` : ""}
+        </button>
         {terms.map((term) => (
           <span
             key={term.id}
-            className={`terminal-tab ${term.id === activeId ? "active" : ""}`}
-            onClick={() => setTabs((current) => ({ ...current, activeId: term.id }))}
+            className={`terminal-tab ${activePanel === "terminal" && term.id === activeId ? "active" : ""}`}
+            onClick={() => {
+              onPanelChange("terminal");
+              setTabs((current) => ({ ...current, activeId: term.id }));
+            }}
           >
             {term.name}
             <button
@@ -377,7 +405,7 @@ export function TerminalTray({
           <IconChevronDown />
         </button>
       </div>
-      <div className={`terminal-body ${snapped ? "hidden" : ""}`}>
+      <div className={`terminal-body ${snapped || activePanel !== "terminal" ? "hidden" : ""}`}>
         {terms.map((term) => (
           <TermInstance
             key={term.id}
@@ -391,6 +419,16 @@ export function TerminalTray({
         ))}
         {terms.length === 0 && <div className="terminal-empty">No terminal open. Press + to start one.</div>}
       </div>
+      {activePanel === "problems" && (
+        <ValidationProblems
+          report={validationReport}
+          hidden={snapped}
+          onOpen={(path, line) => {
+            if (typeof openFile !== "function") return;
+            void openFile(path).then(() => requestReveal(path, line));
+          }}
+        />
+      )}
       {viteMenu && (
         <>
           <div
@@ -428,6 +466,56 @@ export function TerminalTray({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function ValidationProblems({
+  report,
+  hidden,
+  onOpen
+}: {
+  report: ValidationReport | null;
+  hidden: boolean;
+  onOpen: (path: string, line: number) => void;
+}): ReactNode {
+  const hiddenClass = hidden ? " hidden" : "";
+  if (!report) {
+    return <div className={`terminal-body problems-empty${hiddenClass}`}>Run HTML/CSS validation to list problems here.</div>;
+  }
+  if (report.error) {
+    return (
+      <div className={`terminal-body problems-empty problems-failed${hiddenClass}`} data-testid="validation-error-detail">
+        <strong>Validation could not finish</strong>
+        <span>{report.error}</span>
+        <code>{report.path}</code>
+      </div>
+    );
+  }
+  if (report.diagnostics.length === 0) {
+    return (
+      <div className={`terminal-body problems-empty${hiddenClass}`} data-testid="validation-clean-detail">
+        <strong>No validation problems found</strong>
+        <code>{report.path}</code>
+      </div>
+    );
+  }
+  return (
+    <div className={`terminal-body problems-list${hiddenClass}`} data-testid="validation-problems-list">
+      <div className="problems-summary">W3C validation · {report.path}</div>
+      {report.diagnostics.map((diagnostic, index) => (
+        <button
+          type="button"
+          className={`problem-row ${diagnostic.severity === "error" ? "severity-error" : "severity-warning"}`}
+          key={`${diagnostic.line}:${diagnostic.column}:${index}`}
+          title={`${report.path}:${diagnostic.line}:${diagnostic.column} — ${diagnostic.message}`}
+          onClick={() => onOpen(report.path, diagnostic.line)}
+        >
+          <span className="problem-severity">{diagnostic.severity === "error" ? "Error" : "Warning"}</span>
+          <span className="problem-message">{diagnostic.message}</span>
+          <span className="problem-location">{diagnostic.line}:{diagnostic.column}</span>
+        </button>
+      ))}
     </div>
   );
 }

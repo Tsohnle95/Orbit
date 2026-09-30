@@ -42,6 +42,7 @@ import type {
 } from "@shared/types";
 import { mergeChatHistory, reconcilePromptHistory, reduceChatStream, type ChatStreamEvent } from "./chat-stream";
 import { messagePresentation } from "@shared/message-presentation";
+import { compactExplorerSelection, movableExplorerPaths } from "./explorer-selection";
 import {
   applyChatEvent,
   attachRetryToLatestAssistant,
@@ -252,9 +253,11 @@ interface Store {
   startRename: (path: string) => void;
   cancelPending: () => void;
   commitName: (name: string) => Promise<void>;
-  deleteEntry: (path: string) => Promise<void>;
+  deleteEntry: (path: string, workspace?: WorkspaceIdentity) => Promise<void>;
+  deleteEntries: (paths: string[]) => Promise<void>;
   removeFromWorkspace: (path: string) => void;
-  moveEntry: (path: string, destDir: string) => Promise<void>;
+  moveEntry: (path: string, destDir: string, workspace?: WorkspaceIdentity) => Promise<void>;
+  moveEntries: (paths: string[], destDir: string) => Promise<void>;
   openRecovery: (id: string) => Promise<void>;
   acknowledgeRecovery: (id: string) => Promise<void>;
 }
@@ -690,6 +693,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   pendingRenameRef.current = pendingRename;
   const tabsByWorkspaceRef = useRef(tabsByWorkspace);
   tabsByWorkspaceRef.current = tabsByWorkspace;
+  const activePathByWorkspaceRef = useRef(activePathByWorkspace);
+  activePathByWorkspaceRef.current = activePathByWorkspace;
   const persistenceRef = useRef<EditorPersistence | null>(null);
   if (!persistenceRef.current) {
     persistenceRef.current = new EditorPersistence((snapshot, write) => {
@@ -790,8 +795,11 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   }, []);
 
   const setActivePathFor = useCallback((workspaceID: string, path: string | null) => {
-    setActivePathByWorkspace((current) =>
-      current[workspaceID] === path ? current : { ...current, [workspaceID]: path });
+    const current = activePathByWorkspaceRef.current;
+    if (current[workspaceID] === path) return;
+    const next = { ...current, [workspaceID]: path };
+    activePathByWorkspaceRef.current = next;
+    setActivePathByWorkspace(next);
   }, []);
 
   const setSingleFileFor = useCallback((workspaceID: string, path: string | null) => {
@@ -2196,9 +2204,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     [treeByWorkspace, toast, panelFor, setExpandedFor, setTreeFor]
   );
 
-  const refreshTree = useCallback(async (dirs: string[]): Promise<void> => {
+  const refreshTree = useCallback(async (dirs: string[], workspace?: WorkspaceIdentity): Promise<void> => {
     const unique = [...new Set(dirs)];
-    const target = sessionRef.current?.workspace;
+    const target = workspace ?? sessionRef.current?.workspace;
     if (!target) return;
     const current = expandedByWorkspaceRef.current[target.id] ?? new Set<string>();
     if (current.has("") && !unique.includes("")) unique.push("");
@@ -2284,9 +2292,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   }, []);
 
   const deleteEntry = useCallback(
-    async (path: string) => {
+    async (path: string, workspace?: WorkspaceIdentity) => {
       closeCtxMenu();
-      const target = sessionRef.current?.workspace;
+      const target = workspace ?? sessionRef.current?.workspace;
       if (!target) return;
       persistence.cancelPrefix(target, path);
       try {
@@ -2303,7 +2311,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         const next = prev.filter((t) => t.path !== path && !t.path.startsWith(prefix));
         if (next.length !== prev.length) {
           setActivePathFor(target.id, (() => {
-            const active = activePathByWorkspace[target.id] ?? null;
+            const active = activePathByWorkspaceRef.current[target.id] ?? null;
             if (!active || (active !== path && !active.startsWith(prefix))) return active;
             const idx = prev.findIndex((t) => t.path === active);
             const neighbor = next[idx] ?? next[next.length - 1];
@@ -2313,10 +2321,39 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         return next;
       });
       const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-      void refreshTree(ancestorDirs(parent));
+      void refreshTree(ancestorDirs(parent), target);
     },
-    [toast, refreshTree, persistence, panelFor, setTabsFor, setActivePathFor, activePathByWorkspace, closeCtxMenu]
+    [toast, refreshTree, persistence, panelFor, setTabsFor, setActivePathFor, closeCtxMenu]
   );
+
+  const deleteEntries = useCallback(async (paths: string[]): Promise<void> => {
+    const workspace = sessionRef.current?.workspace;
+    if (!workspace) return;
+    closeCtxMenu();
+    const selected = compactExplorerSelection(paths);
+    const deleted: string[] = [];
+    for (const path of selected) {
+      persistence.cancelPrefix(workspace, path);
+      try {
+        await window.openshell.deletePath(workspace, path);
+        deleted.push(path);
+      } catch (err) {
+        if (panelFor(workspace)) toast(err instanceof Error ? err.message : String(err), "error");
+      }
+    }
+    if (deleted.length === 0 || !panelFor(workspace)) return;
+    const wasDeleted = (path: string): boolean => deleted.some((item) => path === item || path.startsWith(`${item}/`));
+    const currentTabs = tabsByWorkspaceRef.current[workspace.id] ?? [];
+    const nextTabs = currentTabs.filter((tab) => !wasDeleted(tab.path));
+    const active = activePathByWorkspaceRef.current[workspace.id] ?? null;
+    if (active && wasDeleted(active)) {
+      const index = currentTabs.findIndex((tab) => tab.path === active);
+      setActivePathFor(workspace.id, nextTabs[index]?.path ?? nextTabs[nextTabs.length - 1]?.path ?? null);
+    }
+    setTabsFor(workspace.id, (prev) => prev.filter((tab) => !wasDeleted(tab.path)));
+    const parents = deleted.map((path) => path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
+    void refreshTree(parents.flatMap((parent) => ancestorDirs(parent)), workspace);
+  }, [closeCtxMenu, persistence, panelFor, toast, setTabsFor, setActivePathFor, refreshTree]);
 
   const openFile = useCallback(
     async (path: string, opts?: { mode?: "edit" | "diff" }, workspace?: WorkspaceIdentity) => {
@@ -2677,8 +2714,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   );
 
   const moveEntry = useCallback(
-    async (path: string, destDir: string) => {
-      const target = sessionRef.current?.workspace;
+    async (path: string, destDir: string, workspace?: WorkspaceIdentity) => {
+      const target = workspace ?? sessionRef.current?.workspace;
       if (!target) return;
       const name = path.split("/").pop() ?? path;
       const newPath = destDir ? `${destDir}/${name}` : name;
@@ -2700,7 +2737,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         )
       );
       setActivePathFor(target.id, (() => {
-        const active = activePathByWorkspace[target.id] ?? null;
+        const active = activePathByWorkspaceRef.current[target.id] ?? null;
         return active && (active === path || active.startsWith(`${path}/`))
           ? `${newPath}${active.slice(path.length)}`
           : active;
@@ -2718,10 +2755,56 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         return next;
       })());
       const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-      void refreshTree([...ancestorDirs(parent), ...ancestorDirs(destDir)]);
+      void refreshTree([...ancestorDirs(parent), ...ancestorDirs(destDir)], target);
     },
-    [toast, refreshTree, persistence, panelFor, setTabsFor, setActivePathFor, setAgentFilesFor, activePathByWorkspace]
+    [toast, refreshTree, persistence, panelFor, setTabsFor, setActivePathFor, setAgentFilesFor]
   );
+
+  const moveEntries = useCallback(async (paths: string[], destDir: string): Promise<void> => {
+    const workspace = sessionRef.current?.workspace;
+    if (!workspace) return;
+    const selected = movableExplorerPaths(paths, destDir);
+    const moved: Array<{ path: string; newPath: string; name: string }> = [];
+    for (const path of selected) {
+      const name = path.split("/").pop() ?? path;
+      const newPath = destDir ? `${destDir}/${name}` : name;
+      persistence.cancelPrefix(workspace, path);
+      try {
+        await window.openshell.movePath(workspace, path, destDir);
+        moved.push({ path, newPath, name });
+      } catch (err) {
+        if (panelFor(workspace)) toast(err instanceof Error ? err.message : String(err), "error");
+      }
+    }
+    if (moved.length === 0 || !panelFor(workspace)) return;
+    const remap = (path: string): string => {
+      const parent = moved.find((item) => path === item.path || path.startsWith(`${item.path}/`));
+      return parent ? `${parent.newPath}${path.slice(parent.path.length)}` : path;
+    };
+    setTabsFor(workspace.id, (prev) => prev.map((tab) => {
+      const path = remap(tab.path);
+      return path === tab.path ? tab : {
+        ...tab,
+        path,
+        name: moved.find((item) => item.path === tab.path)?.name ?? tab.name
+      };
+    }));
+    const active = activePathByWorkspaceRef.current[workspace.id] ?? null;
+    if (active) {
+      const next = remap(active);
+      if (next !== active) setActivePathFor(workspace.id, next);
+    }
+    setAgentFilesFor(workspace.id, (current) => {
+      const next = new Map<string, AgentFileState>();
+      for (const [path, state] of current) {
+        const movedPath = remap(path);
+        if (!state.deleted) next.set(movedPath, state);
+      }
+      return next;
+    });
+    const parents = moved.map(({ path }) => path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
+    void refreshTree([...parents.flatMap((parent) => ancestorDirs(parent)), ...ancestorDirs(destDir)], workspace);
+  }, [persistence, panelFor, toast, setTabsFor, setActivePathFor, setAgentFilesFor, refreshTree]);
 
   const closeTab = useCallback((path: string) => {
     const target = sessionRef.current?.workspace;
@@ -2916,9 +2999,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
             setTabsFor(f.workspace.id, (prev) => prev.map((tab) => tab.path === f.movedFrom
               ? { ...tab, path: f.path, name: f.path.split("/").pop() ?? f.path }
               : tab));
-            setActivePathByWorkspace((current) => current[f.workspace.id] === f.movedFrom
-              ? { ...current, [f.workspace.id]: f.path }
-              : current);
+            if (activePathByWorkspaceRef.current[f.workspace.id] === f.movedFrom) {
+              setActivePathFor(f.workspace.id, f.path);
+            }
           }
         }
         const origin = persistence.classify(f.workspace, f);
@@ -3542,6 +3625,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     setRecoveryFor,
     setAgentFilesFor,
     setTabsFor,
+    setActivePathFor,
     setTreeFor,
     chatStateFor,
     applyProjection,
@@ -3756,8 +3840,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       cancelPending,
       commitName,
       deleteEntry,
+      deleteEntries,
       removeFromWorkspace,
       moveEntry,
+      moveEntries,
       openRecovery,
       acknowledgeRecovery
     }),
@@ -3768,7 +3854,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       loadAgents, switchAgent, toggleApprovalMode,
       openFile, closeTab, setActive, setTabMode, revealInFileManager,
       editContent, saveTab, reloadTab, overwriteTab, mergeTab, toggleDir, ensureRootOpen, replyPermission,
-      startCreate, startRename, cancelPending, commitName, deleteEntry, removeFromWorkspace, moveEntry, openRecovery, acknowledgeRecovery,
+      startCreate, startRename, cancelPending, commitName, deleteEntry, deleteEntries, removeFromWorkspace, moveEntry, moveEntries, openRecovery, acknowledgeRecovery,
       removeQueuedMessage, popQueuedMessage, sendQueuedNow, reorderQueuedMessage,
       submitForm, dismissForm,
       stageRevert, commitStagedRevert, clearStagedRevert,

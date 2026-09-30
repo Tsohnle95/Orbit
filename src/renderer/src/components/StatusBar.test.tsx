@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Tab } from "@shared/types";
 import { StatusBar } from "./StatusBar";
-import { applyW3cMarkers } from "../w3c-validation";
+import { applyW3cMarkers, clearW3cMarkers } from "../w3c-validation";
 import type { EditorStatus } from "./editor-status";
 
 const htmlTab: Tab = {
@@ -54,16 +54,19 @@ describe("StatusBar validation", () => {
     vi.restoreAllMocks();
   });
 
-  it("only shows the validate button for HTML and CSS files", () => {
+  it("keeps the validation control visible and explains when the active file is unsupported", () => {
     store.tabs = [];
     store.activePath = null;
     act(() => root.render(<StatusBar />));
-    expect(container.querySelector('[data-testid="validate-btn"]')).toBeNull();
+    const noFile = container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!;
+    expect(noFile).not.toBeNull();
+    expect(noFile.disabled).toBe(true);
+    expect(noFile.title).toContain("Open an HTML or CSS file");
 
     store.tabs = [tsTab];
     store.activePath = tsTab.path;
     act(() => root.render(<StatusBar />));
-    expect(container.querySelector('[data-testid="validate-btn"]')).toBeNull();
+    expect(container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')?.disabled).toBe(true);
   });
 
   it("runs the W3C validator for an open HTML file and shows the marker counts", async () => {
@@ -87,6 +90,31 @@ describe("StatusBar validation", () => {
     expect(window.openshell.validateW3c).toHaveBeenCalledWith("index.html", "<p>hi");
     expect(applyW3cMarkers).toHaveBeenCalledWith("index.html", diagnostics);
     expect(container.querySelector('[data-testid="validate-result"]')?.textContent).toBe("2 errors, 1 warning");
+  });
+
+  it("opens the detailed report and toggles validation squiggles from the status control", async () => {
+    const diagnostics = [
+      { line: 2, column: 4, endLine: 2, endColumn: 8, message: "Unexpected end tag", severity: "error" as const, source: "w3c-html" as const }
+    ];
+    const onValidationComplete = vi.fn();
+    window.openshell = { validateW3c: vi.fn(async () => diagnostics) } as unknown as typeof window.openshell;
+    act(() => root.render(<StatusBar onValidationComplete={onValidationComplete} />));
+
+    const button = container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!;
+    await act(async () => {
+      button.click();
+      await Promise.resolve();
+    });
+    expect(onValidationComplete).toHaveBeenCalledWith({ path: "index.html", diagnostics });
+    expect(button.textContent).toBe("Hide squiggles");
+
+    act(() => button.click());
+    expect(clearW3cMarkers).toHaveBeenCalledWith("index.html");
+    expect(button.textContent).toBe("Show squiggles");
+
+    act(() => button.click());
+    expect(applyW3cMarkers).toHaveBeenLastCalledWith("index.html", diagnostics);
+    expect(button.textContent).toBe("Hide squiggles");
   });
 
   it("reports a clean file and resets the result when the content changes", async () => {

@@ -4,28 +4,38 @@ import { useCtxMenu, useStore } from "../store";
 import { OrbitMark } from "./OrbitMark";
 import { ChevronIcon, EllipsisIcon, FileIcon, FilePlusIcon, FolderPlusIcon, PencilIcon, PlusIcon, TrashIcon } from "./FileIcons";
 import { droppedFilePaths, isExternalFileDrag } from "../drop";
+import { compactExplorerSelection, movableExplorerPaths } from "../explorer-selection";
 import type { TreeEntry } from "@shared/types";
 import { SessionsPane } from "./SessionsPane";
 
 export type SidebarTab = "sessions" | "files";
 
 const EMPTY_HIDDEN_PATHS = new Set<string>();
+const EXPLORER_PATHS_MIME = "application/x-orbit-explorer-paths";
 
-function canDrop(source: string, target: string): boolean {
-  if (!source || source === target) return false;
-  const parent = source.includes("/") ? source.slice(0, source.lastIndexOf("/")) : "";
-  if (parent === target) return false;
-  return !target.startsWith(`${source}/`);
+function explorerPathsFromDrag(e: React.DragEvent): string[] {
+  try {
+    const value: unknown = JSON.parse(e.dataTransfer.getData(EXPLORER_PATHS_MIME));
+    return Array.isArray(value) ? value.filter((path): path is string => typeof path === "string" && path.length > 0) : [];
+  } catch {
+    return [];
+  }
 }
 
 interface DragHandlers {
-  dragPath: string | null;
+  dragPaths: string[] | null;
   dropDir: string | null;
   isExternalDrop: (e: React.DragEvent) => boolean;
   onDragStart: (e: React.DragEvent, path: string) => void;
   onDragEnd: () => void;
   onDirDragOver: (e: React.DragEvent, dir: string) => void;
   onDirDrop: (e: React.DragEvent, dir: string) => void;
+}
+
+interface SelectionHandlers {
+  selectedPaths: Set<string>;
+  onClick: (event: React.MouseEvent, path: string, activate: () => void) => void;
+  onContextMenu: (event: React.MouseEvent, entry: TreeEntry) => void;
 }
 
 function RowActions({ entry, allowFile = false, allowDir = false }: { entry: TreeEntry; allowFile?: boolean; allowDir?: boolean }): ReactNode {
@@ -93,12 +103,14 @@ function DirNode({
   entry,
   depth,
   drag,
-  hiddenPaths
+  hiddenPaths,
+  selection
 }: {
   entry: TreeEntry;
   depth: number;
   drag: DragHandlers;
   hiddenPaths: Set<string>;
+  selection: SelectionHandlers;
 }): ReactNode {
   const {
     expanded,
@@ -110,7 +122,6 @@ function DirNode({
     commitName,
     cancelPending
   } = useStore();
-  const { openCtxMenu } = useCtxMenu();
   const isOpen = expanded.has(entry.path);
   const hasChanges = entry.path.split("/").some((_, i) => {
     const prefix = entry.path.split("/").slice(0, i + 1).join("/");
@@ -131,13 +142,11 @@ function DirNode({
   return (
     <div>
       <div
-        className={`tree-row dir ${isOpen ? "open" : ""} ${drag.dropDir === entry.path ? "drop-target" : ""}`}
+        className={`tree-row dir ${isOpen ? "open" : ""} ${selection.selectedPaths.has(entry.path) ? "selected" : ""} ${drag.dropDir === entry.path ? "drop-target" : ""}`}
+        data-entry-path={entry.path}
         draggable
-        onClick={() => void toggleDir(entry.path)}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          openCtxMenu(e.clientX, e.clientY, entry);
-        }}
+        onClick={(e) => selection.onClick(e, entry.path, () => void toggleDir(entry.path))}
+        onContextMenu={(e) => selection.onContextMenu(e, entry)}
         onDragStart={(e) => drag.onDragStart(e, entry.path)}
         onDragEnd={drag.onDragEnd}
         onDragOver={(e) => drag.onDirDragOver(e, entry.path)}
@@ -152,9 +161,9 @@ function DirNode({
         <div className="tree-children">
           {(tree[entry.path] ?? []).filter((child) => !hiddenPaths.has(child.path)).map((child) =>
             child.type === "directory" ? (
-              <DirNode key={child.path} entry={child} depth={depth + 1} drag={drag} hiddenPaths={hiddenPaths} />
+              <DirNode key={child.path} entry={child} depth={depth + 1} drag={drag} hiddenPaths={hiddenPaths} selection={selection} />
             ) : (
-              <FileNode key={child.path} entry={child} depth={depth + 1} drag={drag} />
+              <FileNode key={child.path} entry={child} depth={depth + 1} drag={drag} selection={selection} />
             )
           )}
           {pendingCreate?.parent === entry.path && (
@@ -174,15 +183,16 @@ function DirNode({
 function FileNode({
   entry,
   depth,
-  drag
+  drag,
+  selection
 }: {
   entry: TreeEntry;
   depth: number;
   drag: DragHandlers;
+  selection: SelectionHandlers;
 }): ReactNode {
   const { openFile, activePath, agentFiles, pendingRename, commitName, cancelPending } =
     useStore();
-  const { openCtxMenu } = useCtxMenu();
   const name = entry.path.split("/").pop() ?? entry.path;
   const changed = agentFiles.has(entry.path);
   const active = activePath === entry.path;
@@ -200,13 +210,11 @@ function FileNode({
 
   return (
     <div
-      className={`tree-row file ${active ? "active" : ""}`}
+      className={`tree-row file ${active ? "active" : ""} ${selection.selectedPaths.has(entry.path) ? "selected" : ""}`}
+      data-entry-path={entry.path}
       draggable
-      onClick={() => void openFile(entry.path)}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        openCtxMenu(e.clientX, e.clientY, entry);
-      }}
+      onClick={(e) => selection.onClick(e, entry.path, () => void openFile(entry.path))}
+      onContextMenu={(e) => selection.onContextMenu(e, entry)}
       onDragStart={(e) => drag.onDragStart(e, entry.path)}
       onDragEnd={drag.onDragEnd}
       title={entry.path}
@@ -259,7 +267,15 @@ function TreeNameInput({
   );
 }
 
-function ExplorerMenu({ onOpenTerminal }: { onOpenTerminal?: (directory: string) => void }): ReactNode {
+function ExplorerMenu({
+  onOpenTerminal,
+  selectedPaths,
+  onDeleteSelection
+}: {
+  onOpenTerminal?: (directory: string) => void;
+  selectedPaths?: string[];
+  onDeleteSelection?: (paths: string[]) => void;
+}): ReactNode {
   const { session, startCreate, startRename, revealInFileManager, deleteEntry, removeFromWorkspace, closePanel } = useStore();
   const { ctxMenu, closeCtxMenu } = useCtxMenu();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -284,6 +300,8 @@ function ExplorerMenu({ onOpenTerminal }: { onOpenTerminal?: (directory: string)
   const target = ctxMenu.target;
   const workspaceRoot = target?.type === "directory" && target.path === "";
   const workspaceSessionID = workspaceRoot ? ctxMenu.workspaceSessionID ?? session?.id : undefined;
+  const activeSelection = selectedPaths ?? [];
+  const deleteSelection = target && activeSelection.includes(target.path) ? activeSelection : [];
   const parent = target
     ? target.type === "directory"
       ? target.path
@@ -327,9 +345,12 @@ function ExplorerMenu({ onOpenTerminal }: { onOpenTerminal?: (directory: string)
           <button className="ctx-item" onClick={() => removeFromWorkspace(target.path)}>
             Remove from Workspace
           </button>
-          <button className="ctx-item danger" onClick={() => void deleteEntry(target.path)}>
+          <button className="ctx-item danger" onClick={() => {
+            if (deleteSelection.length > 1 && onDeleteSelection) onDeleteSelection(deleteSelection);
+            else void deleteEntry(target.path);
+          }}>
             <TrashIcon />
-            Delete
+            {deleteSelection.length > 1 ? `Delete ${deleteSelection.length} Items` : "Delete"}
           </button>
         </>
       )}
@@ -410,7 +431,10 @@ export function FileSidebar({
     pendingCreate,
     commitName,
     cancelPending,
+    deleteEntry,
+    deleteEntries,
     moveEntry,
+    moveEntries,
     startCreate,
     singleFile,
     importPaths,
@@ -441,12 +465,105 @@ export function FileSidebar({
     onTabChange?.(next);
   };
   const [changesH, changesDrag] = useChangesDrag(200);
-  const [dragPath, setDragPath] = useState<string | null>(null);
+  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
+  const selectionAnchor = useRef<string | null>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
+  const [dragPaths, setDragPaths] = useState<string[] | null>(null);
   const [dropDir, setDropDir] = useState<string | null>(null);
   const [externalDrop, setExternalDrop] = useState(false);
   const root = tree[""] ?? [];
   const orderedPanels = panels.length > 0 ? panels : session ? [session] : [];
   const loadedSessionKey = useRef<string | null>(null);
+  const selectedPathSet = new Set(selectedPaths);
+
+  useEffect(() => {
+    setSelectedPaths([]);
+    selectionAnchor.current = null;
+  }, [session?.workspace.id]);
+
+  const focusTree = (): void => {
+    treeRef.current?.focus({ preventScroll: true });
+  };
+
+  const selection: SelectionHandlers = {
+    selectedPaths: selectedPathSet,
+    onClick: (event, path, activate) => {
+      const additive = event.metaKey || event.ctrlKey;
+      if (!event.shiftKey && !additive) {
+        setSelectedPaths([path]);
+        selectionAnchor.current = path;
+        focusTree();
+        activate();
+        return;
+      }
+
+      event.preventDefault();
+      focusTree();
+      if (event.shiftKey) {
+        const visiblePaths = Array.from(treeRef.current?.querySelectorAll<HTMLElement>("[data-entry-path]") ?? [])
+          .map((row) => row.dataset.entryPath ?? "");
+        const anchor = selectionAnchor.current ?? path;
+        const anchorIndex = visiblePaths.indexOf(anchor);
+        const pathIndex = visiblePaths.indexOf(path);
+        const range = anchorIndex < 0 || pathIndex < 0
+          ? [path]
+          : visiblePaths.slice(Math.min(anchorIndex, pathIndex), Math.max(anchorIndex, pathIndex) + 1);
+        setSelectedPaths((current) => additive
+          ? compactExplorerSelection([...current, ...range])
+          : range);
+      } else {
+        setSelectedPaths((current) => current.includes(path)
+          ? current.filter((selected) => selected !== path)
+          : [...current, path]);
+        selectionAnchor.current = path;
+      }
+    },
+    onContextMenu: (event, entry) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!selectedPathSet.has(entry.path)) {
+        setSelectedPaths([entry.path]);
+        selectionAnchor.current = entry.path;
+      }
+      openCtxMenu(event.clientX, event.clientY, entry);
+    }
+  };
+
+  const deleteSelection = (paths: string[]): void => {
+    const compact = compactExplorerSelection(paths);
+    setSelectedPaths([]);
+    selectionAnchor.current = null;
+    if (typeof deleteEntries === "function" && compact.length > 1) {
+      void deleteEntries(compact);
+    } else {
+      for (const path of compact) void deleteEntry(path);
+    }
+  };
+
+  const moveSelection = (paths: string[], destination: string): void => {
+    const movable = movableExplorerPaths(paths, destination);
+    if (movable.length === 0) return;
+    setSelectedPaths([]);
+    selectionAnchor.current = null;
+    if (movable.length > 1 && typeof moveEntries === "function") {
+      void moveEntries(movable, destination);
+    } else {
+      for (const path of movable) void moveEntry(path, destination);
+    }
+  };
+
+  const onTreeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+    const target = event.target as HTMLElement;
+    if (event.key === "Escape") {
+      setSelectedPaths([]);
+      selectionAnchor.current = null;
+      return;
+    }
+    if (event.key !== "Delete" && event.key !== "Backspace") return;
+    if (target.closest("input, textarea, button, [contenteditable='true']") || selectedPaths.length === 0) return;
+    event.preventDefault();
+    deleteSelection(selectedPaths);
+  };
 
   useEffect(() => {
     const key = session ? `${session.id}::${session.directory}` : null;
@@ -459,7 +576,7 @@ export function FileSidebar({
   }, [session, ensureRootOpen]);
 
   const drag: DragHandlers = {
-    dragPath,
+    dragPaths,
     dropDir,
     isExternalDrop: isExternalFileDrag,
     onDragStart: (e, path) => {
@@ -467,12 +584,14 @@ export function FileSidebar({
         e.preventDefault();
         return;
       }
-      e.dataTransfer.setData("text/plain", path);
+      const paths = compactExplorerSelection(selectedPathSet.has(path) ? selectedPaths : [path]);
+      e.dataTransfer.setData("text/plain", paths[0] ?? path);
+      e.dataTransfer.setData(EXPLORER_PATHS_MIME, JSON.stringify(paths));
       e.dataTransfer.effectAllowed = "move";
-      setDragPath(path);
+      setDragPaths(paths);
     },
     onDragEnd: () => {
-      setDragPath(null);
+      setDragPaths(null);
       setDropDir(null);
     },
     onDirDragOver: (e, dir) => {
@@ -484,9 +603,9 @@ export function FileSidebar({
         setExternalDrop(false);
         return;
       }
-      if (!dragPath) return;
+      if (!dragPaths?.length) return;
       e.stopPropagation();
-      if (!canDrop(dragPath, dir)) {
+      if (movableExplorerPaths(dragPaths, dir).length === 0) {
         setDropDir(null);
         return;
       }
@@ -497,21 +616,22 @@ export function FileSidebar({
     onDirDrop: (e, dir) => {
       e.preventDefault();
       const external = droppedFilePaths(e);
-      setDragPath(null);
+      setDragPaths(null);
       setDropDir(null);
       setExternalDrop(false);
       if (external.length > 0) {
         void (dir === "" ? dropIntoExplorer(external) : importPaths(dir, external));
         return;
       }
-      const source = dragPath;
-      if (!source || !canDrop(source, dir)) return;
-      void moveEntry(source, dir);
+      const sources = explorerPathsFromDrag(e);
+      const selection = sources.length > 0 ? sources : dragPaths;
+      if (!selection?.length) return;
+      moveSelection(selection, dir);
     }
   };
 
   const onTreeDragOver = (e: React.DragEvent): void => {
-    if (!dragPath && !drag.isExternalDrop(e)) return;
+    if (!dragPaths?.length && !drag.isExternalDrop(e)) return;
     if (drag.isExternalDrop(e)) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "copy";
@@ -527,8 +647,8 @@ export function FileSidebar({
       setDropDir(null);
       return;
     }
-    if (!dragPath) return;
-    if (!canDrop(dragPath, "")) {
+    if (!dragPaths?.length) return;
+    if (movableExplorerPaths(dragPaths, "").length === 0) {
       setDropDir(null);
       return;
     }
@@ -540,8 +660,9 @@ export function FileSidebar({
   const onTreeDrop = (e: React.DragEvent): void => {
     e.preventDefault();
     const external = droppedFilePaths(e);
-    if (external.length === 0 && (e.target as HTMLElement).closest(".tree-row")) return;
-    setDragPath(null);
+    const targetRow = (e.target as HTMLElement).closest(".tree-row");
+    if (external.length === 0 && targetRow && !targetRow.hasAttribute("data-explorer-root")) return;
+    setDragPaths(null);
     setDropDir(null);
     setExternalDrop(false);
     if (external.length > 0) {
@@ -555,9 +676,10 @@ export function FileSidebar({
       }));
       return;
     }
-    const source = dragPath;
-    if (!source || !canDrop(source, "")) return;
-    void moveEntry(source, "");
+    const sources = explorerPathsFromDrag(e);
+    const selection = sources.length > 0 ? sources : dragPaths;
+    if (!selection?.length) return;
+    moveSelection(selection, "");
   };
 
   const onTreeDragEnter = (e: React.DragEvent): void => {
@@ -753,8 +875,11 @@ export function FileSidebar({
       {explorerOpen && (
         <div className="sidebar-section explorer">
           <div
+             ref={treeRef}
              className={`tree ${dropDir === "" && !externalDrop ? "drop-root" : ""} ${externalDrop ? "external-drop-active" : ""}`}
+             tabIndex={0}
              style={{ "--workspace-drop-top": `${orderedPanels.length * 26 + 2}px` } as CSSProperties}
+             onKeyDown={onTreeKeyDown}
              onDragEnter={onTreeDragEnter}
              onDragOver={onTreeDragOver}
              onDrop={onTreeDrop}
@@ -788,6 +913,7 @@ export function FileSidebar({
                 {(!session || (root.length === 0 && !expanded.has(""))) && <div className="tree-empty">Loading…</div>}
                 <div
                     className={`tree-row dir workspace-root ${index > 0 ? "workspace-root-secondary" : ""} ${expanded.has("") ? "open" : ""} ${dropDir === "" ? "drop-target" : ""}`}
+                  data-explorer-root=""
                   onClick={() => void toggleDir("")}
                   onDragOver={(e) => drag.onDirDragOver(e, "")}
                    onDrop={onTreeDrop}
@@ -807,9 +933,9 @@ export function FileSidebar({
                 </div>
                 {expanded.has("") && root.filter((child) => !hiddenPaths.has(child.path)).map((child) =>
                   child.type === "directory" ? (
-                    <DirNode key={child.path} entry={child} depth={0} drag={drag} hiddenPaths={hiddenPaths} />
+                    <DirNode key={child.path} entry={child} depth={0} drag={drag} hiddenPaths={hiddenPaths} selection={selection} />
                   ) : (
-                    <FileNode key={child.path} entry={child} depth={0} drag={drag} />
+                    <FileNode key={child.path} entry={child} depth={0} drag={drag} selection={selection} />
                   )
                 )}
                 {pendingCreate?.parent === "" && (
@@ -827,7 +953,7 @@ export function FileSidebar({
       )}
         </>
       )}
-      <ExplorerMenu onOpenTerminal={onOpenTerminal} />
+      <ExplorerMenu onOpenTerminal={onOpenTerminal} selectedPaths={selectedPaths} onDeleteSelection={deleteSelection} />
     </div>
   );
 }

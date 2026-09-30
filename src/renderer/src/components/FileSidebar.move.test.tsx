@@ -43,7 +43,9 @@ const store = {
   startCreate: vi.fn(),
   startRename: vi.fn(),
   deleteEntry: vi.fn(),
-  moveEntry: vi.fn()
+  deleteEntries: vi.fn(),
+  moveEntry: vi.fn(),
+  moveEntries: vi.fn()
 };
 
 const ctxMenuApi = {
@@ -80,6 +82,9 @@ describe("FileSidebar drag-and-drop moves", () => {
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     store.moveEntry.mockClear();
+    store.moveEntries.mockClear();
+    store.deleteEntry.mockClear();
+    store.deleteEntries.mockClear();
     store.ensureRootOpen.mockClear();
     store.toggleDir.mockClear();
     container = document.createElement("div");
@@ -156,6 +161,39 @@ describe("FileSidebar drag-and-drop moves", () => {
     act(() => target.dispatchEvent(dragEvent("drop")));
 
     expect(store.moveEntry).toHaveBeenCalledWith("note.txt", "beta");
+  });
+
+  it("selects several rows with Command and moves them together", () => {
+    act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
+    const file = row(container, "note.txt");
+    const folder = row(container, "alpha");
+    act(() => file.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    act(() => folder.dispatchEvent(new MouseEvent("click", { bubbles: true, metaKey: true })));
+    expect(file.className).toContain("selected");
+    expect(folder.className).toContain("selected");
+
+    const target = row(container, "beta");
+    act(() => file.dispatchEvent(dragEvent("dragstart")));
+    act(() => target.dispatchEvent(dragEvent("dragover")));
+    act(() => target.dispatchEvent(dragEvent("drop")));
+
+    expect(store.moveEntries).toHaveBeenCalledWith(["note.txt", "alpha"], "beta");
+  });
+
+  it("selects the visible row range with Shift and bulk deletes on Delete", () => {
+    act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
+    const first = row(container, "alpha");
+    const last = row(container, "note.txt");
+    act(() => first.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    act(() => last.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true })));
+    expect(first.className).toContain("selected");
+    expect(last.className).toContain("selected");
+    expect(row(container, "beta").className).toContain("selected");
+
+    const tree = container.querySelector<HTMLElement>(".tree")!;
+    act(() => tree.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true, cancelable: true })));
+
+    expect(store.deleteEntries).toHaveBeenCalledWith(["alpha", "beta", "note.txt"]);
   });
 
   it("moves a folder into a sibling folder on drop", () => {

@@ -5,6 +5,7 @@ import type { BackendMessage, SessionInfo, ViteServerInfo, ViteToggleResult } fr
 import { TerminalTray } from "./TerminalTray";
 
 const writes = vi.hoisted(() => vi.fn());
+const mockOpenFile = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
     cols = 80;
@@ -27,7 +28,7 @@ const session: SessionInfo = {
   workspace: { id: "11111111-1111-4111-8111-111111111111", generation: 1 }
 };
 let activePath: string | null = null;
-vi.mock("../store", () => ({ useStore: () => ({ session, activePath }) }));
+vi.mock("../store", () => ({ useStore: () => ({ session, activePath, openFile: mockOpenFile }) }));
 
 function viteServer(entry: string, directory = "/workspace"): ViteServerInfo {
   return {
@@ -56,6 +57,7 @@ describe("TerminalTray integration", () => {
     let uuid = 0;
     vi.stubGlobal("crypto", { randomUUID: () => `aaaaaaaa-aaaa-4aaa-8aaa-${String(++uuid).padStart(12, "0")}` });
     writes.mockClear();
+    mockOpenFile.mockClear();
     activePath = null;
     onClose.mockClear();
     window.openshell = {
@@ -91,6 +93,41 @@ describe("TerminalTray integration", () => {
     expect(container.textContent).toContain("Terminal 1");
     await act(async () => listener({ kind: "terminal-exit", terminal: { id: terminalId, exitCode: 0 } }));
     expect(container.textContent).toContain("No terminal open");
+  });
+
+  it("shows detailed W3C diagnostics in the terminal area's Problems panel", async () => {
+    const onPanelChange = vi.fn();
+    await act(async () => root.render(
+      <TerminalTray
+        height={240}
+        snapped={false}
+        validationReport={{
+          path: "src/index.html",
+          diagnostics: [
+            { line: 7, column: 5, endLine: 7, endColumn: 9, message: "Unexpected end tag", severity: "error", source: "w3c-html" },
+            { line: 12, column: 1, endLine: 12, endColumn: 1, message: "Consider adding a lang attribute", severity: "warning", source: "w3c-html" }
+          ]
+        }}
+        activePanel="problems"
+        onPanelChange={onPanelChange}
+        onClose={onClose}
+        onExpand={() => {}}
+      />
+    ));
+
+    expect(container.querySelectorAll(".problem-row")).toHaveLength(2);
+    expect(container.querySelector('[data-testid="validation-problems-list"]')?.textContent)
+      .toContain("Unexpected end tag");
+    expect(container.querySelector('[data-testid="problems-tab"]')?.textContent).toBe("Problems 2");
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>(".problem-row")!.click();
+      await Promise.resolve();
+    });
+    expect(mockOpenFile).toHaveBeenCalledWith("src/index.html");
+
+    await act(async () => container.querySelector<HTMLButtonElement>(".terminal-tab")!.click());
+    expect(onPanelChange).toHaveBeenCalledWith("terminal");
   });
 
   it("commits the empty view and closes the tray after the final close", async () => {

@@ -185,7 +185,8 @@ dialog), `reopenSession(id, silent)`
 `server.connected`; appends missing pending cards, resolves cards whose requests vanished — e.g. answered
 in an attached TUI — while preserving event-backed cards when a list request fails),
 `openCtxMenu`, `closeCtxMenu`, `startCreate(parent, kind)`, `startRename(path)`, `cancelPending`,
-`commitName(name)`, `deleteEntry(path)`, `moveEntry(path, destDir)`,
+`commitName(name)`, `deleteEntry(path)`, `deleteEntries(paths)`,
+`moveEntry(path, destDir)`, `moveEntries(paths, destDir)`,
 `revealInFileManager(path)`,
 `openRecovery(id)`, `acknowledgeRecovery(id)`. `closePanel` invokes
 `shell:close-session` so main tears down the panel's backend context
@@ -415,14 +416,21 @@ Key mechanisms:
   optimistically in the renderer (`commitName`), with the authoritative
   `refreshTree`/`listDir` reconcile happening in the background.
   `.openshell-recovery` is hidden independently in main and renderer.
-- **Drag-and-drop moves** — every explorer row is draggable; dropping onto
-  a folder row moves the entry into it and dropping onto the empty tree
-  area moves it to the workspace root. Self drops, drops into a folder's
-  own descendant, drops onto the current parent, and file-onto-file drops
-  are rejected by prefix containment checks in the sidebar (`canDrop`) and
-  again in main. The hovered destination gets a drop indicator; a valid
-  drop calls `moveEntry`, which performs the `shell:fs-move` invoke and
-  remaps `tabs`, `activePath`, and `agentFiles` on success.
+- **Explorer selection and moves** — ordinary clicks keep opening files and
+  expanding folders. Command/Control-click toggles rows and Shift-click selects
+  the visible range. Delete/Backspace and the context menu move selected items
+  to recoverable Trash; when a selected folder contains another selected item,
+  the nested selection is collapsed so that folder is operated on once. Dragging
+  a selected row carries the selected top-level paths to a folder or the
+  workspace root. Self drops, descendant drops, same-parent moves, and
+  file-onto-file drops are rejected; invalid members of a multi-selection are
+  skipped. Main still validates each `shell:fs-move` / `shell:fs-delete` call.
+  Successful moves remap `tabs`, `activePath`, and `agentFiles` for that
+  workspace.
+- **Single-entry drag-and-drop** — every explorer row is draggable; dropping
+  onto a folder row moves the entry into it and dropping onto the empty tree
+  area or workspace root moves it to the workspace root. The hovered
+  destination gets a drop indicator.
  - **External drag-and-drop** — OS file/folder drops are accepted with
   a file item/type in `DataTransfer` and routed through the main
   process, never interpreted as explorer moves. Dropping onto a folder row
@@ -457,7 +465,7 @@ express a cross-component invariant or non-obvious state contract.
 | `Welcome` | `Welcome.tsx` | Landing view, recent sessions/workspaces, initial folder/file open |
 | `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation (defaults to Files when a workspace opens), Changes, Explorer, filesystem actions, open-workspace root removal, terminal context actions |
 | `SettingsSidebar` | `SettingsSidebar.tsx` | Settings navigation |
-| `SettingsPage` | `SettingsPage.tsx` | Ten design-direction palettes plus the restored Kitty Glass and Original Dark appearances, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and About with GitHub app update status/actions; missing update IPC handlers explain that Orbit must be reopened |
+| `SettingsPage` | `SettingsPage.tsx` | Ten design-direction palettes plus the restored Kitty Glass and Original Dark appearances, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and About with a direct GitHub update action plus a separate status check; missing update IPC handlers explain that Orbit must be reopened |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
 | `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
 | `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and optional side-by-side groups with independent tab membership and selection; new tabs route to the focused group |
@@ -596,17 +604,23 @@ released at that collapsed position.
   column, indentation width, and UTF-8 encoding. Cursor updates from an
   unfocused split group do not replace the focused editor's status.
 
-- The W3C checkers never run automatically. The **Validate** button appears at
-  the bottom-left of `StatusBar` only for an open HTML or CSS file and runs
-  them on demand for that file. Preprocessor stylesheets (SCSS, LESS, Sass)
-  are not validated — the W3C CSS Validator cannot parse them and would flag
-  valid syntax as errors.
+- The W3C checkers never run automatically. The **Validate** control stays at
+  the bottom-left of `StatusBar`; it is disabled with an explanation unless an
+  HTML or CSS tab is active. Preprocessor stylesheets (SCSS, LESS, Sass) are
+  not validated — the W3C CSS Validator cannot parse them and would flag valid
+  syntax as errors.
 - `StatusBar` sends the active tab's content through
   `window.openshell.validateW3c`, applies the returned diagnostics as
   `w3c`-owner Monaco markers via `w3c-validation.ts`, and shows error and
-  warning counts (or a failure state) beside the button.
-- W3C markers are cleared whenever the file content changes or the tab
-  closes, so stale line numbers never linger while editing.
+  warning counts (or a failure state) beside the button. The results also open
+  the terminal area's **Problems** view with each message and line/column;
+  clicking a diagnostic opens the file at that line. After a result, the
+  status control toggles its squiggles off and on.
+- W3C markers are cleared whenever the file content changes or the tab closes,
+  so stale line numbers never linger while editing.
+- About's **Update Orbit** action invokes the main-process updater directly,
+  which opens its progress window before checking GitHub. **Check for updates**
+  remains available separately for current/available/blocked status.
 - The main process calls the Nu Html Checker for HTML and the W3C CSS
   Validator for CSS, then returns diagnostics. Network failures leave the
   editor unchanged; Vue and Svelte files are not sent to the validators.

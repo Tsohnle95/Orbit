@@ -2,7 +2,7 @@ import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenShellApi } from "../../preload";
-import type { BackendMessage, RecoveryRecord, RuntimeID, SessionInfo } from "@shared/types";
+import type { BackendMessage, RecoveryRecord, RuntimeID, SessionInfo, WorkspaceIdentity } from "@shared/types";
 import { StoreProvider, useStore } from "./store";
 
 type Store = ReturnType<typeof useStore>;
@@ -134,6 +134,24 @@ describe("store workspace continuations", () => {
     expect(store.tabs.map((tab) => tab.path)).toEqual(["same.txt"]);
   });
 
+  it("bulk deletes selected paths once and keeps remaining tabs active", async () => {
+    const deletePath = vi.fn(async (_workspace: WorkspaceIdentity, _path: string) => {});
+    window.openshell = api({
+      deletePath,
+      readFile: async (_workspace, path) => `content of ${path}`
+    });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openFile("folder/main.ts"));
+    await act(async () => store.openFile("other.ts"));
+
+    await act(async () => store.deleteEntries(["folder", "folder/main.ts"]));
+
+    expect(deletePath.mock.calls.map(([, path]) => path)).toEqual(["folder"]);
+    expect(store.tabs.map((tab) => tab.path)).toEqual(["other.ts"]);
+    expect(store.activePath).toBe("other.ts");
+  });
+
   it("reveals a path without changing the active editor state and handles stale items", async () => {
     const revealInFileManager = vi.fn(async () => { throw new Error("workspace item is no longer available"); });
     window.openshell = api({ revealInFileManager });
@@ -186,7 +204,7 @@ describe("store workspace continuations", () => {
   });
 
   it("remaps tabs, active path, and tracked changes on moveEntry and refreshes both parents", async () => {
-    const movePath = vi.fn(async () => {});
+    const movePath = vi.fn(async (_workspace: WorkspaceIdentity, _path: string, _destination: string) => {});
     const listDir = vi.fn(async () => []);
     window.openshell = api({ movePath, listDir });
     await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
@@ -362,6 +380,33 @@ describe("store workspace continuations", () => {
 
     expect(store.session?.directory).toBe("/two");
     expect(store.tabs.map((tab) => tab.path)).toEqual(["same.txt"]);
+  });
+
+  it("bulk moves against the captured workspace and remaps its active editor once", async () => {
+    const movePath = vi.fn(async (_workspace: WorkspaceIdentity, _path: string, _destination: string) => {});
+    window.openshell = api({
+      movePath,
+      readFile: async (_workspace, path) => `content of ${path}`
+    });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    const firstWorkspace = store.session!.workspace;
+    const firstSessionID = store.session!.id;
+    await act(async () => store.openFile("folder/main.ts"));
+    await act(async () => store.openFile("other.ts"));
+    act(() => store.setActive("folder/main.ts"));
+
+    let pending!: Promise<void>;
+    await act(async () => { pending = store.moveEntries(["folder", "other.ts"], "dest"); });
+    await act(async () => store.addModelPanel("/two"));
+    await act(async () => store.openFile("keep.ts"));
+    await act(async () => pending);
+
+    expect(movePath.mock.calls.map(([workspace, path, destination]) => [workspace, path, destination]))
+      .toEqual([[firstWorkspace, "folder", "dest"], [firstWorkspace, "other.ts", "dest"]]);
+    await act(async () => store.focusSession(firstSessionID));
+    expect(store.tabs.map((tab) => tab.path)).toEqual(["dest/folder/main.ts", "dest/other.ts"]);
+    expect(store.activePath).toBe("dest/folder/main.ts");
   });
 
   it("does not let startup restoration steal focus from a user activation", async () => {

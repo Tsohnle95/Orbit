@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { CommandOption, McpServerOption, OrbitAppUpdateStatus, PluginOption, SkillOption } from "@shared/types";
 import { useStore } from "../store";
 import { APPEARANCES, type ThemeId, useTheme } from "../theme";
@@ -70,6 +70,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   const [orbitUpdateStatus, setOrbitUpdateStatus] = useState<OrbitAppUpdateStatus | null>(null);
   const [orbitUpdateAction, setOrbitUpdateAction] = useState<"check" | "update" | null>(null);
   const [orbitUpdateFeedback, setOrbitUpdateFeedback] = useState("");
+  const orbitUpdateOperationRef = useRef(0);
   const copy = sectionCopy[section];
   const runtime = (runtimes ?? []).find((item) => item.id === (session?.runtimeID ?? "opencode"));
   const openCodeRuntime = (runtimes ?? []).find((item) => item.id === "opencode");
@@ -101,24 +102,27 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
 
   const checkOrbitUpdate = async (): Promise<void> => {
     if (orbitUpdateAction) return;
+    const operation = ++orbitUpdateOperationRef.current;
     setOrbitUpdateAction("check");
     setOrbitUpdateFeedback("");
     try {
-      setOrbitUpdateStatus(await window.openshell.checkAppUpdate());
+      const status = await window.openshell.checkAppUpdate();
+      if (orbitUpdateOperationRef.current === operation) setOrbitUpdateStatus(status);
     } catch (error) {
-      setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
+      if (orbitUpdateOperationRef.current === operation) setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
     } finally {
-      setOrbitUpdateAction(null);
+      if (orbitUpdateOperationRef.current === operation) setOrbitUpdateAction(null);
     }
   };
 
   const updateOrbit = async (): Promise<void> => {
-    if (orbitUpdateAction) return;
-    if (!window.confirm("Orbit will open an update window, fetch the latest main commit, update dependencies, rebuild, and restart. Active agent runs will stop while Orbit restarts. Continue?")) return;
+    if (orbitUpdateAction === "update") return;
+    const operation = ++orbitUpdateOperationRef.current;
     setOrbitUpdateAction("update");
     setOrbitUpdateFeedback("");
     try {
       const result = await window.openshell.updateApp();
+      if (orbitUpdateOperationRef.current !== operation) return;
       setOrbitUpdateFeedback(result.message);
       if (result.updated && result.latestCommit) {
         setOrbitUpdateStatus({
@@ -129,28 +133,33 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
           commitsBehind: 0
         });
       } else {
-        setOrbitUpdateStatus(await window.openshell.checkAppUpdate());
+        const status = await window.openshell.checkAppUpdate();
+        if (orbitUpdateOperationRef.current === operation) setOrbitUpdateStatus(status);
       }
     } catch (error) {
-      setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
+      if (orbitUpdateOperationRef.current === operation) setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
     } finally {
-      setOrbitUpdateAction(null);
+      if (orbitUpdateOperationRef.current === operation) setOrbitUpdateAction(null);
     }
   };
 
   useEffect(() => {
     if (section !== "about") return;
     let cancelled = false;
+    const operation = ++orbitUpdateOperationRef.current;
     setOrbitUpdateAction("check");
     setOrbitUpdateFeedback("");
     void window.openshell.checkAppUpdate().then((status) => {
-      if (!cancelled) setOrbitUpdateStatus(status);
+      if (!cancelled && orbitUpdateOperationRef.current === operation) setOrbitUpdateStatus(status);
     }).catch((error: unknown) => {
-      if (!cancelled) setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
+      if (!cancelled && orbitUpdateOperationRef.current === operation) setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
     }).finally(() => {
-      if (!cancelled) setOrbitUpdateAction(null);
+      if (!cancelled && orbitUpdateOperationRef.current === operation) setOrbitUpdateAction(null);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (orbitUpdateOperationRef.current === operation) orbitUpdateOperationRef.current++;
+    };
   }, [section]);
 
   useEffect(() => {
@@ -323,12 +332,19 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
         <div className="settings-list">
           <SettingRow
             title="GitHub source"
-            detail="Check the latest commit on Orbit's main branch. Updates rebuild and restart the app."
-            control={<button
-              className="settings-action-button"
-              disabled={orbitUpdateAction !== null}
-              onClick={() => orbitUpdateStatus?.state === "available" ? void updateOrbit() : void checkOrbitUpdate()}
-            >{orbitUpdateAction === "check" ? "Checking…" : orbitUpdateAction === "update" ? "Updating…" : orbitUpdateStatus?.state === "available" ? "Update now" : "Check for updates"}</button>}
+            detail="Update Orbit from GitHub main. A progress window shows the fetch, install, rebuild, and restart steps."
+            control={<div className="settings-update-actions">
+              <button
+                className="settings-action-button primary"
+                disabled={orbitUpdateAction === "update"}
+                onClick={() => void updateOrbit()}
+              >{orbitUpdateAction === "update" ? "Updating…" : "Update Orbit"}</button>
+              <button
+                className="settings-action-button"
+                disabled={orbitUpdateAction !== null}
+                onClick={() => void checkOrbitUpdate()}
+              >{orbitUpdateAction === "check" ? "Checking…" : "Check for updates"}</button>
+            </div>}
           />
         </div>
         {(orbitUpdateFeedback || orbitUpdateStatus) && <p className="settings-action-feedback" role="status" aria-live="polite">

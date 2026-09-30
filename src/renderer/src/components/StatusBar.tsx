@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { W3cDiagnostic } from "@shared/types";
 import { useStore } from "../store";
-import { applyW3cMarkers } from "../w3c-validation";
+import { applyW3cMarkers, clearW3cMarkers } from "../w3c-validation";
+import type { ValidationReport } from "../validation-report";
 import type { EditorStatus } from "./editor-status";
 
 const W3C_FILE = /\.(?:html?|css)$/i;
@@ -9,25 +11,40 @@ interface ValidateResult {
   errors: number;
   warnings: number;
   failed: boolean;
+  diagnostics: W3cDiagnostic[];
 }
 
-export function StatusBar({ editorStatus = null }: { editorStatus?: EditorStatus | null }): ReactNode {
+export function StatusBar({
+  editorStatus = null,
+  onValidationComplete
+}: {
+  editorStatus?: EditorStatus | null;
+  onValidationComplete?: (report: ValidationReport) => void;
+}): ReactNode {
   const { tabs, activePath } = useStore();
   const activeTab = tabs.find((tab) => tab.path === activePath);
   const cursorStatus = editorStatus?.path === activeTab?.path ? editorStatus : null;
   const w3cFile = activeTab !== undefined && W3C_FILE.test(activeTab.path);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<ValidateResult | null>(null);
+  const [markersShown, setMarkersShown] = useState(false);
   const runIdRef = useRef(0);
 
   useEffect(() => {
     runIdRef.current += 1;
     setRunning(false);
     setResult(null);
+    setMarkersShown(false);
   }, [activePath, activeTab?.content]);
 
   const validate = (): void => {
     if (!activeTab || !w3cFile || running) return;
+    if (result && !result.failed && result.diagnostics.length > 0) {
+      if (markersShown) clearW3cMarkers(activeTab.path);
+      else applyW3cMarkers(activeTab.path, result.diagnostics);
+      setMarkersShown(!markersShown);
+      return;
+    }
     const runId = ++runIdRef.current;
     setRunning(true);
     setResult(null);
@@ -37,12 +54,19 @@ export function StatusBar({ editorStatus = null }: { editorStatus?: EditorStatus
         applyW3cMarkers(activeTab.path, diagnostics);
         const errors = diagnostics.filter((d) => d.severity === "error").length;
         setRunning(false);
-        setResult({ errors, warnings: diagnostics.length - errors, failed: false });
+        setResult({ errors, warnings: diagnostics.length - errors, failed: false, diagnostics });
+        setMarkersShown(diagnostics.length > 0);
+        onValidationComplete?.({ path: activeTab.path, diagnostics });
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (runId !== runIdRef.current) return;
         setRunning(false);
-        setResult({ errors: 0, warnings: 0, failed: true });
+        setResult({ errors: 0, warnings: 0, failed: true, diagnostics: [] });
+        onValidationComplete?.({
+          path: activeTab.path,
+          diagnostics: [],
+          error: error instanceof Error ? error.message : String(error)
+        });
       });
   };
 
@@ -65,6 +89,17 @@ export function StatusBar({ editorStatus = null }: { editorStatus?: EditorStatus
           ? "has-warnings"
           : "clean"
     : "";
+  const canToggleMarkers = Boolean(result && !result.failed && result.diagnostics.length > 0);
+  const validationLabel = running
+    ? "Validating…"
+    : canToggleMarkers
+      ? markersShown ? "Hide squiggles" : "Show squiggles"
+      : result ? "Validate again" : "Validate";
+  const validationTitle = !w3cFile
+    ? "Open an HTML or CSS file to run validation"
+    : canToggleMarkers
+      ? markersShown ? "Hide validation squiggles" : "Show validation squiggles"
+      : "Run the W3C Nu Html Checker / CSS Validator on the open file";
 
   return (
     <div className="statusbar">
@@ -74,18 +109,16 @@ export function StatusBar({ editorStatus = null }: { editorStatus?: EditorStatus
             {resultText}
           </span>
         )}
-        {w3cFile && (
-          <button
-            className="statusbar-btn validate-btn"
-            data-testid="validate-btn"
-            disabled={running}
-            title="Run the W3C Nu Html Checker / CSS Validator on the open file"
-            onClick={validate}
-          >
-            {running && <span className="validate-spinner" aria-hidden="true" />}
-            {running ? "Validating…" : "Validate"}
-          </button>
-        )}
+        <button
+          className="statusbar-btn validate-btn"
+          data-testid="validate-btn"
+          disabled={!w3cFile || running}
+          title={validationTitle}
+          onClick={validate}
+        >
+          {running && <span className="validate-spinner" aria-hidden="true" />}
+          {validationLabel}
+        </button>
       </div>
       <div className="statusbar-right">
         {activeTab && (

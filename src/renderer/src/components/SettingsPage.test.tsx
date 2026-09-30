@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { ThemeProvider } from "../theme";
 import { SettingsPage } from "./SettingsPage";
 import { SettingsSidebar } from "./SettingsSidebar";
+import type { OrbitAppUpdateStatus } from "@shared/types";
 
 vi.mock("qrcode", () => ({
   default: { toDataURL: vi.fn(async () => "data:image/png;base64,test-pairing-code") },
@@ -158,7 +159,9 @@ describe("SettingsPage", () => {
     expect(onSectionChange).toHaveBeenCalledWith("model");
   });
 
-  it("checks GitHub on About and updates then restarts Orbit when a commit is available", async () => {
+  it("checks GitHub on About and starts the popup updater directly from Update Orbit", async () => {
+    const confirm = vi.fn(() => true);
+    vi.stubGlobal("confirm", confirm);
     checkAppUpdate.mockResolvedValue({
       state: "available",
       branch: "main",
@@ -173,25 +176,60 @@ describe("SettingsPage", () => {
       latestCommit: "2222222222222222222222222222222222222222",
       message: "Orbit updated to 2222222."
     });
-    vi.stubGlobal("confirm", vi.fn(() => true));
-
     await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={() => {}} /></ThemeProvider>));
     expect(checkAppUpdate).toHaveBeenCalledOnce();
     expect(container.textContent).toContain("2 commits ready · 1111111 → 2222222");
     const updateButton = [...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
-      .find((button) => button.textContent === "Update now")!;
+      .find((button) => button.textContent === "Update Orbit")!;
     expect(updateButton).toBeTruthy();
+    expect([...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
+      .some((button) => button.textContent === "Check for updates")).toBe(true);
 
     await act(async () => {
       updateButton.click();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(window.confirm).toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
     expect(updateApp).toHaveBeenCalledOnce();
     expect(container.textContent).toContain("Orbit updated to 2222222.");
     expect([...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
       .some((button) => button.textContent === "Check for updates")).toBe(true);
+  });
+
+  it("starts an update while the initial status check is pending and ignores its stale result", async () => {
+    let resolveCheck!: (status: OrbitAppUpdateStatus) => void;
+    const pendingCheck = new Promise<OrbitAppUpdateStatus>((resolve) => { resolveCheck = resolve; });
+    checkAppUpdate.mockReturnValueOnce(pendingCheck);
+    updateApp.mockResolvedValue({
+      ok: true,
+      updated: true,
+      currentCommit: "1111111111111111111111111111111111111111",
+      latestCommit: "2222222222222222222222222222222222222222",
+      message: "Orbit updated to 2222222."
+    });
+
+    await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={() => {}} /></ThemeProvider>));
+    const updateButton = [...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
+      .find((button) => button.textContent === "Update Orbit")!;
+    expect(updateButton.disabled).toBe(false);
+
+    await act(async () => {
+      updateButton.click();
+      await Promise.resolve();
+    });
+    expect(updateApp).toHaveBeenCalledOnce();
+    expect(container.textContent).toContain("Orbit updated to 2222222.");
+
+    await act(async () => resolveCheck({
+      state: "available",
+      branch: "main",
+      currentCommit: "1111111111111111111111111111111111111111",
+      latestCommit: "3333333333333333333333333333333333333333",
+      commitsBehind: 4
+    }));
+    expect(container.textContent).not.toContain("4 commits ready");
+    expect(container.textContent).toContain("Orbit updated to 2222222.");
   });
 
   it("explains that Orbit must be reopened when the running main process has no updater handler", async () => {
