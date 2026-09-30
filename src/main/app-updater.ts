@@ -175,9 +175,6 @@ export function createOrbitAppUpdater(projectRoot: string, options: OrbitAppUpda
     try {
       reportProgress("Checking GitHub for updates…");
       const status = await readStatus(true);
-      if (status.state === "current") {
-        return { ok: true, updated: false, message: `Orbit is already current (${shortCommit(status.currentCommit)}).` };
-      }
       if (status.state === "blocked") return { ok: false, updated: false, message: status.message };
 
       reportProgress("Checking the supported Node.js and npm versions…");
@@ -203,11 +200,16 @@ export function createOrbitAppUpdater(projectRoot: string, options: OrbitAppUpda
         };
       }
 
-      reportProgress("Fast-forwarding Orbit to the latest GitHub commit…");
-      await git(["merge", "--ff-only", "refs/remotes/origin/main"]);
-      sourceCommit = await git(["rev-parse", "HEAD"]);
-      if (sourceCommit !== status.latestCommit) {
-        throw new Error("GitHub main changed while Orbit was updating. Check for updates and try again.");
+      if (status.state === "available") {
+        reportProgress("Fast-forwarding Orbit to the latest GitHub commit…");
+        await git(["merge", "--ff-only", "refs/remotes/origin/main"]);
+        sourceCommit = await git(["rev-parse", "HEAD"]);
+        if (sourceCommit !== status.latestCommit) {
+          throw new Error("GitHub main changed while Orbit was updating. Check for updates and try again.");
+        }
+      } else {
+        sourceCommit = status.currentCommit;
+        reportProgress("GitHub is current; rebuilding this Orbit version…");
       }
 
       reportProgress("Installing app dependencies…");
@@ -219,7 +221,9 @@ export function createOrbitAppUpdater(projectRoot: string, options: OrbitAppUpda
         updated: true,
         currentCommit: status.currentCommit,
         latestCommit: sourceCommit,
-        message: `Orbit updated to ${shortCommit(sourceCommit)}.`
+        message: status.state === "available"
+          ? `Orbit updated to ${shortCommit(sourceCommit)} and rebuilt.`
+          : `Orbit is current at ${shortCommit(sourceCommit)} and has been rebuilt.`
       };
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);

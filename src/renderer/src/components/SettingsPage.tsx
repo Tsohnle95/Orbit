@@ -48,6 +48,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   const { theme, setTheme } = useTheme();
   const {
     session,
+    unsavedEditorFileCount,
     runtimes,
     models,
     currentModel,
@@ -117,6 +118,10 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
 
   const updateOrbit = async (): Promise<void> => {
     if (orbitUpdateAction === "update") return;
+    if (unsavedEditorFileCount > 0) {
+      setOrbitUpdateFeedback(`Save ${unsavedEditorFileCount} unsaved file${unsavedEditorFileCount === 1 ? "" : "s"} before Orbit rebuilds and relaunches.`);
+      return;
+    }
     const operation = ++orbitUpdateOperationRef.current;
     setOrbitUpdateAction("update");
     setOrbitUpdateFeedback("");
@@ -332,7 +337,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
         <div className="settings-list">
           <SettingRow
             title="GitHub source"
-            detail="Update Orbit from GitHub main. A progress window shows the fetch, install, rebuild, and restart steps."
+            detail="Update Orbit checks GitHub main, installs dependencies, rebuilds, and relaunches Orbit—even when there are no newer commits. Check for updates only reports status."
             control={<div className="settings-update-actions">
               <button
                 className="settings-action-button primary"
@@ -349,9 +354,9 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
         </div>
         {(orbitUpdateFeedback || orbitUpdateStatus) && <p className="settings-action-feedback" role="status" aria-live="polite">
           {orbitUpdateFeedback || (orbitUpdateStatus?.state === "available"
-            ? `${orbitUpdateStatus.commitsBehind} commit${orbitUpdateStatus.commitsBehind === 1 ? "" : "s"} ready · ${orbitUpdateStatus.currentCommit.slice(0, 7)} → ${orbitUpdateStatus.latestCommit.slice(0, 7)}`
+            ? `${orbitUpdateStatus.commitsBehind} commit${orbitUpdateStatus.commitsBehind === 1 ? "" : "s"} ready · ${orbitUpdateStatus.currentCommit.slice(0, 7)} → ${orbitUpdateStatus.latestCommit.slice(0, 7)}. Click Update Orbit to install, rebuild, and relaunch.`
             : orbitUpdateStatus?.state === "current"
-              ? `Up to date · ${orbitUpdateStatus.branch} @ ${orbitUpdateStatus.currentCommit.slice(0, 7)}`
+              ? `Up to date · ${orbitUpdateStatus.branch} @ ${orbitUpdateStatus.currentCommit.slice(0, 7)}. Check for updates does not rebuild.`
               : orbitUpdateStatus?.message)}
         </p>}
       </section>}

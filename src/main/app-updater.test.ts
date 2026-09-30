@@ -12,8 +12,10 @@ function makeUpdater(overrides: {
   counts?: string;
   nodeVersion?: string;
   fetchError?: Error;
+  latestCommit?: string;
 } = {}) {
   let merged = false;
+  const githubCommit = overrides.latestCommit ?? latest;
   const run = vi.fn(async (command: string, args: string[]) => {
     if (command === "node") return overrides.nodeVersion ?? "v22.23.2";
     if (command === "npm") return "";
@@ -25,8 +27,8 @@ function makeUpdater(overrides: {
       if (overrides.fetchError) throw overrides.fetchError;
       return "";
     }
-    if (args[0] === "rev-parse" && args[1] === "HEAD") return merged ? latest : current;
-    if (args[0] === "rev-parse" && args[1] === "refs/remotes/origin/main") return latest;
+    if (args[0] === "rev-parse" && args[1] === "HEAD") return merged ? githubCommit : current;
+    if (args[0] === "rev-parse" && args[1] === "refs/remotes/origin/main") return githubCommit;
     if (args[0] === "rev-list") return overrides.counts ?? "0\t3";
     if (args[0] === "merge") {
       merged = true;
@@ -54,6 +56,7 @@ describe("Orbit app updater", () => {
       root,
       expect.objectContaining({ timeoutMs: 120_000 })
     );
+    expect(run.mock.calls.some((call) => call[0] === "npm")).toBe(false);
   });
 
   it.each([
@@ -80,7 +83,7 @@ describe("Orbit app updater", () => {
       updated: true,
       currentCommit: current,
       latestCommit: latest,
-      message: "Orbit updated to 2222222."
+      message: "Orbit updated to 2222222 and rebuilt."
     });
 
     const calls = run.mock.calls.map((call) => [call[0], ...call[1]]);
@@ -91,6 +94,31 @@ describe("Orbit app updater", () => {
       "Checking GitHub for updates…",
       "Checking the supported Node.js and npm versions…",
       "Fast-forwarding Orbit to the latest GitHub commit…",
+      "Installing app dependencies…",
+      "Building the updated app…"
+    ]);
+  });
+
+  it("reinstalls and rebuilds the current GitHub version when Update Orbit is explicitly requested", async () => {
+    const { updater, run } = makeUpdater({ counts: "0\t0", latestCommit: current });
+    const progress: string[] = [];
+
+    await expect(updater.update((message) => progress.push(message))).resolves.toEqual({
+      ok: true,
+      updated: true,
+      currentCommit: current,
+      latestCommit: current,
+      message: "Orbit is current at 1111111 and has been rebuilt."
+    });
+
+    const calls = run.mock.calls.map((call) => [call[0], ...call[1]]);
+    expect(calls.some((call) => call[0] === "git" && call[1] === "merge")).toBe(false);
+    expect(calls).toContainEqual(["npm", "install", "--no-audit", "--no-fund"]);
+    expect(calls).toContainEqual(["npm", "run", "build:compile"]);
+    expect(progress).toEqual([
+      "Checking GitHub for updates…",
+      "Checking the supported Node.js and npm versions…",
+      "GitHub is current; rebuilding this Orbit version…",
       "Installing app dependencies…",
       "Building the updated app…"
     ]);

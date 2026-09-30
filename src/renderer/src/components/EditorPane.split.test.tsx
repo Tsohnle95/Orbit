@@ -22,6 +22,32 @@ const firstTab: Tab = {
 const secondTab: Tab = { ...firstTab, path: "src/two.ts", name: "two.ts", content: "two", saved: "two" };
 const thirdTab: Tab = { ...firstTab, path: "src/three.ts", name: "three.ts", content: "three", saved: "three" };
 const fourthTab: Tab = { ...firstTab, path: "src/four.ts", name: "four.ts", content: "four", saved: "four" };
+const jsTab: Tab = { ...firstTab, path: "src/library.js", name: "library.js", content: "document.", saved: "document." };
+const EDITOR_TAB_MIME = "application/x-orbit-editor-tab";
+const capturedEditorOptions = vi.hoisted(() => vi.fn());
+
+function createTabTransfer(): DataTransfer {
+  const values = new Map<string, string>();
+  const types: string[] = [];
+  return {
+    effectAllowed: "all",
+    dropEffect: "none",
+    files: [] as unknown as FileList,
+    items: [] as unknown as DataTransferItemList,
+    types,
+    setData(type: string, value: string) {
+      values.set(type, value);
+      if (!types.includes(type)) types.push(type);
+    },
+    getData(type: string) { return values.get(type) ?? ""; }
+  } as unknown as DataTransfer;
+}
+
+function dispatchTabDrag(element: Element, type: "dragstart" | "dragover" | "drop", dataTransfer: DataTransfer): void {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "dataTransfer", { value: dataTransfer });
+  element.dispatchEvent(event);
+}
 
 const store = {
   tabs: [firstTab, secondTab],
@@ -42,10 +68,11 @@ store.setActive.mockImplementation((path: string) => { store.activePath = path; 
 vi.mock("../store", () => ({ useStore: () => store }));
 vi.mock("../emmet-keys", () => ({ wireEmmetKeys: vi.fn() }));
 vi.mock("../editor-navigation", () => ({ wireEditorNavigationKeys: vi.fn() }));
-vi.mock("../monaco", () => ({ languageForPath: () => "typescript" }));
+vi.mock("../monaco", () => ({ languageForPath: (path: string) => path.endsWith(".js") ? "javascript" : "typescript" }));
 vi.mock("../w3c-validation", () => ({ clearW3cMarkers: vi.fn() }));
 vi.mock("@monaco-editor/react", () => ({
-  default: ({ path, defaultValue, onMount }: { path: string; defaultValue: string; onMount?: (editor: unknown) => void }) => {
+  default: ({ path, language, defaultValue, onMount, options }: { path: string; language: string; defaultValue: string; onMount?: (editor: unknown) => void; options?: unknown }) => {
+    capturedEditorOptions(options);
     const model = {
       getValue: () => defaultValue,
       getOptions: () => ({ tabSize: 4, insertSpaces: true })
@@ -55,7 +82,7 @@ vi.mock("@monaco-editor/react", () => ({
       getModel: () => model,
       onDidChangeCursorPosition: () => ({ dispose: () => {} })
     });
-    return <div data-testid="editor" data-path={path} />;
+    return <div data-testid="editor" data-path={path} data-language={language} />;
   },
   DiffEditor: () => <div data-testid="diff-editor" />
 }));
@@ -70,6 +97,7 @@ describe("EditorPane split groups", () => {
     store.activePath = firstTab.path;
     store.setActive.mockClear();
     store.saveTab.mockClear();
+    capturedEditorOptions.mockClear();
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -137,6 +165,24 @@ describe("EditorPane split groups", () => {
     });
   });
 
+  it("turns on automatic trigger suggestions for JavaScript editors", () => {
+    store.tabs = [jsTab];
+    store.activePath = jsTab.path;
+    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+
+    expect(container.querySelector("[data-testid='editor']")?.getAttribute("data-language")).toBe("javascript");
+    const options = capturedEditorOptions.mock.calls.at(-1)?.[0] as {
+      quickSuggestions?: { other?: boolean };
+      suggestOnTriggerCharacters?: boolean;
+      wordBasedSuggestions?: string;
+      tabCompletion?: string;
+    };
+    expect(options.quickSuggestions?.other).toBe(true);
+    expect(options.suggestOnTriggerCharacters).toBe(true);
+    expect(options.wordBasedSuggestions).toBe("currentDocument");
+    expect(options.tabCompletion).toBe("on");
+  });
+
   it("routes new files and save shortcuts to the group focused from its editor surface", () => {
     act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
@@ -194,5 +240,27 @@ describe("EditorPane split groups", () => {
     expect(groups[1].querySelector("[data-testid=editor]")?.getAttribute("data-path")).toBe(secondTab.path);
     expect([...groups[0].querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.title)).toEqual([firstTab.path]);
     expect([...groups[1].querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.title)).toEqual([secondTab.path]);
+  });
+
+  it("moves a tab between split editor groups when dragged across them", () => {
+    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
+
+    const transfer = createTabTransfer();
+    const primaryTab = container.querySelector<HTMLElement>(`.editor-group-primary [role="tab"][title="${firstTab.path}"]`)!;
+    const secondaryGroup = container.querySelector<HTMLElement>(".editor-group-secondary")!;
+    act(() => dispatchTabDrag(primaryTab, "dragstart", transfer));
+    expect(transfer.types).toContain(EDITOR_TAB_MIME);
+    act(() => dispatchTabDrag(secondaryGroup, "dragover", transfer));
+    expect(secondaryGroup.classList).toContain("editor-group-drop-target");
+    act(() => dispatchTabDrag(secondaryGroup, "drop", transfer));
+
+    const primaryTabs = [...container.querySelectorAll<HTMLElement>(".editor-group-primary [role='tab']")];
+    const secondaryTabs = [...container.querySelectorAll<HTMLElement>(".editor-group-secondary [role='tab']")];
+    expect(primaryTabs.map((tab) => tab.title)).toEqual([thirdTab.path]);
+    expect(secondaryTabs.map((tab) => tab.title)).toEqual([firstTab.path, secondTab.path]);
+    expect(container.querySelector(".editor-group-secondary [data-testid='editor']")?.getAttribute("data-path"))
+      .toBe(firstTab.path);
+    expect(store.setActive).toHaveBeenLastCalledWith(firstTab.path);
   });
 });

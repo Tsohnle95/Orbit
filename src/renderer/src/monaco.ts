@@ -28,6 +28,19 @@ window.MonacoEnvironment = {
 
 loader.config({ monaco });
 
+const javascriptDefaults = monaco.languages.typescript.javascriptDefaults;
+javascriptDefaults.setEagerModelSync(true);
+javascriptDefaults.setCompilerOptions({
+  allowJs: true,
+  target: monaco.languages.typescript.ScriptTarget.ES2020,
+  lib: ["es2020", "dom", "dom.iterable"]
+});
+javascriptDefaults.setDiagnosticsOptions({
+  noSemanticValidation: false,
+  noSyntaxValidation: false,
+  noSuggestionDiagnostics: false
+});
+
 emmetHTML(monaco, ["html"]);
 emmetCSS(monaco, ["css", "scss", "less"]);
 

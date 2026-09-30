@@ -423,9 +423,11 @@ export function TerminalTray({
         <ValidationProblems
           report={validationReport}
           hidden={snapped}
-          onOpen={(path, line) => {
+          onOpen={(path, line, column) => {
             if (typeof openFile !== "function") return;
-            void openFile(path).then(() => requestReveal(path, line));
+            void openFile(path).then(() => {
+              requestAnimationFrame(() => requestReveal(path, line, column));
+            });
           }}
         />
       )}
@@ -477,7 +479,7 @@ function ValidationProblems({
 }: {
   report: ValidationReport | null;
   hidden: boolean;
-  onOpen: (path: string, line: number) => void;
+  onOpen: (path: string, line: number, column: number) => void;
 }): ReactNode {
   const hiddenClass = hidden ? " hidden" : "";
   if (!report) {
@@ -500,20 +502,37 @@ function ValidationProblems({
       </div>
     );
   }
+  const errors = report.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length;
+  const warnings = report.diagnostics.length - errors;
+  const summary = [
+    errors > 0 ? `${errors} error${errors === 1 ? "" : "s"}` : "",
+    warnings > 0 ? `${warnings} warning${warnings === 1 ? "" : "s"}` : ""
+  ].filter(Boolean).join(" · ");
   return (
     <div className={`terminal-body problems-list${hiddenClass}`} data-testid="validation-problems-list">
-      <div className="problems-summary">W3C validation · {report.path}</div>
+      <div className="problems-summary">
+        <div className="problems-summary-file">
+          <span className="problems-summary-title">W3C validation</span>
+          <code title={report.path}>{report.path}</code>
+        </div>
+        <span className="problems-summary-count">{summary}</span>
+      </div>
       {report.diagnostics.map((diagnostic, index) => (
         <button
           type="button"
           className={`problem-row ${diagnostic.severity === "error" ? "severity-error" : "severity-warning"}`}
           key={`${diagnostic.line}:${diagnostic.column}:${index}`}
+          data-line={diagnostic.line}
+          data-column={diagnostic.column}
           title={`${report.path}:${diagnostic.line}:${diagnostic.column} — ${diagnostic.message}`}
-          onClick={() => onOpen(report.path, diagnostic.line)}
+          onClick={() => onOpen(report.path, diagnostic.line, diagnostic.column)}
         >
-          <span className="problem-severity">{diagnostic.severity === "error" ? "Error" : "Warning"}</span>
-          <span className="problem-message">{diagnostic.message}</span>
-          <span className="problem-location">{diagnostic.line}:{diagnostic.column}</span>
+          <span className="problem-icon" aria-hidden="true">{diagnostic.severity === "error" ? "×" : "!"}</span>
+          <span className="problem-content">
+            <span className="problem-message">{diagnostic.message}</span>
+            <span className="problem-source">{report.path}</span>
+          </span>
+          <span className="problem-location">Ln {diagnostic.line}, Col {diagnostic.column}</span>
         </button>
       ))}
     </div>

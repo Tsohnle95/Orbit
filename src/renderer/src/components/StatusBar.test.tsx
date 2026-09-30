@@ -92,6 +92,25 @@ describe("StatusBar validation", () => {
     expect(container.querySelector('[data-testid="validate-result"]')?.textContent).toBe("2 errors, 1 warning");
   });
 
+  it("runs the W3C validator for an open CSS file", async () => {
+    const diagnostics = [
+      { line: 4, column: 9, endLine: 4, endColumn: 10, message: "Unknown property", severity: "error" as const, source: "w3c-css" as const }
+    ];
+    window.openshell = { validateW3c: vi.fn(async () => diagnostics) } as unknown as typeof window.openshell;
+    store.tabs = [cssTab];
+    store.activePath = cssTab.path;
+
+    act(() => root.render(<StatusBar />));
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!.click();
+      await Promise.resolve();
+    });
+
+    expect(window.openshell.validateW3c).toHaveBeenCalledWith(cssTab.path, cssTab.content);
+    expect(applyW3cMarkers).toHaveBeenCalledWith(cssTab.path, diagnostics);
+    expect(container.querySelector('[data-testid="validate-result"]')?.textContent).toBe("1 error");
+  });
+
   it("opens the detailed report and toggles validation squiggles from the status control", async () => {
     const diagnostics = [
       { line: 2, column: 4, endLine: 2, endColumn: 8, message: "Unexpected end tag", severity: "error" as const, source: "w3c-html" as const }

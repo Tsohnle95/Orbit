@@ -16,6 +16,7 @@ type MockSession = { directory: string; workspace: { id: string; generation: num
 
 const store = {
   session: null as MockSession | null,
+  unsavedEditorFileCount: 0,
   runtimes: [],
   models: [] as MockModel[],
   currentModel: null as MockModel | null,
@@ -53,6 +54,7 @@ describe("SettingsPage", () => {
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     window.localStorage.clear();
+    store.unsavedEditorFileCount = 0;
     delete document.documentElement.dataset.theme;
     window.openshell = { setAppearance, mobileSetupStatus, mobilePairingQr, checkAppUpdate, updateApp } as unknown as typeof window.openshell;
     container = document.createElement("div");
@@ -230,6 +232,25 @@ describe("SettingsPage", () => {
     }));
     expect(container.textContent).not.toContain("4 commits ready");
     expect(container.textContent).toContain("Orbit updated to 2222222.");
+  });
+
+  it("requires unsaved editor files to be saved before an update can relaunch Orbit", async () => {
+    store.unsavedEditorFileCount = 2;
+    checkAppUpdate.mockResolvedValue({
+      state: "current",
+      branch: "main",
+      currentCommit: "1111111111111111111111111111111111111111",
+      latestCommit: "1111111111111111111111111111111111111111",
+      commitsBehind: 0
+    });
+    await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={() => {}} /></ThemeProvider>));
+    const updateButton = [...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
+      .find((button) => button.textContent === "Update Orbit")!;
+
+    await act(async () => updateButton.click());
+
+    expect(updateApp).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Save 2 unsaved files before Orbit rebuilds and relaunches.");
   });
 
   it("explains that Orbit must be reopened when the running main process has no updater handler", async () => {

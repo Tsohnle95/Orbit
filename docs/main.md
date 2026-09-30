@@ -252,7 +252,7 @@ Internals:
 | `shell:sync-opencode` | `() → OpenCodeSyncResult` — restarts the attached shared OpenCode service only when needed to match the installed CLI version |
 | `shell:update-opencode` | `() → OpenCodeSyncResult` — runs OpenCode's updater, then syncs the shared service to the resulting CLI version |
 | `shell:app-update-check` | `() → OrbitAppUpdateStatus` — fetches canonical GitHub `main` and reports current, available, or blocked state for the clean source checkout |
-| `shell:app-update` | `() → OrbitAppUpdateResult` — opens a modal progress window, fast-forwards the clean `main` checkout, runs `npm install` and the compile build, then relaunches Orbit on success; failures remain visible in the popup |
+| `shell:app-update` | `() → OrbitAppUpdateResult` — opens a modal progress window, fast-forwards the clean `main` checkout when GitHub is ahead, runs `npm install` and the compile build even when already current, then relaunches Orbit on success; failures remain visible in the popup |
 | `shell:active-sessions` | `() → SessionInfo[]` — open backend sessions, most recently activated last |
 | `shell:close-session` | `(workspace) → void` — tears down the backend context when a panel closes; the opencode session remains reopenable |
 | `shell:open-session-id` | `(sessionID, generation, runtimeID?) → ReopenedSession`; opens an OpenCode session and transcript. Legacy DeepSeek sessions cannot be reopened through the dormant adapter |
@@ -321,7 +321,7 @@ Internals:
 | `shell:window-view` | `(view: "landing" \| "session") → void` — switches the window between the fixed landing size and the persisted session size (see Window sizing) |
 | `shell:set-appearance` | `(appearance: "dark" \| "light") → void` — sets `nativeTheme.themeSource` so window vibrancy and native chrome follow the selected color profile; the renderer reports it on boot and on every profile change |
 | `shell:install-app` | `() → {ok, message}`; macOS only — spawns `scripts/install-app.mjs` to build and package the app, then replaces `/Applications/Orbit.app` |
-| `shell:validate-w3c` | `(path, content) → W3cDiagnostic[]`; calls the Nu Html Checker or W3C CSS Validator for HTML and plain CSS paths; preprocessor stylesheets (SCSS, LESS, Sass) return no diagnostics |
+| `shell:validate-w3c` | `(path, content) → W3cDiagnostic[]`; calls the Nu Html Checker for HTML and posts plain CSS as a form body to the W3C CSS Validator's SOAP 1.2 endpoint; preprocessor stylesheets (SCSS, LESS, Sass) return no diagnostics |
 | `shell:vite-toggle` | `(workspace, entryPath?) → ViteToggleResult` — starts a loopback Vite dev server for the resolved page and opens its verified URL, or stops the server already running for that same workspace/page; an active HTML entry is confined to the workspace and served from its containing directory; otherwise the root is served, or, when the root has no index.html, the shallowest HTML page in the workspace (skipping dependencies/VCS) is served from its folder; Vite resolves from either a self-contained package or the repository backing the installed live launcher |
 | `shell:vite-servers` | `() → ViteServerInfo[]` — lists every running Vite dev server across workspaces, each identified by its workspace, served directory and entry, URL and port |
 | `shell:vite-stop` | `(serverID) → void` — stops one Vite dev server by its opaque id |

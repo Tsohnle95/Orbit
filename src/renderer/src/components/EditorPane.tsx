@@ -20,6 +20,12 @@ const EDITOR_OPTIONS = {
   fontFamily: "'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace",
   minimap: { enabled: false },
   automaticLayout: true,
+  quickSuggestions: { other: true, comments: false, strings: true },
+  quickSuggestionsDelay: 25,
+  suggestOnTriggerCharacters: true,
+  wordBasedSuggestions: "currentDocument" as const,
+  tabCompletion: "on" as const,
+  acceptSuggestionOnEnter: "on" as const,
   folding: true,
   glyphMargin: false,
   showFoldingControls: "mouseover" as const,
@@ -47,18 +53,22 @@ function SplitRightIcon(): ReactNode {
 }
 
 function TabBar({
+  group,
   tabs,
   activePath,
   ariaLabel,
   onSelect,
   onClose,
+  onMoveTab,
   actions
 }: {
+  group: EditorGroupID;
   tabs: Tab[];
   activePath: string | null;
   ariaLabel: string;
   onSelect: (path: string) => void;
   onClose: (path: string) => void;
+  onMoveTab: (path: string, destination: EditorGroupID, source: EditorGroupID) => void;
   actions: ReactNode;
 }): ReactNode {
   const { setTabMode } = useStore();
@@ -76,6 +86,11 @@ function TabBar({
             role="tab"
             aria-selected={active}
             className={"tab" + (active ? " active" : "")}
+            draggable
+            onDragStart={(event) => {
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData(EDITOR_TAB_MIME, JSON.stringify({ path: tab.path, source: group }));
+            }}
             onClick={() => onSelect(tab.path)}
             title={tab.path}
           >
@@ -351,6 +366,22 @@ function EditorWithSave({
 }
 
 type EditorGroupID = "primary" | "secondary";
+const EDITOR_TAB_MIME = "application/x-orbit-editor-tab";
+
+interface EditorTabTransfer {
+  path: string;
+  source: EditorGroupID;
+}
+
+function readEditorTabTransfer(transfer: DataTransfer): EditorTabTransfer | null {
+  try {
+    const value = JSON.parse(transfer.getData(EDITOR_TAB_MIME)) as Partial<EditorTabTransfer>;
+    if (typeof value.path !== "string" || (value.source !== "primary" && value.source !== "secondary")) return null;
+    return { path: value.path, source: value.source };
+  } catch {
+    return null;
+  }
+}
 
 function samePaths(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((path, index) => path === right[index]);
@@ -366,6 +397,7 @@ function EditorGroup({
   onStatusChange,
   onSelect,
   onCloseTab,
+  onMoveTab,
   onActivate,
   onToggleSplit,
   onCloseSplit
@@ -379,10 +411,12 @@ function EditorGroup({
   onStatusChange: (status: EditorStatus) => void;
   onSelect: (path: string) => void;
   onCloseTab: (path: string) => void;
+  onMoveTab: (path: string, destination: EditorGroupID, source: EditorGroupID) => void;
   onActivate: (id: EditorGroupID) => void;
   onToggleSplit: () => void;
   onCloseSplit: () => void;
 }): ReactNode {
+  const [tabDragOver, setTabDragOver] = useState(false);
   const activeTab = tabs.find((tab) => tab.path === activePath);
   const title = id === "primary" ? "Primary editor" : "Secondary editor";
   const actions = id === "primary"
@@ -401,22 +435,44 @@ function EditorGroup({
         title="Close secondary editor group"
         onClick={onCloseSplit}
       ><IconClose /></button>;
+  const onTabDragOver = (event: React.DragEvent): void => {
+    if (!Array.from(event.dataTransfer.types).includes(EDITOR_TAB_MIME)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "move";
+    setTabDragOver(true);
+  };
+  const onTabDrop = (event: React.DragEvent): void => {
+    const transfer = readEditorTabTransfer(event.dataTransfer);
+    if (!transfer) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setTabDragOver(false);
+    onMoveTab(transfer.path, id, transfer.source);
+  };
 
   return (
     <section
-      className={"editor-group" + (id === "primary" ? " editor-group-primary" : " editor-group-secondary") + (focused ? " editor-group-focused" : "")}
+      className={"editor-group" + (id === "primary" ? " editor-group-primary" : " editor-group-secondary") + (focused ? " editor-group-focused" : "") + (tabDragOver ? " editor-group-drop-target" : "")}
       data-editor-group={id}
       role="region"
       aria-label={title}
       onMouseDownCapture={() => onActivate(id)}
       onFocusCapture={() => onActivate(id)}
+      onDragOver={onTabDragOver}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setTabDragOver(false);
+      }}
+      onDrop={onTabDrop}
     >
       <TabBar
+        group={id}
         tabs={tabs}
         activePath={activePath}
         ariaLabel={title + " tabs"}
         onSelect={onSelect}
         onClose={onCloseTab}
+        onMoveTab={onMoveTab}
         actions={actions}
       />
       {activeTab
@@ -531,6 +587,25 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
     if (path && path !== activePath) setActive(path);
   };
 
+  const moveTabToGroup = (path: string, destination: EditorGroupID, source: EditorGroupID): void => {
+    if (!tabs.some((tab) => tab.path === path) || source === destination) return;
+    const sourcePaths = source === "primary" ? primaryTabPaths : secondaryTabPaths;
+    const destinationPaths = destination === "primary" ? primaryTabPaths : secondaryTabPaths;
+    if (!sourcePaths.includes(path) || destinationPaths.includes(path)) return;
+
+    const nextPrimary = primaryTabPaths.filter((item) => item !== path);
+    const nextSecondary = secondaryTabPaths.filter((item) => item !== path);
+    if (destination === "primary") nextPrimary.push(path);
+    else nextSecondary.push(path);
+
+    setPrimaryTabPaths(nextPrimary);
+    setSecondaryTabPaths(nextSecondary);
+    if (destination === "primary") setPrimaryPath(path);
+    else setSecondaryPath(path);
+    focusGroup(destination);
+    if (path !== activePath) setActive(path);
+  };
+
   const toggleSplit = (): void => {
     if (splitEnabled) {
       setPrimaryTabPaths(tabs.map((tab) => tab.path));
@@ -615,6 +690,7 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
             onStatusChange={onStatusChange}
             onSelect={(path) => selectPath("primary", path)}
             onCloseTab={closeTab}
+            onMoveTab={moveTabToGroup}
             onActivate={activateGroup}
             onToggleSplit={toggleSplit}
             onCloseSplit={toggleSplit}
@@ -629,6 +705,7 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
             onStatusChange={onStatusChange}
             onSelect={(path) => selectPath("secondary", path)}
             onCloseTab={closeTab}
+            onMoveTab={moveTabToGroup}
             onActivate={activateGroup}
             onToggleSplit={toggleSplit}
             onCloseSplit={toggleSplit}

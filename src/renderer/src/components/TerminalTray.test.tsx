@@ -6,6 +6,7 @@ import { TerminalTray } from "./TerminalTray";
 
 const writes = vi.hoisted(() => vi.fn());
 const mockOpenFile = vi.hoisted(() => vi.fn(async () => {}));
+const mockRequestReveal = vi.hoisted(() => vi.fn());
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
     cols = 80;
@@ -21,6 +22,7 @@ vi.mock("@xterm/xterm", () => ({
 }));
 vi.mock("@xterm/addon-fit", () => ({ FitAddon: class { fit() {} } }));
 vi.mock("@xterm/xterm/css/xterm.css", () => ({}));
+vi.mock("../reveal", () => ({ requestReveal: mockRequestReveal }));
 
 const session: SessionInfo = {
   id: "session",
@@ -58,6 +60,7 @@ describe("TerminalTray integration", () => {
     vi.stubGlobal("crypto", { randomUUID: () => `aaaaaaaa-aaaa-4aaa-8aaa-${String(++uuid).padStart(12, "0")}` });
     writes.mockClear();
     mockOpenFile.mockClear();
+    mockRequestReveal.mockClear();
     activePath = null;
     onClose.mockClear();
     window.openshell = {
@@ -119,12 +122,15 @@ describe("TerminalTray integration", () => {
     expect(container.querySelector('[data-testid="validation-problems-list"]')?.textContent)
       .toContain("Unexpected end tag");
     expect(container.querySelector('[data-testid="problems-tab"]')?.textContent).toBe("Problems 2");
+    expect(container.querySelector(".problem-row")?.getAttribute("data-line")).toBe("7");
+    expect(container.querySelector(".problem-row")?.getAttribute("data-column")).toBe("5");
 
     await act(async () => {
       container.querySelector<HTMLButtonElement>(".problem-row")!.click();
       await Promise.resolve();
     });
     expect(mockOpenFile).toHaveBeenCalledWith("src/index.html");
+    expect(mockRequestReveal).toHaveBeenCalledWith("src/index.html", 7, 5);
 
     await act(async () => container.querySelector<HTMLButtonElement>(".terminal-tab")!.click());
     expect(onPanelChange).toHaveBeenCalledWith("terminal");

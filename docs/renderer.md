@@ -445,7 +445,10 @@ Key mechanisms:
    the **editor pane** opens them via `openPaths` (folders become panels, files
    become tabs); outside files save back to their absolute path via
    `shell:fs-write-standalone`. Dragging files onto the Welcome screen (no
-   session yet) opens them via `openPaths`.
+  session yet) opens them via `openPaths`.
+- **Split editor tabs** — each open tab can be dragged to the other editor
+  group. The drop moves its group membership, activates it in the destination,
+  and leaves one copy of the file tab.
 - **Recovery notice** — unacknowledged records are shown persistently with
   Open and Acknowledge actions. Acknowledge updates manifest metadata and hides
   the record without deleting bytes. Files and directories both offer inline
@@ -468,7 +471,7 @@ express a cross-component invariant or non-obvious state contract.
 | `SettingsPage` | `SettingsPage.tsx` | Ten design-direction palettes plus the restored Kitty Glass and Original Dark appearances, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and About with a direct GitHub update action plus a separate status check; missing update IPC handlers explain that Orbit must be reopened |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
 | `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
-| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and optional side-by-side groups with independent tab membership and selection; new tabs route to the focused group |
+| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and optional side-by-side groups with independent tab membership, selection, and drag transfer; new tabs route to the focused group |
 | `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status |
 | `AgentTui` | `AgentTui.tsx` | xterm view for the active runtime's PTY-backed TUI |
 | `OpenCodeTimeline` | `OpenCodeTimeline.tsx` | Runtime-neutral chronological rendering of assistant text/tools/delegation with hidden reasoning |
@@ -576,6 +579,10 @@ released at that collapsed position.
 - Editor line wrapping is always enabled; there is no settings or toolbar toggle.
 - `languageForPath()` — extension → Monaco language map (fallback
   `plaintext`).
+- JavaScript uses Monaco's TypeScript worker with eager model synchronization,
+  ES2020 and browser DOM libraries, syntax/semantic diagnostics, and explicit
+  quick-suggestion/trigger-character settings in `EditorPane`. Typing after
+  `document.` offers DOM API completions such as `querySelectorAll`.
 - `editor-navigation.ts` binds Command/Control + Arrow Up/Down to the start/end
   of the document and Command/Control + Arrow Left/Right to the start/end of
   the current line. These explicit commands keep the native editor navigation
@@ -613,14 +620,21 @@ released at that collapsed position.
   `window.openshell.validateW3c`, applies the returned diagnostics as
   `w3c`-owner Monaco markers via `w3c-validation.ts`, and shows error and
   warning counts (or a failure state) beside the button. The results also open
-  the terminal area's **Problems** view with each message and line/column;
-  clicking a diagnostic opens the file at that line. After a result, the
-  status control toggles its squiggles off and on.
+  the terminal area's **Problems** view with file context, severity, message,
+  and line/column; clicking a diagnostic opens and focuses the file at the
+  reported line and column after its Monaco editor has mounted. After a result,
+  the status control toggles its squiggles off and on.
+- CSS validation posts the stylesheet as a form body to the W3C CSS Validator's
+  SOAP 1.2 endpoint and parses its structured errors and warnings. This avoids
+  unsupported output formats and long source code in a URL.
 - W3C markers are cleared whenever the file content changes or the tab closes,
   so stale line numbers never linger while editing.
 - About's **Update Orbit** action invokes the main-process updater directly,
-  which opens its progress window before checking GitHub. **Check for updates**
-  remains available separately for current/available/blocked status.
+  which opens its progress window, checks GitHub, installs dependencies,
+  rebuilds, and relaunches. If GitHub has newer commits, it fast-forwards the
+  clean `main` checkout first; if the checkout is already current, the explicit
+  update action still rebuilds and relaunches that version. **Check for updates**
+  only reports current/available/blocked status and does not build.
 - The main process calls the Nu Html Checker for HTML and the W3C CSS
   Validator for CSS, then returns diagnostics. Network failures leave the
   editor unchanged; Vue and Svelte files are not sent to the validators.

@@ -1097,6 +1097,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       .catch((error) => {
         if (cancelled) return;
         const detail = error instanceof Error ? error.message : String(error);
+        if (/No handler registered for ['"]?shell:saved-workspaces['"]?/i.test(detail)) {
+          toast("Orbit's app process is older than this window. Quit and reopen Orbit completely; Cmd+R only refreshes the window. Saved workspaces are still stored.", "error");
+          return;
+        }
         toast(`Saved workspaces could not be loaded; their stored data was left untouched. ${detail}`, "error");
       });
     return () => { cancelled = true; };

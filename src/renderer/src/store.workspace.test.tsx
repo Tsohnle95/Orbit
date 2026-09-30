@@ -81,6 +81,24 @@ describe("store workspace continuations", () => {
     vi.restoreAllMocks();
   });
 
+  it("explains that Cmd+R cannot update a stale main process's workspace IPC handler", async () => {
+    window.openshell = api({
+      savedWorkspaces: async () => {
+        throw new Error("Error invoking remote method 'shell:saved-workspaces': Error: No handler registered for 'shell:saved-workspaces'");
+      }
+    });
+
+    await act(async () => {
+      root.render(<StoreProvider><Probe /></StoreProvider>);
+      await Promise.resolve();
+    });
+    await act(async () => Promise.resolve());
+
+    expect(store.toasts.at(-1)?.text).toBe(
+      "Orbit's app process is older than this window. Quit and reopen Orbit completely; Cmd+R only refreshes the window. Saved workspaces are still stored."
+    );
+  });
+
   it("keeps removed paths session-only so reloads enumerate the workspace again", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     window.openshell = api();

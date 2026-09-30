@@ -673,7 +673,7 @@ async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
   try {
     const result = await orbitAppUpdater.update((message) => report("Updating Orbit", message));
     if (result.updated) {
-      report("Update complete", "Orbit will relaunch shortly.", "success");
+      report("Update complete", `${result.message} Orbit will relaunch shortly.`, "success");
       setTimeout(() => {
         app.relaunch();
         app.exit(0);
