@@ -1,109 +1,61 @@
 <div align="center">
-  <img src="resources/icon.svg" width="104" alt="Orbit logo">
+  <img src="resources/icon.svg" width="88" alt="Orbit">
   <h1>Orbit</h1>
-  <p>A desktop interface for working with coding agents, project files, diffs, and terminals.</p>
+  <p><strong>Agent Development Environment</strong></p>
+  <p>Your repository, editor, terminal, agent, and change review—together on one desktop.</p>
 </div>
 
-Orbit keeps the agent, repository, diffs, and terminal in one native
-workspace. Ask for a change, follow the steps as they happen, inspect the files
-touched, and continue working without switching between several applications.
+<p align="center">
+  <img src="mockup-design/assets/orbit-workbench-reference.png" alt="Orbit workbench with a repository explorer, code editor, integrated terminal, and OpenCode agent panel." width="1375">
+</p>
 
-## Features
+Orbit is an open-source coding workbench built around the repository you open. Work directly in its files, bring an agent into the same workspace, and follow the work from the first prompt to the diff.
 
-- **See the work, not just the answer.** Streamed reasoning summaries, tool
-  calls, subagents, todos, and permission requests stay visible in one timeline.
-- **Review changes where they happen.** A live Changes list and Monaco-powered
-  Edit/Diff views make every file modification easy to inspect.
-- **Run agents side by side.** Agent Mode collapses the sidebar and turns the
-  workspace into resizable, concurrent session panels.
-- **Use the native agent TUI.** Open an agent panel's GUI/TUI mode menu to run
-  the installed OpenCode terminal interface directly inside that panel.
-- **Keep a real development environment.** Browse files, edit with autosave,
-  use Emmet, validate HTML and CSS, and open the integrated terminal.
-- **Stay in control.** Choose agents and models per workspace, attach files,
-  reference project context with `@`, and stop or redirect work at any time.
-- **Choose the runtime.** OpenCode and DeepSeek Harness sessions share the same
-  local workspace, editor, diff, terminal, and session surface.
+## One workspace for the whole coding loop
 
-## Workflow
+- **Explore and edit.** Browse the project, work in the Monaco editor with tabs and autosave, and open a single file or a full repository.
+- **Work with an agent.** Use the built-in OpenCode panel to follow streamed responses, reasoning, tool activity, todos, and permission requests. Choose from the models and agents available through OpenCode, attach files, reference workspace files with `@`, and queue or steer follow-ups.
+- **Run the project.** Use Orbit’s integrated terminal from the active workspace, or switch an agent panel to the OpenCode TUI.
+- **Review the change.** Orbit surfaces workspace file changes it observes. When it knows a file’s starting content, open a Monaco diff; when it does not, the file stays marked as observed rather than showing a guessed diff. Changes are observed, not attributed to a particular tool or person.
 
-The interface is deliberately direct: Sessions and files on the left, the
-editor in the center, and the active agent on the right. Open the terminal when
-you need it, expand Agent Mode when you want parallel work, or collapse panels
-to keep the code in focus.
+## Agent Mode
 
-1. Open a repository or individual file.
-2. Pick an agent and model, then describe what you want to build.
-3. Watch the plan, tools, and file changes arrive live.
-4. Review the diff, edit directly, validate, and continue the conversation.
+Spread out when a task benefits from parallel work. Agent Mode arranges up to eight concurrent session panels in a resizable workspace. Each panel keeps its own session and workspace context, so you can move between agent work without losing your place in the code.
+
+## OpenCode V2
+
+OpenCode V2 is the only runtime enabled in Orbit today. Orbit connects to a compatible OpenCode service or starts one through the `opencode` CLI; its available models and agents come from that runtime. DeepSeek Harness code remains in the repository as dormant source and is not selectable in the app. Other runtimes are not available yet.
 
 ## Orbit Mobile
 
-To continue the same workspace on your phone, keep Orbit Desktop open and open
-**Settings → Mobile Setup**. Follow the three steps there and choose
-**Generate pairing QR**. In Orbit Mobile, choose **Scan QR code** and point the
-camera at the code on this page. The pairing code is single-use and expires
-after 10 minutes. See [`docs/operations.md`](docs/operations.md#connecting-orbit-mobile)
-if Mobile Setup reports that the companion server is missing or offline.
+Pair the optional Orbit Mobile companion from **Settings → Mobile Setup**. Keep Orbit Desktop open while using the phone; when the companion server is connected to the shared OpenCode service, both can access the same sessions. See [Connecting Orbit Mobile](docs/operations.md#connecting-orbit-mobile).
 
-## Core Capabilities
-
-| Workspace | Agent | Review |
-|---|---|---|
-| File explorer and project sessions | Streaming turns and structured steps | Live Changes and per-file diffs |
-| Monaco editor with tabs and autosave | Multiple models and concurrent panels | Permission requests and recovery flows |
-| Integrated PTY terminal | Prompt queue, attachments, and `@` context | W3C HTML/CSS validation |
-
-Orbit is an Electron, React, and Monaco application with a versioned runtime
-adapter boundary. It supports [`opencode`](https://opencode.ai/v2) and the
-DeepSeek Harness `dsh` CLI; each adapter declares its capabilities so the UI
-does not offer unsupported controls. The Electron main process owns all runtime
-and filesystem access; the renderer receives a narrow preload API and normalized
-live events.
-
-## Get Started
+## Get started
 
 ### Requirements
 
 - Node 22.23.2 or later within the Node 22 release line
-- [`opencode`](https://opencode.ai/v2) on your `PATH`, or an OpenCode service
-  already running, and/or `dsh` for DeepSeek Harness sessions
-- macOS for the most complete and validated experience
+- OpenCode V2 on your `PATH`, or a compatible OpenCode service already running
+- macOS for the most complete and validated experience; development launch is also supported on Linux and Windows
 
-### Run From Source
+### Run from source
 
 ```sh
 npm install
 npm run dev
 ```
 
-Clone this repository, run those commands from its root, and Orbit will
-discover the installed runtimes and start the selected one automatically.
-Choose a runtime and **Open a folder** on the welcome screen to begin.
+Open a folder from Orbit to create a workspace session. Orbit discovers a compatible OpenCode service or starts one using the installed CLI.
 
-### Build And Install
+### Build and install
 
 ```sh
 npm run build          # compile and launch
 npm run build:compile  # compile only
 npm start              # launch the existing build
 npm run pack           # package Orbit.app on macOS
+npm run install-app    # build, package, and install to /Applications (macOS)
 ```
-
-On macOS, `npm run install-app` builds and installs
-`Orbit.app` into `/Applications`. The installed app is a live launcher: it
-keeps its own Electron runtime and icon, but loads the app from the repository,
-rebuilding automatically first when repository sources are newer than the last
-build. Clicking the Dock icon therefore always runs the latest code; a failed
-automatic build falls back to the last known good build (see
-`scripts/live-launcher.cjs`).
-
-## Platform Status
-
-macOS is the primary development and packaging target, with `.app` builds,
-Dock installation, and additional Electron and GUI smoke coverage. Linux and
-Windows have automated Electron launch and real PTY coverage, but remain
-development platforms while broader GUI acceptance testing is completed.
 
 ## Contributing
 
@@ -112,11 +64,8 @@ npm test
 npm run check
 ```
 
-`npm run check` runs strict TypeScript checks, the complete Vitest suite,
-documentation validation, and a production compile.
+`npm run check` runs TypeScript checks, the Vitest suite, documentation validation, and a production compile. macOS is the primary GUI validation target; Linux and Windows also receive launcher and terminal smoke coverage.
 
-Deep dives: [Architecture](docs/architecture.md) ·
-[Walkthrough](docs/walkthrough.md) · [Events](docs/events.md) ·
-[Main process](docs/main.md) · [Preload bridge](docs/preload.md) ·
-[Renderer](docs/renderer.md) · [Shared types](docs/shared.md) ·
-[Operations](docs/operations.md)
+## Project docs
+
+[Architecture](docs/architecture.md) · [Walkthrough](docs/walkthrough.md) · [Events](docs/events.md) · [Main process](docs/main.md) · [Preload bridge](docs/preload.md) · [Renderer](docs/renderer.md) · [Shared types](docs/shared.md) · [Operations](docs/operations.md)
