@@ -16,6 +16,8 @@ automatically.
 |---|---|
 | `platform()` | `string` — `process.platform` (not an invoke; the renderer uses it for the darwin titlebar inset) |
 | `isPackaged()` | `boolean` — true when main added the `--openshell-packaged` flag; the renderer hides install affordances in packaged builds |
+| `isReleaseBuild` | `boolean` — true only when the release pipeline compiled the published-app updater into this build; local builds never run GitHub release checks |
+| `appVersion` | `string` — version reported by the running Electron app, passed to the trusted preload as a startup argument |
 | `onMessage(cb)` | `(msg: BackendMessage) => void`, returns unsubscribe |
 | `selectFolder(generation, runtimeID?)` | `Promise<SessionInfo \| null>` — native dialog; opens through OpenCode, and the caller decides mounting (replace panels, add a model panel, or swap an existing panel's directory) |
 | `selectDirectory()` | `Promise<string \| null>` — native directory dialog that returns a canonical folder path without creating a runtime session; used only to save an Orbit workspace bookmark |
@@ -25,8 +27,8 @@ automatically.
 | `runtimes()` | `Promise<RuntimeManifest[]>` — OpenCode's version and normalized capability manifest; DeepSeek is currently dormant |
 | `syncOpenCode()` | `Promise<OpenCodeSyncResult>` — syncs the attached shared service to the exact version resolved from Orbit's PATH |
 | `updateOpenCode()` | `Promise<OpenCodeSyncResult>` — runs OpenCode's own updater, then syncs the attached service |
-| `checkAppUpdate()` | `Promise<OrbitAppUpdateStatus>` — checks canonical GitHub `main`; reports local commit counts and worktree changes, and blocks another branch or unrelated history |
-| `updateApp()` | `Promise<OrbitAppUpdateResult>` — rejects while editor files are unsaved; opens the main-process progress window, hides Orbit's main window, preserves staged/unstaged/untracked files while merging GitHub and local commits, refreshes npm dependencies, stages and verifies the rebuild, swaps it into place, and relaunches |
+| `checkAppUpdate()` | `Promise<OrbitAppUpdateStatus>` — release builds check the latest published Orbit release; local builds return disabled without network access |
+| `updateApp()` | `Promise<OrbitAppUpdateResult>` — downloads the published app update in release builds and starts the popup; main enforces the unsaved-file guard; local builds return disabled |
 | `reportUnsavedEditorFiles(paths)` | `Promise<void>` — reports display paths for currently dirty editor tabs so main can block close/update and identify the affected files |
 | `sessions()` | `Promise<SessionSummary[]>` — recent session list |
 | `activeSessions()` | `Promise<SessionInfo[]>` — currently open backend sessions in activation order; the last element is the most recently activated (used for startup restore) |

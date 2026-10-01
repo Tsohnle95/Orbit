@@ -50,9 +50,9 @@ export function appUpdaterWindowDocument(): string {
 <body>
   <main role="status" aria-live="polite">
     <div class="brand"><div class="mark" aria-hidden="true">O</div><div><p class="eyebrow">ORBIT UPDATE</p><h1 id="title">Preparing update…</h1></div></div>
-    <p id="message">Checking the latest GitHub source.</p>
+    <p id="message">Checking the latest published GitHub release.</p>
     <div class="track" id="track" aria-hidden="true"><span></span></div>
-    <p class="foot" id="foot">Orbit will close while this window shows rebuild progress.</p>
+    <p class="foot" id="foot">Orbit will close while the downloaded release is installed.</p>
     <button class="return" id="return" type="button" hidden onclick="location.hash = 'return-to-orbit'">Return to Orbit</button>
   </main>
   <script>
@@ -64,7 +64,7 @@ export function appUpdaterWindowDocument(): string {
       document.getElementById("return").hidden = status.tone !== "error";
       document.getElementById("foot").textContent = status.tone === "error"
         ? "Return to Orbit to close this window and retry from Settings."
-        : status.tone === "success" ? "Orbit is restarting with the updated build." : "Orbit is closed while this window shows rebuild progress.";
+        : status.tone === "success" ? "Orbit is restarting with the installed release." : "Orbit will close while the downloaded release is installed.";
     };
   </script>
 </body>

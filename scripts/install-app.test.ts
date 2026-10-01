@@ -54,7 +54,7 @@ function harness(platform: NodeJS.Platform, existing: Record<string, boolean> = 
     }
   };
   return {
-    run: (packOnly = false) => installApp({ platform, root, packOnly, execFileSync, existsSync, rmSync, readdirSync, liveLauncherIo }),
+    run: (packOnly = false) => installApp({ platform, root, version: "0.1.0", packOnly, execFileSync, existsSync, rmSync, readdirSync, liveLauncherIo }),
     invocations,
     removed,
     launcherOps,
@@ -154,6 +154,7 @@ describe("pack and install app script", () => {
     expect(() => installApp({
       platform: "darwin",
       root,
+      version: "0.1.0",
       execFileSync,
       existsSync: () => true,
       rmSync: () => {},

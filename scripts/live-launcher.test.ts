@@ -131,6 +131,7 @@ describe("live launcher payload", () => {
       expect(existsSync(path.join(appDir, "node_modules"))).toBe(false);
       const packageJson = JSON.parse(readFileSync(path.join(appDir, "package.json"), "utf8"));
       expect(packageJson.main).toBe("live-launcher.cjs");
+      expect(packageJson.version).toBe(JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8")).version);
       expect(existsSync(path.join(appDir, "live-launcher.cjs"))).toBe(true);
       expect(existsSync(MARKER_FILE)).toBe(false);
     } finally {
@@ -143,6 +144,7 @@ describe("live launcher payload", () => {
     const payload = liveLauncherPayload(repoRoot);
     const parsed = JSON.parse(payload.packageJson);
     expect(parsed.main).toBe("live-launcher.cjs");
+    expect(parsed.version).toBe(JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8")).version);
     expect(payload.launcherSource.endsWith(path.join("scripts", "live-launcher.cjs"))).toBe(true);
     expect(existsSync(payload.launcherSource)).toBe(true);
     const repoConfig = JSON.parse(payload.repoConfigJson);

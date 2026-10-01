@@ -28,15 +28,6 @@ const sectionCopy: Record<SettingsSection, { title: string; description: string 
   about: { title: "About", description: "Version and product information for this installation." }
 };
 
-type UpdatableOrbitStatus = Extract<OrbitAppUpdateStatus, { state: "available" | "current" }>;
-
-function orbitUpdateLocalWorkNote(status: UpdatableOrbitStatus): string {
-  const preserved: string[] = [];
-  if (status.commitsAhead > 0) preserved.push(`${status.commitsAhead} local commit${status.commitsAhead === 1 ? "" : "s"}`);
-  if (status.hasLocalChanges) preserved.push("worktree changes");
-  return preserved.length > 0 ? ` Preserves ${preserved.join(" and ")}.` : "";
-}
-
 function SettingRow({ title, detail, control }: { title: string; detail: string; control: ReactNode }): ReactNode {
   return (
     <div className="settings-list-row">
@@ -116,6 +107,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   };
 
   const checkOrbitUpdate = async (): Promise<void> => {
+    if (!window.openshell.isReleaseBuild) return;
     if (orbitUpdateAction) return;
     const operation = ++orbitUpdateOperationRef.current;
     setOrbitUpdateAction("check");
@@ -131,9 +123,10 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   };
 
   const updateOrbit = async (): Promise<void> => {
+    if (!window.openshell.isReleaseBuild) return;
     if (orbitUpdateAction === "update") return;
     if (unsavedEditorFileCount > 0) {
-      setOrbitUpdateFeedback(`Save ${unsavedEditorFileCount} unsaved file${unsavedEditorFileCount === 1 ? "" : "s"} before Orbit rebuilds and relaunches. Select a file below to return to it.`);
+      setOrbitUpdateFeedback(`Save ${unsavedEditorFileCount} unsaved file${unsavedEditorFileCount === 1 ? "" : "s"} before Orbit installs the release and relaunches. Select a file below to return to it.`);
       return;
     }
     const operation = ++orbitUpdateOperationRef.current;
@@ -143,15 +136,11 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
       const result = await window.openshell.updateApp();
       if (orbitUpdateOperationRef.current !== operation) return;
       setOrbitUpdateFeedback(result.message);
-      if (result.updated && result.latestCommit) {
+      if (result.updated && result.latestVersion) {
         setOrbitUpdateStatus({
           state: "current",
-          branch: "main",
-          currentCommit: result.latestCommit,
-          latestCommit: result.latestCommit,
-          commitsBehind: 0,
-          commitsAhead: 0,
-          hasLocalChanges: false
+          currentVersion: result.latestVersion,
+          latestVersion: result.latestVersion
         });
       } else {
         const status = await window.openshell.checkAppUpdate();
@@ -177,7 +166,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   };
 
   useEffect(() => {
-    if (section !== "about") return;
+    if (section !== "about" || !window.openshell.isReleaseBuild) return;
     let cancelled = false;
     const operation = ++orbitUpdateOperationRef.current;
     setOrbitUpdateAction("check");
@@ -360,31 +349,35 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
       {section === "mobile" && <MobileSetup />}
 
       {section === "about" && <section className="settings-section">
-        <div className="settings-about"><OrbitMark size={72} /><div><h2>Orbit</h2><p>Version 0.1.0</p><small>A native desktop cockpit for coding agents.</small></div></div>
+        <div className="settings-about"><OrbitMark size={72} /><div><h2>Orbit</h2><p>Version {window.openshell.appVersion} · {window.openshell.isReleaseBuild ? "Release build" : "Development/test build"}</p><small>A native desktop cockpit for coding agents.</small></div></div>
         <h2 className="settings-group-title">App updates</h2>
         <div className="settings-list">
           <SettingRow
-            title="GitHub source"
-            detail="Update Orbit checks GitHub main, installs dependencies, rebuilds, and relaunches Orbit—even when there are no newer commits. Check for updates only reports status."
-            control={<div className="settings-update-actions">
-              <button
-                className="settings-action-button primary"
-                disabled={orbitUpdateAction === "update"}
-                onClick={() => void updateOrbit()}
-              >{orbitUpdateAction === "update" ? "Updating…" : "Update Orbit"}</button>
-              <button
-                className="settings-action-button"
-                disabled={orbitUpdateAction !== null}
-                onClick={() => void checkOrbitUpdate()}
-              >{orbitUpdateAction === "check" ? "Checking…" : "Check for updates"}</button>
-            </div>}
+            title={window.openshell.isReleaseBuild ? "GitHub Releases" : "Development build"}
+            detail={window.openshell.isReleaseBuild
+              ? "Checks published Orbit releases only. GitHub commits become app updates after a release is published. Update downloads and installs that release, then restarts Orbit."
+              : "GitHub app updates are disabled here. Develop and test this local checkout; source edits do not update the installed app through the release updater."}
+            control={window.openshell.isReleaseBuild
+              ? <div className="settings-update-actions">
+                <button
+                  className="settings-action-button primary"
+                  disabled={orbitUpdateAction === "update"}
+                  onClick={() => void updateOrbit()}
+                >{orbitUpdateAction === "update" ? "Downloading…" : "Update Orbit"}</button>
+                <button
+                  className="settings-action-button"
+                  disabled={orbitUpdateAction !== null}
+                  onClick={() => void checkOrbitUpdate()}
+                >{orbitUpdateAction === "check" ? "Checking…" : "Check for updates"}</button>
+              </div>
+              : <small>Updater disabled</small>}
           />
         </div>
-        {(orbitUpdateFeedback || orbitUpdateStatus) && <p className="settings-action-feedback" role="status" aria-live="polite">
+        {window.openshell.isReleaseBuild && (orbitUpdateFeedback || orbitUpdateStatus) && <p className="settings-action-feedback" role="status" aria-live="polite">
           {orbitUpdateFeedback || (orbitUpdateStatus?.state === "available"
-            ? `${orbitUpdateStatus.commitsBehind} commit${orbitUpdateStatus.commitsBehind === 1 ? "" : "s"} ready · ${orbitUpdateStatus.currentCommit.slice(0, 7)} → ${orbitUpdateStatus.latestCommit.slice(0, 7)}. Click Update Orbit to install, rebuild, and relaunch.${orbitUpdateLocalWorkNote(orbitUpdateStatus)}`
+            ? `Orbit ${orbitUpdateStatus.currentVersion} is installed · release ${orbitUpdateStatus.latestVersion} is available. Click Update Orbit to download and install it, then Orbit will restart.`
             : orbitUpdateStatus?.state === "current"
-              ? `Up to date · ${orbitUpdateStatus.branch} @ ${orbitUpdateStatus.currentCommit.slice(0, 7)}. Check for updates does not rebuild.${orbitUpdateLocalWorkNote(orbitUpdateStatus)}`
+              ? `Orbit ${orbitUpdateStatus.currentVersion} is up to date with the latest published release (${orbitUpdateStatus.latestVersion}). New commits are available after a release is published.`
               : orbitUpdateStatus?.message)}
         </p>}
         {unsavedEditorFileCount > 0 && <div className="settings-unsaved-files" role="alert">

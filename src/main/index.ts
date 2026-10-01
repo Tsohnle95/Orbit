@@ -1,11 +1,12 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, shell, type IpcMainInvokeEvent, type WebContents } from "electron";
+import { autoUpdater } from "electron-updater";
 import path from "node:path";
 import fsp from "node:fs/promises";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { OpenShellBackend } from "./opencode";
-import { createOrbitAppUpdater } from "./app-updater";
+import { createDisabledOrbitAppUpdater, createOrbitAppUpdater } from "./app-updater";
 import { appUpdaterWindowUrl, setAppUpdaterWindowStatus, shouldBlockAppUpdaterReload, type AppUpdaterWindowStatus } from "./app-updater-window";
 import { TerminalManager } from "./terminal";
 import { MobileServer } from "./mobile-server";
@@ -73,6 +74,8 @@ import {
 } from "./ipc-schema";
 import { applyExecPath } from "./exec-path";
 
+declare const __ORBIT_RELEASE_BUILD__: boolean;
+
 // Must run before the first runtime probe or PTY spawn: GUI-launched builds do
 // not inherit the user's shell PATH (see exec-path.ts).
 applyExecPath();
@@ -98,16 +101,13 @@ function briefFilePath(value: string): string {
 }
 const pendingOpenPaths = new PendingOpenPaths();
 
-function installedNodePath(): string | undefined {
-  try {
-    const config = JSON.parse(readFileSync(path.join(app.getAppPath(), ".orbit-repo.json"), "utf8")) as { node?: unknown };
-    return typeof config.node === "string" && path.isAbsolute(config.node) ? config.node : undefined;
-  } catch {
-    return undefined;
-  }
+const isOrbitReleaseBuild = app.isPackaged && __ORBIT_RELEASE_BUILD__;
+const orbitAppUpdater = isOrbitReleaseBuild
+  ? createOrbitAppUpdater(autoUpdater, app.getVersion())
+  : createDisabledOrbitAppUpdater(app.getVersion());
+if (isOrbitReleaseBuild) {
+  autoUpdater.on("error", (error) => console.error("[orbit] release updater error:", error.message));
 }
-
-const orbitAppUpdater = createOrbitAppUpdater(path.resolve(__dirname, "../.."), { nodePath: installedNodePath() });
 
 function flushOpenPaths(): void {
   if (pendingOpenPaths.size === 0) return;
@@ -321,7 +321,11 @@ function createWindow(show = true): BrowserWindow {
       sandbox: true,
       spellcheck: false,
       backgroundThrottling: false,
-      additionalArguments: app.isPackaged ? ["--openshell-packaged"] : []
+      additionalArguments: [
+        ...(app.isPackaged ? ["--openshell-packaged"] : []),
+        `--orbit-app-version=${app.getVersion()}`,
+        ...(isOrbitReleaseBuild ? ["--orbit-release-build"] : [])
+      ]
     }
   });
   win = newWin;
@@ -610,6 +614,14 @@ function handleTrusted<Args extends unknown[], Result>(
 }
 
 async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
+  if (!isOrbitReleaseBuild) {
+    return {
+      ok: false,
+      updated: false,
+      currentVersion: app.getVersion(),
+      message: "GitHub release updates are disabled in local development and test builds."
+    };
+  }
   if (unsavedEditorFileNames.length > 0) {
     const files = unsavedEditorFileNames.slice(0, 8).map(briefFilePath).join(", ");
     const remaining = unsavedEditorFileNames.length > 8 ? ` and ${unsavedEditorFileNames.length - 8} more` : "";
@@ -663,7 +675,7 @@ async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
 
   let lastStatus: AppUpdaterWindowStatus = {
     title: "Preparing update…",
-    message: "Checking the latest GitHub source.",
+    message: "Checking the latest published GitHub release.",
     tone: "progress"
   };
   popup.webContents.on("dom-ready", () => setAppUpdaterWindowStatus(popup, lastStatus));
@@ -697,15 +709,28 @@ async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
   try {
     const result = await orbitAppUpdater.update((message) => report("Updating Orbit", message));
     if (result.updated) {
-      report("Update complete", `${result.message} Orbit will relaunch shortly.`, "success");
+      report("Update downloaded", `${result.message} Orbit will close to install the release and reopen shortly.`, "success");
       setTimeout(() => {
-        app.relaunch();
-        appUpdaterWindowCanClose = true;
-        app.quit();
+        try {
+          appUpdaterWindowCanClose = true;
+          orbitAppUpdater.installAndRestart();
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : String(error);
+          report("Update could not be installed", detail, "error");
+          appUpdaterWindowCanClose = true;
+          if (win && !win.isDestroyed()) {
+            win.show();
+            win.focus();
+          }
+        }
       }, 1_400);
     } else if (result.ok) {
       report("Already up to date", result.message, "success");
       appUpdaterWindowCanClose = true;
+      if (win && !win.isDestroyed()) {
+        win.show();
+        win.focus();
+      }
       setTimeout(() => {
         if (!popup.isDestroyed()) popup.close();
       }, 1_800);

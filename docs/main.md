@@ -4,8 +4,10 @@
 
 `src/main/index.ts` (window + IPC wiring) and
 `src/main/opencode.ts` (the `OpenShellBackend` — all OpenCode traffic).
-Orbit's GitHub source updater lives in `src/main/app-updater.ts`; it is
-separate from the OpenCode CLI updater and never invokes Git from the renderer.
+Orbit's release updater lives in `src/main/app-updater.ts`; it checks published
+GitHub releases and installs the packaged app through `electron-updater`. Local
+development/test builds disable this updater and never fetch or merge GitHub
+source.
 
 `src/main/opencode.ts` is the only file that imports `@opencode/client`.
 Provider usage is a separate main-process integration with provider APIs in
@@ -251,9 +253,9 @@ Internals:
 | `shell:runtimes` | `() → RuntimeManifest[]` — installed status, native version, normalized protocol version, and capability bitmap |
 | `shell:sync-opencode` | `() → OpenCodeSyncResult` — restarts the attached shared OpenCode service only when needed to match the installed CLI version |
 | `shell:update-opencode` | `() → OpenCodeSyncResult` — runs OpenCode's updater, then syncs the shared service to the resulting CLI version |
-| `shell:app-update-check` | `() → OrbitAppUpdateStatus` — fetches canonical GitHub `main` and reports current/available commit counts plus local worktree changes; blocks non-main branches or unrelated history |
+| `shell:app-update-check` | `() → OrbitAppUpdateStatus` — in release builds checks the latest published GitHub release against the installed app version; local development/test builds return disabled without network access |
 | `shell:unsaved-editor-files` | `(string[]) → void` — records bounded display paths for dirty editor tabs so the close guard and updater can name them |
-| `shell:app-update` | `() → OrbitAppUpdateResult` — rejects while editor files are unsaved; shows a reload-safe standalone progress window while hiding Orbit's main window, preserves worktree edits while merging GitHub and local commits, installs dependencies, builds and verifies a staged compile output, swaps it into `out/` and relaunches Orbit; merge conflicts roll back and a failed build keeps the previous output and restores the main window |
+| `shell:app-update` | `() → OrbitAppUpdateResult` — release builds reject while editor files are unsaved; shows a reload-safe progress window while hiding Orbit's main window, downloads the published app update, then calls `autoUpdater.quitAndInstall()` to replace and relaunch the app; a failed check/download leaves Orbit open; local builds return disabled without network access |
 | `shell:active-sessions` | `() → SessionInfo[]` — open backend sessions, most recently activated last |
 | `shell:close-session` | `(workspace) → void` — tears down the backend context when a panel closes; the opencode session remains reopenable |
 | `shell:open-session-id` | `(sessionID, generation, runtimeID?) → ReopenedSession`; opens an OpenCode session and transcript. Legacy DeepSeek sessions cannot be reopened through the dormant adapter |

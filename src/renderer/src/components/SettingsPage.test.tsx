@@ -50,6 +50,8 @@ const mobilePairingQr = vi.fn().mockResolvedValue({
 });
 const checkAppUpdate = vi.fn();
 const updateApp = vi.fn();
+let isReleaseBuild = true;
+let appVersion = "0.1.0";
 
 describe("SettingsPage", () => {
   let container: HTMLDivElement;
@@ -63,8 +65,10 @@ describe("SettingsPage", () => {
     store.focusSession.mockClear();
     store.openFile.mockClear();
     store.openExternalPath.mockClear();
+    isReleaseBuild = true;
+    appVersion = "0.1.0";
     delete document.documentElement.dataset.theme;
-    window.openshell = { setAppearance, mobileSetupStatus, mobilePairingQr, checkAppUpdate, updateApp } as unknown as typeof window.openshell;
+    window.openshell = { setAppearance, mobileSetupStatus, mobilePairingQr, checkAppUpdate, updateApp, isReleaseBuild, appVersion } as unknown as typeof window.openshell;
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -169,29 +173,25 @@ describe("SettingsPage", () => {
     expect(onSectionChange).toHaveBeenCalledWith("model");
   });
 
-  it("checks GitHub on About and starts the popup updater directly from Update Orbit", async () => {
+  it("checks GitHub Releases on About and starts the popup updater from Update Orbit", async () => {
     const confirm = vi.fn(() => true);
     vi.stubGlobal("confirm", confirm);
     checkAppUpdate.mockResolvedValue({
       state: "available",
-      branch: "main",
-      currentCommit: "1111111111111111111111111111111111111111",
-      latestCommit: "2222222222222222222222222222222222222222",
-      commitsBehind: 2,
-      commitsAhead: 3,
-      hasLocalChanges: true
+      currentVersion: "0.1.0",
+      latestVersion: "0.2.0"
     });
     updateApp.mockResolvedValue({
       ok: true,
       updated: true,
-      currentCommit: "1111111111111111111111111111111111111111",
-      latestCommit: "2222222222222222222222222222222222222222",
-      message: "Orbit updated to 2222222."
+      currentVersion: "0.1.0",
+      latestVersion: "0.2.0",
+      message: "Orbit 0.2.0 is downloaded and ready to install."
     });
     await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={() => {}} /></ThemeProvider>));
     expect(checkAppUpdate).toHaveBeenCalledOnce();
-    expect(container.textContent).toContain("2 commits ready · 1111111 → 2222222");
-    expect(container.textContent).toContain("Preserves 3 local commits and worktree changes.");
+    expect(container.textContent).toContain("Orbit 0.1.0 is installed · release 0.2.0 is available");
+    expect(container.textContent).toContain("GitHub commits become app updates after a release is published.");
     const updateButton = [...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
       .find((button) => button.textContent === "Update Orbit")!;
     expect(updateButton).toBeTruthy();
@@ -205,7 +205,7 @@ describe("SettingsPage", () => {
 
     expect(confirm).not.toHaveBeenCalled();
     expect(updateApp).toHaveBeenCalledOnce();
-    expect(container.textContent).toContain("Orbit updated to 2222222.");
+    expect(container.textContent).toContain("Orbit 0.2.0 is downloaded and ready to install.");
     expect([...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
       .some((button) => button.textContent === "Check for updates")).toBe(true);
   });
@@ -217,9 +217,9 @@ describe("SettingsPage", () => {
     updateApp.mockResolvedValue({
       ok: true,
       updated: true,
-      currentCommit: "1111111111111111111111111111111111111111",
-      latestCommit: "2222222222222222222222222222222222222222",
-      message: "Orbit updated to 2222222."
+      currentVersion: "0.1.0",
+      latestVersion: "0.2.0",
+      message: "Orbit 0.2.0 is downloaded and ready to install."
     });
 
     await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={() => {}} /></ThemeProvider>));
@@ -232,19 +232,30 @@ describe("SettingsPage", () => {
       await Promise.resolve();
     });
     expect(updateApp).toHaveBeenCalledOnce();
-    expect(container.textContent).toContain("Orbit updated to 2222222.");
+    expect(container.textContent).toContain("Orbit 0.2.0 is downloaded and ready to install.");
 
     await act(async () => resolveCheck({
       state: "available",
-      branch: "main",
-      currentCommit: "1111111111111111111111111111111111111111",
-      latestCommit: "3333333333333333333333333333333333333333",
-      commitsBehind: 4,
-      commitsAhead: 0,
-      hasLocalChanges: false
+      currentVersion: "0.1.0",
+      latestVersion: "0.3.0"
     }));
-    expect(container.textContent).not.toContain("4 commits ready");
-    expect(container.textContent).toContain("Orbit updated to 2222222.");
+    expect(container.textContent).not.toContain("0.3.0 is available");
+    expect(container.textContent).toContain("Orbit 0.2.0 is downloaded and ready to install.");
+  });
+
+  it("keeps local development builds away from the GitHub release updater", async () => {
+    isReleaseBuild = false;
+    window.openshell = { ...window.openshell, isReleaseBuild } as typeof window.openshell;
+
+    await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={() => {}} /></ThemeProvider>));
+
+    expect(checkAppUpdate).not.toHaveBeenCalled();
+    expect(updateApp).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Version 0.1.0 · Development/test build");
+    expect(container.textContent).toContain("GitHub app updates are disabled here.");
+    expect(container.textContent).toContain("Updater disabled");
+    expect(container.textContent).not.toContain("Check for updates");
+    expect(container.textContent).not.toContain("Update Orbit");
   });
 
   it("requires unsaved editor files to be saved before an update can relaunch Orbit", async () => {
@@ -255,12 +266,8 @@ describe("SettingsPage", () => {
     ];
     checkAppUpdate.mockResolvedValue({
       state: "current",
-      branch: "main",
-      currentCommit: "1111111111111111111111111111111111111111",
-      latestCommit: "1111111111111111111111111111111111111111",
-      commitsBehind: 0,
-      commitsAhead: 0,
-      hasLocalChanges: false
+      currentVersion: "0.1.0",
+      latestVersion: "0.1.0"
     });
     await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={() => {}} /></ThemeProvider>));
     const updateButton = [...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
@@ -269,7 +276,7 @@ describe("SettingsPage", () => {
     await act(async () => updateButton.click());
 
     expect(updateApp).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Save 2 unsaved files before Orbit rebuilds and relaunches.");
+    expect(container.textContent).toContain("Save 2 unsaved files before Orbit installs the release and relaunches.");
     expect(container.textContent).toContain("/repo/src/first.ts");
     expect(container.textContent).toContain("/repo/src/second.ts");
   });

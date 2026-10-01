@@ -8,7 +8,7 @@ describe("Orbit updater window", () => {
     expect(document).toContain("Content-Security-Policy");
     expect(document).toContain("default-src 'none'");
     expect(document).toContain('role="status"');
-    expect(document).toContain("Orbit is closed while this window shows rebuild progress.");
+    expect(document).toContain("Orbit will close while the downloaded release is installed.");
     expect(document).toContain("window.setOrbitUpdaterStatus");
     expect(document).toContain("location.hash = 'return-to-orbit'");
     expect(document).toContain("Return to Orbit to close this window and retry from Settings.");

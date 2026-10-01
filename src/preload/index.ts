@@ -48,9 +48,13 @@ import type {
   WorkspaceIdentity
 } from "@shared/types";
 
+const appVersionArgument = process.argv.find((argument) => argument.startsWith("--orbit-app-version="));
+
 const api = {
   platform: process.platform,
   isPackaged: process.argv.includes("--openshell-packaged"),
+  isReleaseBuild: process.argv.includes("--orbit-release-build"),
+  appVersion: appVersionArgument?.slice("--orbit-app-version=".length) ?? "unknown",
   onMessage: (cb: (msg: BackendMessage) => void): (() => void) => {
     const listener = (_e: unknown, msg: BackendMessage): void => cb(msg);
     ipcRenderer.on("shell:message", listener);

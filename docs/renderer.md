@@ -634,15 +634,17 @@ released at that collapsed position.
   unsupported output formats and long source code in a URL.
 - W3C markers are cleared whenever the file content changes or the tab closes,
   so stale line numbers never linger while editing.
-- About's **Update Orbit** action invokes the main-process updater directly.
-  Its progress window remains visible while the main window is hidden; the
-  updater checks GitHub, preserves saved worktree edits while combining local
-  and remote commits, installs dependencies, builds a staged output, verifies
-  it, swaps it into place, and relaunches. **Check for updates** reports the
-  commit counts and whether worktree changes will be preserved; it does not
-  build. The popup retains progress after reload attempts and provides a Return
-  to Orbit action after errors. Unsaved editor files are listed with buttons to
-  open each one and block both update and app close. A tab's dirty marker is
+- About shows the running app version and build flavor. Local development/test
+  builds have no GitHub updater controls and make no release-check requests.
+  Release builds compare their version with the latest published GitHub
+  release. **Update Orbit** downloads that packaged release, shows progress in
+  the standalone updater window, then closes Orbit while `electron-updater`
+  installs and relaunches the new bundle. **Check for updates** only checks the
+  release version. Pushing a commit does not publish an app update; a matching
+  version tag must create a GitHub release. The updater never modifies a source
+  checkout or user workspace. Its popup retains progress after reload attempts
+  and provides a Return to Orbit action after errors. Unsaved editor files are
+  listed with buttons to open each one and block both update and app close. A tab's dirty marker is
   derived from whether its buffer differs from its saved content, so undoing to
   the saved text clears the marker.
 - The main process calls the Nu Html Checker for HTML and the W3C CSS

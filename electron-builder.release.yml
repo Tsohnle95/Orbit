@@ -1,0 +1,14 @@
+extends: ./electron-builder.yml
+forceCodeSigning: true
+publish:
+  provider: github
+  owner: Tsohnle95
+  repo: Orbit
+  releaseType: release
+mac:
+  identity: "${env.CSC_NAME}"
+  target:
+    - dmg
+    - zip
+  hardenedRuntime: true
+  notarize: true

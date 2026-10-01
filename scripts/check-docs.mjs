@@ -130,11 +130,11 @@ const apiMembers = apiDeclaration && ts.isObjectLiteralExpression(apiDeclaration
   ? apiDeclaration.initializer.properties.map((property) => property.name?.getText(preload)).filter(Boolean)
   : [];
 const preloadDoc = documentation.get("docs/preload.md");
-const preloadTable = tableColumn(preloadDoc, "## Contract", /^\| `(\w+)\([^)]*\)` \|/gm);
+const preloadTable = tableColumn(preloadDoc, "## Contract", /^\| `(\w+)(?:\([^)]*\))?` \|/gm);
 checkInventory("src/preload/index.ts", "window.openshell members", apiMembers);
 checkInventory("docs/preload.md", "window.openshell contract", preloadTable);
-for (const member of apiMembers) check(preloadTable.includes(member), `docs/preload.md contract is missing ${member}()`);
-for (const member of preloadTable) check(apiMembers.includes(member), `docs/preload.md lists unexposed window.openshell member ${member}()`);
+for (const member of apiMembers) check(preloadTable.includes(member), `docs/preload.md contract is missing ${member}`);
+for (const member of preloadTable) check(apiMembers.includes(member), `docs/preload.md lists unexposed window.openshell member ${member}`);
 
 const eventCases = [];
 for (const file of ["src/renderer/src/store.tsx", "src/renderer/src/chat-stream.ts"]) {

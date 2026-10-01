@@ -51,26 +51,34 @@ repository's `out/`, rebuilding automatically first when repository sources are
 newer than the build (silently; if the rebuild fails it falls back to the last
 known good build after confirming). On macOS,
 `npm run install-app` drives the same script over the
-`shell:install-app` channel. `release/` and
-`build/` are gitignored builder outputs.
-Settings → About can check `origin/main` on the canonical Orbit GitHub remote.
-The About panel checks automatically when opened. Applying an update opens a
-standalone progress window and hides Orbit's main window while active agent runs
-stop. On canonical `main`, the updater saves staged, unstaged, and untracked
-worktree changes, merges GitHub commits with local commits, then restores those
-files before refreshing dependencies and compiling in a staging directory. It
-verifies the staged entry files before swapping them into `out/`, then relaunches
-Orbit. If Git cannot merge the commits or restore the saved files cleanly, Orbit
-rolls back the update and reports the conflicting paths. The progress window
-keeps its latest status across reload attempts, blocks reload shortcuts, and
-provides a Return to Orbit action after an error. If the build fails after the
-source merge, the old `out/` remains in place and the main window returns. The
-installed macOS app is a live launcher that loads this checkout's `out/`, so
-this compile is the app rebuild; a separate terminal build or app package
-install is not needed. Orbit blocks updates and window close while editor files
-are unsaved, and the close warning names the affected files. Updates require the
-canonical remote, a shared Git history, and the `main` branch; local commits and
-saved worktree changes are preserved through the update.
+`shell:install-app` channel. These local development/test builds have GitHub
+release updates disabled. They keep loading this checkout's `out/`, which lets
+you build and test local edits without the Orbit updater fetching or changing
+your source checkout. `release/` and `build/` are gitignored builder outputs.
+
+Downloaded releases use a separate update path. Push a tag whose name matches
+the app version (`v<package.json version>`, for example `v0.1.0`) to run
+`.github/workflows/release.yml`. CI builds both macOS architectures, creates a
+DMG and ZIP, signs and notarizes them, then publishes them to the Orbit GitHub
+release with electron-builder's update metadata. Settings → About in a release
+build checks the latest published stable release; a commit pushed to `main`
+does not become an app update until it is included in a published release.
+**Update Orbit** downloads that release, shows progress in a standalone window,
+then closes Orbit while electron-updater installs the bundle and restarts the
+app. This release updater never fetches, merges, builds, or writes to an Orbit
+source checkout or a user's workspace. It remains blocked while editor files
+are unsaved. On failure the current app remains available and the popup offers
+a Return to Orbit action.
+
+The release workflow requires these repository Actions secrets: a base64
+encoded Developer ID Application `.p12` certificate
+(`ORBIT_MAC_CERTIFICATE_P12`), the exact Developer ID certificate name from
+Keychain (`ORBIT_MAC_CERTIFICATE_NAME`), its password
+(`ORBIT_MAC_CERTIFICATE_PASSWORD`), a base64 encoded App Store Connect API key
+(`ORBIT_APPLE_API_KEY_P8_BASE64`), the key ID (`ORBIT_APPLE_API_KEY_ID`), and
+issuer ID (`ORBIT_APPLE_API_ISSUER`). Without them CI stops before publishing.
+The app's release update feed is configured in `electron-builder.release.yml`;
+local packaging remains in `electron-builder.yml`.
 `npm run test:platform` also runs the hidden-window renderer trust smoke on
 macOS. Linux and Windows run the launcher and Electron PTY coverage but skip the
 GUI smoke because a normal `BrowserWindow` requires a display there; macOS CI is

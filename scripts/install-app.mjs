@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { REPO_CONFIG_FILE } from "./live-launcher.cjs";
@@ -17,12 +17,20 @@ function findBuiltApp(projectRoot, exists, readdir) {
   return null;
 }
 
-export function liveLauncherPayload(projectRoot) {
+function projectVersion(projectRoot) {
+  const packageJson = JSON.parse(readFileSync(path.join(projectRoot, "package.json"), "utf8"));
+  if (typeof packageJson.version !== "string" || !packageJson.version) {
+    throw new Error("Orbit package.json has no app version");
+  }
+  return packageJson.version;
+}
+
+export function liveLauncherPayload(projectRoot, version = projectVersion(projectRoot)) {
   return {
     packageJson: JSON.stringify({
       name: "orbit",
       productName: "Orbit",
-      version: "0.1.0",
+      version,
       private: true,
       main: "live-launcher.cjs"
     }, null, 2),
@@ -41,13 +49,13 @@ export const liveLauncherIo = {
   write: (target, content) => writeFileSync(target, content)
 };
 
-export function applyLiveLauncher(bundlePath, projectRoot, io = liveLauncherIo) {
+export function applyLiveLauncher(bundlePath, projectRoot, io = liveLauncherIo, version = projectVersion(projectRoot)) {
   const appDir = path.join(bundlePath, "Contents", "Resources", "app");
   for (const entry of ["out", "node_modules", "resources"]) {
     io.rm(path.join(appDir, entry));
   }
   io.mkdir(appDir);
-  const payload = liveLauncherPayload(projectRoot);
+  const payload = liveLauncherPayload(projectRoot, version);
   io.copy(payload.launcherSource, path.join(appDir, "live-launcher.cjs"));
   io.write(path.join(appDir, "package.json"), payload.packageJson);
   io.write(path.join(appDir, REPO_CONFIG_FILE), payload.repoConfigJson);
@@ -58,6 +66,7 @@ export function installApp(options = {}) {
   const applicationsDir = options.applicationsDir ?? "/Applications";
   const platform = options.platform ?? process.platform;
   const packOnly = options.packOnly ?? false;
+  const version = options.version ?? projectVersion(projectRoot);
   const run = options.execFileSync ?? execFileSync;
   const exists = options.existsSync ?? existsSync;
   const rm = options.rmSync ?? rmSync;
@@ -86,7 +95,7 @@ export function installApp(options = {}) {
     return { ok: false, message: "Packaging did not produce an Orbit.app bundle under release/" };
   }
 
-  applyLiveLauncher(built, projectRoot, options.liveLauncherIo);
+  applyLiveLauncher(built, projectRoot, options.liveLauncherIo, version);
   run("codesign", ["--force", "--deep", "--sign", "-", built]);
 
   if (packOnly) {
