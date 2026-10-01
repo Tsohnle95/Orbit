@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { homedir } from "node:os";
+import path from "node:path";
 import { MobileServer } from "./mobile-server";
 
 const checkoutScript = "/work/orbit-mobile/scripts/desktop-service.mjs";
@@ -11,8 +12,9 @@ const makeServer = (options: {
   fetcher?: typeof fetch;
   readTextFile?: (candidate: string) => string;
   env?: NodeJS.ProcessEnv;
+  cwd?: string;
 } = {}) => new MobileServer({
-  cwd: "/work/orbit",
+  cwd: options.cwd ?? "/work/orbit",
   supportDirectory: "/support",
   env: options.env ?? { ORBIT_NODE_BIN: "/node" },
   exists: options.exists ?? ((candidate) => candidate === checkoutScript || candidate === "/node"),
@@ -39,6 +41,22 @@ describe("MobileServer setup and pairing", () => {
       port: 3011,
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("finds the code-repositories checkout when the packaged app has no sibling checkout", async () => {
+    const mobileHome = path.join(homedir(), "code-repositories", "orbit-mobile");
+    const fetcher = vi.fn<typeof fetch>(async () => jsonResponse({ status: "ok" }));
+    const server = makeServer({
+      cwd: "/Applications/Orbit.app/Contents/Resources/app.asar",
+      exists: (candidate) => candidate === path.join(mobileHome, "scripts", "desktop-service.mjs") || candidate === "/node",
+      fetcher,
+    });
+
+    await expect(server.getSetupStatus()).resolves.toEqual({
+      state: "ready",
+      workspacePath: mobileHome,
+      port: 3011,
+    });
   });
 
   it("explains a missing companion checkout rather than silently disabling mobile setup", async () => {

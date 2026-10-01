@@ -10,12 +10,16 @@ import path from "node:path";
  * runs, so the Orbit mobile app can connect remotely. When Orbit quits —
  * or is force-killed — the server stops.
  *
- * Development checks the sibling `orbit-mobile` checkout before the historical
- * `~/coding-projects/orbit-mobile` location. Packaged installs use that default
- * location; `ORBIT_MOBILE_HOME` can select another checkout.
+ * Development checks the sibling `orbit-mobile` checkout first. Packaged installs
+ * then check `~/code-repositories/orbit-mobile` and the historical
+ * `~/coding-projects/orbit-mobile` location; `ORBIT_MOBILE_HOME` can select another checkout.
  */
 
-const DEFAULT_MOBILE_HOME = path.join(homedir(), "coding-projects", "orbit-mobile");
+const DEFAULT_MOBILE_HOMES = [
+  path.join(homedir(), "code-repositories", "orbit-mobile"),
+  path.join(homedir(), "coding-projects", "orbit-mobile"),
+];
+const DEFAULT_MOBILE_HOME = DEFAULT_MOBILE_HOMES[1];
 const SUPPORT = path.join(homedir(), "Library", "Application Support", "OrbitMobile");
 const DEFAULT_SERVER_PORT = 3011;
 const MOBILE_SERVER_START_TIMEOUT_MS = 20_000;
@@ -66,7 +70,7 @@ const resolveMobileHome = (
 
   const candidates = [
     path.resolve(cwd, "..", "orbit-mobile"),
-    DEFAULT_MOBILE_HOME,
+    ...DEFAULT_MOBILE_HOMES,
   ];
   for (const home of [...new Set(candidates)]) {
     if (exists(path.join(home, "scripts", "desktop-service.mjs"))) return { home, expectedHome: home };

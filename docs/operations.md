@@ -222,9 +222,10 @@ the companion server to its shared OpenCode service, desktop and phone use the
 same sessions.
 
 If Mobile Setup reports that the companion checkout is missing, a source
-checkout looks first for `../orbit-mobile` beside the Orbit checkout and then
-for `~/coding-projects/orbit-mobile`. A packaged installation uses the latter
-default. Set `ORBIT_MOBILE_HOME` to the `orbit-mobile` repository containing
+checkout looks first for `../orbit-mobile` beside the Orbit checkout, then for
+`~/code-repositories/orbit-mobile` and `~/coding-projects/orbit-mobile`. A
+packaged installation checks those two home locations in that order. Set
+`ORBIT_MOBILE_HOME` to the `orbit-mobile` repository containing
 `scripts/desktop-service.mjs` and restart Orbit to use another location. If it
 reports missing Node.js, install Node 22 or set `ORBIT_NODE_BIN` before
 launching Orbit. An offline status includes the companion folder and server log
