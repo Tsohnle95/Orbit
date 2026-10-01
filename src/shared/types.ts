@@ -365,7 +365,7 @@ export interface W3cDiagnostic {
   endColumn: number;
   message: string;
   severity: "error" | "warning";
-  source: "w3c-html" | "w3c-css";
+  source: "w3c-html" | "w3c-css" | "monaco-scss";
 }
 
 export type PromptDelivery = "queue" | "steer";

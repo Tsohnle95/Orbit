@@ -76,6 +76,8 @@ const api = {
   updateOpenCode: (): Promise<OpenCodeSyncResult> => ipcRenderer.invoke("shell:update-opencode"),
   checkAppUpdate: (): Promise<OrbitAppUpdateStatus> => ipcRenderer.invoke("shell:app-update-check"),
   updateApp: (): Promise<OrbitAppUpdateResult> => ipcRenderer.invoke("shell:app-update"),
+  reportUnsavedEditorFiles: (paths: string[]): Promise<void> =>
+    ipcRenderer.invoke("shell:unsaved-editor-files", paths),
   sessions: (): Promise<SessionSummary[]> => ipcRenderer.invoke("shell:sessions"),
   activeSessions: (): Promise<SessionInfo[]> => ipcRenderer.invoke("shell:active-sessions"),
   closeSession: (workspace: WorkspaceIdentity): Promise<void> => ipcRenderer.invoke("shell:close-session", workspace),

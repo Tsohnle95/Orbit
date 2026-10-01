@@ -88,9 +88,14 @@ let win: BrowserWindow | null = null;
 let appUpdaterWindow: BrowserWindow | null = null;
 let appUpdaterWindowCanClose = false;
 let appUpdateRunning = false;
+let unsavedEditorFileNames: string[] = [];
 let closeRequestPending = false;
 let appQuitRequested = false;
 let trustedLocation: TrustedApplicationLocation | null = null;
+
+function briefFilePath(value: string): string {
+  return value.length <= 384 ? value : `…${value.slice(-383)}`;
+}
 const pendingOpenPaths = new PendingOpenPaths();
 
 function installedNodePath(): string | undefined {
@@ -327,25 +332,22 @@ function createWindow(show = true): BrowserWindow {
   newWin.center();
   const wc = newWin.webContents;
 
-  wc.on("will-prevent-unload", (event) => {
+  wc.on("will-prevent-unload", () => {
     const shortcut = process.platform === "darwin" ? "⌘S" : "Ctrl+S";
-    const closingWindow = closeRequestPending;
-    const choice = dialog.showMessageBoxSync(newWin, {
+    const files = unsavedEditorFileNames.slice(0, 16).map(briefFilePath);
+    dialog.showMessageBoxSync(newWin, {
       type: "warning",
       title: "Unsaved Changes",
-      message: "Orbit has unsaved changes in one or more files.",
-      detail: closingWindow
-        ? `Save your files with ${shortcut}, or close Orbit without saving.`
-        : `Save your files with ${shortcut}, or continue without saving.`,
-      buttons: ["Stay Open", closingWindow ? "Close Without Saving" : "Continue Without Saving"],
+      message: files.length > 0
+        ? `Save these ${unsavedEditorFileNames.length === 1 ? "file" : "files"} before closing Orbit.`
+        : "Save your unsaved files before closing Orbit.",
+      detail: `${files.map((file) => `• ${file}`).join("\n")}${unsavedEditorFileNames.length > files.length ? `\n• and ${unsavedEditorFileNames.length - files.length} more` : ""}\n\nUse ${shortcut} in each file, then close Orbit.`,
+      buttons: ["Return to Orbit"],
       defaultId: 0,
       cancelId: 0
     });
-    if (choice === 1) event.preventDefault();
-    else {
-      closeRequestPending = false;
-      appQuitRequested = false;
-    }
+    closeRequestPending = false;
+    appQuitRequested = false;
   });
 
   wc.on("console-message", (event) => {
@@ -608,6 +610,15 @@ function handleTrusted<Args extends unknown[], Result>(
 }
 
 async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
+  if (unsavedEditorFileNames.length > 0) {
+    const files = unsavedEditorFileNames.slice(0, 8).map(briefFilePath).join(", ");
+    const remaining = unsavedEditorFileNames.length > 8 ? ` and ${unsavedEditorFileNames.length - 8} more` : "";
+    return {
+      ok: false,
+      updated: false,
+      message: `Save unsaved files before updating Orbit: ${files}${remaining}.`
+    };
+  }
   if (appUpdateRunning) return { ok: false, updated: false, message: "An Orbit update is already running." };
   appUpdateRunning = true;
 
@@ -616,9 +627,7 @@ async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
     appUpdaterWindow.close();
   }
 
-  const parent = win && !win.isDestroyed() ? win : undefined;
   const popup = new BrowserWindow({
-    ...(parent ? { parent, modal: true } : {}),
     width: 460,
     height: 270,
     minWidth: 460,
@@ -656,6 +665,7 @@ async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
     await popup.loadURL(appUpdaterWindowUrl());
     popup.show();
     popup.focus();
+    if (win && !win.isDestroyed()) win.hide();
   } catch (error) {
     appUpdaterWindowCanClose = true;
     if (!popup.isDestroyed()) popup.destroy();
@@ -676,7 +686,8 @@ async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
       report("Update complete", `${result.message} Orbit will relaunch shortly.`, "success");
       setTimeout(() => {
         app.relaunch();
-        app.exit(0);
+        appUpdaterWindowCanClose = true;
+        app.quit();
       }, 1_400);
     } else if (result.ok) {
       report("Already up to date", result.message, "success");
@@ -687,6 +698,10 @@ async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
     } else {
       report("Update could not be completed", result.message, "error");
       appUpdaterWindowCanClose = true;
+      if (win && !win.isDestroyed()) {
+        win.show();
+        win.focus();
+      }
     }
     return result;
   } finally {
@@ -812,6 +827,14 @@ function registerIpc(): void {
   handleTrusted("shell:update-opencode", async () => backend.updateOpenCode());
 
   handleTrusted("shell:app-update-check", async () => orbitAppUpdater.check());
+
+  handleTrusted("shell:unsaved-editor-files", async (_e, paths: unknown) => {
+    unsavedEditorFileNames = Array.isArray(paths)
+      ? [...new Set(paths.slice(0, 256).filter((value): value is string =>
+        typeof value === "string" && value.length > 0 && value.length <= 2_048 && !/[\u0000-\u001f\u007f]/.test(value)
+      ))].slice(0, 256)
+      : [];
+  });
 
   handleTrusted("shell:app-update", async () => updateOrbitApp());
 

@@ -29,6 +29,7 @@ const store: Record<string, unknown> = {
   toggleDir: vi.fn(),
   ensureRootOpen: vi.fn(),
   agentFiles: new Map(),
+  tabs: [],
   openFile: vi.fn(),
   expanded: initialExpanded,
   openCtxMenu: vi.fn(),
@@ -92,6 +93,7 @@ describe("FileSidebar single-file mode and external drops", () => {
       externalKind: vi.fn(async (path: string) => ({ kind: /\.[^/]+$/.test(path) ? "file" as const : "directory" as const }))
     } as unknown as typeof window.openshell;
     store.singleFile = null;
+    store.tabs = [];
     store.expanded = new Set(initialExpanded);
     store.openExternalPath = vi.fn();
     store.importPaths = vi.fn();
@@ -119,6 +121,13 @@ describe("FileSidebar single-file mode and external drops", () => {
     expect(container.textContent).not.toContain("EXPLORER");
     expect(container.textContent).not.toContain("CHANGES");
     expect(container.textContent).not.toContain("alpha");
+  });
+
+  it("marks an unsaved file in the Explorer with an orange status dot", () => {
+    store.tabs = [{ path: "note.txt", dirty: true }];
+    act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
+
+    expect(row(container, "note.txt")?.querySelector(".tree-unsaved-dot")).toBeTruthy();
   });
 
   it("opens an external file dropped onto the empty explorer area", async () => {

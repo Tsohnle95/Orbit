@@ -8,7 +8,7 @@ describe("Orbit updater window", () => {
     expect(document).toContain("Content-Security-Policy");
     expect(document).toContain("default-src 'none'");
     expect(document).toContain('role="status"');
-    expect(document).toContain("Keep this window open while Orbit rebuilds.");
+    expect(document).toContain("Orbit is closed while this window shows rebuild progress.");
     expect(document).toContain("window.setOrbitUpdaterStatus");
     expect(appUpdaterWindowUrl()).toMatch(/^data:text\/html;charset=utf-8,/);
   });

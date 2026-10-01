@@ -12,6 +12,10 @@ TODO.md
 redesign
 .orbit-repo.json
 .orbit-live-build-failed
+.orbit-update-stage-*
+.orbit-update-backup-*
+.orbit-launcher-stage-*
+.orbit-launcher-backup-*
 design
 resources/icon.iconset/
 scripts/.electron-profile/

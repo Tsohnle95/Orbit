@@ -2,10 +2,33 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { W3cDiagnostic } from "@shared/types";
 import { useStore } from "../store";
 import { applyW3cMarkers, clearW3cMarkers } from "../w3c-validation";
+import { monaco } from "../monaco";
+import { getEditor } from "../reveal";
 import type { ValidationReport } from "../validation-report";
 import type { EditorStatus } from "./editor-status";
 
 const W3C_FILE = /\.(?:html?|css)$/i;
+const SCSS_FILE = /\.scss$/i;
+
+function scssDiagnostics(path: string): W3cDiagnostic[] {
+  const model = getEditor(path)?.getModel();
+  if (!model || model.isDisposed() || model.getLanguageId() !== "scss") return [];
+  return monaco.editor.getModelMarkers({ resource: model.uri })
+    .filter((marker) => marker.owner === "scss" && (marker.severity === monaco.MarkerSeverity.Error || marker.severity === monaco.MarkerSeverity.Warning))
+    .map((marker) => ({
+      line: marker.startLineNumber,
+      column: marker.startColumn,
+      endLine: marker.endLineNumber,
+      endColumn: marker.endColumn,
+      message: marker.message,
+      severity: marker.severity === monaco.MarkerSeverity.Warning ? "warning" : "error",
+      source: "monaco-scss"
+    }));
+}
+
+function setValidationDecorations(path: string, visible: boolean): void {
+  getEditor(path)?.updateOptions({ renderValidationDecorations: visible ? "on" : "off" });
+}
 
 interface ValidateResult {
   errors: number;
@@ -24,7 +47,9 @@ export function StatusBar({
   const { tabs, activePath } = useStore();
   const activeTab = tabs.find((tab) => tab.path === activePath);
   const cursorStatus = editorStatus?.path === activeTab?.path ? editorStatus : null;
+  const scssFile = activeTab !== undefined && SCSS_FILE.test(activeTab.path);
   const w3cFile = activeTab !== undefined && W3C_FILE.test(activeTab.path);
+  const validatableFile = w3cFile || scssFile;
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<ValidateResult | null>(null);
   const [markersShown, setMarkersShown] = useState(false);
@@ -32,26 +57,37 @@ export function StatusBar({
 
   useEffect(() => {
     runIdRef.current += 1;
+    if (activePath) setValidationDecorations(activePath, true);
     setRunning(false);
     setResult(null);
     setMarkersShown(false);
   }, [activePath, activeTab?.content]);
 
+  useEffect(() => () => {
+    if (activePath) setValidationDecorations(activePath, true);
+  }, [activePath]);
+
   const validate = (): void => {
-    if (!activeTab || !w3cFile || running) return;
+    if (!activeTab || !validatableFile || running) return;
     if (result && !result.failed && result.diagnostics.length > 0) {
-      if (markersShown) clearW3cMarkers(activeTab.path);
-      else applyW3cMarkers(activeTab.path, result.diagnostics);
-      setMarkersShown(!markersShown);
+      const show = !markersShown;
+      if (scssFile) setValidationDecorations(activeTab.path, show);
+      else if (show) applyW3cMarkers(activeTab.path, result.diagnostics);
+      else clearW3cMarkers(activeTab.path);
+      setMarkersShown(show);
       return;
     }
     const runId = ++runIdRef.current;
     setRunning(true);
     setResult(null);
-    void window.openshell.validateW3c(activeTab.path, activeTab.content)
+    const validation = scssFile
+      ? Promise.resolve(scssDiagnostics(activeTab.path))
+      : window.openshell.validateW3c(activeTab.path, activeTab.content);
+    void validation
       .then((diagnostics) => {
         if (runId !== runIdRef.current) return;
-        applyW3cMarkers(activeTab.path, diagnostics);
+        if (scssFile) setValidationDecorations(activeTab.path, true);
+        else applyW3cMarkers(activeTab.path, diagnostics);
         const errors = diagnostics.filter((d) => d.severity === "error").length;
         setRunning(false);
         setResult({ errors, warnings: diagnostics.length - errors, failed: false, diagnostics });
@@ -93,18 +129,18 @@ export function StatusBar({
   const validationLabel = running
     ? "Validating…"
     : canToggleMarkers
-      ? markersShown ? "Hide squiggles" : "Show squiggles"
+    ? markersShown ? "Hide errors" : "Show errors"
       : result ? "Validate again" : "Validate";
-  const validationTitle = !w3cFile
-    ? "Open an HTML or CSS file to run validation"
+  const validationTitle = !validatableFile
+    ? "Open an HTML, CSS, or SCSS file to run validation"
     : canToggleMarkers
-      ? markersShown ? "Hide validation squiggles" : "Show validation squiggles"
-      : "Run the W3C Nu Html Checker / CSS Validator on the open file";
+      ? markersShown ? "Hide errors" : "Show errors"
+      : scssFile ? "Show Sass diagnostics from the SCSS language service" : "Run the W3C Nu Html Checker / CSS Validator on the open file";
 
   return (
     <div className="statusbar">
       <div className="statusbar-left">
-        {w3cFile && resultText && (
+        {validatableFile && resultText && (
           <span className={`validate-result ${resultTone}`} data-testid="validate-result">
             {resultText}
           </span>
@@ -112,7 +148,7 @@ export function StatusBar({
         <button
           className="statusbar-btn validate-btn"
           data-testid="validate-btn"
-          disabled={!w3cFile || running}
+          disabled={!validatableFile || running}
           title={validationTitle}
           onClick={validate}
         >

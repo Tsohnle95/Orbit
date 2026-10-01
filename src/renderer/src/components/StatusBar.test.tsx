@@ -21,7 +21,13 @@ const htmlTab: Tab = {
   binary: false
 };
 const cssTab: Tab = { ...htmlTab, path: "styles.css", name: "styles.css", content: "body { color: red; }" };
+const scssTab: Tab = { ...htmlTab, path: "docs/css/layout/_chat.scss", name: "_chat.scss", content: "$color: red; .chat { color: $color; }" };
 const tsTab: Tab = { ...htmlTab, path: "app.ts", name: "app.ts", content: "const x = 1;" };
+const scssState = vi.hoisted(() => ({
+  getEditor: vi.fn(),
+  updateOptions: vi.fn(),
+  markers: [] as Array<Record<string, unknown>>
+}));
 
 const store: { tabs: Tab[]; activePath: string | null } = {
   tabs: [htmlTab],
@@ -33,6 +39,13 @@ vi.mock("../w3c-validation", () => ({
   applyW3cMarkers: vi.fn(),
   clearW3cMarkers: vi.fn()
 }));
+vi.mock("../reveal", () => ({ getEditor: scssState.getEditor }));
+vi.mock("../monaco", () => ({
+  monaco: {
+    MarkerSeverity: { Warning: 4, Error: 8 },
+    editor: { getModelMarkers: vi.fn(() => scssState.markers) }
+  }
+}));
 
 describe("StatusBar validation", () => {
   let container: HTMLDivElement;
@@ -42,6 +55,9 @@ describe("StatusBar validation", () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     store.tabs = [htmlTab];
     store.activePath = htmlTab.path;
+    scssState.getEditor.mockReset();
+    scssState.updateOptions.mockReset();
+    scssState.markers = [];
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -61,7 +77,7 @@ describe("StatusBar validation", () => {
     const noFile = container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!;
     expect(noFile).not.toBeNull();
     expect(noFile.disabled).toBe(true);
-    expect(noFile.title).toContain("Open an HTML or CSS file");
+    expect(noFile.title).toContain("Open an HTML, CSS, or SCSS file");
 
     store.tabs = [tsTab];
     store.activePath = tsTab.path;
@@ -111,6 +127,47 @@ describe("StatusBar validation", () => {
     expect(container.querySelector('[data-testid="validate-result"]')?.textContent).toBe("1 error");
   });
 
+  it("validates an open SCSS file with Monaco's Sass diagnostics", async () => {
+    const localModel = {
+      uri: { toString: () => "file:///workspace/docs/css/layout/_chat.scss" },
+      isDisposed: () => false,
+      getLanguageId: () => "scss"
+    };
+    const diagnostics = [
+      { line: 6, column: 8, endLine: 6, endColumn: 13, message: "Expected expression.", severity: "error" as const, source: "monaco-scss" as const }
+    ];
+    scssState.getEditor.mockReturnValue({ getModel: () => localModel, updateOptions: scssState.updateOptions });
+    scssState.markers = [{
+      owner: "scss",
+      severity: 8,
+      startLineNumber: 6,
+      startColumn: 8,
+      endLineNumber: 6,
+      endColumn: 13,
+      message: "Expected expression."
+    }];
+    store.tabs = [scssTab];
+    store.activePath = scssTab.path;
+
+    act(() => root.render(<StatusBar />));
+    const button = container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!;
+    expect(button.disabled).toBe(false);
+    await act(async () => {
+      button.click();
+      await Promise.resolve();
+    });
+
+    expect(scssState.getEditor).toHaveBeenCalledWith(scssTab.path);
+    expect(applyW3cMarkers).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-testid="validate-result"]')?.textContent).toBe("1 error");
+    expect(button.textContent).toBe("Hide errors");
+    act(() => button.click());
+    expect(scssState.updateOptions).toHaveBeenCalledWith({ renderValidationDecorations: "off" });
+    expect(button.textContent).toBe("Show errors");
+    act(() => button.click());
+    expect(scssState.updateOptions).toHaveBeenCalledWith({ renderValidationDecorations: "on" });
+  });
+
   it("opens the detailed report and toggles validation squiggles from the status control", async () => {
     const diagnostics = [
       { line: 2, column: 4, endLine: 2, endColumn: 8, message: "Unexpected end tag", severity: "error" as const, source: "w3c-html" as const }
@@ -125,15 +182,15 @@ describe("StatusBar validation", () => {
       await Promise.resolve();
     });
     expect(onValidationComplete).toHaveBeenCalledWith({ path: "index.html", diagnostics });
-    expect(button.textContent).toBe("Hide squiggles");
+    expect(button.textContent).toBe("Hide errors");
 
     act(() => button.click());
     expect(clearW3cMarkers).toHaveBeenCalledWith("index.html");
-    expect(button.textContent).toBe("Show squiggles");
+    expect(button.textContent).toBe("Show errors");
 
     act(() => button.click());
     expect(applyW3cMarkers).toHaveBeenLastCalledWith("index.html", diagnostics);
-    expect(button.textContent).toBe("Hide squiggles");
+    expect(button.textContent).toBe("Hide errors");
   });
 
   it("reports a clean file and resets the result when the content changes", async () => {

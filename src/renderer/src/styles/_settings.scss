@@ -1,4 +1,7 @@
 .settings-page {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
@@ -49,6 +52,39 @@
 
 .settings-page-header h1 { margin: 0; font-size: 28px; letter-spacing: -0.035em; }
 .settings-page-header p { margin: 3px 0 0; color: var(--text-faint); font-size: 12px; }
+
+.settings-unsaved-files {
+  width: min(920px, 100%);
+  margin: 18px auto 0;
+  padding: 14px 16px;
+  color: var(--text);
+  background: color-mix(in srgb, #f0a64b 8%, var(--bg-panel));
+  border: 1px solid color-mix(in srgb, #f0a64b 38%, var(--border));
+  border-radius: var(--radius-lg);
+}
+
+.settings-unsaved-files > strong { font-size: 12px; }
+.settings-unsaved-files ul { display: grid; gap: 5px; margin: 10px 0 0; padding: 0; list-style: none; }
+
+.settings-unsaved-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 9px;
+  color: var(--text-dim);
+  text-align: left;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.settings-unsaved-file:hover:not(:disabled) { color: var(--text); border-color: #f0a64b; }
+.settings-unsaved-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-unsaved-file strong { flex: 0 0 auto; color: #f0a64b; font-size: 10px; }
+.settings-unsaved-file:disabled { cursor: default; opacity: 0.62; }
 
 .settings-close {
   padding: 8px 13px;

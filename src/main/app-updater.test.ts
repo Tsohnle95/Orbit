@@ -1,7 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createOrbitAppUpdater } from "./app-updater";
 
-const root = "/repo/orbit";
+const roots: string[] = [];
 const current = "1111111111111111111111111111111111111111";
 const latest = "2222222222222222222222222222222222222222";
 
@@ -12,14 +15,30 @@ function makeUpdater(overrides: {
   counts?: string;
   nodeVersion?: string;
   fetchError?: Error;
+  buildFailure?: boolean;
   latestCommit?: string;
 } = {}) {
+  const root = mkdtempSync(path.join(os.tmpdir(), "orbit-updater-test-"));
+  roots.push(root);
+  mkdirSync(path.join(root, "out", "main"), { recursive: true });
+  writeFileSync(path.join(root, "out", "main", "index.js"), "previous build");
   let merged = false;
   const githubCommit = overrides.latestCommit ?? latest;
-  const run = vi.fn(async (command: string, args: string[]) => {
+  const run = vi.fn(async (command: string, args: string[], cwd: string) => {
     if (command === "node") return overrides.nodeVersion ?? "v22.23.2";
-    if (command === "npm") return "";
-    if (args[0] === "rev-parse" && args[1] === "--show-toplevel") return root;
+    if (command === "npm") {
+      if (args[0] === "run" && args.includes("--outDir")) {
+        if (overrides.buildFailure) throw new Error("synthetic build failure");
+        const stageName = args[args.indexOf("--outDir") + 1];
+        for (const file of ["main/index.js", "preload/index.js", "renderer/index.html"]) {
+          const target = path.join(cwd, stageName, file);
+          mkdirSync(path.dirname(target), { recursive: true });
+          writeFileSync(target, "updated build");
+        }
+      }
+      return "";
+    }
+    if (args[0] === "rev-parse" && args[1] === "--show-toplevel") return cwd;
     if (args[0] === "remote") return overrides.remote ?? "https://github.com/Tsohnle95/Orbit.git";
     if (args[0] === "branch") return overrides.branch ?? "main";
     if (args[0] === "status") return overrides.changes ?? "";
@@ -36,12 +55,16 @@ function makeUpdater(overrides: {
     }
     throw new Error(`Unexpected command: ${command} ${args.join(" ")}`);
   });
-  return { updater: createOrbitAppUpdater(root, { run }), run };
+  return { updater: createOrbitAppUpdater(root, { run }), run, root };
 }
+
+afterEach(() => {
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
 
 describe("Orbit app updater", () => {
   it("checks GitHub main and reports the number of commits available", async () => {
-    const { updater, run } = makeUpdater();
+    const { updater, run, root } = makeUpdater();
 
     await expect(updater.check()).resolves.toEqual({
       state: "available",
@@ -75,7 +98,7 @@ describe("Orbit app updater", () => {
   });
 
   it("fast-forwards, installs dependencies, and rebuilds before reporting success", async () => {
-    const { updater, run } = makeUpdater();
+    const { updater, run, root } = makeUpdater();
     const progress: string[] = [];
 
     await expect(updater.update((message) => progress.push(message))).resolves.toEqual({
@@ -89,13 +112,15 @@ describe("Orbit app updater", () => {
     const calls = run.mock.calls.map((call) => [call[0], ...call[1]]);
     expect(calls).toContainEqual(["git", "merge", "--ff-only", "refs/remotes/origin/main"]);
     expect(calls).toContainEqual(["npm", "install", "--no-audit", "--no-fund"]);
-    expect(calls).toContainEqual(["npm", "run", "build:compile"]);
+    expect(calls.some((call) => call[0] === "npm" && call[1] === "run" && call[2] === "build:compile" && call[3] === "--" && call[4] === "--outDir")).toBe(true);
+    expect(readFileSync(path.join(root, "out", "main", "index.js"), "utf8")).toBe("updated build");
     expect(progress).toEqual([
       "Checking GitHub for updates…",
       "Checking the supported Node.js and npm versions…",
       "Fast-forwarding Orbit to the latest GitHub commit…",
       "Installing app dependencies…",
-      "Building the updated app…"
+      "Building the updated app in a staging directory…",
+      "Checking and installing the staged build…"
     ]);
   });
 
@@ -114,14 +139,24 @@ describe("Orbit app updater", () => {
     const calls = run.mock.calls.map((call) => [call[0], ...call[1]]);
     expect(calls.some((call) => call[0] === "git" && call[1] === "merge")).toBe(false);
     expect(calls).toContainEqual(["npm", "install", "--no-audit", "--no-fund"]);
-    expect(calls).toContainEqual(["npm", "run", "build:compile"]);
+    expect(calls.some((call) => call[0] === "npm" && call[1] === "run" && call[2] === "build:compile" && call[3] === "--" && call[4] === "--outDir")).toBe(true);
     expect(progress).toEqual([
       "Checking GitHub for updates…",
       "Checking the supported Node.js and npm versions…",
       "GitHub is current; rebuilding this Orbit version…",
       "Installing app dependencies…",
-      "Building the updated app…"
+      "Building the updated app in a staging directory…",
+      "Checking and installing the staged build…"
     ]);
+  });
+
+  it("leaves the previous compiled app in place when the staged build fails", async () => {
+    const { updater, root } = makeUpdater({ buildFailure: true });
+    const result = await updater.update();
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("synthetic build failure");
+    expect(readFileSync(path.join(root, "out", "main", "index.js"), "utf8")).toBe("previous build");
   });
 
   it("refuses to modify the checkout when the selected Node version is unsupported", async () => {

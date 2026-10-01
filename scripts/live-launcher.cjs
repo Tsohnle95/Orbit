@@ -1,10 +1,12 @@
 const { spawnSync } = require("node:child_process");
+const { randomUUID } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const MARKER_FILE = ".orbit-live-build-failed";
 const REPO_CONFIG_FILE = ".orbit-repo.json";
 const SOURCE_EXTENSIONS = /\.(?:ts|tsx|js|mjs|cjs|scss|sass|css|html|json)$/;
+const REQUIRED_BUILD_FILES = ["main/index.js", "preload/index.js", "renderer/index.html"];
 const SKIPPED_DIRECTORIES = new Set([
   "node_modules",
   "out",
@@ -75,16 +77,63 @@ function resolveRepository(appRoot = path.resolve(__dirname)) {
 function runBuild(options = {}) {
   const projectRoot = options.projectRoot;
   const spawn = options.spawnSync ?? spawnSync;
-  const result = spawn(
-    options.node ?? process.execPath,
-    [path.join(projectRoot, "node_modules", "electron-vite", "bin", "electron-vite.js"), "build"],
-    {
-      cwd: projectRoot,
-      stdio: "inherit",
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" }
+  const stageName = `.orbit-launcher-stage-${randomUUID()}`;
+  const stagePath = path.join(projectRoot, stageName);
+  let result;
+  try {
+    result = spawn(
+      options.node ?? process.execPath,
+      [path.join(projectRoot, "node_modules", "electron-vite", "bin", "electron-vite.js"), "build", "--outDir", stageName],
+      {
+        cwd: projectRoot,
+        stdio: "inherit",
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" }
+      }
+    );
+  } catch (error) {
+    fs.rmSync(stagePath, { recursive: true, force: true });
+    console.error(`[live-launcher] could not run build: ${error.message}`);
+    return false;
+  }
+  if (result.status !== 0 || !REQUIRED_BUILD_FILES.every((file) => {
+    const details = safeStat(path.join(stagePath, file));
+    return details?.isFile() && details.size > 0;
+  })) {
+    fs.rmSync(stagePath, { recursive: true, force: true });
+    return false;
+  }
+
+  const outputPath = path.join(projectRoot, "out");
+  const backupPath = path.join(projectRoot, `.orbit-launcher-backup-${randomUUID()}`);
+  let movedOutput = false;
+  try {
+    try {
+      fs.renameSync(outputPath, backupPath);
+      movedOutput = true;
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
     }
-  );
-  return result.status === 0;
+    fs.renameSync(stagePath, outputPath);
+  } catch (error) {
+    if (movedOutput) {
+      try {
+        fs.renameSync(backupPath, outputPath);
+      } catch (restoreError) {
+        console.error(`[live-launcher] could not restore previous build: ${restoreError.message}`);
+      }
+    }
+    fs.rmSync(stagePath, { recursive: true, force: true });
+    console.error(`[live-launcher] could not install staged build: ${error.message}`);
+    return false;
+  }
+  if (movedOutput) {
+    try {
+      fs.rmSync(backupPath, { recursive: true, force: true });
+    } catch (error) {
+      console.error(`[live-launcher] could not remove previous build backup: ${error.message}`);
+    }
+  }
+  return true;
 }
 
 function warn(message, buttons, options = {}) {

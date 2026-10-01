@@ -150,6 +150,15 @@ export interface PanelView {
   stagedRevert: SessionRevertStage | null;
 }
 
+export interface UnsavedEditorFile {
+  workspaceID: string;
+  sessionID: string | null;
+  workspace: WorkspaceIdentity | null;
+  path: string;
+  displayPath: string;
+  standalone: boolean;
+}
+
 function ancestorDirs(path: string): string[] {
   const parts = path.split("/");
   const out: string[] = [];
@@ -170,6 +179,7 @@ interface Store {
   providerUsageLoading: boolean;
   tabs: Tab[];
   unsavedEditorFileCount: number;
+  unsavedEditorFiles: UnsavedEditorFile[];
   activePath: string | null;
   singleFile: string | null;
   agentFiles: Map<string, AgentFileState>;
@@ -609,10 +619,20 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const transcript = session ? transcriptsBySession[session.id] ?? [] : [];
   const sessionUsage = session ? usageBySession[session.id] ?? null : null;
   const tabs = session ? tabsByWorkspace[session.workspace.id] ?? EMPTY_TABS : EMPTY_TABS;
-  const unsavedEditorFileCount = Object.values(tabsByWorkspace).reduce(
-    (count, workspaceTabs) => count + workspaceTabs.filter((tab) => tab.dirty).length,
-    0
-  );
+  const unsavedEditorFiles = Object.entries(tabsByWorkspace).flatMap(([workspaceID, workspaceTabs]) => {
+    const owner = panels.find((panel) => panel.workspace.id === workspaceID);
+    return workspaceTabs.filter((tab) => tab.dirty).map((tab) => ({
+      workspaceID,
+      sessionID: owner?.id ?? null,
+      workspace: owner?.workspace ?? null,
+      path: tab.path,
+      standalone: tab.standalone === true,
+      displayPath: tab.standalone || !owner
+        ? tab.path
+        : `${owner.directory.replace(/[\\/]+$/, "")}/${tab.path.replace(/^[\\/]+/, "")}`
+    }));
+  });
+  const unsavedEditorFileCount = unsavedEditorFiles.length;
   const activePath = session ? activePathByWorkspace[session.workspace.id] ?? null : null;
   const singleFile = session ? singleFileByWorkspace[session.workspace.id] ?? null : null;
   const agentFiles = session ? agentFilesByWorkspace[session.workspace.id] ?? EMPTY_AGENT_FILES : EMPTY_AGENT_FILES;
@@ -3760,6 +3780,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       providerUsageLoading,
       tabs,
       unsavedEditorFileCount,
+      unsavedEditorFiles,
       activePath,
       singleFile,
       agentFiles,
@@ -3852,7 +3873,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       acknowledgeRecovery
     }),
     [
-      session, connected, runtimes, refreshRuntimes, busy, todos, transcript, sessionUsage, providerUsage, providerUsageLoading, tabs, unsavedEditorFileCount, activePath, singleFile, agentFiles, tree, expanded, hiddenPaths, toasts, recoveryRecords,
+      session, connected, runtimes, refreshRuntimes, busy, todos, transcript, sessionUsage, providerUsage, providerUsageLoading, tabs, unsavedEditorFileCount, unsavedEditorFiles, activePath, singleFile, agentFiles, tree, expanded, hiddenPaths, toasts, recoveryRecords,
       models, availableModels, lastModel, currentModel, agents, currentAgent, approvalMode, messageQueue.followUpBehavior, setFollowUpBehavior, sessions, savedWorkspaces, saveWorkspace, removeWorkspace, activeSessions, panels, workspaceOnlyPanelIDs, panelViews, activeSessionID,
       focusSession, closePanel, openSession, addModelPanel, openWorkspacePanel, selectAddPanel, selectFolder, selectFile, openFileWorkspace, openExternalPath, importPaths, dropIntoExplorer, selectPanelDirectory, changePanelDirectory, reopenSession, loadSessions, sendPrompt, runCommand, stop, refreshProviderUsage, loadModels, switchModel,
       loadAgents, switchAgent, toggleApprovalMode,

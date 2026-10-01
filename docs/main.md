@@ -252,7 +252,8 @@ Internals:
 | `shell:sync-opencode` | `() → OpenCodeSyncResult` — restarts the attached shared OpenCode service only when needed to match the installed CLI version |
 | `shell:update-opencode` | `() → OpenCodeSyncResult` — runs OpenCode's updater, then syncs the shared service to the resulting CLI version |
 | `shell:app-update-check` | `() → OrbitAppUpdateStatus` — fetches canonical GitHub `main` and reports current, available, or blocked state for the clean source checkout |
-| `shell:app-update` | `() → OrbitAppUpdateResult` — opens a modal progress window, fast-forwards the clean `main` checkout when GitHub is ahead, runs `npm install` and the compile build even when already current, then relaunches Orbit on success; failures remain visible in the popup |
+| `shell:unsaved-editor-files` | `(string[]) → void` — records bounded display paths for dirty editor tabs so the close guard and updater can name them |
+| `shell:app-update` | `() → OrbitAppUpdateResult` — rejects while editor files are unsaved; shows a standalone progress window while hiding Orbit's main window, fast-forwards the clean `main` checkout when GitHub is ahead, installs dependencies, builds and verifies a staged compile output, swaps it into `out/` and relaunches Orbit; a failed build keeps the previous output and restores the main window |
 | `shell:active-sessions` | `() → SessionInfo[]` — open backend sessions, most recently activated last |
 | `shell:close-session` | `(workspace) → void` — tears down the backend context when a panel closes; the opencode session remains reopenable |
 | `shell:open-session-id` | `(sessionID, generation, runtimeID?) → ReopenedSession`; opens an OpenCode session and transcript. Legacy DeepSeek sessions cannot be reopened through the dormant adapter |
@@ -406,8 +407,10 @@ exit events to drain, then detaches the callbacks so no pty callback can
 fire into Node teardown and abort the process. The `before-quit` handler
 bounds the whole shutdown at 10s and always proceeds to `app.quit()`. On a
 window close or app quit, the renderer cancels unload while any editor tab is
-dirty. `will-prevent-unload` shows a native warning; choosing Stay Open cancels
-the close before shutdown, and choosing Close Without Saving allows it.
+dirty. `will-prevent-unload` shows a native warning with the reported dirty
+file paths and only a Return to Orbit action; Orbit remains open until the
+files are saved. The app updater also checks the same dirty-file list before
+starting.
 Backend and terminal shutdown starts only after the window has closed.
 `before-input-event` intercepts ⌘W / Ctrl+W so it never closes the window.
 Editor word wrap is always enabled.

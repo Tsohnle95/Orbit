@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { CommandOption, McpServerOption, OrbitAppUpdateStatus, PluginOption, SkillOption } from "@shared/types";
 import { useStore } from "../store";
+import type { UnsavedEditorFile } from "../store";
 import { APPEARANCES, type ThemeId, useTheme } from "../theme";
 import { OrbitMark } from "./OrbitMark";
 import { ProviderSettings } from "./ProviderSettings";
@@ -49,6 +50,10 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   const {
     session,
     unsavedEditorFileCount,
+    unsavedEditorFiles,
+    focusSession,
+    openFile,
+    openExternalPath,
     runtimes,
     models,
     currentModel,
@@ -119,7 +124,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   const updateOrbit = async (): Promise<void> => {
     if (orbitUpdateAction === "update") return;
     if (unsavedEditorFileCount > 0) {
-      setOrbitUpdateFeedback(`Save ${unsavedEditorFileCount} unsaved file${unsavedEditorFileCount === 1 ? "" : "s"} before Orbit rebuilds and relaunches.`);
+      setOrbitUpdateFeedback(`Save ${unsavedEditorFileCount} unsaved file${unsavedEditorFileCount === 1 ? "" : "s"} before Orbit rebuilds and relaunches. Select a file below to return to it.`);
       return;
     }
     const operation = ++orbitUpdateOperationRef.current;
@@ -146,6 +151,18 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
     } finally {
       if (orbitUpdateOperationRef.current === operation) setOrbitUpdateAction(null);
     }
+  };
+
+  const returnToUnsavedFile = async (file: UnsavedEditorFile): Promise<void> => {
+    if (!file.sessionID || !file.workspace) return;
+    focusSession(file.sessionID);
+    if (file.standalone) {
+      const openedPath = await openExternalPath(file.path, file.workspace);
+      if (!openedPath) return;
+    } else {
+      await openFile(file.path, undefined, file.workspace);
+    }
+    onClose();
   };
 
   useEffect(() => {
@@ -359,6 +376,23 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
               ? `Up to date · ${orbitUpdateStatus.branch} @ ${orbitUpdateStatus.currentCommit.slice(0, 7)}. Check for updates does not rebuild.`
               : orbitUpdateStatus?.message)}
         </p>}
+        {unsavedEditorFileCount > 0 && <div className="settings-unsaved-files" role="alert">
+          <strong>Save these files before closing or updating Orbit.</strong>
+          <ul>
+            {unsavedEditorFiles.map((file) => <li key={`${file.workspaceID}:${file.path}`}>
+              <button
+                type="button"
+                className="settings-unsaved-file"
+                disabled={!file.sessionID || !file.workspace}
+                title={file.sessionID ? `Open ${file.displayPath}` : "This workspace is closed"}
+                onClick={() => void returnToUnsavedFile(file)}
+              >
+                <span>{file.displayPath}</span>
+                <strong>{file.sessionID ? "Open" : "Workspace closed"}</strong>
+              </button>
+            </li>)}
+          </ul>
+        </div>}
       </section>}
     </main>
   );

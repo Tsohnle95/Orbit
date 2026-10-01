@@ -66,7 +66,8 @@ function api(): typeof window.openshell {
     listDir: async () => [],
     providerUsage: async () => [],
     recoveryRecords: async () => [],
-    windowView: async () => {}
+    windowView: async () => {},
+    reportUnsavedEditorFiles: async () => {}
   } as unknown as typeof window.openshell;
 }
 
@@ -234,6 +235,7 @@ describe("Layout panel sizing", () => {
     });
     expect(settingsButton.getAttribute("aria-pressed")).toBe("true");
     expect(container.querySelector(".settings-sidebar")).not.toBeNull();
+    expect(container.querySelector(".workspace-area.settings-suspended")).not.toBeNull();
 
     await act(async () => {
       settingsButton.click();
@@ -241,6 +243,7 @@ describe("Layout panel sizing", () => {
     });
     expect(settingsButton.getAttribute("aria-pressed")).toBe("false");
     expect(container.querySelector(".settings-sidebar")).toBeNull();
+    expect(container.querySelector(".workspace-area.settings-suspended")).toBeNull();
 
     await act(async () => {
       sidebarToggle.click();

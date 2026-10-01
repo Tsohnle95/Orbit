@@ -29,13 +29,21 @@
   display: none;
 }
 
-.main-row > .workspace-area {
+.main-row > .workspace-host {
   grid-column: 3 / 5;
   grid-row: 1;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
 }
 
-.main-row.sidebar-closed > .workspace-area {
+.main-row.sidebar-closed > .workspace-host {
   grid-column: 1;
+}
+
+.workspace-host > .workspace-area {
+  position: absolute;
+  inset: 0;
 }
 
 .workspace-area {
@@ -49,6 +57,11 @@
   min-width: 0;
   min-height: 0;
   overflow: visible;
+}
+
+.workspace-area.settings-suspended {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .workspace-area > .editor-pane {

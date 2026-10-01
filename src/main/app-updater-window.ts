@@ -38,7 +38,7 @@ export function appUpdaterWindowDocument(): string {
     <div class="brand"><div class="mark" aria-hidden="true">O</div><div><p class="eyebrow">ORBIT UPDATE</p><h1 id="title">Preparing update…</h1></div></div>
     <p id="message">Checking the latest GitHub source.</p>
     <div class="track" id="track" aria-hidden="true"><span></span></div>
-    <p class="foot" id="foot">Keep this window open while Orbit rebuilds.</p>
+    <p class="foot" id="foot">Orbit will close while this window shows rebuild progress.</p>
   </main>
   <script>
     window.setOrbitUpdaterStatus = (status) => {
@@ -48,7 +48,7 @@ export function appUpdaterWindowDocument(): string {
       track.className = status.tone === "success" ? "track success" : status.tone === "error" ? "track error" : "track";
       document.getElementById("foot").textContent = status.tone === "error"
         ? "Close this window after reviewing the error, then retry when ready."
-        : status.tone === "success" ? "Orbit is restarting with the updated build." : "Keep this window open while Orbit rebuilds.";
+        : status.tone === "success" ? "Orbit is restarting with the updated build." : "Orbit is closed while this window shows rebuild progress.";
     };
   </script>
 </body>

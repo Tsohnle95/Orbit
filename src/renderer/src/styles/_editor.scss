@@ -82,11 +82,20 @@
 .editor-group-action .os-icon { width: 15px; height: 15px; }
 
 .editor-groups {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.editor-groups-count-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.editor-groups-count-3,
+.editor-groups-count-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 
 .editor-group {
@@ -98,7 +107,20 @@
   overflow: hidden;
 }
 
-.editor-group + .editor-group { border-left: 1px solid var(--border); }
+.editor-groups-count-2 > .editor-group:nth-child(2),
+.editor-groups-count-3 > .editor-group:nth-child(2),
+.editor-groups-count-4 > .editor-group:nth-child(2n) {
+  border-left: 1px solid var(--border);
+}
+
+.editor-groups-count-3 > .editor-group:nth-child(3) {
+  grid-column: 1 / 3;
+  border-top: 1px solid var(--border);
+}
+
+.editor-groups-count-4 > .editor-group:nth-child(n + 3) {
+  border-top: 1px solid var(--border);
+}
 
 .editor-group-drop-target {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);

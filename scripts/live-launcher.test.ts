@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { applyLiveLauncher, liveLauncherPayload } from "./install-app.mjs";
-import { MARKER_FILE, REPO_CONFIG_FILE, decideLaunch, resolveRepository } from "./live-launcher.cjs";
+import { MARKER_FILE, REPO_CONFIG_FILE, decideLaunch, resolveRepository, runBuild } from "./live-launcher.cjs";
 
 const repoRoot = path.resolve(path.dirname(decodeURIComponent(new URL(import.meta.url).pathname)), "..");
 
@@ -20,6 +20,14 @@ function writeBuild(root, mtimeMs) {
   const entry = path.join(root, "out", "main", "index.js");
   writeFileSync(entry, "// build\n");
   utimesSync(entry, new Date(mtimeMs), new Date(mtimeMs));
+}
+
+function writeCompleteBuild(root, output, marker) {
+  for (const relative of ["main/index.js", "preload/index.js", "renderer/index.html"]) {
+    const target = path.join(root, output, relative);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, marker);
+  }
 }
 
 describe("live launcher build decision", () => {
@@ -62,6 +70,45 @@ describe("live launcher build decision", () => {
       mkdirSync(path.join(root, "node_modules", "some-dep"), { recursive: true });
       writeFileSync(path.join(root, "node_modules", "some-dep", "newer.ts"), "export {};\n");
       expect(decideLaunch({ projectRoot: root })).toEqual({ action: "launch" });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("live launcher staged build", () => {
+  it("installs a complete staged output only after it has built", () => {
+    const root = makeFixture();
+    try {
+      mkdirSync(path.join(root, "out", "main"), { recursive: true });
+      writeFileSync(path.join(root, "out", "main", "index.js"), "previous build");
+      const spawnSync = (_node: string, args: string[]) => {
+        const stage = args[args.indexOf("--outDir") + 1];
+        writeCompleteBuild(root, stage, "updated build");
+        return { status: 0 };
+      };
+
+      expect(runBuild({ projectRoot: root, spawnSync })).toBe(true);
+      expect(readFileSync(path.join(root, "out", "main", "index.js"), "utf8")).toBe("updated build");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps the previous output when compilation fails", () => {
+    const root = makeFixture();
+    try {
+      mkdirSync(path.join(root, "out", "main"), { recursive: true });
+      writeFileSync(path.join(root, "out", "main", "index.js"), "previous build");
+      const spawnSync = (_node: string, args: string[]) => {
+        const stage = args[args.indexOf("--outDir") + 1];
+        mkdirSync(path.join(root, stage, "main"), { recursive: true });
+        writeFileSync(path.join(root, stage, "main", "index.js"), "partial build");
+        return { status: 1 };
+      };
+
+      expect(runBuild({ projectRoot: root, spawnSync })).toBe(false);
+      expect(readFileSync(path.join(root, "out", "main", "index.js"), "utf8")).toBe("previous build");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import type { OrbitAppUpdateResult, OrbitAppUpdateStatus } from "@shared/types";
+import { stagingOutputName, swapBuiltOutput } from "./app-update-build";
 
 interface CommandOptions {
   env: NodeJS.ProcessEnv;
@@ -172,6 +174,7 @@ export function createOrbitAppUpdater(projectRoot: string, options: OrbitAppUpda
       }
     };
     let sourceCommit: string | null = null;
+    const stagingName = stagingOutputName();
     try {
       reportProgress("Checking GitHub for updates…");
       const status = await readStatus(true);
@@ -214,8 +217,10 @@ export function createOrbitAppUpdater(projectRoot: string, options: OrbitAppUpda
 
       reportProgress("Installing app dependencies…");
       await command("npm", ["install", "--no-audit", "--no-fund"], 10 * 60_000);
-      reportProgress("Building the updated app…");
-      await command("npm", ["run", "build:compile"], 10 * 60_000);
+      reportProgress("Building the updated app in a staging directory…");
+      await command("npm", ["run", "build:compile", "--", "--outDir", stagingName], 10 * 60_000);
+      reportProgress("Checking and installing the staged build…");
+      await swapBuiltOutput(root, stagingName);
       return {
         ok: true,
         updated: true,
@@ -232,6 +237,7 @@ export function createOrbitAppUpdater(projectRoot: string, options: OrbitAppUpda
         : "Orbit could not be updated.";
       return { ok: false, updated: false, currentCommit: sourceCommit ?? undefined, message: `${prefix} ${detail}` };
     } finally {
+      await fsp.rm(path.join(root, stagingName), { recursive: true, force: true }).catch(() => {});
       updateInProgress = false;
     }
   }

@@ -1034,9 +1034,10 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
           />}
         </div>
         <div className={`divider ${sideOpen ? "" : "collapsed"}`} onMouseDown={sideDrag} style={{ pointerEvents: sideOpen ? undefined : "none" }} />
-        {settingsOpen ? <SettingsPage section={settingsSection} onClose={() => setSettingsOpen(false)} /> : <div
+        <div className="workspace-host">
+          <div
           ref={workspaceAreaRef}
-          className={`workspace-area ${ordered.some((panel) => slotShown(panel) > 0) || (panels.length === 0 && emptyAgentOpen) ? "agent-open" : ""} ${editorCovered ? "editor-covered" : ""} ${trayDragging ? "tray-dragging" : ""}`}
+          className={`workspace-area ${settingsOpen ? "settings-suspended" : ""} ${ordered.some((panel) => slotShown(panel) > 0) || (panels.length === 0 && emptyAgentOpen) ? "agent-open" : ""} ${editorCovered ? "editor-covered" : ""} ${trayDragging ? "tray-dragging" : ""}`}
           style={
             {
               "--editor-right": `${editorRight}px`,
@@ -1118,7 +1119,9 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
               )}
             </div>
           </div>
-        </div>}
+          </div>
+          {settingsOpen && <SettingsPage section={settingsSection} onClose={() => setSettingsOpen(false)} />}
+        </div>
       </div>
 
       {!settingsOpen && <StatusBar
@@ -1166,7 +1169,7 @@ export default function App(): ReactNode {
 }
 
 function Root(): ReactNode {
-  const { session, unsavedEditorFileCount } = useStore();
+  const { session, unsavedEditorFileCount, unsavedEditorFiles } = useStore();
   const wasOpen = useRef(false);
   const [enteredIde, setEnteredIde] = useState(false);
   const pendingView = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1179,6 +1182,13 @@ function Root(): ReactNode {
     window.addEventListener("beforeunload", preventClose);
     return () => window.removeEventListener("beforeunload", preventClose);
   }, [unsavedEditorFileCount]);
+
+  const unsavedFilePaths = unsavedEditorFiles.map((file) => file.displayPath);
+  const unsavedFilePathsKey = JSON.stringify(unsavedFilePaths);
+  useEffect(() => {
+    const reportUnsaved = window.openshell.reportUnsavedEditorFiles;
+    if (typeof reportUnsaved === "function") void reportUnsaved(unsavedFilePaths).catch(() => {});
+  }, [unsavedFilePathsKey]);
 
   useEffect(() => {
     if (session && !enteredIde) setEnteredIde(true);

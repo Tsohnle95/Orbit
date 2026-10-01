@@ -464,14 +464,14 @@ express a cross-component invariant or non-obvious state contract.
 
 | Component | File | Responsibility |
 |---|---|---|
-| `App` | `App.tsx` | Prism workspace shell, profile-independent panel layout, panel geometry and focus routing; the titlebar Settings control opens preferences, the activity rail and Files/Sessions sidebar share one open state, and Agent Mode hides both |
+| `App` | `App.tsx` | Prism workspace shell, profile-independent panel layout, panel geometry and focus routing; Settings overlays the mounted workspace so editor group state survives, the activity rail and Files/Sessions sidebar share one open state, and Agent Mode hides both |
 | `Welcome` | `Welcome.tsx` | Landing view, recent sessions/workspaces, initial folder/file open |
 | `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation (defaults to Files when a workspace opens), Changes, Explorer, filesystem actions, open-workspace root removal, terminal context actions |
 | `SettingsSidebar` | `SettingsSidebar.tsx` | Settings navigation |
-| `SettingsPage` | `SettingsPage.tsx` | Ten design-direction palettes plus the restored Kitty Glass and Original Dark appearances, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and About with a direct GitHub update action plus a separate status check; missing update IPC handlers explain that Orbit must be reopened |
+| `SettingsPage` | `SettingsPage.tsx` | Ten design-direction palettes plus the restored Kitty Glass and Original Dark appearances, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and About with a direct GitHub update action, separate status check, and clickable unsaved-file list |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
 | `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
-| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and optional side-by-side groups with independent tab membership, selection, and drag transfer; new tabs route to the focused group |
+| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and up to four groups with independent tab membership, selection, and drag transfer; new tabs route to the focused group |
 | `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status |
 | `AgentTui` | `AgentTui.tsx` | xterm view for the active runtime's PTY-backed TUI |
 | `OpenCodeTimeline` | `OpenCodeTimeline.tsx` | Runtime-neutral chronological rendering of assistant text/tools/delegation with hidden reasoning |
@@ -613,28 +613,30 @@ released at that collapsed position.
 
 - The W3C checkers never run automatically. The **Validate** control stays at
   the bottom-left of `StatusBar`; it is disabled with an explanation unless an
-  HTML or CSS tab is active. Preprocessor stylesheets (SCSS, LESS, Sass) are
-  not validated — the W3C CSS Validator cannot parse them and would flag valid
-  syntax as errors.
-- `StatusBar` sends the active tab's content through
-  `window.openshell.validateW3c`, applies the returned diagnostics as
-  `w3c`-owner Monaco markers via `w3c-validation.ts`, and shows error and
-  warning counts (or a failure state) beside the button. The results also open
+  HTML, CSS, or SCSS tab is active. HTML and CSS use W3C; SCSS uses diagnostics
+  from Monaco's Sass language service because the W3C CSS Validator cannot
+  parse preprocessor syntax.
+- For HTML and CSS, `StatusBar` sends the active tab's content through
+  `window.openshell.validateW3c` and applies returned diagnostics as `w3c`-owner
+  Monaco markers. For SCSS, it reads Sass diagnostics from Monaco's marker
+  service. Both paths show error and warning counts (or a failure state) beside
+  the button. The results also open
   the terminal area's **Problems** view with file context, severity, message,
   and line/column; clicking a diagnostic opens and focuses the file at the
   reported line and column after its Monaco editor has mounted. After a result,
-  the status control toggles its squiggles off and on.
+  the status control toggles error markers with **Show errors** and **Hide errors**.
 - CSS validation posts the stylesheet as a form body to the W3C CSS Validator's
   SOAP 1.2 endpoint and parses its structured errors and warnings. This avoids
   unsupported output formats and long source code in a URL.
 - W3C markers are cleared whenever the file content changes or the tab closes,
   so stale line numbers never linger while editing.
-- About's **Update Orbit** action invokes the main-process updater directly,
-  which opens its progress window, checks GitHub, installs dependencies,
-  rebuilds, and relaunches. If GitHub has newer commits, it fast-forwards the
-  clean `main` checkout first; if the checkout is already current, the explicit
-  update action still rebuilds and relaunches that version. **Check for updates**
-  only reports current/available/blocked status and does not build.
+- About's **Update Orbit** action invokes the main-process updater directly.
+  Its progress window remains visible while the main window is hidden; the
+  updater checks GitHub, installs dependencies, builds a staged output, verifies
+  it, swaps it into place, and relaunches. It fast-forwards the clean `main`
+  checkout first when commits are available. **Check for updates** only reports
+  current/available/blocked status and does not build. Unsaved files are listed
+  with buttons to open each one and block both update and app close.
 - The main process calls the Nu Html Checker for HTML and the W3C CSS
   Validator for CSS, then returns diagnostics. Network failures leave the
   editor unchanged; Vue and Svelte files are not sent to the validators.

@@ -17,6 +17,10 @@ type MockSession = { directory: string; workspace: { id: string; generation: num
 const store = {
   session: null as MockSession | null,
   unsavedEditorFileCount: 0,
+  unsavedEditorFiles: [] as Array<{ workspaceID: string; sessionID: string | null; workspace: { id: string; generation: number } | null; path: string; displayPath: string; standalone: boolean }>,
+  focusSession: vi.fn(),
+  openFile: vi.fn(async () => {}),
+  openExternalPath: vi.fn(async () => null),
   runtimes: [],
   models: [] as MockModel[],
   currentModel: null as MockModel | null,
@@ -55,6 +59,10 @@ describe("SettingsPage", () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     window.localStorage.clear();
     store.unsavedEditorFileCount = 0;
+    store.unsavedEditorFiles = [];
+    store.focusSession.mockClear();
+    store.openFile.mockClear();
+    store.openExternalPath.mockClear();
     delete document.documentElement.dataset.theme;
     window.openshell = { setAppearance, mobileSetupStatus, mobilePairingQr, checkAppUpdate, updateApp } as unknown as typeof window.openshell;
     container = document.createElement("div");
@@ -236,6 +244,10 @@ describe("SettingsPage", () => {
 
   it("requires unsaved editor files to be saved before an update can relaunch Orbit", async () => {
     store.unsavedEditorFileCount = 2;
+    store.unsavedEditorFiles = [
+      { workspaceID: "workspace-1", sessionID: "session-1", workspace: { id: "workspace-1", generation: 1 }, path: "src/first.ts", displayPath: "/repo/src/first.ts", standalone: false },
+      { workspaceID: "workspace-1", sessionID: "session-1", workspace: { id: "workspace-1", generation: 1 }, path: "src/second.ts", displayPath: "/repo/src/second.ts", standalone: false }
+    ];
     checkAppUpdate.mockResolvedValue({
       state: "current",
       branch: "main",
@@ -251,6 +263,30 @@ describe("SettingsPage", () => {
 
     expect(updateApp).not.toHaveBeenCalled();
     expect(container.textContent).toContain("Save 2 unsaved files before Orbit rebuilds and relaunches.");
+    expect(container.textContent).toContain("/repo/src/first.ts");
+    expect(container.textContent).toContain("/repo/src/second.ts");
+  });
+
+  it("opens the selected unsaved file in its workspace", async () => {
+    store.unsavedEditorFileCount = 1;
+    const workspace = { id: "workspace-1", generation: 1 };
+    store.unsavedEditorFiles = [{
+      workspaceID: workspace.id,
+      sessionID: "session-1",
+      workspace,
+      path: "src/first.ts",
+      displayPath: "/repo/src/first.ts",
+      standalone: false
+    }];
+    const onClose = vi.fn();
+    await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={onClose} /></ThemeProvider>));
+
+    const open = container.querySelector<HTMLButtonElement>(".settings-unsaved-file")!;
+    await act(async () => open.click());
+
+    expect(store.focusSession).toHaveBeenCalledWith("session-1");
+    expect(store.openFile).toHaveBeenCalledWith("src/first.ts", undefined, workspace);
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("explains that Orbit must be reopened when the running main process has no updater handler", async () => {

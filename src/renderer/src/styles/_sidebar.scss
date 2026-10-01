@@ -562,6 +562,16 @@
 
 .tree-row.file .si-icon { color: var(--text-faint); }
 
+.tree-unsaved-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin-inline: 3px;
+  border-radius: 50%;
+  background: #f0a64b;
+  box-shadow: 0 0 7px color-mix(in srgb, #f0a64b 48%, transparent);
+}
+
 .tree-name {
   flex: 1;
   min-width: 0;

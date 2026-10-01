@@ -133,6 +133,38 @@ describe("EditorPane split groups", () => {
     expect(container.querySelectorAll('[role="tab"]')).toHaveLength(3);
   });
 
+  it("can create four editor groups and disables splitting at the limit", () => {
+    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor group 2 right"]')!.click());
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor group 3 right"]')!.click());
+
+    expect(container.querySelectorAll(".editor-group")).toHaveLength(4);
+    expect(container.querySelector<HTMLButtonElement>('[aria-label="Split editor group 4 right"]')?.disabled).toBe(true);
+  });
+
+  it("restores each workspace's editor group layout after switching away and back", () => {
+    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
+    expect(container.querySelectorAll(".editor-group")).toHaveLength(2);
+
+    store.session = { directory: "/other", workspace: { id: "workspace-2", generation: 1 } };
+    store.tabs = [fourthTab];
+    store.activePath = fourthTab.path;
+    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    expect(container.querySelectorAll(".editor-group")).toHaveLength(1);
+
+    store.session = { directory: "/workspace", workspace: { id: "workspace-1", generation: 1 } };
+    store.tabs = [firstTab, secondTab, thirdTab];
+    store.activePath = secondTab.path;
+    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+
+    expect(container.querySelectorAll(".editor-group")).toHaveLength(2);
+    expect(container.querySelector(".editor-group-secondary [data-testid=editor]")?.getAttribute("data-path"))
+      .toBe(secondTab.path);
+  });
+
   it("offers an explicit save action for a dirty file", () => {
     store.tabs = [{ ...firstTab, content: "unfinished", dirty: true, revision: 1 }];
     store.activePath = firstTab.path;
@@ -174,11 +206,13 @@ describe("EditorPane split groups", () => {
     const options = capturedEditorOptions.mock.calls.at(-1)?.[0] as {
       quickSuggestions?: { other?: boolean };
       suggestOnTriggerCharacters?: boolean;
+      fixedOverflowWidgets?: boolean;
       wordBasedSuggestions?: string;
       tabCompletion?: string;
     };
     expect(options.quickSuggestions?.other).toBe(true);
     expect(options.suggestOnTriggerCharacters).toBe(true);
+    expect(options.fixedOverflowWidgets).toBe(true);
     expect(options.wordBasedSuggestions).toBe("currentDocument");
     expect(options.tabCompletion).toBe("on");
   });

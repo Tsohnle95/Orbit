@@ -191,10 +191,11 @@ function FileNode({
   drag: DragHandlers;
   selection: SelectionHandlers;
 }): ReactNode {
-  const { openFile, activePath, agentFiles, pendingRename, commitName, cancelPending } =
+  const { openFile, activePath, tabs = [], agentFiles, pendingRename, commitName, cancelPending } =
     useStore();
   const name = entry.path.split("/").pop() ?? entry.path;
   const changed = agentFiles.has(entry.path);
+  const unsaved = tabs.some((tab) => tab.path === entry.path && tab.dirty);
   const active = activePath === entry.path;
 
   if (pendingRename?.path === entry.path) {
@@ -221,6 +222,7 @@ function FileNode({
     >
       <FileIcon name={name} isDir={false} />
       <span className="tree-name">{name}</span>
+      {unsaved && <span className="tree-unsaved-dot" title="Unsaved changes" aria-label="Unsaved changes" />}
       {changed && <span className="tree-badge changed" />}
       <RowActions entry={entry} />
     </div>
@@ -427,6 +429,7 @@ export function FileSidebar({
     ensureRootOpen,
     agentFiles,
     openFile,
+    tabs = [],
     expanded,
     pendingCreate,
     commitName,
@@ -701,6 +704,7 @@ export function FileSidebar({
 
   if (singleFile && session) {
     const name = singleFile.split("/").pop() ?? singleFile;
+    const singleFileUnsaved = tabs.some((tab) => tab.path === singleFile && tab.dirty);
     return (
       <div className="sidebar">
         <div className="sidebar-header">
@@ -726,12 +730,13 @@ export function FileSidebar({
             }}
           >
             <div
-              className="tree-row file active"
+              className={`tree-row file active${singleFileUnsaved ? " unsaved" : ""}`}
               onClick={() => void openFile(singleFile)}
               title={singleFile}
             >
               <FileIcon name={name} isDir={false} />
               <span className="tree-name">{name}</span>
+              {singleFileUnsaved && <span className="tree-unsaved-dot" title="Unsaved changes" aria-label="Unsaved changes" />}
             </div>
           </div>
         </div>

@@ -20,6 +20,7 @@ const EDITOR_OPTIONS = {
   fontFamily: "'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace",
   minimap: { enabled: false },
   automaticLayout: true,
+  fixedOverflowWidgets: true,
   quickSuggestions: { other: true, comments: false, strings: true },
   quickSuggestionsDelay: 25,
   suggestOnTriggerCharacters: true,
@@ -365,7 +366,8 @@ function EditorWithSave({
   );
 }
 
-type EditorGroupID = "primary" | "secondary";
+type EditorGroupID = "primary" | "secondary" | "tertiary" | "quaternary";
+const EDITOR_GROUP_IDS: EditorGroupID[] = ["primary", "secondary", "tertiary", "quaternary"];
 const EDITOR_TAB_MIME = "application/x-orbit-editor-tab";
 
 interface EditorTabTransfer {
@@ -373,68 +375,98 @@ interface EditorTabTransfer {
   source: EditorGroupID;
 }
 
+interface EditorGroupState {
+  id: EditorGroupID;
+  paths: string[];
+  activePath: string | null;
+}
+
+interface EditorLayoutState {
+  groups: EditorGroupState[];
+  activeGroup: EditorGroupID;
+}
+
+function isEditorGroupID(value: unknown): value is EditorGroupID {
+  return EDITOR_GROUP_IDS.includes(value as EditorGroupID);
+}
+
 function readEditorTabTransfer(transfer: DataTransfer): EditorTabTransfer | null {
   try {
     const value = JSON.parse(transfer.getData(EDITOR_TAB_MIME)) as Partial<EditorTabTransfer>;
-    if (typeof value.path !== "string" || (value.source !== "primary" && value.source !== "secondary")) return null;
+    if (typeof value.path !== "string" || !isEditorGroupID(value.source)) return null;
     return { path: value.path, source: value.source };
   } catch {
     return null;
   }
 }
 
-function samePaths(left: string[], right: string[]): boolean {
-  return left.length === right.length && left.every((path, index) => path === right[index]);
+function sameGroupLayout(left: EditorGroupState[], right: EditorGroupState[]): boolean {
+  return left.length === right.length && left.every((group, index) => {
+    const other = right[index];
+    return other !== undefined && group.id === other.id && group.activePath === other.activePath &&
+      group.paths.length === other.paths.length && group.paths.every((path, pathIndex) => path === other.paths[pathIndex]);
+  });
+}
+
+function editorGroupTitle(id: EditorGroupID, index: number): string {
+  if (id === "primary") return "Primary editor";
+  if (id === "secondary") return "Secondary editor";
+  return `Editor group ${index + 1}`;
 }
 
 function EditorGroup({
   id,
+  index,
+  groupCount,
   tabs,
   activePath,
   directory,
   focused,
-  splitEnabled,
   onStatusChange,
   onSelect,
   onCloseTab,
   onMoveTab,
   onActivate,
-  onToggleSplit,
-  onCloseSplit
+  onSplit,
+  onCloseGroup
 }: {
   id: EditorGroupID;
+  index: number;
+  groupCount: number;
   tabs: Tab[];
   activePath: string | null;
   directory: string | undefined;
   focused: boolean;
-  splitEnabled: boolean;
   onStatusChange: (status: EditorStatus) => void;
   onSelect: (path: string) => void;
   onCloseTab: (path: string) => void;
   onMoveTab: (path: string, destination: EditorGroupID, source: EditorGroupID) => void;
   onActivate: (id: EditorGroupID) => void;
-  onToggleSplit: () => void;
-  onCloseSplit: () => void;
+  onSplit: (id: EditorGroupID) => void;
+  onCloseGroup: (id: EditorGroupID) => void;
 }): ReactNode {
   const [tabDragOver, setTabDragOver] = useState(false);
   const activeTab = tabs.find((tab) => tab.path === activePath);
-  const title = id === "primary" ? "Primary editor" : "Secondary editor";
-  const actions = id === "primary"
-    ? <button
-        type="button"
-        className="editor-group-action"
-        aria-label={splitEnabled ? "Close split editor" : "Split editor right"}
-        aria-pressed={splitEnabled}
-        title={splitEnabled ? "Close split editor" : "Split editor right"}
-        onClick={onToggleSplit}
-      ><SplitRightIcon /></button>
-    : <button
-        type="button"
-        className="editor-group-action"
-        aria-label="Close secondary editor group"
-        title="Close secondary editor group"
-        onClick={onCloseSplit}
-      ><IconClose /></button>;
+  const title = editorGroupTitle(id, index);
+  const splitLabel = id === "primary" ? "Split editor right" : `Split editor group ${index + 1} right`;
+  const closeLabel = id === "secondary" ? "Close secondary editor group" : `Close editor group ${index + 1}`;
+  const actions = <>
+    <button
+      type="button"
+      className="editor-group-action"
+      aria-label={splitLabel}
+      title={groupCount >= EDITOR_GROUP_IDS.length ? "Orbit supports up to four editor groups" : splitLabel}
+      disabled={groupCount >= EDITOR_GROUP_IDS.length}
+      onClick={() => onSplit(id)}
+    ><SplitRightIcon /></button>
+    {index > 0 && <button
+      type="button"
+      className="editor-group-action"
+      aria-label={closeLabel}
+      title={closeLabel}
+      onClick={() => onCloseGroup(id)}
+    ><IconClose /></button>}
+  </>;
   const onTabDragOver = (event: React.DragEvent): void => {
     if (!Array.from(event.dataTransfer.types).includes(EDITOR_TAB_MIME)) return;
     event.preventDefault();
@@ -453,7 +485,7 @@ function EditorGroup({
 
   return (
     <section
-      className={"editor-group" + (id === "primary" ? " editor-group-primary" : " editor-group-secondary") + (focused ? " editor-group-focused" : "") + (tabDragOver ? " editor-group-drop-target" : "")}
+      className={`editor-group editor-group-${id}${focused ? " editor-group-focused" : ""}${tabDragOver ? " editor-group-drop-target" : ""}`}
       data-editor-group={id}
       role="region"
       aria-label={title}
@@ -493,223 +525,191 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
   const { tabs, activePath, openPaths, session, setActive, closeTab } = useStore();
   const workspaceID = session?.workspace.id ?? null;
   const [externalDrag, setExternalDrag] = useState(false);
-  const [splitEnabled, setSplitEnabled] = useState(false);
-  const [primaryPath, setPrimaryPath] = useState<string | null>(activePath ?? tabs[0]?.path ?? null);
-  const [secondaryPath, setSecondaryPath] = useState<string | null>(null);
-  const [primaryTabPaths, setPrimaryTabPaths] = useState<string[]>(() => tabs.map((tab) => tab.path));
-  const [secondaryTabPaths, setSecondaryTabPaths] = useState<string[]>([]);
+  const [groups, setGroups] = useState<EditorGroupState[]>(() => [{
+    id: "primary",
+    paths: tabs.map((tab) => tab.path),
+    activePath: activePath ?? tabs[0]?.path ?? null
+  }]);
   const [activeGroup, setActiveGroup] = useState<EditorGroupID>("primary");
   const activeGroupRef = useRef<EditorGroupID>("primary");
   const [groupWorkspaceID, setGroupWorkspaceID] = useState(workspaceID);
+  const layoutsByWorkspaceRef = useRef(new Map<string, EditorLayoutState>());
   const activePathRef = useRef(activePath);
 
-  const focusGroup = (group: EditorGroupID): void => {
+  const focusGroup = useCallback((group: EditorGroupID): void => {
     activeGroupRef.current = group;
     setActiveGroup(group);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (groupWorkspaceID === workspaceID) return;
+    const paths = tabs.map((tab) => tab.path);
+    layoutsByWorkspaceRef.current.set(groupWorkspaceID ?? "", {
+      groups: groups.map((group) => ({ ...group, paths: [...group.paths] })),
+      activeGroup: activeGroupRef.current
+    });
+    const savedLayout = layoutsByWorkspaceRef.current.get(workspaceID ?? "");
+    setGroupWorkspaceID(workspaceID);
+    activePathRef.current = activePath;
+    setGroups(savedLayout?.groups ?? [{ id: "primary", paths, activePath: activePath ?? paths[0] ?? null }]);
+    focusGroup(savedLayout?.activeGroup ?? "primary");
+  }, [activeGroup, activePath, focusGroup, groupWorkspaceID, groups, tabs, workspaceID]);
+
+  useEffect(() => {
+    if (groupWorkspaceID !== workspaceID || activePathRef.current === activePath) return;
+    activePathRef.current = activePath;
+    const owner = activePath ? groups.find((group) => group.paths.includes(activePath)) : undefined;
+    const destination = owner?.id ?? activeGroupRef.current;
+    setGroups((current) => current.map((group) => group.id === destination
+      ? { ...group, activePath }
+      : group));
+    focusGroup(destination);
+  }, [activePath, focusGroup, groupWorkspaceID, groups, workspaceID]);
 
   useEffect(() => {
     if (groupWorkspaceID !== workspaceID) return;
-    if (activePathRef.current === activePath) return;
-    activePathRef.current = activePath;
-    if (activePath && primaryTabPaths.includes(activePath)) {
-      setPrimaryPath(activePath);
-      focusGroup("primary");
-    } else if (activePath && secondaryTabPaths.includes(activePath)) {
-      setSecondaryPath(activePath);
-      focusGroup("secondary");
-    } else if (activeGroupRef.current === "primary") {
-      setPrimaryPath(activePath);
-    } else {
-      setSecondaryPath(activePath);
+    const livePaths = new Set(tabs.map((tab) => tab.path));
+    const next = groups.map((group) => ({ ...group, paths: group.paths.filter((path) => livePaths.has(path)) }));
+    const assigned = new Set(next.flatMap((group) => group.paths));
+    const unassigned = tabs.map((tab) => tab.path).filter((path) => !assigned.has(path));
+    const destinationIndex = Math.max(0, next.findIndex((group) => group.id === activeGroupRef.current));
+    next[destinationIndex] = {
+      ...next[destinationIndex],
+      paths: [...next[destinationIndex]!.paths, ...unassigned]
+    };
+    for (const group of next) {
+      if (activePath && group.paths.includes(activePath)) {
+        group.activePath = activePath;
+        continue;
+      }
+      if (group.activePath && group.paths.includes(group.activePath)) continue;
+      group.activePath = group.paths[0] ?? null;
     }
-  }, [activeGroup, activePath, groupWorkspaceID, primaryTabPaths, secondaryTabPaths, workspaceID]);
+    if (!sameGroupLayout(groups, next)) setGroups(next);
+  }, [activePath, groupWorkspaceID, groups, tabs, workspaceID]);
 
-  useEffect(() => {
-    const paths = tabs.map((tab) => tab.path);
-    if (groupWorkspaceID !== workspaceID) {
-      setGroupWorkspaceID(workspaceID);
-      activePathRef.current = activePath;
-      setPrimaryTabPaths(paths);
-      setSecondaryTabPaths([]);
-      setPrimaryPath(activePath ?? paths[0] ?? null);
-      setSecondaryPath(null);
-      setSplitEnabled(false);
-      focusGroup("primary");
-      return;
-    }
-
-    const livePaths = new Set(paths);
-    let nextPrimaryPaths = primaryTabPaths.filter((path) => livePaths.has(path));
-    let nextSecondaryPaths = secondaryTabPaths.filter((path) => livePaths.has(path) && !nextPrimaryPaths.includes(path));
-    const assigned = new Set([...nextPrimaryPaths, ...nextSecondaryPaths]);
-    const unassigned = paths.filter((path) => !assigned.has(path));
-    if (unassigned.length > 0) {
-      if (splitEnabled && activeGroupRef.current === "secondary") nextSecondaryPaths = [...nextSecondaryPaths, ...unassigned];
-      else nextPrimaryPaths = [...nextPrimaryPaths, ...unassigned];
-    }
-
-    if (!samePaths(primaryTabPaths, nextPrimaryPaths)) setPrimaryTabPaths(nextPrimaryPaths);
-    if (!samePaths(secondaryTabPaths, nextSecondaryPaths)) setSecondaryTabPaths(nextSecondaryPaths);
-
-    const nextPrimaryPath = primaryPath && nextPrimaryPaths.includes(primaryPath)
-      ? primaryPath
-      : activePath && nextPrimaryPaths.includes(activePath)
-        ? activePath
-        : nextPrimaryPaths[0] ?? null;
-    const nextSecondaryPath = secondaryPath && nextSecondaryPaths.includes(secondaryPath)
-      ? secondaryPath
-      : activePath && nextSecondaryPaths.includes(activePath)
-        ? activePath
-        : nextSecondaryPaths[0] ?? null;
-    if (nextPrimaryPath !== primaryPath) setPrimaryPath(nextPrimaryPath);
-    if (nextSecondaryPath !== secondaryPath) setSecondaryPath(nextSecondaryPath);
-
-    if (paths.length === 0 && splitEnabled) {
-      setSplitEnabled(false);
-      focusGroup("primary");
-    }
-  }, [activeGroup, activePath, groupWorkspaceID, primaryPath, primaryTabPaths, secondaryPath, secondaryTabPaths, splitEnabled, tabs, workspaceID]);
-
-  const primaryTabs = tabs.filter((tab) => primaryTabPaths.includes(tab.path));
-  const secondaryTabs = tabs.filter((tab) => secondaryTabPaths.includes(tab.path));
-
-  const selectPath = (group: EditorGroupID, path: string): void => {
-    if (group === "primary") setPrimaryPath(path);
-    else setSecondaryPath(path);
-    focusGroup(group);
+  const selectPath = (groupID: EditorGroupID, path: string): void => {
+    setGroups((current) => current.map((group) => group.id === groupID ? { ...group, activePath: path } : group));
+    focusGroup(groupID);
     if (path !== activePath) setActive(path);
   };
 
-  const activateGroup = (group: EditorGroupID): void => {
-    focusGroup(group);
-    const path = group === "primary" ? primaryPath : secondaryPath;
+  const activateGroup = (groupID: EditorGroupID): void => {
+    focusGroup(groupID);
+    const path = groups.find((group) => group.id === groupID)?.activePath;
     if (path && path !== activePath) setActive(path);
   };
 
   const moveTabToGroup = (path: string, destination: EditorGroupID, source: EditorGroupID): void => {
     if (!tabs.some((tab) => tab.path === path) || source === destination) return;
-    const sourcePaths = source === "primary" ? primaryTabPaths : secondaryTabPaths;
-    const destinationPaths = destination === "primary" ? primaryTabPaths : secondaryTabPaths;
-    if (!sourcePaths.includes(path) || destinationPaths.includes(path)) return;
-
-    const nextPrimary = primaryTabPaths.filter((item) => item !== path);
-    const nextSecondary = secondaryTabPaths.filter((item) => item !== path);
-    if (destination === "primary") nextPrimary.push(path);
-    else nextSecondary.push(path);
-
-    setPrimaryTabPaths(nextPrimary);
-    setSecondaryTabPaths(nextSecondary);
-    if (destination === "primary") setPrimaryPath(path);
-    else setSecondaryPath(path);
+    const sourceGroup = groups.find((group) => group.id === source);
+    const destinationGroup = groups.find((group) => group.id === destination);
+    if (!sourceGroup?.paths.includes(path) || destinationGroup?.paths.includes(path)) return;
+    setGroups((current) => current.map((group) => {
+      if (group.id === source) {
+        const paths = group.paths.filter((item) => item !== path);
+        return { ...group, paths, activePath: group.activePath === path ? paths[0] ?? null : group.activePath };
+      }
+      if (group.id === destination) return { ...group, paths: [...group.paths, path], activePath: path };
+      return group;
+    }));
     focusGroup(destination);
     if (path !== activePath) setActive(path);
   };
 
-  const toggleSplit = (): void => {
-    if (splitEnabled) {
-      setPrimaryTabPaths(tabs.map((tab) => tab.path));
-      setSecondaryTabPaths([]);
-      setSplitEnabled(false);
-      setSecondaryPath(null);
-      focusGroup("primary");
-      if (primaryPath && primaryPath !== activePath) setActive(primaryPath);
-      return;
-    }
-    const nextPrimary = primaryPath && primaryTabPaths.includes(primaryPath)
-      ? primaryPath
-      : activePath && primaryTabPaths.includes(activePath)
-        ? activePath
-        : primaryTabs[0]?.path ?? null;
-    const nextSecondary = primaryTabs.find((tab) => tab.path !== nextPrimary)?.path ?? null;
-    setPrimaryPath(nextPrimary);
-    setSecondaryPath(nextSecondary);
-    if (nextSecondary) {
-      setPrimaryTabPaths((paths) => paths.filter((path) => path !== nextSecondary));
-      setSecondaryTabPaths([nextSecondary]);
-    }
-    setSplitEnabled(true);
-    focusGroup("secondary");
-    if (nextSecondary && nextSecondary !== activePath) setActive(nextSecondary);
+  const splitGroupAfter = (sourceID: EditorGroupID): void => {
+    if (groups.length >= EDITOR_GROUP_IDS.length) return;
+    const sourceIndex = groups.findIndex((group) => group.id === sourceID);
+    if (sourceIndex < 0) return;
+    const source = groups[sourceIndex]!;
+    const newID = EDITOR_GROUP_IDS.find((id) => !groups.some((group) => group.id === id));
+    if (!newID) return;
+    const movePath = source.paths.find((path) => path !== source.activePath) ?? null;
+    const next = groups.map((group) => {
+      if (group.id !== sourceID || !movePath) return group;
+      const paths = group.paths.filter((path) => path !== movePath);
+      return { ...group, paths, activePath: group.activePath ?? paths[0] ?? null };
+    });
+    const newGroup: EditorGroupState = { id: newID, paths: movePath ? [movePath] : [], activePath: movePath };
+    next.splice(sourceIndex + 1, 0, newGroup);
+    setGroups(next);
+    focusGroup(newID);
+    if (movePath && movePath !== activePath) setActive(movePath);
   };
 
-  const onDragOver = (e: React.DragEvent): void => {
-    if (!isExternalFileDrag(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setExternalDrag(true);
-    e.dataTransfer.dropEffect = "copy";
+  const closeGroup = (groupID: EditorGroupID): void => {
+    if (groups.length <= 1) return;
+    const index = groups.findIndex((group) => group.id === groupID);
+    if (index <= 0) return;
+    const closing = groups[index]!;
+    const neighborIndex = index - 1;
+    const next = groups.filter((group) => group.id !== groupID);
+    const neighbor = next[neighborIndex]!;
+    const paths = [...neighbor.paths, ...closing.paths.filter((path) => !neighbor.paths.includes(path))];
+    next[neighborIndex] = { ...neighbor, paths };
+    setGroups(next);
+    focusGroup(neighbor.id);
+    if (neighbor.activePath && neighbor.activePath !== activePath) setActive(neighbor.activePath);
   };
-  const onDrop = (e: React.DragEvent): void => {
-    if (!isExternalFileDrag(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
+
+  const onDragOver = (event: React.DragEvent): void => {
+    if (!isExternalFileDrag(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setExternalDrag(true);
+    event.dataTransfer.dropEffect = "copy";
+  };
+  const onDrop = (event: React.DragEvent): void => {
+    if (!isExternalFileDrag(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
     setExternalDrag(false);
-    const group = e.target instanceof Element
-      ? e.target.closest<HTMLElement>("[data-editor-group]")?.dataset.editorGroup
+    const group = event.target instanceof Element
+      ? event.target.closest<HTMLElement>("[data-editor-group]")?.dataset.editorGroup
       : undefined;
-    if (group === "primary" || group === "secondary") activateGroup(group);
-    const files = droppedFilePaths(e);
+    if (isEditorGroupID(group)) activateGroup(group);
+    const files = droppedFilePaths(event);
     if (files.length > 0) void openPaths(files);
   };
-  const onDragLeave = (e: React.DragEvent): void => {
-    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setExternalDrag(false);
+  const onDragLeave = (event: React.DragEvent): void => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setExternalDrag(false);
   };
 
   return (
     <div
-      className={"editor-pane" + (externalDrag ? " external-drop-active" : "")}
+      className={`editor-pane${externalDrag ? " external-drop-active" : ""}`}
       onDragOverCapture={onDragOver}
       onDropCapture={onDrop}
       onDragEnterCapture={onDragOver}
       onDragLeaveCapture={onDragLeave}
     >
-      {tabs.length === 0 && !splitEnabled ? (
+      {tabs.length === 0 && groups.length === 1 ? (
         <div className="editor-empty">
-          <div className="editor-empty-icon">
-            <OrbitMark size={40} />
-          </div>
-          {session ? (
-            <p>Select a file from the explorer to view or edit it.</p>
-          ) : (
-            <>
-              <p>No workspace open.</p>
-              <p className="editor-empty-sub">Open a workspace from the explorer to get started.</p>
-            </>
-          )}
+          <div className="editor-empty-icon"><OrbitMark size={40} /></div>
+          {session ? <p>Select a file from the explorer to view or edit it.</p> : <>
+            <p>No workspace open.</p>
+            <p className="editor-empty-sub">Open a workspace from the explorer to get started.</p>
+          </>}
         </div>
       ) : (
-        <div className={"editor-groups" + (splitEnabled ? " editor-groups-split" : "")}>
-          <EditorGroup
-            id="primary"
-            tabs={primaryTabs}
-            activePath={primaryPath}
+        <div className={`editor-groups editor-groups-count-${groups.length}`} data-group-count={groups.length}>
+          {groups.map((group, index) => <EditorGroup
+            key={group.id}
+            id={group.id}
+            index={index}
+            groupCount={groups.length}
+            tabs={tabs.filter((tab) => group.paths.includes(tab.path))}
+            activePath={group.activePath}
             directory={session?.directory}
-            focused={activeGroup === "primary"}
-            splitEnabled={splitEnabled}
+            focused={activeGroup === group.id}
             onStatusChange={onStatusChange}
-            onSelect={(path) => selectPath("primary", path)}
+            onSelect={(path) => selectPath(group.id, path)}
             onCloseTab={closeTab}
             onMoveTab={moveTabToGroup}
             onActivate={activateGroup}
-            onToggleSplit={toggleSplit}
-            onCloseSplit={toggleSplit}
-          />
-          {splitEnabled && <EditorGroup
-            id="secondary"
-            tabs={secondaryTabs}
-            activePath={secondaryPath}
-            directory={session?.directory}
-            focused={activeGroup === "secondary"}
-            splitEnabled
-            onStatusChange={onStatusChange}
-            onSelect={(path) => selectPath("secondary", path)}
-            onCloseTab={closeTab}
-            onMoveTab={moveTabToGroup}
-            onActivate={activateGroup}
-            onToggleSplit={toggleSplit}
-            onCloseSplit={toggleSplit}
-          />}
+            onSplit={splitGroupAfter}
+            onCloseGroup={closeGroup}
+          />)}
         </div>
       )}
     </div>

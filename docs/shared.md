@@ -14,6 +14,7 @@ Imported everywhere as `@shared/types` (alias in both tsconfigs and
 | `OpenCodeSyncResult` | `{ version, previousVersion, cliUpdated }` | Result of a Settings sync/update action; reports the final CLI version and whether the CLI itself changed |
 | `OrbitAppUpdateStatus` | Available/current/blocked state with branch, current/latest commit, and behind count | GitHub source-update check for the Orbit `main` checkout; dirty or divergent checkouts are blocked |
 | `OrbitAppUpdateResult` | `{ ok, updated, currentCommit?, latestCommit?, message }` | Result of a user-triggered Orbit source update and rebuild |
+| `W3cDiagnostic` | `{ line, column, endLine, endColumn, message, severity, source }`; source is W3C HTML/CSS or local Monaco SCSS | Validation results passed to Monaco markers and the Problems view |
 | `WorkspaceIdentity` | `{ id, generation }` | Opaque immutable UUID plus monotonic generation minted for one session context; capability calls must echo both; reused while a session stays open so file-updates and editor state keep routing to the same workspace |
 | `SessionInfo` | `{ id, directory, workspace, parentID?, title?, agent? }` | An open OpenCode session (one per panel), immutable workspace identity, and parent/child navigation metadata |
 | `SessionSummary` | `{ id, title, directory, updatedAt, parentID?, agent? }` | Recent-session graph used by Welcome and task/subagent links |

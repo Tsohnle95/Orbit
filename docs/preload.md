@@ -26,7 +26,8 @@ automatically.
 | `syncOpenCode()` | `Promise<OpenCodeSyncResult>` — syncs the attached shared service to the exact version resolved from Orbit's PATH |
 | `updateOpenCode()` | `Promise<OpenCodeSyncResult>` — runs OpenCode's own updater, then syncs the attached service |
 | `checkAppUpdate()` | `Promise<OrbitAppUpdateStatus>` — checks canonical GitHub `main`; reports when the checkout is dirty, divergent, or on another branch |
-| `updateApp()` | `Promise<OrbitAppUpdateResult>` — opens the main-process update progress window, fast-forwards Orbit's clean source checkout, refreshes npm dependencies, rebuilds, and relaunches |
+| `updateApp()` | `Promise<OrbitAppUpdateResult>` — rejects while editor files are unsaved; opens the main-process progress window, hides Orbit's main window, fast-forwards the clean source checkout, refreshes npm dependencies, stages and verifies the rebuild, swaps it into place, and relaunches |
+| `reportUnsavedEditorFiles(paths)` | `Promise<void>` — reports display paths for currently dirty editor tabs so main can block close/update and identify the affected files |
 | `sessions()` | `Promise<SessionSummary[]>` — recent session list |
 | `activeSessions()` | `Promise<SessionInfo[]>` — currently open backend sessions in activation order; the last element is the most recently activated (used for startup restore) |
 | `closeSession(workspace)` | `Promise<void>` — tears down the backend context when a panel closes; the opencode session remains reopenable |
