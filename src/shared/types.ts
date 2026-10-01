@@ -29,8 +29,8 @@ export interface OpenCodeSyncResult {
 }
 
 export type OrbitAppUpdateStatus =
-  | { state: "available"; branch: string; currentCommit: string; latestCommit: string; commitsBehind: number }
-  | { state: "current"; branch: string; currentCommit: string; latestCommit: string; commitsBehind: 0 }
+  | { state: "available"; branch: string; currentCommit: string; latestCommit: string; commitsBehind: number; commitsAhead: number; hasLocalChanges: boolean }
+  | { state: "current"; branch: string; currentCommit: string; latestCommit: string; commitsBehind: 0; commitsAhead: number; hasLocalChanges: boolean }
   | { state: "blocked"; message: string; branch?: string; currentCommit?: string };
 
 export interface OrbitAppUpdateResult {

@@ -251,9 +251,9 @@ Internals:
 | `shell:runtimes` | `() → RuntimeManifest[]` — installed status, native version, normalized protocol version, and capability bitmap |
 | `shell:sync-opencode` | `() → OpenCodeSyncResult` — restarts the attached shared OpenCode service only when needed to match the installed CLI version |
 | `shell:update-opencode` | `() → OpenCodeSyncResult` — runs OpenCode's updater, then syncs the shared service to the resulting CLI version |
-| `shell:app-update-check` | `() → OrbitAppUpdateStatus` — fetches canonical GitHub `main` and reports current, available, or blocked state for the clean source checkout |
+| `shell:app-update-check` | `() → OrbitAppUpdateStatus` — fetches canonical GitHub `main` and reports current/available commit counts plus local worktree changes; blocks non-main branches or unrelated history |
 | `shell:unsaved-editor-files` | `(string[]) → void` — records bounded display paths for dirty editor tabs so the close guard and updater can name them |
-| `shell:app-update` | `() → OrbitAppUpdateResult` — rejects while editor files are unsaved; shows a standalone progress window while hiding Orbit's main window, fast-forwards the clean `main` checkout when GitHub is ahead, installs dependencies, builds and verifies a staged compile output, swaps it into `out/` and relaunches Orbit; a failed build keeps the previous output and restores the main window |
+| `shell:app-update` | `() → OrbitAppUpdateResult` — rejects while editor files are unsaved; shows a reload-safe standalone progress window while hiding Orbit's main window, preserves worktree edits while merging GitHub and local commits, installs dependencies, builds and verifies a staged compile output, swaps it into `out/` and relaunches Orbit; merge conflicts roll back and a failed build keeps the previous output and restores the main window |
 | `shell:active-sessions` | `() → SessionInfo[]` — open backend sessions, most recently activated last |
 | `shell:close-session` | `(workspace) → void` — tears down the backend context when a panel closes; the opencode session remains reopenable |
 | `shell:open-session-id` | `(sessionID, generation, runtimeID?) → ReopenedSession`; opens an OpenCode session and transcript. Legacy DeepSeek sessions cannot be reopened through the dormant adapter |

@@ -25,8 +25,8 @@ automatically.
 | `runtimes()` | `Promise<RuntimeManifest[]>` — OpenCode's version and normalized capability manifest; DeepSeek is currently dormant |
 | `syncOpenCode()` | `Promise<OpenCodeSyncResult>` — syncs the attached shared service to the exact version resolved from Orbit's PATH |
 | `updateOpenCode()` | `Promise<OpenCodeSyncResult>` — runs OpenCode's own updater, then syncs the attached service |
-| `checkAppUpdate()` | `Promise<OrbitAppUpdateStatus>` — checks canonical GitHub `main`; reports when the checkout is dirty, divergent, or on another branch |
-| `updateApp()` | `Promise<OrbitAppUpdateResult>` — rejects while editor files are unsaved; opens the main-process progress window, hides Orbit's main window, fast-forwards the clean source checkout, refreshes npm dependencies, stages and verifies the rebuild, swaps it into place, and relaunches |
+| `checkAppUpdate()` | `Promise<OrbitAppUpdateStatus>` — checks canonical GitHub `main`; reports local commit counts and worktree changes, and blocks another branch or unrelated history |
+| `updateApp()` | `Promise<OrbitAppUpdateResult>` — rejects while editor files are unsaved; opens the main-process progress window, hides Orbit's main window, preserves staged/unstaged/untracked files while merging GitHub and local commits, refreshes npm dependencies, stages and verifies the rebuild, swaps it into place, and relaunches |
 | `reportUnsavedEditorFiles(paths)` | `Promise<void>` — reports display paths for currently dirty editor tabs so main can block close/update and identify the affected files |
 | `sessions()` | `Promise<SessionSummary[]>` — recent session list |
 | `activeSessions()` | `Promise<SessionInfo[]>` — currently open backend sessions in activation order; the last element is the most recently activated (used for startup restore) |

@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { OpenShellBackend } from "./opencode";
 import { createOrbitAppUpdater } from "./app-updater";
-import { appUpdaterWindowUrl, setAppUpdaterWindowStatus } from "./app-updater-window";
+import { appUpdaterWindowUrl, setAppUpdaterWindowStatus, shouldBlockAppUpdaterReload, type AppUpdaterWindowStatus } from "./app-updater-window";
 import { TerminalManager } from "./terminal";
 import { MobileServer } from "./mobile-server";
 import { defaultViteDeps, findHtmlEntry, resolveViteCommand, viteServerKey, VitePreviewManager } from "./vite-server";
@@ -661,6 +661,25 @@ async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
   });
   popup.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
 
+  let lastStatus: AppUpdaterWindowStatus = {
+    title: "Preparing update…",
+    message: "Checking the latest GitHub source.",
+    tone: "progress"
+  };
+  popup.webContents.on("dom-ready", () => setAppUpdaterWindowStatus(popup, lastStatus));
+  popup.webContents.on("before-input-event", (event, input) => {
+    if (shouldBlockAppUpdaterReload(input)) event.preventDefault();
+  });
+  popup.webContents.on("did-navigate-in-page", (_event, url, _isInPlace, isMainFrame) => {
+    if (isMainFrame && url.endsWith("#return-to-orbit") && appUpdaterWindowCanClose) popup.close();
+  });
+
+  const report = (title: string, message: string, tone: "progress" | "success" | "error" = "progress"): void => {
+    lastStatus = { title, message, tone };
+    if (!popup.isDestroyed()) popup.setTitle(`${title} — ${message}`);
+    setAppUpdaterWindowStatus(popup, lastStatus);
+  };
+
   try {
     await popup.loadURL(appUpdaterWindowUrl());
     popup.show();
@@ -674,11 +693,6 @@ async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
     const detail = error instanceof Error ? error.message : String(error);
     return { ok: false, updated: false, message: "Orbit could not open its update window. " + detail };
   }
-
-  const report = (title: string, message: string, tone: "progress" | "success" | "error" = "progress"): void => {
-    if (!popup.isDestroyed()) popup.setTitle(`${title} — ${message}`);
-    setAppUpdaterWindowStatus(popup, { title, message, tone });
-  };
 
   try {
     const result = await orbitAppUpdater.update((message) => report("Updating Orbit", message));

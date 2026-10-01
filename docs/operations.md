@@ -56,16 +56,21 @@ known good build after confirming). On macOS,
 Settings → About can check `origin/main` on the canonical Orbit GitHub remote.
 The About panel checks automatically when opened. Applying an update opens a
 standalone progress window and hides Orbit's main window while active agent runs
-stop, the clean `main` checkout fast-forwards, dependencies refresh, and a new
-compile is built in a staging directory. The updater verifies the staged entry
-files before swapping them into `out/`, then relaunches Orbit. If the build
-fails, the old `out/` remains in place and the main window returns. The installed
-macOS app is a live launcher that loads this checkout's `out/`, so this compile
-is the app rebuild; a separate terminal build or app package install is not
-needed. Orbit blocks updates and window close while editor files are unsaved,
-and the close warning names the affected files. It does not stash or discard
-local changes; a dirty, diverged, non-main, or noncanonical checkout is
-reported as blocked.
+stop. On canonical `main`, the updater saves staged, unstaged, and untracked
+worktree changes, merges GitHub commits with local commits, then restores those
+files before refreshing dependencies and compiling in a staging directory. It
+verifies the staged entry files before swapping them into `out/`, then relaunches
+Orbit. If Git cannot merge the commits or restore the saved files cleanly, Orbit
+rolls back the update and reports the conflicting paths. The progress window
+keeps its latest status across reload attempts, blocks reload shortcuts, and
+provides a Return to Orbit action after an error. If the build fails after the
+source merge, the old `out/` remains in place and the main window returns. The
+installed macOS app is a live launcher that loads this checkout's `out/`, so
+this compile is the app rebuild; a separate terminal build or app package
+install is not needed. Orbit blocks updates and window close while editor files
+are unsaved, and the close warning names the affected files. Updates require the
+canonical remote, a shared Git history, and the `main` branch; local commits and
+saved worktree changes are preserved through the update.
 `npm run test:platform` also runs the hidden-window renderer trust smoke on
 macOS. Linux and Windows run the launcher and Electron PTY coverage but skip the
 GUI smoke because a normal `BrowserWindow` requires a display there; macOS CI is

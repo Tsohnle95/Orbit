@@ -3,6 +3,7 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import type { OrbitAppUpdateResult, OrbitAppUpdateStatus } from "@shared/types";
 import { stagingOutputName, swapBuiltOutput } from "./app-update-build";
+import { integrateGitHubSource } from "./app-update-git";
 
 interface CommandOptions {
   env: NodeJS.ProcessEnv;
@@ -123,36 +124,28 @@ export function createOrbitAppUpdater(projectRoot: string, options: OrbitAppUpda
         };
       }
 
-      const changes = await git(["status", "--porcelain=v1", "--untracked-files=normal", "--ignore-submodules=all"]);
-      if (changes) {
+      await git(["fetch", "--quiet", "--no-tags", "origin", "+refs/heads/main:refs/remotes/origin/main"]);
+      const latestCommit = await git(["rev-parse", "refs/remotes/origin/main"]);
+      try {
+        await git(["merge-base", "HEAD", latestCommit]);
+      } catch {
         return {
           state: "blocked",
           branch,
           currentCommit,
-          message: "This Orbit checkout has local changes. Commit or move them before updating."
+          message: "This checkout does not share Git history with GitHub main. Orbit left it unchanged."
         };
       }
-
-      await git(["fetch", "--quiet", "--no-tags", "origin", "+refs/heads/main:refs/remotes/origin/main"]);
-      const latestCommit = await git(["rev-parse", "refs/remotes/origin/main"]);
+      const changes = await git(["status", "--porcelain=v1", "--untracked-files=all"]);
       const counts = await git(["rev-list", "--left-right", "--count", `HEAD...${latestCommit}`]);
       const match = /^(\d+)\s+(\d+)$/.exec(counts.trim());
       if (!match) throw new Error("Git returned an unreadable commit count.");
       const commitsAhead = Number(match[1]);
       const commitsBehind = Number(match[2]);
-
-      if (commitsAhead > 0) {
-        return {
-          state: "blocked",
-          branch,
-          currentCommit,
-          message: `This checkout has ${commitsAhead} local commit${commitsAhead === 1 ? "" : "s"} that are not on GitHub. Push or save them before updating.`
-        };
-      }
       if (commitsBehind === 0) {
-        return { state: "current", branch, currentCommit, latestCommit, commitsBehind: 0 };
+        return { state: "current", branch, currentCommit, latestCommit, commitsBehind: 0, commitsAhead, hasLocalChanges: Boolean(changes.trim()) };
       }
-      return { state: "available", branch, currentCommit, latestCommit, commitsBehind };
+      return { state: "available", branch, currentCommit, latestCommit, commitsBehind, commitsAhead, hasLocalChanges: Boolean(changes.trim()) };
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       return { state: "blocked", message: `Could not check GitHub for Orbit updates: ${detail}` };
@@ -192,28 +185,16 @@ export function createOrbitAppUpdater(projectRoot: string, options: OrbitAppUpda
       }
       await command("npm", ["--version"], 10_000);
 
-      const branch = await git(["branch", "--show-current"]);
-      const head = await git(["rev-parse", "HEAD"]);
-      const changes = await git(["status", "--porcelain=v1", "--untracked-files=normal", "--ignore-submodules=all"]);
-      if (branch !== UPDATE_BRANCH || head !== status.currentCommit || changes) {
-        return {
-          ok: false,
-          updated: false,
-          message: "This Orbit checkout changed while checking for updates. Review the working tree, then check again."
-        };
-      }
-
-      if (status.state === "available") {
-        reportProgress("Fast-forwarding Orbit to the latest GitHub commit…");
-        await git(["merge", "--ff-only", "refs/remotes/origin/main"]);
-        sourceCommit = await git(["rev-parse", "HEAD"]);
-        if (sourceCommit !== status.latestCommit) {
-          throw new Error("GitHub main changed while Orbit was updating. Check for updates and try again.");
-        }
-      } else {
-        sourceCommit = status.currentCommit;
+      if (status.state === "current") {
         reportProgress("GitHub is current; rebuilding this Orbit version…");
       }
+
+      sourceCommit = await integrateGitHubSource(git, {
+        expectedHead: status.currentCommit,
+        latestCommit: status.latestCommit,
+        commitsBehind: status.commitsBehind,
+        onProgress: reportProgress
+      });
 
       reportProgress("Installing app dependencies…");
       await command("npm", ["install", "--no-audit", "--no-fund"], 10 * 60_000);
@@ -221,14 +202,18 @@ export function createOrbitAppUpdater(projectRoot: string, options: OrbitAppUpda
       await command("npm", ["run", "build:compile", "--", "--outDir", stagingName], 10 * 60_000);
       reportProgress("Checking and installing the staged build…");
       await swapBuiltOutput(root, stagingName);
+      const localNotes = [
+        status.commitsAhead > 0 ? `Preserved ${status.commitsAhead} local commit${status.commitsAhead === 1 ? "" : "s"}.` : "",
+        status.hasLocalChanges ? "Restored local file changes." : ""
+      ].filter(Boolean).join(" ");
       return {
         ok: true,
         updated: true,
         currentCommit: status.currentCommit,
-        latestCommit: sourceCommit,
-        message: status.state === "available"
-          ? `Orbit updated to ${shortCommit(sourceCommit)} and rebuilt.`
-          : `Orbit is current at ${shortCommit(sourceCommit)} and has been rebuilt.`
+        latestCommit: status.latestCommit,
+        message: `${status.state === "available"
+          ? `Orbit now includes GitHub commit ${shortCommit(status.latestCommit)} and has been rebuilt.`
+          : `Orbit is current at GitHub commit ${shortCommit(status.latestCommit)} and has been rebuilt.`}${localNotes ? ` ${localNotes}` : ""}`
       };
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);

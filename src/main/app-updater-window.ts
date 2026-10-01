@@ -6,6 +6,17 @@ export interface AppUpdaterWindowStatus {
   tone?: "progress" | "success" | "error";
 }
 
+export function shouldBlockAppUpdaterReload(input: {
+  type: string;
+  key: string;
+  meta?: boolean;
+  control?: boolean;
+}): boolean {
+  if (input.type !== "keyDown") return false;
+  const reloadShortcut = input.meta === true || input.control === true;
+  return input.key === "F5" || (reloadShortcut && input.key.toLowerCase() === "r");
+}
+
 export function appUpdaterWindowDocument(): string {
   return `<!doctype html>
 <html lang="en">
@@ -29,6 +40,9 @@ export function appUpdaterWindowDocument(): string {
     .track.success span { width: 100%; animation: none; background: #6bd6a2; }
     .track.error span { width: 100%; animation: none; background: #f17a78; }
     .foot { margin: 13px 0 0; color: #73717b; font-size: 11px; }
+    .return { margin-top: 17px; padding: 8px 12px; border: 1px solid #514b60; border-radius: 7px; background: #211f27; color: #e9e5f2; font: inherit; cursor: pointer; }
+    .return:hover { border-color: #a48aff; background: #292532; }
+    .return[hidden] { display: none; }
     @keyframes progress { from { transform: translateX(-55%); } to { transform: translateX(220%); } }
     @media (prefers-reduced-motion: reduce) { .track span { animation: none; } }
   </style>
@@ -39,6 +53,7 @@ export function appUpdaterWindowDocument(): string {
     <p id="message">Checking the latest GitHub source.</p>
     <div class="track" id="track" aria-hidden="true"><span></span></div>
     <p class="foot" id="foot">Orbit will close while this window shows rebuild progress.</p>
+    <button class="return" id="return" type="button" hidden onclick="location.hash = 'return-to-orbit'">Return to Orbit</button>
   </main>
   <script>
     window.setOrbitUpdaterStatus = (status) => {
@@ -46,8 +61,9 @@ export function appUpdaterWindowDocument(): string {
       document.getElementById("message").textContent = status.message;
       const track = document.getElementById("track");
       track.className = status.tone === "success" ? "track success" : status.tone === "error" ? "track error" : "track";
+      document.getElementById("return").hidden = status.tone !== "error";
       document.getElementById("foot").textContent = status.tone === "error"
-        ? "Close this window after reviewing the error, then retry when ready."
+        ? "Return to Orbit to close this window and retry from Settings."
         : status.tone === "success" ? "Orbit is restarting with the updated build." : "Orbit is closed while this window shows rebuild progress.";
     };
   </script>

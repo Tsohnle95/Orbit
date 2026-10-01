@@ -28,6 +28,15 @@ const sectionCopy: Record<SettingsSection, { title: string; description: string 
   about: { title: "About", description: "Version and product information for this installation." }
 };
 
+type UpdatableOrbitStatus = Extract<OrbitAppUpdateStatus, { state: "available" | "current" }>;
+
+function orbitUpdateLocalWorkNote(status: UpdatableOrbitStatus): string {
+  const preserved: string[] = [];
+  if (status.commitsAhead > 0) preserved.push(`${status.commitsAhead} local commit${status.commitsAhead === 1 ? "" : "s"}`);
+  if (status.hasLocalChanges) preserved.push("worktree changes");
+  return preserved.length > 0 ? ` Preserves ${preserved.join(" and ")}.` : "";
+}
+
 function SettingRow({ title, detail, control }: { title: string; detail: string; control: ReactNode }): ReactNode {
   return (
     <div className="settings-list-row">
@@ -140,7 +149,9 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
           branch: "main",
           currentCommit: result.latestCommit,
           latestCommit: result.latestCommit,
-          commitsBehind: 0
+          commitsBehind: 0,
+          commitsAhead: 0,
+          hasLocalChanges: false
         });
       } else {
         const status = await window.openshell.checkAppUpdate();
@@ -371,9 +382,9 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
         </div>
         {(orbitUpdateFeedback || orbitUpdateStatus) && <p className="settings-action-feedback" role="status" aria-live="polite">
           {orbitUpdateFeedback || (orbitUpdateStatus?.state === "available"
-            ? `${orbitUpdateStatus.commitsBehind} commit${orbitUpdateStatus.commitsBehind === 1 ? "" : "s"} ready · ${orbitUpdateStatus.currentCommit.slice(0, 7)} → ${orbitUpdateStatus.latestCommit.slice(0, 7)}. Click Update Orbit to install, rebuild, and relaunch.`
+            ? `${orbitUpdateStatus.commitsBehind} commit${orbitUpdateStatus.commitsBehind === 1 ? "" : "s"} ready · ${orbitUpdateStatus.currentCommit.slice(0, 7)} → ${orbitUpdateStatus.latestCommit.slice(0, 7)}. Click Update Orbit to install, rebuild, and relaunch.${orbitUpdateLocalWorkNote(orbitUpdateStatus)}`
             : orbitUpdateStatus?.state === "current"
-              ? `Up to date · ${orbitUpdateStatus.branch} @ ${orbitUpdateStatus.currentCommit.slice(0, 7)}. Check for updates does not rebuild.`
+              ? `Up to date · ${orbitUpdateStatus.branch} @ ${orbitUpdateStatus.currentCommit.slice(0, 7)}. Check for updates does not rebuild.${orbitUpdateLocalWorkNote(orbitUpdateStatus)}`
               : orbitUpdateStatus?.message)}
         </p>}
         {unsavedEditorFileCount > 0 && <div className="settings-unsaved-files" role="alert">

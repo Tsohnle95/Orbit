@@ -177,7 +177,9 @@ describe("SettingsPage", () => {
       branch: "main",
       currentCommit: "1111111111111111111111111111111111111111",
       latestCommit: "2222222222222222222222222222222222222222",
-      commitsBehind: 2
+      commitsBehind: 2,
+      commitsAhead: 3,
+      hasLocalChanges: true
     });
     updateApp.mockResolvedValue({
       ok: true,
@@ -189,6 +191,7 @@ describe("SettingsPage", () => {
     await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={() => {}} /></ThemeProvider>));
     expect(checkAppUpdate).toHaveBeenCalledOnce();
     expect(container.textContent).toContain("2 commits ready · 1111111 → 2222222");
+    expect(container.textContent).toContain("Preserves 3 local commits and worktree changes.");
     const updateButton = [...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
       .find((button) => button.textContent === "Update Orbit")!;
     expect(updateButton).toBeTruthy();
@@ -236,7 +239,9 @@ describe("SettingsPage", () => {
       branch: "main",
       currentCommit: "1111111111111111111111111111111111111111",
       latestCommit: "3333333333333333333333333333333333333333",
-      commitsBehind: 4
+      commitsBehind: 4,
+      commitsAhead: 0,
+      hasLocalChanges: false
     }));
     expect(container.textContent).not.toContain("4 commits ready");
     expect(container.textContent).toContain("Orbit updated to 2222222.");
@@ -253,7 +258,9 @@ describe("SettingsPage", () => {
       branch: "main",
       currentCommit: "1111111111111111111111111111111111111111",
       latestCommit: "1111111111111111111111111111111111111111",
-      commitsBehind: 0
+      commitsBehind: 0,
+      commitsAhead: 0,
+      hasLocalChanges: false
     });
     await act(async () => root.render(<ThemeProvider><SettingsPage section="about" onClose={() => {}} /></ThemeProvider>));
     const updateButton = [...container.querySelectorAll<HTMLButtonElement>(".settings-action-button")]
