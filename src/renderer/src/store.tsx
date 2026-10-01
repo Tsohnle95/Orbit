@@ -2915,7 +2915,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         : undefined;
       if (!target || !tab || tab.content === content) return;
       setTabsFor(target.id, (prev) => prev.map((candidate) => candidate.path === path
-        ? { ...candidate, content, revision: candidate.revision + 1, dirty: true }
+        ? { ...candidate, content, revision: candidate.revision + 1, dirty: content !== candidate.saved }
         : candidate));
     },
     [setTabsFor]

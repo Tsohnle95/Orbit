@@ -137,6 +137,24 @@ describe("store external files", () => {
     expect(store.unsavedEditorFileCount).toBe(0);
   });
 
+  it("clears the unsaved state when an edit is undone back to the saved content", async () => {
+    const openExternal = vi.fn(async (): Promise<ExternalOpenResult> => ({
+      kind: "standalone", path: "/outside/notes.txt", content: "v1"
+    }));
+    window.openshell = api({ openExternal });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openExternalPath("/outside/notes.txt"));
+
+    act(() => store.editContent("/outside/notes.txt", "v2"));
+    expect(store.tabs.find((tab) => tab.path === "/outside/notes.txt")?.dirty).toBe(true);
+    expect(store.unsavedEditorFileCount).toBe(1);
+
+    act(() => store.editContent("/outside/notes.txt", "v1"));
+    expect(store.tabs.find((tab) => tab.path === "/outside/notes.txt")?.dirty).toBe(false);
+    expect(store.unsavedEditorFileCount).toBe(0);
+  });
+
   it("keeps inactive-workspace dirty files in the close warning count", async () => {
     const openExternal = vi.fn(async (): Promise<ExternalOpenResult> => ({
       kind: "standalone", path: "/outside/notes.txt", content: "v1"

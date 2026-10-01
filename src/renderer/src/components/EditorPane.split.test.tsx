@@ -207,12 +207,14 @@ describe("EditorPane split groups", () => {
       quickSuggestions?: { other?: boolean };
       suggestOnTriggerCharacters?: boolean;
       fixedOverflowWidgets?: boolean;
+      overflowWidgetsDomNode?: HTMLElement;
       wordBasedSuggestions?: string;
       tabCompletion?: string;
     };
     expect(options.quickSuggestions?.other).toBe(true);
     expect(options.suggestOnTriggerCharacters).toBe(true);
     expect(options.fixedOverflowWidgets).toBe(true);
+    expect(options.overflowWidgetsDomNode).toBe(document.body);
     expect(options.wordBasedSuggestions).toBe("currentDocument");
     expect(options.tabCompletion).toBe("on");
   });

@@ -293,7 +293,9 @@ Key mechanisms:
   provider state. Durable end/snapshot events are authoritative; terminal
   tool states cannot regress when events arrive late.
 - **Manual, revision-safe persistence** — editing updates the in-memory tab and
-  marks it dirty; it does not write to disk. `EditorPersistence` receives an
+  marks it dirty only while its buffer differs from the saved content; undoing
+  back to that content clears the orange indicator and unsaved-file guards. It
+  does not write to disk. `EditorPersistence` receives an
   immutable workspace/path/content/revision snapshot only when the user clicks
   Save or presses ⌘S/Ctrl+S, serializes writes per workspace/file, and strongly
   identifies echoes. Dirty clears only for the matching current revision.
@@ -582,7 +584,9 @@ released at that collapsed position.
 - JavaScript uses Monaco's TypeScript worker with eager model synchronization,
   ES2020 and browser DOM libraries, syntax/semantic diagnostics, and explicit
   quick-suggestion/trigger-character settings in `EditorPane`. Typing after
-  `document.` offers DOM API completions such as `querySelectorAll`.
+  `document.` offers DOM API completions such as `querySelectorAll`. Suggestion
+  and hover widgets use `document.body` as their overflow host so split-editor
+  containers cannot clip the completion list.
 - `editor-navigation.ts` binds Command/Control + Arrow Up/Down to the start/end
   of the document and Command/Control + Arrow Left/Right to the start/end of
   the current line. These explicit commands keep the native editor navigation
@@ -632,11 +636,15 @@ released at that collapsed position.
   so stale line numbers never linger while editing.
 - About's **Update Orbit** action invokes the main-process updater directly.
   Its progress window remains visible while the main window is hidden; the
-  updater checks GitHub, installs dependencies, builds a staged output, verifies
-  it, swaps it into place, and relaunches. It fast-forwards the clean `main`
-  checkout first when commits are available. **Check for updates** only reports
-  current/available/blocked status and does not build. Unsaved files are listed
-  with buttons to open each one and block both update and app close.
+  updater checks GitHub, preserves saved worktree edits while combining local
+  and remote commits, installs dependencies, builds a staged output, verifies
+  it, swaps it into place, and relaunches. **Check for updates** reports the
+  commit counts and whether worktree changes will be preserved; it does not
+  build. The popup retains progress after reload attempts and provides a Return
+  to Orbit action after errors. Unsaved editor files are listed with buttons to
+  open each one and block both update and app close. A tab's dirty marker is
+  derived from whether its buffer differs from its saved content, so undoing to
+  the saved text clears the marker.
 - The main process calls the Nu Html Checker for HTML and the W3C CSS
   Validator for CSS, then returns diagnostics. Network failures leave the
   editor unchanged; Vue and Svelte files are not sent to the validators.

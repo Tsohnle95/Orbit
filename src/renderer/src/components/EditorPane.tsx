@@ -21,6 +21,7 @@ const EDITOR_OPTIONS = {
   minimap: { enabled: false },
   automaticLayout: true,
   fixedOverflowWidgets: true,
+  overflowWidgetsDomNode: document.body,
   quickSuggestions: { other: true, comments: false, strings: true },
   quickSuggestionsDelay: 25,
   suggestOnTriggerCharacters: true,
