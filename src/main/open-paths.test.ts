@@ -2,6 +2,31 @@ import { describe, expect, it, vi } from "vitest";
 import { collectLaunchPaths, PendingOpenPaths } from "./open-paths";
 
 describe("PendingOpenPaths", () => {
+  it("retains native requests until the renderer has subscribed", () => {
+    const pending = new PendingOpenPaths();
+    pending.push(["/dropped folder"]);
+    expect(pending.takeIfRendererReady()).toEqual([]);
+    expect(pending.size).toBe(1);
+
+    pending.setRendererReady(true);
+    expect(pending.take()).toEqual(["/dropped folder"]);
+    pending.push(["/another folder"]);
+    expect(pending.takeIfRendererReady()).toEqual(["/another folder"]);
+    expect(pending.takeIfRendererReady()).toEqual([]);
+  });
+
+  it("queues drops during a renderer reload until it subscribes again", () => {
+    const pending = new PendingOpenPaths();
+    pending.setRendererReady(true);
+    pending.setRendererReady(false);
+    pending.push(["/during-reload"]);
+    expect(pending.takeIfRendererReady()).toEqual([]);
+
+    pending.setRendererReady(true);
+    expect(pending.take()).toEqual(["/during-reload"]);
+    expect(pending.size).toBe(0);
+  });
+
   it("takes queued paths once and clears the queue", () => {
     const pending = new PendingOpenPaths();
     pending.push(["/repo/a", "/repo/b"]);

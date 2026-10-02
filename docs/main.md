@@ -505,7 +505,12 @@ The renderer generates a QR image from that URI.
 
 Startup (`app.whenReady`): `start()` → register backend and terminal forwarders
 → register IPC → `createWindow()` → begin asynchronous `connect()`. On
-`window-all-closed` the app quits on every platform and the backend is
+macOS, native `open-file` requests are queued before Electron is ready without
+creating a window. Launch arguments and subsequent icon drops use the same
+pending queue. Paths remain queued until the renderer subscribes to messages
+and calls `shell:take-pending-paths`; later requests are delivered immediately.
+Main-frame navigation resets this readiness so drops during a reload are retained.
+On `window-all-closed` the app quits on every platform and the backend is
 stopped in `before-quit` after renderer unload approval; the window is created
 hidden and shown on
 `ready-to-show` (5s fallback), renderer console output is forwarded to

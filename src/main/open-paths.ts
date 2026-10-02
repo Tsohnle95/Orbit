@@ -4,6 +4,15 @@ const MAX_PENDING_PATHS = 10;
 
 export class PendingOpenPaths {
   private paths: string[] = [];
+  private rendererReady = false;
+
+  setRendererReady(ready: boolean): void {
+    this.rendererReady = ready;
+  }
+
+  takeIfRendererReady(): string[] {
+    return this.rendererReady ? this.take() : [];
+  }
 
   push(items: string[]): void {
     for (const item of items) {

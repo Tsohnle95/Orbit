@@ -113,7 +113,7 @@ function flushOpenPaths(): void {
   if (pendingOpenPaths.size === 0) return;
   if (!win || win.isDestroyed() || win.webContents.isDestroyed()) return;
   if (win.webContents.isLoading()) return;
-  const paths = pendingOpenPaths.take();
+  const paths = pendingOpenPaths.takeIfRendererReady();
   if (paths.length === 0) return;
   win.webContents.send("shell:message", { kind: "ui-command", command: "open-paths", data: paths });
 }
@@ -527,9 +527,10 @@ function createWindow(show = true): BrowserWindow {
     setTimeout(reveal, 5000);
   }
   newWin.on("resize", () => scheduleBoundsSave(newWin));
-  newWin.webContents.on("did-finish-load", () => {
-    setTimeout(flushOpenPaths, 500);
+  newWin.webContents.on("did-start-navigation", (_event, _url, isInPlace, isMainFrame) => {
+    if (isMainFrame && !isInPlace) pendingOpenPaths.setRendererReady(false);
   });
+  newWin.webContents.on("did-finish-load", flushOpenPaths);
   void newWin.loadURL(rendererUrl);
   return newWin;
 }
@@ -1314,7 +1315,11 @@ function registerIpc(): void {
     await viteServers.stopAll();
   });
 
-  handleTrusted("shell:take-pending-paths", () => pendingOpenPaths.take());
+  handleTrusted("shell:take-pending-paths", () => {
+    // The renderer invokes this only after installing its message listener.
+    pendingOpenPaths.setRendererReady(true);
+    return pendingOpenPaths.take();
+  });
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -1330,6 +1335,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on("second-instance", (_event, argv) => {
     pendingOpenPaths.push(collectLaunchPaths(argv.slice(1), existsSync, process.execPath));
+    if (!app.isReady()) return;
     if (!win || win.isDestroyed()) {
       createWindow();
     } else {
@@ -1342,6 +1348,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on("open-file", (event, path) => {
     event.preventDefault();
     pendingOpenPaths.push([path]);
+    if (!app.isReady()) return;
     if (!win || win.isDestroyed()) {
       createWindow();
     } else {
