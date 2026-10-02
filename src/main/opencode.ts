@@ -90,6 +90,8 @@ import type { RuntimeAdapter } from "./runtimes/runtime-adapter";
 import { tuiCommandForRuntime } from "./tui-command";
 import type { TerminalCommand } from "./terminal";
 import { RuntimeSessionIndex } from "./runtimes/runtime-session-index";
+import type { SavedWorkspaceStore } from "./saved-workspaces";
+import { existingWorkspace, type WorkspaceProject } from "./workspace-location";
 import { normalizePendingForm } from "@shared/forms";
 import { formatFailure, normalizeFailure } from "@shared/errors";
 
@@ -617,7 +619,8 @@ export class OpenShellBackend {
   constructor(
     private readonly mutationPhase: MutationPhaseHandler = () => {},
     private readonly runtimeFactory?: (runtimeID: RuntimeID, directory: string) => RuntimeAdapter,
-    private readonly runtimeSessionIndex = new RuntimeSessionIndex()
+    private readonly runtimeSessionIndex = new RuntimeSessionIndex(),
+    private readonly savedWorkspaceStore?: SavedWorkspaceStore
   ) {}
 
   onMessage(cb: (msg: unknown) => void): () => void {
@@ -1749,23 +1752,23 @@ export class OpenShellBackend {
     return context.sessionInfo;
   }
 
+  async resolveWorkspaceDirectory(directory: string, projectID?: string, projects?: WorkspaceProject[]): Promise<string | null> {
+    const direct = await existingWorkspace(directory);
+    if (direct) return direct;
+    const remembered = await this.savedWorkspaceStore?.resolve(directory, [], projectID);
+    if (remembered) return remembered;
+    if (!this.savedWorkspaceStore && (!projectID || projectID === "global")) return null;
+    const catalog = projects ?? (this.client ? await this.client.project.list() : []);
+    const entries = (Array.isArray(catalog) ? catalog : (catalog as { data?: WorkspaceProject[] }).data ?? []) as WorkspaceProject[];
+    if (this.savedWorkspaceStore) return this.savedWorkspaceStore.resolve(directory, entries, projectID);
+    const current = projectID && projectID !== "global" ? entries.find((entry) => entry.id === projectID)?.canonical : undefined;
+    return current ? existingWorkspace(current) : null;
+  }
+
   private async resolveOpenCodeSessionDirectory(directory: string, projectID?: string): Promise<{ directory: string; relocated: boolean }> {
-    try {
-      return { directory: await canonicalWorkspaceRoot(directory), relocated: false };
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code !== "ENOENT" && code !== "ENOTDIR") throw error;
-      if (!projectID || projectID === "global" || !this.client) throw new SessionWorkspaceNotFoundError(directory);
-    }
-    const res = await this.client.project.list();
-    const projects = (Array.isArray(res) ? res : (res as { data?: unknown }).data ?? []) as Array<{ id?: string; canonical?: string }>;
-    const current = projects.find((project) => project.id === projectID)?.canonical;
+    const current = await this.resolveWorkspaceDirectory(directory, projectID);
     if (!current) throw new SessionWorkspaceNotFoundError(directory);
-    try {
-      return { directory: await canonicalWorkspaceRoot(current), relocated: true };
-    } catch {
-      throw new SessionWorkspaceNotFoundError(directory);
-    }
+    return { directory: current, relocated: current !== directory };
   }
 
   async openSession(directory: string, acceptedGeneration?: number, runtimeID: RuntimeID = "opencode"): Promise<SessionInfo> {
@@ -1794,6 +1797,9 @@ export class OpenShellBackend {
     }
     if (runtimeID !== "opencode") throw new Error(`Unsupported runtime: ${runtimeID}`);
     if (!this.client) throw new Error("not connected to opencode service");
+    const resolved = await this.resolveWorkspaceDirectory(directory);
+    if (!resolved) throw new SessionWorkspaceNotFoundError(directory);
+    directory = resolved;
     const res = await this.client.session.create({
       location: { directory }
     });
@@ -1824,6 +1830,8 @@ export class OpenShellBackend {
       .map((summary) => [summary.id, summary])).values()];
     if (!this.client) return runtimeSummaries.sort((a, b) => b.updatedAt - a.updatedAt);
     const summaries: SessionSummary[] = [];
+    const directories = new Map<string, string>();
+    let projects: WorkspaceProject[] | undefined;
     let cursor: string | undefined;
     for (let page = 0; page < 100; page += 1) {
       const res = await this.client.session.list({ limit: 50, order: "desc", ...(cursor ? { cursor } : {}) });
@@ -1834,13 +1842,25 @@ export class OpenShellBackend {
         parentID?: string;
         agent?: string;
         tokens?: SessionTokenUsage;
+        projectID?: string;
         location?: { directory?: string };
         time?: { updated?: number; created?: number };
       }>) {
-        const directory = s.location?.directory;
-        if (!s.id || !directory) continue;
+        const originalDirectory = s.location?.directory;
+        if (!s.id || !originalDirectory) continue;
         const updated = s.time?.updated ?? s.time?.created ?? 0;
         if (!hasConversation(s.title, s.tokens)) continue;
+        const key = `${s.projectID ?? ""}:${originalDirectory}`;
+        let directory = directories.get(key);
+        if (!directory) {
+          directory = await existingWorkspace(originalDirectory) ?? undefined;
+          if (!directory && this.savedWorkspaceStore) {
+            projects ??= await this.client.project.list();
+            directory = await this.resolveWorkspaceDirectory(originalDirectory, s.projectID, projects) ?? undefined;
+          }
+          directory ??= originalDirectory;
+          directories.set(key, directory);
+        }
         summaries.push({
           id: s.id,
           runtimeID: "opencode",
@@ -1918,7 +1938,11 @@ export class OpenShellBackend {
     }
     if (!this.client) throw new Error("not connected to opencode service");
     const targetDirectory = await canonicalWorkspaceRoot(directory);
+    const original = await this.client.session.get({ sessionID });
     await this.client.session.move({ sessionID, directory: targetDirectory });
+    if (original.location?.directory && original.location.directory !== targetDirectory) {
+      await this.savedWorkspaceStore?.relocate(original.location.directory, targetDirectory);
+    }
     return this.openSessionById(sessionID, acceptedGeneration, "opencode");
   }
 

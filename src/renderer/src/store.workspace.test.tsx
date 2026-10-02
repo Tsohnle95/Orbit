@@ -99,6 +99,19 @@ describe("store workspace continuations", () => {
     );
   });
 
+  it("loads history when the backend becomes ready and refreshes it on reconnect", async () => {
+    const ready = deferred<boolean>();
+    const sessions = vi.fn(async () => [{ id: "history", title: "Saved conversation", directory: "/workspace", updatedAt: 1 }]);
+    window.openshell = api({ health: () => ready.promise as Promise<boolean>, sessions });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    expect(sessions).not.toHaveBeenCalled();
+    await act(async () => { ready.resolve(true); await ready.promise; });
+    expect(store.sessions[0]?.title).toBe("Saved conversation");
+    const calls = sessions.mock.calls.length;
+    await act(async () => messageHandler?.({ kind: "event", type: "server.connected", data: { id: "connected", type: "server.connected", created: 2, data: {} } }));
+    expect(sessions.mock.calls.length).toBeGreaterThan(calls);
+  });
+
   it("keeps removed paths session-only so reloads enumerate the workspace again", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     window.openshell = api();

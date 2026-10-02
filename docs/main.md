@@ -81,7 +81,8 @@ Public methods (all used by IPC):
 | `closeSession(workspace)` | Tears down the addressed context (stops its watcher, removes it from the context map) when its panel closes; the opencode session itself stays alive so recents can reopen it |
 | `deleteSession(sessionID)` | Closes the panel context when open, then permanently destroys the OpenCode session via `session.remove`; legacy DeepSeek sessions are unavailable |
 | `openSessionById(sessionID, generation?, runtimeID?)` | Loads OpenCode `session.get` plus replay and reuses an already-open context without re-emitting. If its workspace is gone and project lookup cannot repair it, throws `SessionWorkspaceNotFoundError` for the IPC caller to handle. A legacy DeepSeek session id is not reopened by the dormant adapter |
-| `openSessionByIdInDirectory(sessionID, directory, generation?, runtimeID?)` | Moves a missing-workspace OpenCode session to a selected existing directory, then reopens and replays it; only called after an explicit user action and folder selection |
+| `openSessionByIdInDirectory(sessionID, directory, generation?, runtimeID?)` | Moves a missing-workspace OpenCode session to a selected existing directory, remembers the relocation for sibling history/bookmarks, then reopens and replays it; only called after an explicit user action and folder selection |
+| `resolveWorkspaceDirectory(directory, projectID?, projects?)` | Resolves canonical paths, durable relocation aliases, recorded filesystem identity or verified OpenCode project identity; returns null for unavailable or ambiguous folders |
 | `sessionTranscript(sessionID)` | Loads `message.list` replay as `{transcript, todos}` without activating a context; the renderer's stream materialization source |
 | `sessionUsage(sessionID)` | Loads `session.get` and returns the normalized `SessionUsage` (`cost` + `tokens`) or `null` when unavailable (tokens missing — a missing `cost`, as with cost-less local providers, coerces to 0 so the snapshot stays refreshable); called after compaction to refresh the context-window display |
 | `workspaceDirectory(workspace)` | Resolves a workspace identity to its canonical session directory (terminal cwd, identity validation) |
@@ -204,6 +205,16 @@ Internals:
   removal is available only through the user's explicit Delete Session action.
   Conversation-less sessions remain out of recents so empty workspace opens
   do not crowd the history list.
+- Workspace locations — `SavedWorkspaceStore` owns bookmarks, confirmed relocation
+  aliases and filesystem identities together in the atomic, backed-up app storage.
+  Older bookmark files migrate without deleting entries. `workspace-location.ts`
+  checks canonical paths and recorded aliases first, then nearby folders using
+  filesystem identity or the OpenCode project marker. Matching names alone never
+  authorize recovery; ambiguous and genuinely unavailable folders remain saved
+  and require explicit selection. Nested paths retain their project-relative
+  suffix. History resolves display paths without changing conversations; reopen
+  moves only the selected session through OpenCode's supported API and preserves
+  its ID and transcript. Confirmed aliases survive bookmark removal and restart.
 - `snapshotInputs(context, input)` — recursively walks the tool-call input for
   `filePath`/`file_path`/`path` keys and snapshots those files
   (skips http URLs, dedupes) into the addressed context.
@@ -241,7 +252,7 @@ Internals:
 |---|---|
 | `shell:select-folder` | `(generation, runtimeID?) → SessionInfo \| null` (generation accepted before native dialog; only OpenCode is enabled); the returned session is mounted by the caller — replacing the displayed panels, added as a new panel, or swapped into an existing panel — depending on the store action that opened the dialog |
 | `shell:select-directory` | `() → string \| null` — returns the canonical folder chosen in a native dialog without opening a runtime context |
-| `shell:open-session` | `(dir, generation, runtimeID?) → SessionInfo` — creates an OpenCode session for `dir`; if the saved directory is missing, asks the user to locate its current folder; cancel returns an error. Non-OpenCode runtime ids are rejected |
+| `shell:open-session` | `(dir, generation, runtimeID?) → SessionInfo` — creates an OpenCode session for `dir`; repairs a moved saved directory using the shared location registry, asking the user to locate it only when recovery is unavailable or ambiguous; cancel returns an error. Non-OpenCode runtime ids are rejected |
 | `shell:select-file` | `(generation, runtimeID?) → OpenFileWorkspaceResult \| null` (generation accepted before native `openFile` dialog); opens the file's parent directory as an OpenCode session |
 | `shell:open-file` | `(file, generation, runtimeID?) → OpenFileWorkspaceResult` — opens an absolute path in a single-file workspace backed by OpenCode |
 | `shell:open-external` | `(workspace, file) → ExternalOpenResult` — resolves a dropped absolute path: in-repo files become `{kind:"relative", rel, content}`, outside-repo files a writable `{kind:"standalone", path, content}` |
@@ -249,7 +260,7 @@ Internals:
 | `shell:fs-write-standalone` | `(file, content, expectedContent, overwrite) → void` — atomic standalone-file write for external tabs |
 | `shell:fs-import` | `(workspace, destDir, sources) → ImportResult[]` — copies external files/folders into the workspace at `destDir` (empty `destDir` is the workspace root) |
 | `shell:sessions` | `() → SessionSummary[]` |
-| `shell:saved-workspaces` | `() → SavedWorkspaceSnapshot` — reads Orbit's durable bookmarks and reports whether a saved list exists, falling back to the last good backup |
+| `shell:saved-workspaces` | `() → SavedWorkspaceSnapshot` — reads and repairs Orbit's durable bookmarks and reports whether a saved list exists, falling back to the last good backup; unavailable runtime history does not block loading bookmarks |
 | `shell:saved-workspaces-save` | `(ProjectInfo[]) → ProjectInfo[]` — normalizes and atomically saves bookmarks under Electron's user data directory, retaining a backup |
 | `shell:runtimes` | `() → RuntimeManifest[]` — installed status, native version, normalized protocol version, and capability bitmap |
 | `shell:sync-opencode` | `() → OpenCodeSyncResult` — restarts the attached shared OpenCode service only when needed to match the installed CLI version |

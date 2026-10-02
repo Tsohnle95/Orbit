@@ -122,14 +122,36 @@ describe("per-panel workspace selection", () => {
       await stored.promise;
     });
 
-    const expected = [
-      { directory: "/durable", name: "Durable" },
-      { directory: "/legacy", name: "Legacy" }
-    ];
+    const expected = [{ directory: "/durable", name: "Durable" }];
     expect(store.savedWorkspaces).toEqual(expected);
     expect(saveSavedWorkspaces).toHaveBeenLastCalledWith(expected);
     expect(JSON.parse(window.localStorage.getItem("orbit.savedWorkspaces") ?? "[]")).toEqual(expected);
     expect(projects).not.toHaveBeenCalled();
+  });
+
+  it("keeps additions and removals made while durable storage is loading", async () => {
+    const stored = deferred<{ workspaces: ProjectInfo[]; initialized: boolean }>();
+    window.localStorage.setItem("orbit.savedWorkspaces", JSON.stringify([{ directory: "/removed", name: "Removed" }]));
+    window.openshell = api({
+      savedWorkspaces: () => stored.promise,
+      selectDirectory: async () => "/added"
+    });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    act(() => store.removeWorkspace("/removed"));
+    await act(async () => store.saveWorkspace());
+    await act(async () => {
+      stored.resolve({ workspaces: [{ directory: "/removed", name: "Removed" }, { directory: "/kept", name: "Kept" }], initialized: true });
+      await stored.promise;
+    });
+    expect(store.savedWorkspaces).toEqual([{ directory: "/kept", name: "Kept" }, { directory: "/added", name: "added" }]);
+  });
+
+  it("does not resurrect removed bookmarks from another renderer's old localStorage", async () => {
+    window.localStorage.setItem("orbit.savedWorkspaces", JSON.stringify([{ directory: "/removed", name: "Removed" }]));
+    window.openshell = api({ savedWorkspaces: async () => ({ workspaces: [], initialized: true }) });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    expect(store.savedWorkspaces).toEqual([]);
+    expect(window.localStorage.getItem("orbit.savedWorkspaces")).toBe("[]");
   });
 
   it("imports OpenCode projects on first use when no legacy bookmark list exists", async () => {

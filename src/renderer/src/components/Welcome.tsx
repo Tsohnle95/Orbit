@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useStore } from "../store";
 import { droppedFilePaths } from "../drop";
 import type { ProjectInfo, SessionSummary } from "@shared/types";
@@ -76,20 +76,10 @@ function workspaceGroups(sessions: SessionSummary[], projects: ProjectInfo[]): W
 }
 
 export function Welcome(): ReactNode {
-  const { selectFolder, openPaths, reopenSession, openSession, savedWorkspaces, saveWorkspace } = useStore();
-  const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { selectFolder, openPaths, reopenSession, openSession, savedWorkspaces, saveWorkspace, sessions, connected } = useStore();
+  const loading = !connected;
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [closedSecs, setClosedSecs] = useState<Record<string, boolean>>({ recent: true, workspaces: true });
-
-  useEffect(() => {
-    void Promise.all([
-      window.openshell
-        .sessions()
-        .then((s) => setSessions(s))
-        .catch(() => setSessions([])),
-    ]).finally(() => setLoading(false));
-  }, []);
 
   const recentSessions = [...sessions].sort((left, right) => right.updatedAt - left.updatedAt).slice(0, 3);
   const groups = workspaceGroups(sessions, savedWorkspaces);

@@ -563,7 +563,11 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const savedWorkspacesRef = useRef(savedWorkspaces);
   savedWorkspacesRef.current = savedWorkspaces;
   const savedWorkspacesHydratedRef = useRef(false);
+  const pendingWorkspaceUpdatesRef = useRef<Array<(current: ProjectInfo[]) => ProjectInfo[]>>([]);
+  const workspaceRevisionRef = useRef(0);
   const updateSavedWorkspaces = useCallback((update: (current: ProjectInfo[]) => ProjectInfo[]): void => {
+    if (!savedWorkspacesHydratedRef.current) pendingWorkspaceUpdatesRef.current.push(update);
+    workspaceRevisionRef.current += 1;
     const next = update(savedWorkspacesRef.current);
     savedWorkspacesRef.current = next;
     setSavedWorkspaces(next);
@@ -1109,6 +1113,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   useEffect(() => {
     let cancelled = false;
     const legacy = readSavedWorkspaceData();
+    const revision = workspaceRevisionRef.current;
     const storedWorkspaces = window.openshell.savedWorkspaces?.();
     if (!storedWorkspaces) {
       toast("Restart Orbit to load saved workspaces from app storage.", "error");
@@ -1120,7 +1125,12 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           ? await window.openshell.projects().catch(() => [])
           : [];
         if (cancelled) return;
-        const merged = mergeSavedWorkspaces(stored.workspaces, legacy.workspaces, savedWorkspacesRef.current, projects);
+        if (savedWorkspacesHydratedRef.current && revision !== workspaceRevisionRef.current) return;
+        let merged = stored.initialized
+          ? stored.workspaces
+          : mergeSavedWorkspaces(legacy.workspaces, projects);
+        for (const update of pendingWorkspaceUpdatesRef.current) merged = update(merged);
+        pendingWorkspaceUpdatesRef.current = [];
         savedWorkspacesRef.current = merged;
         savedWorkspacesHydratedRef.current = true;
         setSavedWorkspaces(merged);
@@ -1135,7 +1145,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         toast(`Saved workspaces could not be loaded; their stored data was left untouched. ${detail}`, "error");
       });
     return () => { cancelled = true; };
-  }, [toast]);
+  }, [connected, toast]);
 
   useEffect(() => {
     if (!savedWorkspacesHydratedRef.current) return;
@@ -1646,13 +1656,20 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     [toast, panelFor]
   );
 
+  const sessionsRequestRef = useRef(0);
   const loadSessions = useCallback(async () => {
+    const request = ++sessionsRequestRef.current;
     try {
-      setSessions(await window.openshell.sessions());
+      const summaries = await window.openshell.sessions();
+      if (request === sessionsRequestRef.current) setSessions(summaries);
     } catch (err) {
       toast(err instanceof Error ? err.message : String(err), "error");
     }
   }, [toast]);
+
+  useEffect(() => {
+    if (connected) void loadSessions();
+  }, [connected, loadSessions]);
 
   const saveWorkspace = useCallback(async (): Promise<void> => {
     try {
@@ -3324,6 +3341,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
         case "server.connected":
         case "global.disposed": {
+          void loadSessions();
           for (const panel of panelsRef.current) {
             void materializeSession(panel.id);
             void refreshForms(panel.id);
@@ -3677,6 +3695,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     refreshForms,
     persistence,
     refreshActiveSessions,
+    loadSessions,
     openPaths,
   ]);
 

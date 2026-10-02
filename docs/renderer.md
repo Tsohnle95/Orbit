@@ -15,7 +15,7 @@ Exposed via `useStore()` (context). State:
 | `session` | `SessionInfo \| null` | the focused session (derived from `panels` + `activeSessionID`); null → Welcome screen on first launch, otherwise an empty IDE whose explorer offers an open-workspace CTA |
 | `panels` | `SessionInfo[]` | all attached/live sessions in panel order; each panel continues streaming even when normal coding mode renders only the focused coding session |
 | `activeSessions` | `SessionInfo[]` | backend-owned open contexts, reconciled every second independently of visible panels; drives the complete **Open now** inventory |
-| `savedWorkspaces` | `ProjectInfo[]` | Orbit-owned workspace bookmarks stored in the main process under Electron user data with an atomic backup; startup migrates the legacy `localStorage` key and, only on first use without that key, OpenCode's validated project catalog; a failed read never overwrites the saved list with an empty value |
+| `savedWorkspaces` | `ProjectInfo[]` | Orbit-owned workspace bookmarks stored in the main process under Electron user data with an atomic backup; startup imports the legacy `localStorage` key only when app storage is uninitialized, or OpenCode's validated project catalog on first use without that key; initialized app storage is authoritative. User additions/removals during hydration are replayed over that snapshot; a failed read never overwrites it with an empty value |
 | `panelViews` | `Record<workspaceID, PanelView>` | per-panel scoped projection (`session`, `busy`, `transcript`, `todos`, `sessionUsage`, `models`, `currentModel`, `agents`, `currentAgent`) consumed through `usePanel(workspace)` |
 | `activeSessionID` | `string \| null` | focused session id; the editor, sidebar, tree, and terminal tray bind to the focused panel while every panel keeps streaming |
 | `connected` | `boolean` | from `health()` on mount |
@@ -40,7 +40,7 @@ Exposed via `useStore()` (context). State:
 | `currentAgent` | `AgentOption \| null` | per workspace; seeded from the session selection, falling back to the session's creation agent and then `build`; live-updated by `session.agent.selected` for the addressed session and optimistic `switchAgent` |
 | `runtimes` | `RuntimeManifest[]` | runtime availability and capability manifests; `AgentPanel` uses the active manifest's `tui` flag to enable the embedded TUI option |
 | `approvalMode` | `ApprovalMode` | `ask` shows permission cards; `approve` automatically replies `once` |
-| `sessions` | `SessionSummary[]` | recent sessions for the Welcome screen and the sidebar's Sessions pane |
+| `sessions` | `SessionSummary[]` | shared recent history for Welcome and the Sessions pane; loads after backend readiness and refreshes on reconnect. Welcome observes this inventory instead of issuing a one-shot startup fetch; older requests cannot overwrite newer results |
 | `ctxMenu` | `{x, y, target} \| null` | explorer right-click menu position and target entry (`null` = empty area) |
 | `pendingCreate` | `{parent, kind} \| null` | inline "new file/folder" name input target |
 | `pendingRename` | `{path} \| null` | inline rename input target |

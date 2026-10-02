@@ -9,7 +9,9 @@ const store = {
   reopenSession: vi.fn(),
   openSession: vi.fn(),
   savedWorkspaces: [{ directory: "/workspace", name: "Workspace" }],
-  saveWorkspace: vi.fn()
+  saveWorkspace: vi.fn(),
+  connected: true,
+  sessions: [{ id: "closed", title: "Recent work", directory: "/missing", updatedAt: 1 }]
 };
 
 vi.mock("../store", () => ({ useStore: () => store }));
@@ -58,4 +60,20 @@ describe("Welcome saved workspaces", () => {
     expect(disclosure.getAttribute("aria-expanded")).toBe("true");
     expect(container.textContent).toContain("No sessions yet.");
   });
+  it("renders the shared history after delayed service readiness and subsequent updates", async () => {
+    store.connected = false;
+    store.sessions = [];
+    await act(async () => root.render(<Welcome />));
+    await act(async () => container.querySelectorAll<HTMLButtonElement>(".sd-sec .sd-sh")[0].click());
+    expect(container.textContent).not.toContain("Recent work");
+    store.connected = true;
+    store.sessions = [{ id: "closed", title: "Recent work", directory: "/workspace", updatedAt: 1 }];
+    await act(async () => root.render(<Welcome />));
+    expect(container.textContent).toContain("Recent work");
+    store.sessions = [{ id: "closed", title: "Updated title", directory: "/workspace", updatedAt: 2 }];
+    await act(async () => root.render(<Welcome />));
+    expect(container.textContent).toContain("Updated title");
+    expect(window.openshell.sessions).not.toHaveBeenCalled();
+  });
+
 });

@@ -12,6 +12,7 @@ vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
 vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
 import { OpenShellBackend, SessionWorkspaceNotFoundError } from "./opencode";
+import { SavedWorkspaceStore } from "./saved-workspaces";
 import type { BackendMessage, WorkspaceIdentity } from "@shared/types";
 
 const roots: string[] = [];
@@ -211,6 +212,46 @@ describe("concurrent session contexts", () => {
     expect(reopened.session.directory).toBe(selected);
     expect(reopened.session.id).toBe("session-one");
     await backend.stop();
+  });
+
+  it("repairs history, bookmarks and sibling sessions after a moved project and restart", async () => {
+    const root = await realpath(await mkdtemp(path.join(tmpdir(), "openshell-history-moved-")));
+    roots.push(root);
+    const previous = path.join(root, "portfolio", "neptune");
+    const current = path.join(root, "neptune");
+    await mkdir(path.join(current, ".git"), { recursive: true });
+    await mkdir(path.join(current, "docs"));
+    await writeFile(path.join(current, ".git", "opencode"), "neptune-id");
+    const file = path.join(root, "saved.json");
+    const bookmarks = new SavedWorkspaceStore(file);
+    await bookmarks.save([{ directory: previous, name: "Neptune" }]);
+    const locations: Record<string, string> = { one: previous, two: path.join(previous, "docs") };
+    const move = vi.fn(async ({ sessionID, directory }: { sessionID: string; directory: string }) => { locations[sessionID] = directory; });
+    const client = {
+      project: { list: vi.fn(async () => [{ id: "neptune-id", canonical: previous }]) },
+      session: {
+        list: vi.fn(async () => Object.entries(locations).map(([id, directory]) => ({ id, projectID: "neptune-id", title: id, time: { updated: 1 }, location: { directory } }))),
+        get: vi.fn(async ({ sessionID }: { sessionID: string }) => ({ id: sessionID, projectID: "neptune-id", location: { directory: locations[sessionID] } })),
+        move
+      },
+      message: { list: vi.fn(async () => []) }
+    };
+    const backend = new OpenShellBackend(undefined, undefined, undefined, bookmarks);
+    (backend as unknown as { client: unknown }).client = client;
+    expect((await backend.listSessions()).map((session) => session.directory)).toEqual([current, path.join(current, "docs")]);
+    expect(move).not.toHaveBeenCalled();
+    expect(await bookmarks.read()).toEqual([{ directory: current, name: "Neptune" }]);
+    expect((await backend.openSessionById("one", 1)).session.id).toBe("one");
+    await backend.stop();
+
+    const restarted = new OpenShellBackend(undefined, undefined, undefined, new SavedWorkspaceStore(file));
+    (restarted as unknown as { client: unknown }).client = client;
+    client.project.list.mockResolvedValue([]);
+    const reopened = await restarted.openSessionById("two", 1);
+    expect(reopened.session.directory).toBe(path.join(current, "docs"));
+    expect(reopened.session.id).toBe("two");
+    expect(move).toHaveBeenLastCalledWith({ sessionID: "two", directory: path.join(current, "docs") });
+    await restarted.stop();
   });
 
   it("identifies a session whose old workspace cannot be resolved", async () => {

@@ -80,8 +80,8 @@ declare const __ORBIT_RELEASE_BUILD__: boolean;
 // not inherit the user's shell PATH (see exec-path.ts).
 applyExecPath();
 
-const backend = new OpenShellBackend();
 const savedWorkspaceStore = new SavedWorkspaceStore(path.join(app.getPath("userData"), "saved-workspaces.json"));
+const backend = new OpenShellBackend(undefined, undefined, undefined, savedWorkspaceStore);
 const terminals = new TerminalManager();
 const mobileServer = new MobileServer({ cwd: app.getAppPath() });
 let mobileServerStartup: Promise<void> = Promise.resolve();
@@ -880,11 +880,12 @@ function registerIpc(): void {
     const requestedDirectory = directoryPath(dir);
     const generation = backend.beginActivation(activationGeneration(requestGeneration));
     const runtimeID = optionalRuntimeId(requestedRuntimeID);
-    const directory = await workspaceDirectoryExists(requestedDirectory)
-      ? requestedDirectory
-      : await chooseWorkspaceDirectory(requestedDirectory);
+    const directory = await backend.resolveWorkspaceDirectory(requestedDirectory)
+      ?? await chooseWorkspaceDirectory(requestedDirectory);
     if (!directory) throw new Error(`Opening the workspace was canceled. Its folder is missing: ${requestedDirectory}`);
-    return backend.openSession(directory, generation, runtimeID);
+    const session = await backend.openSession(directory, generation, runtimeID);
+    if (requestedDirectory !== session.directory) await savedWorkspaceStore.relocate(requestedDirectory, session.directory);
+    return session;
   });
 
   handleTrusted("shell:sessions", async () => backend.listSessions());
@@ -1080,7 +1081,13 @@ function registerIpc(): void {
 
   handleTrusted("shell:projects", async () => backend.listProjects());
 
-  handleTrusted("shell:saved-workspaces", async () => savedWorkspaceStore.load());
+  handleTrusted("shell:saved-workspaces", async () => {
+    const stored = await savedWorkspaceStore.load();
+    // History carries project IDs for legacy paths whose catalog already moved.
+    if (stored.workspaces.some((workspace) => !existsSync(workspace.directory))) await backend.listSessions().catch(() => []);
+    for (const workspace of stored.workspaces) await backend.resolveWorkspaceDirectory(workspace.directory).catch(() => null);
+    return savedWorkspaceStore.load();
+  });
 
   handleTrusted("shell:saved-workspaces-save", async (_e, workspaces: ProjectInfo[]) => savedWorkspaceStore.save(workspaces));
 
