@@ -25,8 +25,8 @@ describe("wireEditorNavigationKeys", () => {
     expect(trigger.mock.calls).toEqual([
       ["keyboard", "cursorTop", null],
       ["keyboard", "cursorBottom", null],
-      ["keyboard", "cursorHome", null],
-      ["keyboard", "cursorEnd", null]
+      ["keyboard", "cursorLineStart", null],
+      ["keyboard", "cursorLineEnd", null]
     ]);
   });
 });

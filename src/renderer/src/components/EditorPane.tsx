@@ -4,6 +4,7 @@ import type { editor } from "monaco-editor";
 import { languageForPath } from "../monaco";
 import { wireEmmetKeys } from "../emmet-keys";
 import { wireEditorNavigationKeys } from "../editor-navigation";
+import { wireHtmlAttributeQuotes } from "../editor-language-input";
 import { clearW3cMarkers } from "../w3c-validation";
 import { useStore } from "../store";
 import { OrbitMark } from "./OrbitMark";
@@ -25,9 +26,16 @@ const EDITOR_OPTIONS = {
   quickSuggestions: { other: true, comments: false, strings: true },
   quickSuggestionsDelay: 25,
   suggestOnTriggerCharacters: true,
+  suggest: {
+    showInlineDetails: true,
+    showSnippets: true,
+    showWords: true,
+    selectionMode: "whenTriggerCharacter"
+  } as const,
   wordBasedSuggestions: "currentDocument" as const,
   tabCompletion: "on" as const,
   acceptSuggestionOnEnter: "on" as const,
+  autoClosingQuotes: "languageDefined" as const,
   folding: true,
   glyphMargin: false,
   showFoldingControls: "mouseover" as const,
@@ -216,6 +224,7 @@ function EditorWithSave({
 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const cursorListenerRef = useRef<{ dispose: () => void } | null>(null);
+  const htmlQuoteListenerRef = useRef<{ dispose: () => void } | null>(null);
   const focusedRef = useRef(focused);
   focusedRef.current = focused;
   const tabContent = tab.content;
@@ -253,6 +262,8 @@ function EditorWithSave({
     registerEditor(tabPath, ed);
     wireEmmetKeys(ed);
     wireEditorNavigationKeys(ed);
+    htmlQuoteListenerRef.current?.dispose();
+    htmlQuoteListenerRef.current = wireHtmlAttributeQuotes(ed);
     const model = ed.getModel();
     const latest = tabContentRef.current;
     if (model && model.getValue() !== latest) {
@@ -269,8 +280,14 @@ function EditorWithSave({
   }, [focused, publishStatus]);
 
   useEffect(() => {
+    if (mode === "edit") return;
+    htmlQuoteListenerRef.current?.dispose();
+    htmlQuoteListenerRef.current = null;
+  }, [mode]);
+
+  useEffect(() => {
     const ed = editorRef.current;
-    if (!ed || mode !== "edit") return;
+    if (!ed || mode !== "edit" || tab.dirty) return;
     const model = ed.getModel();
     if (!model || model.getValue() === tabContent) return;
     const selections = ed.getSelections();
@@ -289,7 +306,7 @@ function EditorWithSave({
     }
     ed.setScrollTop(scrollTop);
     ed.setScrollLeft(scrollLeft);
-  }, [tabContent, mode]);
+  }, [tabContent, tab.dirty, mode]);
 
   useEffect(() => {
     if (!w3cFile) return;
@@ -300,6 +317,8 @@ function EditorWithSave({
   useEffect(() => () => {
     cursorListenerRef.current?.dispose();
     cursorListenerRef.current = null;
+    htmlQuoteListenerRef.current?.dispose();
+    htmlQuoteListenerRef.current = null;
     unregisterEditor(tabPath);
   }, [tabPath]);
 

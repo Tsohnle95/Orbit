@@ -478,7 +478,7 @@ express a cross-component invariant or non-obvious state contract.
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
 | `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
 | `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and up to four groups with independent tab membership, selection, and drag transfer; new tabs route to the focused group |
-| `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status |
+| `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status; Shift+Tab cycles agents, Shift+P cycles favorite models, and Ctrl+Tab cycles response strength without intercepting typed Shift+S |
 | `AgentTui` | `AgentTui.tsx` | xterm view for the active runtime's PTY-backed TUI |
 | `OpenCodeTimeline` | `OpenCodeTimeline.tsx` | Runtime-neutral chronological rendering of assistant text/tools/delegation with hidden reasoning |
 | `OpenCodeTodoDock` | `OpenCodeTodoDock.tsx` | Structured todo/checklist state near the composer |
@@ -595,11 +595,16 @@ released at that collapsed position.
   quick-suggestion/trigger-character settings in `EditorPane`. Typing after
   `document.` offers DOM API completions such as `querySelectorAll`. Suggestion
   and hover widgets use `document.body` as their overflow host so split-editor
-  containers cannot clip the completion list.
+  containers cannot clip the completion list. JavaScript/TypeScript, HTML, and
+  CSS use Monaco's language-service completions, including pseudo-selector and
+  syntax details; local dirty editor buffers stay authoritative during typing
+  so React state echoes cannot replace an active model between keystrokes.
+- HTML attribute `=` inserts a paired quote with the caret between them, and
+  Monaco's language-defined quote pairing remains enabled elsewhere.
 - `editor-navigation.ts` binds Command/Control + Arrow Up/Down to the start/end
-  of the document and Command/Control + Arrow Left/Right to the start/end of
-  the current line. These explicit commands keep the native editor navigation
-  behavior stable inside Electron.
+  of the document and Command/Control + Arrow Left/Right to the literal start
+  and end of the current line. The line commands do not use Monaco's smart
+  Home behavior, which can stop at indentation instead of column 1.
 - CSS worker diagnostics stay enabled (the only language worker with a
   working `doValidation`), so CSS files lint inline exactly like VS Code.
   The HTML worker ships no `doValidation`, so HTML files have no built-in

@@ -9,9 +9,9 @@ export function wireEditorNavigationKeys(target: editor.IStandaloneCodeEditor): 
     target.trigger("keyboard", "cursorBottom", null);
   });
   target.addCommand(KeyMod.CtrlCmd | KeyCode.LeftArrow, () => {
-    target.trigger("keyboard", "cursorHome", null);
+    target.trigger("keyboard", "cursorLineStart", null);
   });
   target.addCommand(KeyMod.CtrlCmd | KeyCode.RightArrow, () => {
-    target.trigger("keyboard", "cursorEnd", null);
+    target.trigger("keyboard", "cursorLineEnd", null);
   });
 }

@@ -749,6 +749,12 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
             }
           }}
           onKeyDown={(e) => {
+            if (e.key === "Tab" && e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+              e.preventDefault();
+              e.stopPropagation();
+              cycleStrength();
+              return;
+            }
             if (completion && completion.items.length > 0) {
               if (e.key === "ArrowDown") {
                 e.preventDefault();
@@ -787,10 +793,6 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
               e.preventDefault();
               e.stopPropagation();
               cycleFavorite();
-            } else if (key === "s") {
-              e.preventDefault();
-              e.stopPropagation();
-              cycleStrength();
             }
           }}
         />
