@@ -80,7 +80,8 @@ Public methods (all used by IPC):
 | `activeSessions()` | The open contexts' `SessionInfo` in activation order, primary last (startup restore) |
 | `closeSession(workspace)` | Tears down the addressed context (stops its watcher, removes it from the context map) when its panel closes; the opencode session itself stays alive so recents can reopen it |
 | `deleteSession(sessionID)` | Closes the panel context when open, then permanently destroys the OpenCode session via `session.remove`; legacy DeepSeek sessions are unavailable |
-| `openSessionById(sessionID, generation?, runtimeID?)` | Loads OpenCode `session.get` plus replay and reuses an already-open context without re-emitting. A legacy DeepSeek session id is not reopened by the dormant adapter |
+| `openSessionById(sessionID, generation?, runtimeID?)` | Loads OpenCode `session.get` plus replay and reuses an already-open context without re-emitting. If its workspace is gone and project lookup cannot repair it, throws `SessionWorkspaceNotFoundError` for the IPC caller to handle. A legacy DeepSeek session id is not reopened by the dormant adapter |
+| `openSessionByIdInDirectory(sessionID, directory, generation?, runtimeID?)` | Moves a missing-workspace OpenCode session to a selected existing directory, then reopens and replays it; only called after an explicit user action and folder selection |
 | `sessionTranscript(sessionID)` | Loads `message.list` replay as `{transcript, todos}` without activating a context; the renderer's stream materialization source |
 | `sessionUsage(sessionID)` | Loads `session.get` and returns the normalized `SessionUsage` (`cost` + `tokens`) or `null` when unavailable (tokens missing — a missing `cost`, as with cost-less local providers, coerces to 0 so the snapshot stays refreshable); called after compaction to refresh the context-window display |
 | `workspaceDirectory(workspace)` | Resolves a workspace identity to its canonical session directory (terminal cwd, identity validation) |
@@ -240,7 +241,7 @@ Internals:
 |---|---|
 | `shell:select-folder` | `(generation, runtimeID?) → SessionInfo \| null` (generation accepted before native dialog; only OpenCode is enabled); the returned session is mounted by the caller — replacing the displayed panels, added as a new panel, or swapped into an existing panel — depending on the store action that opened the dialog |
 | `shell:select-directory` | `() → string \| null` — returns the canonical folder chosen in a native dialog without opening a runtime context |
-| `shell:open-session` | `(dir, generation, runtimeID?) → SessionInfo` — creates an OpenCode session for `dir`; non-OpenCode runtime ids are rejected |
+| `shell:open-session` | `(dir, generation, runtimeID?) → SessionInfo` — creates an OpenCode session for `dir`; if the saved directory is missing, asks the user to locate its current folder; cancel returns an error. Non-OpenCode runtime ids are rejected |
 | `shell:select-file` | `(generation, runtimeID?) → OpenFileWorkspaceResult \| null` (generation accepted before native `openFile` dialog); opens the file's parent directory as an OpenCode session |
 | `shell:open-file` | `(file, generation, runtimeID?) → OpenFileWorkspaceResult` — opens an absolute path in a single-file workspace backed by OpenCode |
 | `shell:open-external` | `(workspace, file) → ExternalOpenResult` — resolves a dropped absolute path: in-repo files become `{kind:"relative", rel, content}`, outside-repo files a writable `{kind:"standalone", path, content}` |
@@ -258,7 +259,7 @@ Internals:
 | `shell:app-update` | `() → OrbitAppUpdateResult` — release builds reject while editor files are unsaved; shows a reload-safe progress window while hiding Orbit's main window, downloads the published app update, then calls `autoUpdater.quitAndInstall()` to replace and relaunch the app; a failed check/download leaves Orbit open; local builds return disabled without network access |
 | `shell:active-sessions` | `() → SessionInfo[]` — open backend sessions, most recently activated last |
 | `shell:close-session` | `(workspace) → void` — tears down the backend context when a panel closes; the opencode session remains reopenable |
-| `shell:open-session-id` | `(sessionID, generation, runtimeID?) → ReopenedSession`; opens an OpenCode session and transcript. Legacy DeepSeek sessions cannot be reopened through the dormant adapter |
+| `shell:open-session-id` | `(sessionID, generation, runtimeID?, allowWorkspaceRelink?) → ReopenedSession`; opens an OpenCode session and transcript. Explicit user opens may set `allowWorkspaceRelink` to prompt for a replacement folder if the saved path is missing; silent startup hydration never prompts. Legacy DeepSeek sessions cannot be reopened through the dormant adapter |
 | `shell:delete-session` | `(sessionID) → void` — permanently destroys the OpenCode session server-side; the panel closes first |
 | `shell:session-transcript` | `(sessionID) → { transcript, todos }` — stream materialization snapshot; does not activate a context |
 | `shell:session-usage` | `(sessionID) → SessionUsage \| null` — normalized `cost`/`tokens` for the addressed session; materialization and compaction refresh the live usage popup |

@@ -528,6 +528,31 @@ describe("store workspace continuations", () => {
     expect(store.session?.id).toBe("session-1");
   });
 
+  it("allows a user-opened recent session to relink its missing workspace", async () => {
+    const recent = { id: "closed-session", title: "Old workspace", directory: "/missing", updatedAt: 1 };
+    const openSessionById = vi.fn(async (sessionID: string, generation: number) => ({
+      session: { ...info("/replacement", generation), id: sessionID },
+      transcript: [],
+      todos: [],
+      usage: null
+    }));
+    const saveSavedWorkspaces = vi.fn(async (workspaces: { directory: string; name: string }[]) => workspaces);
+    window.openshell = api({
+      savedWorkspaces: async () => ({ workspaces: [{ directory: "/missing", name: "Old workspace" }], initialized: true }),
+      saveSavedWorkspaces,
+      openSessionById
+    });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    await act(async () => store.reopenSession(recent.id, false, recent.directory));
+
+    expect(openSessionById).toHaveBeenCalledWith(recent.id, expect.any(Number), undefined, true);
+    expect(store.panels.map((panel) => panel.directory)).toEqual(["/replacement"]);
+    expect(store.savedWorkspaces).toEqual([{ directory: "/replacement", name: "replacement" }]);
+    expect(saveSavedWorkspaces).toHaveBeenLastCalledWith([{ directory: "/replacement", name: "replacement" }]);
+  });
+
   it("opens parallel sessions and restores each session's own tabs when focus swaps", async () => {
     window.openshell = api({
       openSession: async (directory: string, generation: number) => info(directory, generation),

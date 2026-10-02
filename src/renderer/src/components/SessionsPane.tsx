@@ -203,9 +203,9 @@ export function SessionsPane(): ReactNode {
     });
   };
 
-  const openRow = (id: string): void => {
-    if (runningPanels.has(id)) focusSession(id);
-    else void reopenSession(id);
+  const openRow = (summary: SessionSummary): void => {
+    if (runningPanels.has(summary.id)) focusSession(summary.id);
+    else void reopenSession(summary.id, false, summary.directory);
   };
 
   const askDeleteRow = (summary: { id: string; title: string }, x: number, y: number): void => {
@@ -263,7 +263,7 @@ export function SessionsPane(): ReactNode {
                   focused={summary.id === activeSessionID}
                   pinned={pinnedIDs.includes(summary.id)}
                   busy={Boolean(panel && panelViews[panel.workspace.id]?.busy)}
-                  onOpen={() => openRow(summary.id)}
+                  onOpen={() => openRow(summary)}
                   onClose={() => closePanel(summary.id)}
                   onTogglePin={() => togglePin(summary.id)}
                   onDelete={(e) => askDeleteRow(summary, e.clientX, e.clientY)}
@@ -325,22 +325,25 @@ export function SessionsPane(): ReactNode {
                     }}
                   >
                     <button
-                      className="sessions-project-toggle"
-                      aria-expanded={expanded}
-                      onClick={() => toggleProject(workspace.directory)}
+                      className="sessions-project-open"
+                      type="button"
+                      aria-label={`Open workspace ${workspaceDisplayName}`}
+                      onClick={() => void openSession(workspace.directory)}
                       title={workspace.directory}
                     >
-                      <span className="section-chevron"><ChevronIcon open={expanded} /></span>
                       <IconFolder className="sessions-row-icon" />
                       <span className="sessions-row-title">{workspaceDisplayName}</span>
                       <span className="sessions-project-count">{workspaceSessions.length}</span>
                     </button>
                     <button
-                      className="tree-row-action sessions-project-new"
-                      title={`New session in ${workspaceDisplayName}`}
-                      onClick={() => void openSession(workspace.directory)}
+                      className="sessions-project-disclosure"
+                      type="button"
+                      aria-label={`${expanded ? "Collapse" : "Expand"} ${workspaceDisplayName} sessions`}
+                      aria-expanded={expanded}
+                      title={`${expanded ? "Collapse" : "Expand"} session history`}
+                      onClick={() => toggleProject(workspace.directory)}
                     >
-                      <PlusIcon />
+                      <span className="section-chevron"><ChevronIcon open={expanded} /></span>
                     </button>
                   </div>
                   {expanded && (
@@ -357,7 +360,7 @@ export function SessionsPane(): ReactNode {
                             focused={s.id === activeSessionID}
                             pinned={pinnedIDs.includes(s.id)}
                             busy={Boolean(panel && panelViews[panel.workspace.id]?.busy)}
-                            onOpen={() => openRow(s.id)}
+                            onOpen={() => openRow(s)}
                             onClose={openNowIDs.has(s.id) ? () => closePanel(s.id) : undefined}
                             onTogglePin={() => togglePin(s.id)}
                             onDelete={(e) => askDeleteRow(s, e.clientX, e.clientY)}
@@ -401,7 +404,7 @@ export function SessionsPane(): ReactNode {
                   focused={false}
                   pinned={pinnedIDs.includes(summary.id)}
                   busy={false}
-                  onOpen={() => openRow(summary.id)}
+                  onOpen={() => openRow(summary)}
                   onTogglePin={() => togglePin(summary.id)}
                   onDelete={(e) => askDeleteRow(summary, e.clientX, e.clientY)}
                 />

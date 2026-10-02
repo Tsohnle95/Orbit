@@ -589,6 +589,13 @@ export function serverVersionPredicate(installedVersion: string | null): (versio
   };
 }
 
+export class SessionWorkspaceNotFoundError extends Error {
+  constructor(readonly directory: string) {
+    super(`Session workspace no longer exists: ${directory}`);
+    this.name = "SessionWorkspaceNotFoundError";
+  }
+}
+
 export class OpenShellBackend {
   private client: Client | null = null;
   private endpoint: Endpoint | null = null;
@@ -1746,16 +1753,18 @@ export class OpenShellBackend {
     try {
       return { directory: await canonicalWorkspaceRoot(directory), relocated: false };
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT" || !projectID || projectID === "global" || !this.client) throw error;
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "ENOENT" && code !== "ENOTDIR") throw error;
+      if (!projectID || projectID === "global" || !this.client) throw new SessionWorkspaceNotFoundError(directory);
     }
     const res = await this.client.project.list();
     const projects = (Array.isArray(res) ? res : (res as { data?: unknown }).data ?? []) as Array<{ id?: string; canonical?: string }>;
     const current = projects.find((project) => project.id === projectID)?.canonical;
-    if (!current) throw new Error(`Session workspace no longer exists: ${directory}`);
+    if (!current) throw new SessionWorkspaceNotFoundError(directory);
     try {
       return { directory: await canonicalWorkspaceRoot(current), relocated: true };
     } catch {
-      throw new Error(`Session workspace no longer exists: ${directory}`);
+      throw new SessionWorkspaceNotFoundError(directory);
     }
   }
 
@@ -1892,6 +1901,25 @@ export class OpenShellBackend {
     if (!directory) throw new Error("session not found");
     const resolved = await this.resolveOpenCodeSessionDirectory(directory, (res as { projectID?: string }).projectID);
     return resolved.directory;
+  }
+
+  async openSessionByIdInDirectory(
+    sessionID: string,
+    directory: string,
+    acceptedGeneration?: number,
+    runtimeID?: RuntimeID
+  ): Promise<ReopenedSession> {
+    if (acceptedGeneration !== undefined && !Number.isSafeInteger(acceptedGeneration)) {
+      throw new Error("invalid activation generation");
+    }
+    if (runtimeID && runtimeID !== "opencode") throw new Error("Only OpenCode sessions can be relinked to a workspace");
+    if (this.runtimeAdapters.has(sessionID) || (await this.runtimeSessionIndex.get(sessionID))?.runtimeID === "deepseek") {
+      throw new Error("Only OpenCode sessions can be relinked to a workspace");
+    }
+    if (!this.client) throw new Error("not connected to opencode service");
+    const targetDirectory = await canonicalWorkspaceRoot(directory);
+    await this.client.session.move({ sessionID, directory: targetDirectory });
+    return this.openSessionById(sessionID, acceptedGeneration, "opencode");
   }
 
   async openSessionById(sessionID: string, acceptedGeneration?: number, runtimeID?: RuntimeID): Promise<ReopenedSession> {

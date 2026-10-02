@@ -33,7 +33,7 @@ automatically.
 | `sessions()` | `Promise<SessionSummary[]>` — recent session list |
 | `activeSessions()` | `Promise<SessionInfo[]>` — currently open backend sessions in activation order; the last element is the most recently activated (used for startup restore) |
 | `closeSession(workspace)` | `Promise<void>` — tears down the backend context when a panel closes; the opencode session remains reopenable |
-| `openSessionById(sessionID, generation, runtimeID?)` | `Promise<ReopenedSession>` (session + replayed transcript + cumulative `usage`); idempotent for already-open OpenCode sessions. Legacy DeepSeek sessions cannot be reopened by the dormant adapter |
+| `openSessionById(sessionID, generation, runtimeID?, allowWorkspaceRelink?)` | `Promise<ReopenedSession>` (session + replayed transcript + cumulative `usage`); idempotent for already-open OpenCode sessions. Set `allowWorkspaceRelink` only for an explicit user action to let Orbit ask for the replacement folder when the previous one is missing; startup hydration leaves it false. Legacy DeepSeek sessions cannot be reopened by the dormant adapter |
 | `deleteSession(sessionID)` | `Promise<void>` — permanently destroys the OpenCode session server-side (`client.session.remove`) and closes its panel |
 | `sessionTranscript(sessionID)` | `Promise<{transcript, todos}>` — authoritative message replay used to materialize incomplete stream snapshots |
 | `sessionUsage(sessionID)` | `Promise<SessionUsage \| null>` — normalized `cost`/`tokens` for the addressed session; used after `session.compaction` to refresh the context-window display |

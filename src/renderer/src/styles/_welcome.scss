@@ -238,12 +238,34 @@
   padding: 7px 0;
   color: var(--text);
   text-align: left;
+  cursor: pointer;
 }
-.welcome .sd-wgh .chev {
+.welcome .sd-wgh:hover {
+  color: var(--accent);
+}
+.welcome .sd-wgh > svg { color: var(--text-faint); flex: none; }
+.welcome .sd-wgh-disclosure {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
   color: var(--text-faint);
-  transition: transform 0.15s ease;
+  cursor: pointer;
 }
-.welcome .sd-wgh svg:nth-of-type(2) { color: var(--text-faint); }
+.welcome .sd-wgh-disclosure:hover {
+  background: var(--bg-hover);
+  border-color: var(--border);
+  color: var(--text);
+}
+.welcome .sd-wgh-disclosure .chev { transition: transform 0.15s ease; }
+.welcome .sd-wgh-disclosure.open .chev { transform: rotate(180deg); }
 .welcome .sd-wgname {
   font-size: 12px;
   font-weight: 550;

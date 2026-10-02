@@ -76,7 +76,7 @@ function workspaceGroups(sessions: SessionSummary[], projects: ProjectInfo[]): W
 }
 
 export function Welcome(): ReactNode {
-  const { selectFolder, openPaths, reopenSession, savedWorkspaces, saveWorkspace } = useStore();
+  const { selectFolder, openPaths, reopenSession, openSession, savedWorkspaces, saveWorkspace } = useStore();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -146,7 +146,7 @@ export function Welcome(): ReactNode {
                         <button
                           className="rowlink"
                           type="button"
-                          onClick={() => void reopenSession(session.id)}
+                          onClick={() => void reopenSession(session.id, false, session.directory)}
                           title={session.directory}
                         >
                           <span className="num-i">{String(index + 1).padStart(2, "0")}</span>
@@ -207,14 +207,22 @@ export function Welcome(): ReactNode {
                           <button
                             className="sd-wgh"
                             type="button"
-                            aria-expanded={open}
-                            onClick={() => toggleGroup(group.directory)}
+                            aria-label={`Open workspace ${group.name}`}
+                            onClick={() => void openSession(group.directory)}
                             title={group.directory}
                           >
-                            <Chev />
                             <FolderGlyph />
                             <span className="sd-wgname">{group.name}</span>
                             <span className="sd-wgcnt">{group.sessions.length}</span>
+                          </button>
+                          <button
+                            className={`sd-wgh-disclosure${open ? " open" : ""}`}
+                            type="button"
+                            aria-label={`${open ? "Collapse" : "Expand"} ${group.name} sessions`}
+                            aria-expanded={open}
+                            onClick={() => toggleGroup(group.directory)}
+                          >
+                            <Chev />
                           </button>
                         </div>
                         <div className="sd-kids-wrap">
@@ -229,7 +237,7 @@ export function Welcome(): ReactNode {
                                   <button
                                     className="rowlink"
                                     type="button"
-                                    onClick={() => void reopenSession(session.id)}
+                                    onClick={() => void reopenSession(session.id, false, session.directory)}
                                     title={session.title}
                                   >
                                     <span className="row-dot" />

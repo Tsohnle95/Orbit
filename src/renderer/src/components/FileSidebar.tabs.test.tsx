@@ -220,17 +220,21 @@ describe("FileSidebar tabs and sessions pane", () => {
     expect(history.querySelector(".sessions-row-pin")?.classList.contains("pinned")).toBe(true);
   });
 
-  it("lists saved folders under Workspaces and expands their session history", async () => {
+  it("opens saved workspaces and expands their session history separately", async () => {
     store.sessions = [summary("running", "/workspace", "Running row")];
     await render();
     await settle();
 
     await act(async () => section("Workspaces").querySelector<HTMLButtonElement>(".section-toggle")!.click());
     const workspaces = section("Workspaces");
-    const project = workspaces.querySelector<HTMLButtonElement>(".sessions-project-toggle")!;
+    const project = workspaces.querySelector<HTMLButtonElement>(".sessions-project-open")!;
     expect(project.textContent).toContain("Workspace");
     await act(async () => project.click());
-    expect(project.getAttribute("aria-expanded")).toBe("true");
+    expect(store.openSession).toHaveBeenCalledWith("/workspace");
+
+    const disclosure = workspaces.querySelector<HTMLButtonElement>(".sessions-project-disclosure")!;
+    await act(async () => disclosure.click());
+    expect(disclosure.getAttribute("aria-expanded")).toBe("true");
     expect(workspaces.querySelector(".sessions-project-sessions")?.textContent).toContain("Running row");
   });
 
@@ -275,7 +279,7 @@ describe("FileSidebar tabs and sessions pane", () => {
     const closedRow = history.querySelector<HTMLElement>(".sessions-row")!;
     expect(history.textContent).not.toContain("Running row");
     await act(async () => closedRow.click());
-    expect(store.reopenSession).toHaveBeenCalledWith("closed");
+    expect(store.reopenSession).toHaveBeenCalledWith("closed", false, "/other");
   });
 
   it("lists backend-active sessions even when they do not have a rendered panel", async () => {
@@ -294,7 +298,7 @@ describe("FileSidebar tabs and sessions pane", () => {
     expect(openNow.textContent).toContain("Background agent");
     const row = openNow.querySelector<HTMLElement>(".sessions-row")!;
     await act(async () => row.click());
-    expect(store.reopenSession).toHaveBeenCalledWith("background");
+    expect(store.reopenSession).toHaveBeenCalledWith("background", false, "/background");
 
     await act(async () => row.querySelector<HTMLButtonElement>(".sessions-row-close")!.click());
     expect(store.closePanel).toHaveBeenCalledWith("background");
@@ -308,7 +312,7 @@ describe("FileSidebar tabs and sessions pane", () => {
 
     await act(async () => section("Workspaces").querySelector<HTMLButtonElement>(".section-toggle")!.click());
     const workspaces = section("Workspaces");
-    const projectToggles = workspaces.querySelectorAll<HTMLButtonElement>(".sessions-project-toggle");
+    const projectToggles = workspaces.querySelectorAll<HTMLButtonElement>(".sessions-project-disclosure");
     expect(projectToggles).toHaveLength(2);
 
     await act(async () => projectToggles[0].click());

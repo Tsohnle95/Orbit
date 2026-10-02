@@ -223,7 +223,7 @@ interface Store {
   dismissChanges: () => void;
   selectPanelDirectory: (workspace: WorkspaceIdentity) => Promise<void>;
   changePanelDirectory: (workspace: WorkspaceIdentity, dir: string) => Promise<void>;
-  reopenSession: (sessionID: string, silent?: boolean) => Promise<SessionInfo | null>;
+  reopenSession: (sessionID: string, silent?: boolean, directoryHint?: string) => Promise<SessionInfo | null>;
   deleteSession: (sessionID: string) => Promise<void>;
   loadSessions: () => Promise<void>;
   sendPrompt: (text: string, files?: PromptFile[], workspace?: WorkspaceIdentity) => Promise<void>;
@@ -598,6 +598,17 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     updateSavedWorkspaces((current) =>
       current.some((workspace) => workspace.directory === directory) ? current : [...current, saved]
     );
+  }, [updateSavedWorkspaces]);
+
+  const replaceSavedWorkspace = useCallback((previousDirectory: string, directory: string): void => {
+    if (!directory) return;
+    const saved = { directory, name: workspaceName(directory) };
+    updateSavedWorkspaces((current) => {
+      const remaining = current.filter((workspace) => workspace.directory !== previousDirectory);
+      return remaining.some((workspace) => workspace.directory === directory)
+        ? remaining
+        : [...remaining, saved];
+    });
   }, [updateSavedWorkspaces]);
 
   useEffect(() => {
@@ -1725,6 +1736,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           await window.openshell.closeSession(info.workspace).catch(() => {});
           return null;
         }
+        if (dir !== info.directory) replaceSavedWorkspace(dir, info.directory);
         userActivatedRef.current = true;
         replacePanels(info);
         focusSeqRef.current += 1;
@@ -1744,7 +1756,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         return null;
       }
     },
-    [replacePanels, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]
+    [replacePanels, replaceSavedWorkspace, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]
   );
 
   const addModelPanel = useCallback(
@@ -1891,7 +1903,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   }, [replacePanels, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]);
 
   const reopenSession = useCallback(
-    async (sessionID: string, silent = false): Promise<SessionInfo | null> => {
+    async (sessionID: string, silent = false, directoryHint?: string): Promise<SessionInfo | null> => {
       const existing = panelForSession(sessionID);
       if (existing) {
         if (!transcriptsBySessionRef.current[sessionID]) void hydrateTranscript(sessionID);
@@ -1904,11 +1916,14 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       const request = ++requestSeqRef.current;
       const activation = silent ? 0 : ++activationSeqRef.current;
       const targetWorkspace = silent ? null : sessionRef.current?.workspace ?? null;
+      const previousDirectory = directoryHint ?? sessionsRef.current.find((session) => session.id === sessionID)?.directory;
       if (!silent) {
         replacingSessionIDsRef.current.set(sessionID, (replacingSessionIDsRef.current.get(sessionID) ?? 0) + 1);
       }
       try {
-        const reopened = await window.openshell.openSessionById(sessionID, request);
+        const reopened = silent
+          ? await window.openshell.openSessionById(sessionID, request)
+          : await window.openshell.openSessionById(sessionID, request, undefined, true);
         if (!silent && activation !== activationSeqRef.current) {
           await window.openshell.closeSession(reopened.session.workspace).catch(() => {});
           return null;
@@ -1926,6 +1941,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           focusSeqRef.current += 1;
           sessionRef.current = reopened.session;
           setActiveSessionID(reopened.session.id);
+        }
+        if (!silent && previousDirectory && previousDirectory !== reopened.session.directory) {
+          replaceSavedWorkspace(previousDirectory, reopened.session.directory);
         }
         void loadRecovery(reopened.session.workspace);
         const merged = mergeChatHistory(
@@ -1972,7 +1990,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
       }
     },
-    [attachPanel, replacePanels, replacePanel, focusSession, panelForSession, chatStateFor, reconcileStreaming, setTodosFor, toast, loadModels, loadAgents, loadSessions, loadRecovery, hydrateTranscript, protectedSessionIDs]
+    [attachPanel, replacePanels, replacePanel, replaceSavedWorkspace, focusSession, panelForSession, chatStateFor, reconcileStreaming, setTodosFor, toast, loadModels, loadAgents, loadSessions, loadRecovery, hydrateTranscript, protectedSessionIDs]
   );
 
   const sendPrompt = useCallback(

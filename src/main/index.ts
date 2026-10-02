@@ -5,7 +5,7 @@ import fsp from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { OpenShellBackend } from "./opencode";
+import { OpenShellBackend, SessionWorkspaceNotFoundError } from "./opencode";
 import { createDisabledOrbitAppUpdater, createOrbitAppUpdater } from "./app-updater";
 import { appUpdaterWindowUrl, setAppUpdaterWindowStatus, shouldBlockAppUpdaterReload, type AppUpdaterWindowStatus } from "./app-updater-window";
 import { TerminalManager } from "./terminal";
@@ -613,6 +613,44 @@ function handleTrusted<Args extends unknown[], Result>(
   });
 }
 
+async function workspaceDirectoryExists(directory: string): Promise<boolean> {
+  try {
+    return (await fsp.stat(directory)).isDirectory();
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return false;
+    throw error;
+  }
+}
+
+async function chooseWorkspaceDirectory(missingDirectory: string): Promise<string | null> {
+  let defaultPath = path.dirname(path.resolve(missingDirectory));
+  while (!(await workspaceDirectoryExists(defaultPath))) {
+    const parent = path.dirname(defaultPath);
+    if (parent === defaultPath) {
+      defaultPath = app.getPath("home");
+      break;
+    }
+    defaultPath = parent;
+  }
+  const result = await (win && !win.isDestroyed()
+    ? dialog.showOpenDialog(win, {
+        title: "Locate workspace folder",
+        message: `Orbit could not find this workspace. Choose its current folder to continue.\n\n${missingDirectory}`,
+        buttonLabel: "Use this folder",
+        defaultPath,
+        properties: ["openDirectory"]
+      })
+    : dialog.showOpenDialog({
+        title: "Locate workspace folder",
+        message: `Orbit could not find this workspace. Choose its current folder to continue.\n\n${missingDirectory}`,
+        buttonLabel: "Use this folder",
+        defaultPath,
+        properties: ["openDirectory"]
+      }));
+  return result.canceled ? null : result.filePaths[0] ?? null;
+}
+
 async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
   if (!isOrbitReleaseBuild) {
     return {
@@ -838,8 +876,16 @@ function registerIpc(): void {
     return backend.importExternal(workspace, workspacePath(workspace, destDir, true).rel, absoluteFilePaths(sources));
   });
 
-  handleTrusted("shell:open-session", async (_e, dir: string, requestGeneration: number, requestedRuntimeID?: unknown) =>
-    backend.openSession(directoryPath(dir), backend.beginActivation(activationGeneration(requestGeneration)), optionalRuntimeId(requestedRuntimeID)));
+  handleTrusted("shell:open-session", async (_e, dir: string, requestGeneration: number, requestedRuntimeID?: unknown) => {
+    const requestedDirectory = directoryPath(dir);
+    const generation = backend.beginActivation(activationGeneration(requestGeneration));
+    const runtimeID = optionalRuntimeId(requestedRuntimeID);
+    const directory = await workspaceDirectoryExists(requestedDirectory)
+      ? requestedDirectory
+      : await chooseWorkspaceDirectory(requestedDirectory);
+    if (!directory) throw new Error(`Opening the workspace was canceled. Its folder is missing: ${requestedDirectory}`);
+    return backend.openSession(directory, generation, runtimeID);
+  });
 
   handleTrusted("shell:sessions", async () => backend.listSessions());
 
@@ -851,9 +897,25 @@ function registerIpc(): void {
     return backend.closeSession(workspace);
   });
 
-  handleTrusted("shell:open-session-id", async (_e, sessionID: string, requestGeneration: number, requestedRuntimeID?: unknown) =>
-    backend.openSessionById(sessionId(sessionID), backend.beginActivation(activationGeneration(requestGeneration)), optionalRuntimeId(requestedRuntimeID))
-  );
+  handleTrusted("shell:open-session-id", async (
+    _e,
+    sessionID: string,
+    requestGeneration: number,
+    requestedRuntimeID?: unknown,
+    allowWorkspaceRelink?: unknown
+  ) => {
+    const id = sessionId(sessionID);
+    const generation = backend.beginActivation(activationGeneration(requestGeneration));
+    const runtimeID = optionalRuntimeId(requestedRuntimeID);
+    try {
+      return await backend.openSessionById(id, generation, runtimeID);
+    } catch (error) {
+      if (allowWorkspaceRelink !== true || !(error instanceof SessionWorkspaceNotFoundError)) throw error;
+      const directory = await chooseWorkspaceDirectory(error.directory);
+      if (!directory) throw new Error(`Reopening the session was canceled. Its workspace is missing: ${error.directory}`);
+      return backend.openSessionByIdInDirectory(id, directory, generation, runtimeID);
+    }
+  });
 
   handleTrusted("shell:delete-session", async (_e, sessionID: string) =>
     backend.deleteSession(sessionId(sessionID))

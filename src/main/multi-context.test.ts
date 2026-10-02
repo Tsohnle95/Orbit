@@ -11,7 +11,7 @@ vi.mock("electron", () => ({
 vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
 vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
-import { OpenShellBackend } from "./opencode";
+import { OpenShellBackend, SessionWorkspaceNotFoundError } from "./opencode";
 import type { BackendMessage, WorkspaceIdentity } from "@shared/types";
 
 const roots: string[] = [];
@@ -184,6 +184,44 @@ describe("concurrent session contexts", () => {
     expect(reopened.session.directory).toBe(current);
     expect(move).toHaveBeenCalledWith({ sessionID: "session-one", directory: current });
     await backend.stop();
+  });
+
+  it("relinks a closed session to a user-selected replacement workspace", async () => {
+    const parent = await realpath(await mkdtemp(path.join(tmpdir(), "openshell-multi-relink-")));
+    const selected = path.join(parent, "replacement");
+    const missing = path.join(parent, "deleted");
+    await mkdir(selected);
+    roots.push(parent);
+    const { backend } = await fixture();
+    let directory = missing;
+    const move = vi.fn(async ({ directory: next }: { directory: string }) => {
+      directory = next;
+    });
+    (backend as unknown as { client: unknown }).client = {
+      session: {
+        get: vi.fn(async () => ({ id: "session-one", location: { directory } })),
+        move
+      },
+      message: { list: vi.fn(async () => []) }
+    };
+
+    const reopened = await backend.openSessionByIdInDirectory("session-one", selected, 1);
+
+    expect(move).toHaveBeenCalledWith({ sessionID: "session-one", directory: selected });
+    expect(reopened.session.directory).toBe(selected);
+    expect(reopened.session.id).toBe("session-one");
+    await backend.stop();
+  });
+
+  it("identifies a session whose old workspace cannot be resolved", async () => {
+    const parent = await realpath(await mkdtemp(path.join(tmpdir(), "openshell-multi-missing-")));
+    roots.push(parent);
+    const { backend } = await fixture();
+    (backend as unknown as { client: unknown }).client = {
+      session: { get: vi.fn(async () => ({ id: "session-one", location: { directory: path.join(parent, "deleted") } })) }
+    };
+
+    await expect(backend.openSessionById("session-one", 1)).rejects.toBeInstanceOf(SessionWorkspaceNotFoundError);
   });
 
   it("omits missing projects and deduplicates canonical directories", async () => {

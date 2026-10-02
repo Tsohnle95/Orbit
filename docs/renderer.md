@@ -236,8 +236,12 @@ validation/canonicalization path, and the last one is focused only if the
 user hasn't already acted, so deleted or moved workspaces, unavailable
 runtimes, and individual reopen failures are skipped without blocking
 launch. Past sessions stay reachable through recents and the **Open now**
-inventory. A renderer reload still restores live backend contexts; editor
-tabs, changes, terminals,
+inventory. A saved workspace's main row opens a new session; its disclosure
+control expands that workspace's session history. Explicitly reopening a recent
+session can ask the user to locate a replacement folder when its saved location
+has disappeared, then updates Orbit's saved workspace bookmark. Silent startup
+hydration never opens a folder picker. A renderer reload still restores live
+backend contexts; editor tabs, changes, terminals,
 permissions, queues, prompts, and other transient state are not persisted for
 this purpose.
 `file-update` is accepted only when both its session ID and full workspace

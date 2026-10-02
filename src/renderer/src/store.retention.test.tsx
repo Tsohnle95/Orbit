@@ -174,7 +174,7 @@ describe("open panel retention", () => {
     await act(async () => store.reopenSession(first.id));
     await flush();
 
-    expect(openSessionById).toHaveBeenCalledWith(first.id, expect.any(Number));
+    expect(openSessionById).toHaveBeenCalledWith(first.id, expect.any(Number), undefined, true);
     const reopened = store.panels.find((panel) => panel.id === first.id);
     expect(reopened).toBeDefined();
     expect(store.panelViews[reopened!.workspace.id].transcript).toEqual(replay);
