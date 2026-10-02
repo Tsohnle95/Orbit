@@ -7,7 +7,7 @@ import { useOptionalTheme } from "../theme";
 import { terminalThemeForAppearance } from "../appearances";
 import { IconAdd, IconChevronDown, IconChevronUp, IconGlobe } from "./icons";
 import type { ViteServerInfo, WorkspaceIdentity } from "@shared/types";
-import { PendingTerminalOutput, removeTerminal, terminalDirectoryCommand, terminalSizeForViewport, type TerminalSize, type TerminalTabs } from "../terminal-state";
+import { PendingTerminalOutput, removeTerminal, terminalDirectoryCommand, terminalSizeForViewport, type TerminalSize, type TerminalTabs, type TerminalView } from "../terminal-state";
 import { requestReveal } from "../reveal";
 import type { ValidationReport } from "../validation-report";
 
@@ -58,12 +58,13 @@ interface TermInstanceProps {
   id: string;
   active: boolean;
   height: number;
+  focusRevision: number;
   workspace: WorkspaceIdentity;
   onRegister: (id: string, writer: (data: string) => void) => void;
   onUnregister: (id: string) => void;
 }
 
-function TermInstance({ id, active, height, workspace, onRegister, onUnregister }: TermInstanceProps): ReactNode {
+function TermInstance({ id, active, height, focusRevision, workspace, onRegister, onUnregister }: TermInstanceProps): ReactNode {
   const theme = useOptionalTheme()?.theme ?? "prism";
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -131,16 +132,17 @@ function TermInstance({ id, active, height, workspace, onRegister, onUnregister 
     const term = termRef.current;
     const fit = fitRef.current;
     if (!term || !fit) return;
-    requestAnimationFrame(() => {
+    const frame = requestAnimationFrame(() => {
       try {
         fit.fit();
       } catch {
         /* hidden */
       }
       void window.openshell.terminalResize(workspace, id, term.cols, term.rows).catch(() => {});
+      term.focus();
     });
-    term.focus();
-  }, [active, height, id, workspace]);
+    return () => cancelAnimationFrame(frame);
+  }, [active, height, focusRevision, id, workspace]);
 
   return (
     <div className={`terminal-host ${active ? "" : "hidden"}`} ref={hostRef} />
@@ -170,6 +172,7 @@ export function TerminalTray({
   const workspace = session!.workspace;
   const sessionDirectory = session!.directory;
   const [{ terms, activeId }, setTabs] = useState<TerminalTabs>({ terms: [], activeId: null });
+  const [focusRevision, setFocusRevision] = useState(0);
   const [notice, setNotice] = useState("");
   const [viteStarting, setViteStarting] = useState(false);
   const [viteServers, setViteServers] = useState<ViteServerInfo[]>([]);
@@ -228,6 +231,7 @@ export function TerminalTray({
   }, [refreshServers]);
 
   const createTerminal = useCallback(async (directory = ""): Promise<void> => {
+    onPanelChange("terminal");
     setNotice("");
     const id = `term-${crypto.randomUUID()}`;
     pendingOutputRef.current.awaitRegistration(id);
@@ -246,7 +250,7 @@ export function TerminalTray({
       setTabs((current) => removeTerminal(current, id));
       setNotice(err instanceof Error ? err.message : "Could not start a terminal");
     }
-  }, [sessionDirectory, workspace]);
+  }, [onPanelChange, sessionDirectory, workspace]);
 
   useEffect(() => {
     const token = ++bootTokenRef.current;
@@ -326,6 +330,38 @@ export function TerminalTray({
     if (next.terms.length === 0) onClose();
   };
 
+  const terminalTab = (term: TerminalView): ReactNode => (
+    <span
+      key={term.id}
+      className={`terminal-tab ${activePanel === "terminal" && term.id === activeId ? "active" : ""}`}
+      role="tab"
+      tabIndex={0}
+      aria-selected={activePanel === "terminal" && term.id === activeId}
+      onClick={() => {
+        onPanelChange("terminal");
+        setTabs((current) => ({ ...current, activeId: term.id }));
+        setFocusRevision((current) => current + 1);
+      }}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+        event.preventDefault();
+        event.currentTarget.click();
+      }}
+    >
+      {term.name}
+      <button
+        className="terminal-tab-close"
+        title={`Close ${term.name}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          closeTerminal(term.id);
+        }}
+      >
+        ×
+      </button>
+    </span>
+  );
+
   return (
     <div ref={trayRef} className="terminal-tray" style={{ "--terminal-height": `${height}px` } as CSSProperties}>
       <div
@@ -338,14 +374,16 @@ export function TerminalTray({
             <IconChevronUp />
           </span>
         )}
-        <button
-          type="button"
-          className={`terminal-tab ${activePanel === "terminal" ? "active" : ""}`}
-          aria-pressed={activePanel === "terminal"}
-          onClick={() => onPanelChange("terminal")}
-        >
-          Terminal
-        </button>
+        {terms[0] ? terminalTab(terms[0]) : (
+          <button
+            type="button"
+            className={`terminal-tab ${activePanel === "terminal" ? "active" : ""}`}
+            aria-pressed={activePanel === "terminal"}
+            onClick={() => onPanelChange("terminal")}
+          >
+            Terminal
+          </button>
+        )}
         <button
           type="button"
           className={`terminal-tab ${activePanel === "problems" ? "active" : ""}`}
@@ -355,28 +393,7 @@ export function TerminalTray({
         >
           Problems{validationReport?.diagnostics.length ? ` ${validationReport.diagnostics.length}` : ""}
         </button>
-        {terms.map((term) => (
-          <span
-            key={term.id}
-            className={`terminal-tab ${activePanel === "terminal" && term.id === activeId ? "active" : ""}`}
-            onClick={() => {
-              onPanelChange("terminal");
-              setTabs((current) => ({ ...current, activeId: term.id }));
-            }}
-          >
-            {term.name}
-            <button
-              className="terminal-tab-close"
-              title={`Close ${term.name}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                closeTerminal(term.id);
-              }}
-            >
-              ×
-            </button>
-          </span>
-        ))}
+        {terms.slice(1).map(terminalTab)}
         <button className="terminal-add" title="New terminal" onClick={() => void createTerminal()}>
           <IconAdd />
         </button>
@@ -410,8 +427,9 @@ export function TerminalTray({
           <TermInstance
             key={term.id}
             id={term.id}
-            active={term.id === activeId}
+            active={activePanel === "terminal" && term.id === activeId}
             height={height}
+            focusRevision={focusRevision}
             workspace={workspace}
             onRegister={onRegister}
             onUnregister={onUnregister}

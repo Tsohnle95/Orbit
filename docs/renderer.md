@@ -567,6 +567,9 @@ seconds and are cleared on exit, close, registration, or workspace reset.
 Closing the final tab commits an empty tab state before hiding the tray;
 reopening shows that empty state and requires the explicit `+` action to start
 a new process. A natural final exit leaves the empty tray visible.
+With shells open, the leftmost header tab selects the first shell rather than
+acting as a separate panel selector. Selecting any shell tab returns from
+Problems and focuses its input; `+` also returns to the terminal view.
 Explorer context-menu requests add and focus a terminal whose cwd is the selected folder or a selected file's parent, and expand the normal bottom tray.
 When renderer HMR is newer than the still-running main/preload process, a missing resolved-cwd response triggers one safely quoted `cd`/`Set-Location` command through the existing terminal input channel, so folder terminals work without restarting Orbit.
 The tray is toggled from the titlebar (⌥O) and drag-resized via the

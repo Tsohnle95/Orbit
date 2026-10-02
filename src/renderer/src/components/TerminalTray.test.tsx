@@ -5,6 +5,7 @@ import type { BackendMessage, SessionInfo, ViteServerInfo, ViteToggleResult } fr
 import { TerminalTray } from "./TerminalTray";
 
 const writes = vi.hoisted(() => vi.fn());
+const focusTerminal = vi.hoisted(() => vi.fn());
 const mockOpenFile = vi.hoisted(() => vi.fn(async () => {}));
 const mockRequestReveal = vi.hoisted(() => vi.fn());
 vi.mock("@xterm/xterm", () => ({
@@ -16,7 +17,7 @@ vi.mock("@xterm/xterm", () => ({
     open() {}
     onData() {}
     write(data: string) { writes(data); }
-    focus() {}
+    focus() { focusTerminal(this); }
     dispose() {}
   }
 }));
@@ -59,6 +60,7 @@ describe("TerminalTray integration", () => {
     let uuid = 0;
     vi.stubGlobal("crypto", { randomUUID: () => `aaaaaaaa-aaaa-4aaa-8aaa-${String(++uuid).padStart(12, "0")}` });
     writes.mockClear();
+    focusTerminal.mockClear();
     mockOpenFile.mockClear();
     mockRequestReveal.mockClear();
     activePath = null;
@@ -96,6 +98,50 @@ describe("TerminalTray integration", () => {
     expect(container.textContent).toContain("Terminal 1");
     await act(async () => listener({ kind: "terminal-exit", terminal: { id: terminalId, exitCode: 0 } }));
     expect(container.textContent).toContain("No terminal open");
+  });
+
+  it("makes the leftmost tab select and focus the first shell", async () => {
+    const onPanelChange = vi.fn();
+    await act(async () => root.render(<TerminalTray height={240} snapped={false} onPanelChange={onPanelChange} onClose={onClose} onExpand={() => {}} />));
+    const firstShell = focusTerminal.mock.calls.at(-1)![0];
+    expect(container.querySelector(".terminal-tab")?.textContent).toContain("Terminal 1");
+    expect(container.querySelectorAll(".terminal-tab.active")).toHaveLength(1);
+
+    await act(async () => container.querySelector<HTMLButtonElement>('[title="New terminal"]')!.click());
+    const secondShell = focusTerminal.mock.calls.at(-1)![0];
+    expect(secondShell).not.toBe(firstShell);
+    expect(container.querySelectorAll(".terminal-host")).toHaveLength(2);
+
+    focusTerminal.mockClear();
+    await act(async () => container.querySelector<HTMLElement>(".terminal-tab")!.click());
+    expect(focusTerminal).toHaveBeenLastCalledWith(firstShell);
+    expect(onPanelChange).toHaveBeenLastCalledWith("terminal");
+    expect(container.querySelectorAll(".terminal-tab.active")).toHaveLength(1);
+
+    focusTerminal.mockClear();
+    await act(async () => container.querySelector<HTMLElement>(".terminal-tab")!.click());
+    expect(focusTerminal).toHaveBeenLastCalledWith(firstShell);
+    expect(window.openshell.terminalStart).toHaveBeenCalledTimes(2);
+  });
+
+  it("refocuses the existing shell when returning from Problems", async () => {
+    const render = (activePanel: "terminal" | "problems") => <TerminalTray height={240} snapped={false} activePanel={activePanel} onClose={onClose} onExpand={() => {}} />;
+    await act(async () => root.render(render("terminal")));
+    const firstShell = focusTerminal.mock.calls.at(-1)![0];
+    await act(async () => root.render(render("problems")));
+    focusTerminal.mockClear();
+    await act(async () => container.querySelector<HTMLElement>(".terminal-tab")!.click());
+    await act(async () => root.render(render("terminal")));
+    expect(focusTerminal).toHaveBeenLastCalledWith(firstShell);
+    expect(window.openshell.terminalStart).toHaveBeenCalledOnce();
+  });
+
+  it("returns to the terminal view when adding a shell from Problems", async () => {
+    const onPanelChange = vi.fn();
+    await act(async () => root.render(<TerminalTray height={240} snapped={false} activePanel="problems" onPanelChange={onPanelChange} onClose={onClose} onExpand={() => {}} />));
+    await act(async () => container.querySelector<HTMLButtonElement>('[title="New terminal"]')!.click());
+    expect(onPanelChange).toHaveBeenLastCalledWith("terminal");
+    expect(window.openshell.terminalStart).toHaveBeenCalledTimes(2);
   });
 
   it("shows detailed W3C diagnostics in the terminal area's Problems panel", async () => {
