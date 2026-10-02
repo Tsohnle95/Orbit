@@ -585,6 +585,8 @@ released at that collapsed position.
   parses theme palette colors with `Color.fromHex`, which silently maps any
   non-hex value to pure red — every palette color must be hex
   (`#RRGGBB` or `#RRGGBBAA`), never `rgba()`.
+- Monaco's editor context menu is rendered outside its themed editor node, so
+  `ThemeProvider` publishes its menu foreground/background colors on `:root`.
 - Editor line wrapping is always enabled; there is no settings or toolbar toggle.
 - `languageForPath()` — extension → Monaco language map (fallback
   `plaintext`).
