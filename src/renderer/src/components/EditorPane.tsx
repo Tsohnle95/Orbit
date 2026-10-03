@@ -224,6 +224,7 @@ function EditorWithSave({
 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const cursorListenerRef = useRef<{ dispose: () => void } | null>(null);
+  const navigationListenerRef = useRef<{ dispose: () => void } | null>(null);
   const htmlQuoteListenerRef = useRef<{ dispose: () => void } | null>(null);
   const focusedRef = useRef(focused);
   focusedRef.current = focused;
@@ -261,7 +262,8 @@ function EditorWithSave({
     editorRef.current = ed;
     registerEditor(tabPath, ed);
     wireEmmetKeys(ed);
-    wireEditorNavigationKeys(ed);
+    navigationListenerRef.current?.dispose();
+    navigationListenerRef.current = wireEditorNavigationKeys(ed);
     htmlQuoteListenerRef.current?.dispose();
     htmlQuoteListenerRef.current = wireHtmlAttributeQuotes(ed);
     const model = ed.getModel();
@@ -317,6 +319,8 @@ function EditorWithSave({
   useEffect(() => () => {
     cursorListenerRef.current?.dispose();
     cursorListenerRef.current = null;
+    navigationListenerRef.current?.dispose();
+    navigationListenerRef.current = null;
     htmlQuoteListenerRef.current?.dispose();
     htmlQuoteListenerRef.current = null;
     unregisterEditor(tabPath);
@@ -359,6 +363,8 @@ function EditorWithSave({
             const modifiedEditor = ed.getModifiedEditor();
             editorRef.current = modifiedEditor;
             registerEditor(tab.path, modifiedEditor);
+            navigationListenerRef.current?.dispose();
+            navigationListenerRef.current = wireEditorNavigationKeys(modifiedEditor);
             watchCursor(modifiedEditor);
           }}
           options={{

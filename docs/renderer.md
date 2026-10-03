@@ -601,10 +601,10 @@ released at that collapsed position.
   so React state echoes cannot replace an active model between keystrokes.
 - HTML attribute `=` inserts a paired quote with the caret between them, and
   Monaco's language-defined quote pairing remains enabled elsewhere.
-- `editor-navigation.ts` binds Command/Control + Arrow Up/Down to the start/end
-  of the document and Command/Control + Arrow Left/Right to the literal start
-  and end of the current line. The line commands do not use Monaco's smart
-  Home behavior, which can stop at indentation instead of column 1.
+- `editor-navigation.ts` handles Command/Control + Arrow keys on the editor
+  DOM node that received the event: Up/Down move to document start/end and
+  Left/Right move to the literal start/end of the current line. Pane-local
+  handling prevents split editors from routing a shortcut to another editor.
 - CSS worker diagnostics stay enabled (the only language worker with a
   working `doValidation`), so CSS files lint inline exactly like VS Code.
   The HTML worker ships no `doValidation`, so HTML files have no built-in
@@ -617,9 +617,10 @@ released at that collapsed position.
   controller, so the caret lands on the first tab stop (the `<title>` text
   for `!`) without depending on the suggestion widget having finished
   opening. The key handling lives in `emmet-keys.ts` (`wireEmmetKeys`,
-  called from the `EditorPane` edit editor's `onMount`) and is skipped
-  while the suggestion widget is visible, while inside a `<script>` block,
-  or while a snippet session is already active. `emmet.ts` mirrors the
+  called from the `EditorPane` edit editor's `onMount`) and expands valid
+  abbreviations on Enter or Tab even when a completion popup is open; it is
+  skipped inside a `<script>` block or while a snippet session is active.
+  `emmet.ts` mirrors the
   provider's noise checks (unknown tags, unresolved CSS values, unknown
   `.class` fragments) so Enter/Tab only expands genuine abbreviations.
 

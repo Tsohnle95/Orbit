@@ -3,11 +3,6 @@ import type { editor } from "monaco-editor";
 import { SnippetController2 } from "monaco-editor/esm/vs/editor/contrib/snippet/browser/snippetController2.js";
 import { emmetSnippetAt } from "./emmet";
 
-function suggestWidgetVisible(target: editor.IStandaloneCodeEditor): boolean {
-  const host = target.getContainerDomNode();
-  return host.querySelector(".suggest-widget.visible") !== null;
-}
-
 function insideScriptTag(model: editor.ITextModel, position: monaco.Position): boolean {
   const before = model.getValueInRange(new monaco.Range(1, 1, position.lineNumber, position.column));
   const open = before.lastIndexOf("<script");
@@ -18,10 +13,9 @@ function insideScriptTag(model: editor.ITextModel, position: monaco.Position): b
 export function wireEmmetKeys(target: editor.IStandaloneCodeEditor): void {
   target.onKeyDown((e) => {
     if (e.keyCode === monaco.KeyCode.KEY_IN_COMPOSITION) return;
-    if (e.keyCode !== monaco.KeyCode.Tab) return;
+    if (e.keyCode !== monaco.KeyCode.Tab && e.keyCode !== monaco.KeyCode.Enter) return;
     if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
     if ((target.getSelections() ?? []).length !== 1) return;
-    if (suggestWidgetVisible(target)) return;
     const snippetController = SnippetController2.get(target);
     if (!snippetController || snippetController.isInSnippet()) return;
     const position = target.getPosition();
