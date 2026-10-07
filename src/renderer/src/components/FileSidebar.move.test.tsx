@@ -218,7 +218,7 @@ describe("FileSidebar drag-and-drop moves", () => {
 
     act(() => source.dispatchEvent(dragEvent("dragstart")));
     act(() => tree.dispatchEvent(dragEvent("dragover")));
-    expect(tree.className).toContain("drop-root");
+    expect(tree.querySelector(".tree-drop-space.active")).toBeTruthy();
     act(() => tree.dispatchEvent(dragEvent("drop")));
 
     expect(store.moveEntry).toHaveBeenCalledWith("alpha/child.txt", "");

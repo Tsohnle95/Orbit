@@ -62,8 +62,8 @@ vi.mock("../store", () => ({
   useCtxMenu: () => ctxMenuApi
 }));
 
-function dropEvent(files: string[]): Event {
-  const event = new Event("drop", { bubbles: true, cancelable: true });
+function dropEvent(files: string[], type = "drop"): Event {
+  const event = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperty(event, "target", { value: event.target, configurable: true });
   Object.defineProperty(event, "dataTransfer", {
     value: {
@@ -93,6 +93,7 @@ describe("FileSidebar single-file mode and external drops", () => {
       externalKind: vi.fn(async (path: string) => ({ kind: /\.[^/]+$/.test(path) ? "file" as const : "directory" as const }))
     } as unknown as typeof window.openshell;
     store.singleFile = null;
+    store.panels = [];
     store.tabs = [];
     store.expanded = new Set(initialExpanded);
     store.openExternalPath = vi.fn();
@@ -168,10 +169,43 @@ describe("FileSidebar single-file mode and external drops", () => {
     expect(store.dropIntoExplorer).not.toHaveBeenCalled();
   });
 
+  it.each([false, true])("shows only the blank destination below unrelated roots (expanded=%s)", async (expanded) => {
+    store.panels = [{ ...session, id: "other", directory: "/other" }, session];
+    store.expanded = expanded ? new Set([""]) : new Set();
+    act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
+    const space = container.querySelector<HTMLElement>(".tree-drop-space")!;
+    act(() => space.dispatchEvent(dropEvent(["/outside/incoming"], "dragover")));
+
+    expect(space.classList.contains("active")).toBe(true);
+    expect(space.textContent).toBe(expanded ? "Add to workspace" : "Open as new workspace");
+    expect(container.querySelector(".tree")?.className).toBe("tree");
+    expect(container.querySelector(".workspace-root.drop-target")).toBeNull();
+    expect(space.previousElementSibling).toBeTruthy();
+
+    await act(async () => {
+      space.dispatchEvent(dropEvent(["/outside/incoming"]));
+      await Promise.resolve();
+    });
+    if (expanded) {
+      expect(store.dropIntoExplorer).toHaveBeenCalledWith(["/outside/incoming"]);
+      expect(store.openWorkspacePanel).not.toHaveBeenCalled();
+    } else {
+      expect(store.openWorkspacePanel).toHaveBeenCalledWith("/outside/incoming");
+      expect(store.dropIntoExplorer).not.toHaveBeenCalled();
+    }
+    expect(space.classList.contains("active")).toBe(false);
+  });
+
   it("imports an external folder dropped directly on the collapsed root", async () => {
     store.expanded = new Set(["alpha"]);
     act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
     const workspace = row(container, "workspace")!;
+    act(() => {
+      container.querySelector(".tree-drop-space")!.dispatchEvent(dropEvent(["/outside/advanced-web-concepts"], "dragover"));
+      workspace.dispatchEvent(dropEvent(["/outside/advanced-web-concepts"], "dragover"));
+    });
+    expect(workspace.classList.contains("drop-target")).toBe(true);
+    expect(container.querySelector(".tree-drop-space.active")).toBeNull();
     await act(async () => {
       workspace.dispatchEvent(dropEvent(["/outside/advanced-web-concepts"]));
       await Promise.resolve();
@@ -179,5 +213,17 @@ describe("FileSidebar single-file mode and external drops", () => {
 
     expect(store.dropIntoExplorer).toHaveBeenCalledWith(["/outside/advanced-web-concepts"]);
     expect(store.openWorkspacePanel).not.toHaveBeenCalled();
+  });
+
+  it("keeps an expanded workspace's empty drop area inside its group when another root follows it", () => {
+    store.panels = [session, { ...session, id: "other", directory: "/other" }];
+    act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
+    const space = container.querySelector<HTMLElement>(".tree-drop-space")!;
+    act(() => space.dispatchEvent(dropEvent(["/outside/notes.txt"], "dragover")));
+    const group = space.closest(".tree-workspace")!;
+    expect(group.querySelector(".workspace-root .tree-name")?.textContent).toBe("workspace");
+    expect(group.nextElementSibling?.querySelector(".tree-name")?.textContent).toBe("other");
+    expect(group.nextElementSibling?.classList.contains("drop-target")).toBe(false);
+    expect(space.textContent).toBe("Add to workspace");
   });
 });

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useCtxMenu, useStore } from "../store";
 import { OrbitMark } from "./OrbitMark";
@@ -475,8 +475,13 @@ export function FileSidebar({
   const dragPathsRef = useRef<string[] | null>(null);
   const [dropDir, setDropDir] = useState<string | null>(null);
   const [externalDrop, setExternalDrop] = useState(false);
+  const [blankMoveDrop, setBlankMoveDrop] = useState(false);
   const root = tree[""] ?? [];
   const orderedPanels = panels.length > 0 ? panels : session ? [session] : [];
+  const blankDropImports = Boolean(session && !singleFile && expanded.has(""));
+  const blankDropLabel = blankDropImports
+    ? `Add to ${session!.directory.split("/").filter(Boolean).pop() ?? "workspace"}`
+    : "Open as new workspace";
   const loadedSessionKey = useRef<string | null>(null);
   const selectedPathSet = new Set(selectedPaths);
 
@@ -596,11 +601,13 @@ export function FileSidebar({
       setDragPaths(paths);
     },
     onDragEnd: () => {
+      setBlankMoveDrop(false);
       dragPathsRef.current = null;
       setDragPaths(null);
       setDropDir(null);
     },
     onDirDragOver: (e, dir) => {
+      setBlankMoveDrop(false);
       if (drag.isExternalDrop(e)) {
         e.stopPropagation();
         e.preventDefault();
@@ -621,6 +628,7 @@ export function FileSidebar({
       setDropDir(dir);
     },
     onDirDrop: (e, dir) => {
+      setBlankMoveDrop(false);
       e.preventDefault();
       e.stopPropagation();
       const external = droppedFilePaths(e);
@@ -644,9 +652,11 @@ export function FileSidebar({
     const draggedPaths = dragPathsRef.current ?? dragPaths;
     if (!draggedPaths?.length && !drag.isExternalDrop(e)) return;
     if (drag.isExternalDrop(e)) {
+      setBlankMoveDrop(false);
       e.preventDefault();
       e.dataTransfer.dropEffect = "copy";
       if ((e.target as HTMLElement).closest(".tree-row")) {
+        setDropDir(null);
         setExternalDrop(false);
         return;
       }
@@ -655,20 +665,24 @@ export function FileSidebar({
       return;
     }
     if ((e.target as HTMLElement).closest(".tree-row")) {
+      setBlankMoveDrop(false);
       setDropDir(null);
       return;
     }
     if (!draggedPaths?.length) return;
     if (movableExplorerPaths(draggedPaths, "").length === 0) {
+      setBlankMoveDrop(false);
       setDropDir(null);
       return;
     }
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    setBlankMoveDrop(true);
     setDropDir("");
   };
 
   const onTreeDrop = (e: React.DragEvent): void => {
+    setBlankMoveDrop(false);
     e.preventDefault();
     const external = droppedFilePaths(e);
     const draggedPaths = dragPathsRef.current ?? dragPaths;
@@ -680,6 +694,10 @@ export function FileSidebar({
     setExternalDrop(false);
     if (external.length > 0) {
       if (targetRow) return;
+      if (blankDropImports) {
+        void dropIntoExplorer(external);
+        return;
+      }
       void Promise.all(external.map(async (path) => {
         const kind = await window.openshell.externalKind(path).catch(() => ({ kind: "missing" as const }));
         if (kind.kind === "directory") {
@@ -702,12 +720,18 @@ export function FileSidebar({
 
   const onTreeDragLeave = (e: React.DragEvent): void => {
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      setBlankMoveDrop(false);
       setExternalDrop(false);
       setDropDir(null);
     }
   };
 
   const changes = [...agentFiles.entries()];
+  const dropSpace = <div className={`tree-drop-space ${externalDrop || blankMoveDrop ? "active" : ""}`}>
+    {(externalDrop || blankMoveDrop) && <span className="tree-drop-label">
+      {externalDrop ? blankDropLabel : `Move into ${session?.directory.split("/").filter(Boolean).pop() ?? "workspace"}`}
+    </span>}
+  </div>;
 
   if (collapsed) {
     return null;
@@ -729,8 +753,7 @@ export function FileSidebar({
         </div>
         <div className="sidebar-section explorer">
           <div
-             className={`tree ${externalDrop ? "external-drop-active" : ""}`}
-             style={{ "--workspace-drop-top": `${orderedPanels.length * 26 + 2}px` } as CSSProperties}
+             className="tree"
              onDragEnter={onTreeDragEnter}
              onDragOver={onTreeDragOver}
              onDrop={onTreeDrop}
@@ -748,6 +771,9 @@ export function FileSidebar({
               <FileIcon name={name} isDir={false} />
               <span className="tree-name">{name}</span>
               {singleFileUnsaved && <span className="tree-unsaved-dot" title="Unsaved changes" aria-label="Unsaved changes" />}
+            </div>
+            <div className={`tree-drop-space ${externalDrop ? "active" : ""}`}>
+              {externalDrop && <span className="tree-drop-label">Open as new workspace</span>}
             </div>
           </div>
         </div>
@@ -892,9 +918,8 @@ export function FileSidebar({
         <div className="sidebar-section explorer">
           <div
              ref={treeRef}
-             className={`tree ${dropDir === "" && !externalDrop ? "drop-root" : ""} ${externalDrop ? "external-drop-active" : ""}`}
+             className="tree"
              tabIndex={0}
-             style={{ "--workspace-drop-top": `${orderedPanels.length * 26 + 2}px` } as CSSProperties}
              onKeyDown={onTreeKeyDown}
              onDragEnter={onTreeDragEnter}
              onDragOver={onTreeDragOver}
@@ -925,7 +950,7 @@ export function FileSidebar({
                 <span className="tree-name">{panel.directory.split("/").filter(Boolean).pop() ?? "workspace"}</span>
               </div>
             ) : (
-              <Fragment key={panel.id}>
+              <div key={panel.id} className={`tree-workspace ${expanded.has("") ? "expanded" : ""}`}>
                 {(!session || (root.length === 0 && !expanded.has(""))) && <div className="tree-empty">Loading…</div>}
                 <div
                     className={`tree-row dir workspace-root ${index > 0 ? "workspace-root-secondary" : ""} ${expanded.has("") ? "open" : ""} ${dropDir === "" ? "drop-target" : ""}`}
@@ -962,8 +987,10 @@ export function FileSidebar({
                     onCancel={cancelPending}
                   />
                 )}
-              </Fragment>
+                {blankDropImports && dropSpace}
+              </div>
             ))}
+            {!blankDropImports && dropSpace}
           </div>
         </div>
       )}

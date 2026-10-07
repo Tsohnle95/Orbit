@@ -427,10 +427,22 @@
 
 .tree {
   position: relative;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   overflow-y: auto;
   padding: 2px 8px 14px;
 }
+
+.tree > :not(.tree-drop-space) { flex-shrink: 0; }
+
+.tree-workspace {
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-workspace.expanded { flex: 1 0 auto; }
+.tree-workspace > :not(.tree-drop-space) { flex-shrink: 0; }
 
 .tree-empty {
   padding: 10px 12px;
@@ -500,28 +512,25 @@
   border-radius: 0;
 }
 
-.tree.drop-root {
+.tree-drop-space {
+  flex: 1 0 64px;
+  margin-top: 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.tree-drop-space.active {
+  border-color: var(--accent);
   background: var(--accent-tint);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
-.tree.external-drop-active {
-  background: color-mix(in srgb, var(--accent-tint) 72%, var(--bg-panel));
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-.tree.external-drop-active::after {
-  content: "";
-  position: absolute;
-  top: var(--workspace-drop-top, 28px);
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 2;
+.tree-drop-label {
+  display: block;
+  padding: 12px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
   pointer-events: none;
-  border: 2px solid var(--accent);
-  background: var(--accent-tint);
-  opacity: 0.35;
 }
 
 .tree-row.file.active {

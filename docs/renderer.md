@@ -444,9 +444,12 @@ Key mechanisms:
   process, never interpreted as explorer moves. Dropping onto a folder row,
   including the current workspace root, **imports** the items into that folder
   (`importPaths` → `shell:fs-import`, then the tree refreshes the destination).
-  Dropping files and folders onto the empty explorer area imports files into
-  the current workspace and opens dropped folders as additional workspace
-  panels. The current workspace is a collapsible root row; its entries can be
+  Dropping files and folders into the remaining space below an expanded
+  workspace imports them into that workspace root. With the root collapsed,
+  that space opens dropped folders as additional workspace panels (files still
+  import into the current workspace). Only the remaining space is highlighted,
+  with a destination label; unrelated workspace rows stay unhighlighted.
+  The current workspace is a collapsible root row; its entries can be
   hidden with **Remove from Workspace** without deleting their on-disk files; **Delete**
    remains the destructive filesystem action. Dropping files and folders into
    the **editor pane** opens them via `openPaths` (folders become panels, files
