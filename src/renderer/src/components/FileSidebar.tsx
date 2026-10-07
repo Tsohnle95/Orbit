@@ -618,6 +618,7 @@ export function FileSidebar({
     },
     onDirDrop: (e, dir) => {
       e.preventDefault();
+      e.stopPropagation();
       const external = droppedFilePaths(e);
       setDragPaths(null);
       setDropDir(null);
@@ -669,6 +670,7 @@ export function FileSidebar({
     setDropDir(null);
     setExternalDrop(false);
     if (external.length > 0) {
+      if (targetRow) return;
       void Promise.all(external.map(async (path) => {
         const kind = await window.openshell.externalKind(path).catch(() => ({ kind: "missing" as const }));
         if (kind.kind === "directory") {
@@ -921,7 +923,7 @@ export function FileSidebar({
                   data-explorer-root=""
                   onClick={() => void toggleDir("")}
                   onDragOver={(e) => drag.onDirDragOver(e, "")}
-                   onDrop={onTreeDrop}
+                  onDrop={(e) => drag.onDirDrop(e, "")}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     e.stopPropagation();

@@ -437,16 +437,15 @@ Key mechanisms:
   onto a folder row moves the entry into it and dropping onto the empty tree
   area or workspace root moves it to the workspace root. The hovered
   destination gets a drop indicator.
- - **External drag-and-drop** — OS file/folder drops are accepted with
+- **External drag-and-drop** — OS file/folder drops are accepted with
   a file item/type in `DataTransfer` and routed through the main
-  process, never interpreted as explorer moves. Dropping onto a folder row
-  **imports** the items into that folder (`importPaths` →
-  `shell:fs-import`, then the tree refreshes the destination); dropping
-  files and folders onto the empty explorer area imports them into the current
-   workspace without changing the active panels, except that a dropped folder
-   at the root is opened as an additional workspace panel. The current workspace itself
-  is rendered as a collapsible root row. Its entries can be hidden with
-  **Remove from Workspace** without deleting their on-disk files; **Delete**
+  process, never interpreted as explorer moves. Dropping onto a folder row,
+  including the current workspace root, **imports** the items into that folder
+  (`importPaths` → `shell:fs-import`, then the tree refreshes the destination).
+  Dropping files and folders onto the empty explorer area imports files into
+  the current workspace and opens dropped folders as additional workspace
+  panels. The current workspace is a collapsible root row; its entries can be
+  hidden with **Remove from Workspace** without deleting their on-disk files; **Delete**
    remains the destructive filesystem action. Dropping files and folders into
    the **editor pane** opens them via `openPaths` (folders become panels, files
    become tabs); outside files save back to their absolute path via
