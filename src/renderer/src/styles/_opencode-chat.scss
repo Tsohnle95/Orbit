@@ -86,6 +86,20 @@
   overflow-wrap: anywhere;
 }
 
+@scope (.opencode-timeline) {
+  [data-component="markdown"] {
+    overflow-wrap: anywhere;
+
+    table {
+      display: table;
+      table-layout: fixed;
+      max-width: 100%;
+    }
+
+    th, td { overflow-wrap: anywhere; }
+  }
+}
+
 .agent-panel .agent-scroll {
   padding: 12px 0 24px;
   gap: 0;

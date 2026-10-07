@@ -137,7 +137,7 @@ describe("store external files", () => {
     expect(store.unsavedEditorFileCount).toBe(0);
   });
 
-  it("automatically saves editor changes after typing settles", async () => {
+  it("keeps edits off disk until the user saves, even after typing settles", async () => {
     const openExternal = vi.fn(async (): Promise<ExternalOpenResult> => ({
       kind: "standalone", path: "/outside/notes.txt", content: "v1"
     }));
@@ -151,8 +151,71 @@ describe("store external files", () => {
     expect(store.unsavedEditorFileCount).toBe(1);
     await act(async () => new Promise((resolve) => setTimeout(resolve, 750)));
 
+    expect(writeStandalone).not.toHaveBeenCalled();
+    expect(store.unsavedEditorFileCount).toBe(1);
+    await act(async () => store.saveTab("/outside/notes.txt"));
     expect(writeStandalone).toHaveBeenCalledWith("/outside/notes.txt", "v2", "v1", false);
     expect(store.unsavedEditorFileCount).toBe(0);
+  });
+
+  it("saves dirty files in all workspaces without navigating to their tabs", async () => {
+    const writeStandalone = vi.fn(async () => {});
+    window.openshell = api({
+      openExternal: async (_workspace, path) => ({ kind: "standalone", path, content: "v1" }),
+      writeStandalone
+    });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openExternalPath("/outside/one.txt"));
+    act(() => store.editContent("/outside/one.txt", "one edited"));
+    await act(async () => store.openWorkspacePanel("/two"));
+    await act(async () => store.openExternalPath("/outside/two.txt"));
+    act(() => store.editContent("/outside/two.txt", "two edited"));
+    const activeID = store.session!.id;
+    let saved = false;
+    await act(async () => { saved = await store.saveAllEditorFiles(); });
+    expect(saved).toBe(true);
+    expect(writeStandalone).toHaveBeenCalledWith("/outside/one.txt", "one edited", "v1", false);
+    expect(writeStandalone).toHaveBeenCalledWith("/outside/two.txt", "two edited", "v1", false);
+    expect(store.unsavedEditorFileCount).toBe(0);
+    expect(store.session!.id).toBe(activeID);
+  });
+
+  it("does not approve quitting when a save fails", async () => {
+    window.openshell = api({
+      openExternal: async (_workspace, path) => ({ kind: "standalone", path, content: "v1" }),
+      writeStandalone: async () => { throw new Error("disk write failed"); }
+    });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openExternalPath("/outside/one.txt"));
+    act(() => store.editContent("/outside/one.txt", "edited"));
+    let saved = true;
+    await act(async () => { saved = await store.saveAllEditorFiles(); });
+    expect(saved).toBe(false);
+    expect(store.unsavedEditorFileCount).toBe(1);
+  });
+
+  it("keeps the app open if the buffer changes while Save All is writing", async () => {
+    let finishWrite: (() => void) | undefined;
+    window.openshell = api({
+      openExternal: async (_workspace, path) => ({ kind: "standalone", path, content: "v1" }),
+      writeStandalone: () => new Promise<void>((resolve) => { finishWrite = resolve; })
+    });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openExternalPath("/outside/one.txt"));
+    act(() => store.editContent("/outside/one.txt", "first edit"));
+    let saving = Promise.resolve(false);
+    act(() => { saving = store.saveAllEditorFiles(); });
+    await act(async () => Promise.resolve());
+    expect(finishWrite).toBeDefined();
+    act(() => store.editContent("/outside/one.txt", "newer edit"));
+    let saved = true;
+    await act(async () => { finishWrite?.(); saved = await saving; });
+    expect(saved).toBe(false);
+    expect(store.tabs[0].content).toBe("newer edit");
+    expect(store.unsavedEditorFileCount).toBe(1);
   });
 
   it("saves dirty tabs before closing their workspace", async () => {

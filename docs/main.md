@@ -267,6 +267,7 @@ Internals:
 | `shell:update-opencode` | `() → OpenCodeSyncResult` — runs OpenCode's updater, then syncs the shared service to the resulting CLI version |
 | `shell:app-update-check` | `() → OrbitAppUpdateStatus` — in release builds checks the latest published GitHub release against the installed app version; local development/test builds return disabled without network access |
 | `shell:unsaved-editor-files` | `(string[]) → void` — records bounded display paths for dirty editor tabs so the close guard and updater can name them |
+| `shell:save-editor-files-result` | `(requestID, saved) → void` — trusted renderer reply to the pending Save All request; a failed or stale reply cannot approve closing |
 | `shell:app-update` | `() → OrbitAppUpdateResult` — release builds reject while editor files are unsaved; shows a reload-safe progress window while hiding Orbit's main window, downloads the published app update, then calls `autoUpdater.quitAndInstall()` to replace and relaunch the app; a failed check/download leaves Orbit open; local builds return disabled without network access |
 | `shell:active-sessions` | `() → SessionInfo[]` — open backend sessions, most recently activated last |
 | `shell:close-session` | `(workspace) → void` — tears down the backend context when a panel closes; the opencode session remains reopenable |
@@ -421,10 +422,12 @@ exit events to drain, then detaches the callbacks so no pty callback can
 fire into Node teardown and abort the process. The `before-quit` handler
 bounds the whole shutdown at 10s and always proceeds to `app.quit()`. On a
 window close or app quit, the renderer cancels unload while any editor tab is
-dirty. `will-prevent-unload` shows a native warning with the reported dirty
-file paths and only a Return to Orbit action; Orbit remains open until the
-files are saved. The app updater also checks the same dirty-file list before
-starting.
+dirty. `will-prevent-unload` offers Save All, Don't Save, and Cancel with the
+reported dirty file paths. Save All sends `shell:save-editor-files-request` to
+the trusted renderer and resumes the close or reload only after all buffers
+save successfully. Failed saves or a missing reply keep Orbit open; Don't Save
+approves discarding the buffers, while Cancel leaves the window open. The app
+updater also checks the same dirty-file list before starting.
 Backend and terminal shutdown starts only after the window has closed.
 `before-input-event` intercepts ⌘W / Ctrl+W so it never closes the window.
 Editor word wrap is always enabled.

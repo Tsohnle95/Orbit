@@ -92,6 +92,8 @@ let appUpdaterWindow: BrowserWindow | null = null;
 let appUpdaterWindowCanClose = false;
 let appUpdateRunning = false;
 let unsavedEditorFileNames: string[] = [];
+let editorSaveSequence = 0;
+let pendingEditorSave: { id: string; finish: (saved: boolean) => void } | null = null;
 let closeRequestPending = false;
 let appQuitRequested = false;
 let trustedLocation: TrustedApplicationLocation | null = null;
@@ -336,22 +338,55 @@ function createWindow(show = true): BrowserWindow {
   newWin.center();
   const wc = newWin.webContents;
 
-  wc.on("will-prevent-unload", () => {
-    const shortcut = process.platform === "darwin" ? "⌘S" : "Ctrl+S";
+  wc.on("will-prevent-unload", (event) => {
+    if (pendingEditorSave) return;
     const files = unsavedEditorFileNames.slice(0, 16).map(briefFilePath);
-    dialog.showMessageBoxSync(newWin, {
+    const action = appQuitRequested ? "quitting" : closeRequestPending ? "closing" : "reloading";
+    const choice = dialog.showMessageBoxSync(newWin, {
       type: "warning",
       title: "Unsaved Changes",
-      message: files.length > 0
-        ? `Save these ${unsavedEditorFileNames.length === 1 ? "file" : "files"} before closing Orbit.`
-        : "Save your unsaved files before closing Orbit.",
-      detail: `${files.map((file) => `• ${file}`).join("\n")}${unsavedEditorFileNames.length > files.length ? `\n• and ${unsavedEditorFileNames.length - files.length} more` : ""}\n\nUse ${shortcut} in each file, then close Orbit.`,
-      buttons: ["Return to Orbit"],
+      message: `Do you want to save your changes before ${action} Orbit?`,
+      detail: `${files.map((file) => `• ${file}`).join("\n")}${unsavedEditorFileNames.length > files.length ? `\n• and ${unsavedEditorFileNames.length - files.length} more` : ""}`,
+      buttons: ["Save All", "Don't Save", "Cancel"],
       defaultId: 0,
-      cancelId: 0
+      cancelId: 2
     });
+    if (choice === 1) {
+      event.preventDefault();
+      return;
+    }
+    const closing = closeRequestPending;
+    const quitRequested = appQuitRequested;
     closeRequestPending = false;
     appQuitRequested = false;
+    if (choice !== 0) return;
+    const id = String(++editorSaveSequence);
+    const saved = new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => pendingEditorSave?.id === id && pendingEditorSave.finish(false), 30_000);
+      pendingEditorSave = { id, finish: (success) => {
+        clearTimeout(timer);
+        pendingEditorSave = null;
+        resolve(success);
+      } };
+      wc.send("shell:save-editor-files-request", id);
+    });
+    void saved.then((success) => {
+      if (newWin.isDestroyed()) return;
+      if (!success) {
+        closeRequestPending = false;
+        appQuitRequested = false;
+        void dialog.showMessageBox(newWin, {
+          type: "error", title: "Files could not be saved",
+          message: "Orbit stayed open because some files could not be saved.",
+          detail: "Your edits are still in the editor. Check the save error before trying again.", buttons: ["OK"]
+        });
+        return;
+      }
+      unsavedEditorFileNames = [];
+      appQuitRequested = quitRequested;
+      if (closing || quitRequested) newWin.close();
+      else wc.reload();
+    });
   });
 
   wc.on("console-message", (event) => {
@@ -937,6 +972,10 @@ function registerIpc(): void {
         typeof value === "string" && value.length > 0 && value.length <= 2_048 && !/[\u0000-\u001f\u007f]/.test(value)
       ))].slice(0, 256)
       : [];
+  });
+
+  handleTrusted("shell:save-editor-files-result", async (_e, requestID: unknown, saved: unknown) => {
+    if (typeof requestID === "string" && pendingEditorSave?.id === requestID) pendingEditorSave.finish(saved === true);
   });
 
   handleTrusted("shell:app-update", async () => updateOrbitApp());

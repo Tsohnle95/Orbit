@@ -82,6 +82,15 @@ const api = {
   updateApp: (): Promise<OrbitAppUpdateResult> => ipcRenderer.invoke("shell:app-update"),
   reportUnsavedEditorFiles: (paths: string[]): Promise<void> =>
     ipcRenderer.invoke("shell:unsaved-editor-files", paths),
+  onSaveAllEditorFiles: (save: () => Promise<boolean>): (() => void) => {
+    const listener = (_event: unknown, requestID: string): void => {
+      void Promise.resolve().then(save).catch(() => false).then((saved) =>
+        ipcRenderer.invoke("shell:save-editor-files-result", requestID, saved)
+      ).catch(() => {});
+    };
+    ipcRenderer.on("shell:save-editor-files-request", listener);
+    return () => ipcRenderer.removeListener("shell:save-editor-files-request", listener);
+  },
   sessions: (): Promise<SessionSummary[]> => ipcRenderer.invoke("shell:sessions"),
   activeSessions: (): Promise<SessionInfo[]> => ipcRenderer.invoke("shell:active-sessions"),
   closeSession: (workspace: WorkspaceIdentity): Promise<void> => ipcRenderer.invoke("shell:close-session", workspace),

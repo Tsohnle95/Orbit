@@ -178,7 +178,7 @@ dialog), `reopenSession(id, silent)`
 `closePanel(id)`, `loadSessions`, `sendPrompt(text, files, workspace?)`, `stop(workspace?)`,
 `refreshProviderUsage`, `loadModels(workspace?)`, `switchModel(id, providerID, variant?, workspace?)`,
 `loadAgents(workspace?)`, `switchAgent(id, workspace?)`, `toggleApprovalMode`,
-`openFile(path, {mode}, workspace?)`, `closeTab`, `setActive`, `setTabMode`, `editContent`, `saveTab`,
+`openFile(path, {mode}, workspace?)`, `closeTab`, `setActive`, `setTabMode`, `editContent`, `saveTab`, `saveAllEditorFiles`,
 `reloadTab`, `overwriteTab`, `mergeTab`, `toggleDir`, `ensureRootOpen`,
 `replyPermission(requestID, reply, sessionID?)`,
 `reconcilePermissions` (polls `shell:list-permissions` per open panel workspace on a 3s interval and on
@@ -296,10 +296,11 @@ Key mechanisms:
   state retains parsed input, content blocks, metadata, execution state, and
   provider state. Durable end/snapshot events are authoritative; terminal
   tool states cannot regress when events arrive late.
-- **Revision-safe auto-save** — editing updates the in-memory tab and marks it
-  dirty only while its buffer differs from the saved content; undoing back to
-  that content clears the orange indicator and unsaved-file guards. After 650ms
-  without edits, Orbit saves the latest revision automatically. `EditorPersistence`
+- **Manual, revision-safe persistence** — editing updates the in-memory tab
+  and marks it dirty only while its buffer differs from the saved content; undoing back to
+  that content clears the orange indicator and unsaved-file guards. Typing
+  stays in memory until Save or ⌘S/Ctrl+S; Vite sees only saved edits.
+  `EditorPersistence`
   receives an immutable workspace/path/content/revision snapshot, serializes
   writes per workspace/file, and strongly identifies echoes. Save and ⌘S/Ctrl+S
   still save immediately. Dirty clears only for the matching current revision.
@@ -307,10 +308,11 @@ Key mechanisms:
   unmount invalidate expected echoes and in-flight completions. Closing a dirty
   tab saves it first; unresolved conflicts keep the tab open. Any dirty tab in
   any workspace blocks window unload until the save completes or the user
-  confirms discarding it.
+  confirms discarding it. The native quit dialog can save all dirty editor files
+  across workspaces without navigating to their tabs; failed saves keep Orbit open.
   External updates advance a per-path conflict generation, so completion of a
   write already in flight cannot clear the newer conflict.
-  External updates preserve edits and pause auto-save until explicit Reload,
+  External updates preserve edits and pause saving until explicit Reload,
   Overwrite, or Keep editing to merge followed by Save merged content.
 - **Diff wiring** — tabs carry the first established known/unknown `baseline`
   from `agentFiles`; saves do not replace it. Known content enables Diff,
@@ -344,7 +346,9 @@ Key mechanisms:
   parts, and a hover footer with copy plus the owning message’s agent/model and turn
   duration. Revert belongs to the user-message footer. The source styles under
   `styles/opencode/` are pinned to upstream revision `03e67171`; Orbit’s theme colors
-  and responsive code wrapping remain intentional overrides in `_opencode-chat.scss`.
+  and responsive code/table wrapping remain intentional overrides in `_opencode-chat.scss`.
+  Markdown tables use fixed column layout and break long cell content; paths
+  and prose break within the panel rather than increasing its intrinsic width.
   The ported semantic tokens follow the active appearance’s light/dark scheme.
   Reasoning parts are
   hidden (OpenCode's default `showReasoningSummaries: false`) and surface only as

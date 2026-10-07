@@ -1169,7 +1169,7 @@ export default function App(): ReactNode {
 }
 
 function Root(): ReactNode {
-  const { session, unsavedEditorFileCount, unsavedEditorFiles } = useStore();
+  const { session, unsavedEditorFileCount, unsavedEditorFiles, saveAllEditorFiles } = useStore();
   const wasOpen = useRef(false);
   const [enteredIde, setEnteredIde] = useState(false);
   const pendingView = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1182,6 +1182,15 @@ function Root(): ReactNode {
     window.addEventListener("beforeunload", preventClose);
     return () => window.removeEventListener("beforeunload", preventClose);
   }, [unsavedEditorFileCount]);
+
+  useEffect(() => {
+    if (typeof window.openshell.onSaveAllEditorFiles !== "function") return;
+    return window.openshell.onSaveAllEditorFiles(async () => {
+      const saved = await saveAllEditorFiles();
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      return saved;
+    });
+  }, [saveAllEditorFiles]);
 
   const unsavedFilePaths = unsavedEditorFiles.map((file) => file.displayPath);
   const unsavedFilePathsKey = JSON.stringify(unsavedFilePaths);
