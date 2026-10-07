@@ -194,6 +194,8 @@ Internals:
   from the visible chat. Tool status comes
   from streaming/running/completed/error; parsed input, text/file content,
   metadata, provider state, duration, retry, error, and completion are restored.
+  V2 text/reasoning blocks without explicit IDs use per-type ordinals matching
+  the live stream, so prompt completion and rehydration update the same parts.
 - `loadSessionMessages(sessionID)` — `message.list` with one retry; follows
   `cursor.next` pages (first page `order: "asc"`, later pages cursor-only, capped
   at 200) so conversations longer than the server's default page size load

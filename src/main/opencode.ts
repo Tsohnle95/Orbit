@@ -454,8 +454,11 @@ export function replayTranscript(messages: unknown[]): TranscriptItem[] {
       const completed = Boolean(
         (info.time as Record<string, unknown> | undefined)?.completed ?? info.finish ?? info.error
       );
+      // V2 stream ordinals count each part type independently, not positions in content.
+      const ordinals = { text: 0, reasoning: 0 };
       const assistantParts = content.flatMap((part, index): AssistantPartView[] => {
-        const id = String(part.id ?? `${String(info.id)}:${String(part.type)}:${index}`);
+        const ordinal = part.type === "text" || part.type === "reasoning" ? ordinals[part.type]++ : index;
+        const id = String(part.id ?? `${String(info.id)}:${String(part.type)}:${ordinal}`);
         if (part.type === "text" || part.type === "reasoning") {
           const time = (part.time ?? {}) as Record<string, unknown>;
           return [{

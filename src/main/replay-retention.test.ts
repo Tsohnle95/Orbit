@@ -12,6 +12,21 @@ vi.mock("@opencode/client/service", () => ({ Service: {} }));
 import { replayTranscript } from "./opencode";
 
 describe("replay retention", () => {
+  it("assigns type-specific ordinals to interleaved V2 parts while retaining repeated text and explicit IDs", () => {
+    const transcript = replayTranscript([{
+      id: "a", type: "assistant", time: { completed: 100 }, content: [
+        { type: "reasoning", text: "Plan" },
+        { type: "text", text: "Repeated text" },
+        { type: "reasoning", text: "More thinking" },
+        { type: "text", text: "Repeated text" },
+        { type: "text", id: "prt_existing", text: "Canonical part" }
+      ]
+    }]);
+    expect(transcript[0]).toMatchObject({ parts: [
+      { id: "a:reasoning:0" }, { id: "a:text:0" }, { id: "a:reasoning:1" }, { id: "a:text:1" }, { id: "prt_existing" }
+    ] });
+  });
+
   it("replays V2 message presentation with upstream parent and selection inheritance", () => {
     const transcript = replayTranscript([
       { id: "agent", type: "agent-switched", agent: "plan" },
