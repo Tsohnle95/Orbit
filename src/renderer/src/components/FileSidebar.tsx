@@ -472,6 +472,7 @@ export function FileSidebar({
   const selectionAnchor = useRef<string | null>(null);
   const treeRef = useRef<HTMLDivElement>(null);
   const [dragPaths, setDragPaths] = useState<string[] | null>(null);
+  const dragPathsRef = useRef<string[] | null>(null);
   const [dropDir, setDropDir] = useState<string | null>(null);
   const [externalDrop, setExternalDrop] = useState(false);
   const root = tree[""] ?? [];
@@ -591,9 +592,11 @@ export function FileSidebar({
       e.dataTransfer.setData("text/plain", paths[0] ?? path);
       e.dataTransfer.setData(EXPLORER_PATHS_MIME, JSON.stringify(paths));
       e.dataTransfer.effectAllowed = "move";
+      dragPathsRef.current = paths;
       setDragPaths(paths);
     },
     onDragEnd: () => {
+      dragPathsRef.current = null;
       setDragPaths(null);
       setDropDir(null);
     },
@@ -606,9 +609,10 @@ export function FileSidebar({
         setExternalDrop(false);
         return;
       }
-      if (!dragPaths?.length) return;
+      const draggedPaths = dragPathsRef.current ?? dragPaths;
+      if (!draggedPaths?.length) return;
       e.stopPropagation();
-      if (movableExplorerPaths(dragPaths, dir).length === 0) {
+      if (movableExplorerPaths(draggedPaths, dir).length === 0) {
         setDropDir(null);
         return;
       }
@@ -620,6 +624,8 @@ export function FileSidebar({
       e.preventDefault();
       e.stopPropagation();
       const external = droppedFilePaths(e);
+      const draggedPaths = dragPathsRef.current ?? dragPaths;
+      dragPathsRef.current = null;
       setDragPaths(null);
       setDropDir(null);
       setExternalDrop(false);
@@ -628,14 +634,15 @@ export function FileSidebar({
         return;
       }
       const sources = explorerPathsFromDrag(e);
-      const selection = sources.length > 0 ? sources : dragPaths;
+      const selection = sources.length > 0 ? sources : draggedPaths;
       if (!selection?.length) return;
       moveSelection(selection, dir);
     }
   };
 
   const onTreeDragOver = (e: React.DragEvent): void => {
-    if (!dragPaths?.length && !drag.isExternalDrop(e)) return;
+    const draggedPaths = dragPathsRef.current ?? dragPaths;
+    if (!draggedPaths?.length && !drag.isExternalDrop(e)) return;
     if (drag.isExternalDrop(e)) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "copy";
@@ -651,8 +658,8 @@ export function FileSidebar({
       setDropDir(null);
       return;
     }
-    if (!dragPaths?.length) return;
-    if (movableExplorerPaths(dragPaths, "").length === 0) {
+    if (!draggedPaths?.length) return;
+    if (movableExplorerPaths(draggedPaths, "").length === 0) {
       setDropDir(null);
       return;
     }
@@ -664,6 +671,8 @@ export function FileSidebar({
   const onTreeDrop = (e: React.DragEvent): void => {
     e.preventDefault();
     const external = droppedFilePaths(e);
+    const draggedPaths = dragPathsRef.current ?? dragPaths;
+    dragPathsRef.current = null;
     const targetRow = (e.target as HTMLElement).closest(".tree-row");
     if (external.length === 0 && targetRow && !targetRow.hasAttribute("data-explorer-root")) return;
     setDragPaths(null);
@@ -682,7 +691,7 @@ export function FileSidebar({
       return;
     }
     const sources = explorerPathsFromDrag(e);
-    const selection = sources.length > 0 ? sources : dragPaths;
+    const selection = sources.length > 0 ? sources : draggedPaths;
     if (!selection?.length) return;
     moveSelection(selection, "");
   };

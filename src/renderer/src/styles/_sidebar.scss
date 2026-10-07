@@ -474,6 +474,9 @@
   transition: background 100ms var(--ease);
 }
 
+.tree-row[draggable="true"] { cursor: grab; }
+.tree-row[draggable="true"]:active { cursor: grabbing; }
+
 .tree-row:hover { background: var(--bg-hover); }
 
 .tree-row.selected {

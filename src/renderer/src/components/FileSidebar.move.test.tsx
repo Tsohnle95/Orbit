@@ -154,6 +154,7 @@ describe("FileSidebar drag-and-drop moves", () => {
     act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
     const source = row(container, "note.txt");
     const target = row(container, "beta");
+    expect(source.draggable).toBe(true);
 
     act(() => source.dispatchEvent(dragEvent("dragstart")));
     act(() => target.dispatchEvent(dragEvent("dragover")));
@@ -161,6 +162,7 @@ describe("FileSidebar drag-and-drop moves", () => {
     act(() => target.dispatchEvent(dragEvent("drop")));
 
     expect(store.moveEntry).toHaveBeenCalledWith("note.txt", "beta");
+    expect(store.moveEntry).toHaveBeenCalledTimes(1);
   });
 
   it("selects several rows with Command and moves them together", () => {
@@ -206,6 +208,7 @@ describe("FileSidebar drag-and-drop moves", () => {
     act(() => target.dispatchEvent(dragEvent("drop")));
 
     expect(store.moveEntry).toHaveBeenCalledWith("alpha", "beta");
+    expect(store.moveEntry).toHaveBeenCalledTimes(1);
   });
 
   it("drops onto the empty tree area to move to the session root", () => {

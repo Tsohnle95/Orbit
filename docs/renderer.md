@@ -296,19 +296,21 @@ Key mechanisms:
   state retains parsed input, content blocks, metadata, execution state, and
   provider state. Durable end/snapshot events are authoritative; terminal
   tool states cannot regress when events arrive late.
-- **Manual, revision-safe persistence** — editing updates the in-memory tab and
-  marks it dirty only while its buffer differs from the saved content; undoing
-  back to that content clears the orange indicator and unsaved-file guards. It
-  does not write to disk. `EditorPersistence` receives an
-  immutable workspace/path/content/revision snapshot only when the user clicks
-  Save or presses ⌘S/Ctrl+S, serializes writes per workspace/file, and strongly
-  identifies echoes. Dirty clears only for the matching current revision.
+- **Revision-safe auto-save** — editing updates the in-memory tab and marks it
+  dirty only while its buffer differs from the saved content; undoing back to
+  that content clears the orange indicator and unsaved-file guards. After 650ms
+  without edits, Orbit saves the latest revision automatically. `EditorPersistence`
+  receives an immutable workspace/path/content/revision snapshot, serializes
+  writes per workspace/file, and strongly identifies echoes. Save and ⌘S/Ctrl+S
+  still save immediately. Dirty clears only for the matching current revision.
 - **Lifecycle and conflicts** — reset, close, delete, rename, switch, and
-  unmount invalidate expected echoes and in-flight completions. Any dirty tab
-  in any workspace blocks window unload until the user confirms discarding it.
+  unmount invalidate expected echoes and in-flight completions. Closing a dirty
+  tab saves it first; unresolved conflicts keep the tab open. Any dirty tab in
+  any workspace blocks window unload until the save completes or the user
+  confirms discarding it.
   External updates advance a per-path conflict generation, so completion of a
   write already in flight cannot clear the newer conflict.
-  External updates preserve edits and pause saving until explicit Reload,
+  External updates preserve edits and pause auto-save until explicit Reload,
   Overwrite, or Keep editing to merge followed by Save merged content.
 - **Diff wiring** — tabs carry the first established known/unknown `baseline`
   from `agentFiles`; saves do not replace it. Known content enables Diff,

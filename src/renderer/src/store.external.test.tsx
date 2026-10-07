@@ -137,6 +137,53 @@ describe("store external files", () => {
     expect(store.unsavedEditorFileCount).toBe(0);
   });
 
+  it("automatically saves editor changes after typing settles", async () => {
+    const openExternal = vi.fn(async (): Promise<ExternalOpenResult> => ({
+      kind: "standalone", path: "/outside/notes.txt", content: "v1"
+    }));
+    const writeStandalone = vi.fn(async () => {});
+    window.openshell = api({ openExternal, writeStandalone });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openExternalPath("/outside/notes.txt"));
+    act(() => store.editContent("/outside/notes.txt", "v2"));
+
+    expect(store.unsavedEditorFileCount).toBe(1);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 750)));
+
+    expect(writeStandalone).toHaveBeenCalledWith("/outside/notes.txt", "v2", "v1", false);
+    expect(store.unsavedEditorFileCount).toBe(0);
+  });
+
+  it("saves dirty tabs before closing their workspace", async () => {
+    const openExternal = vi.fn(async (): Promise<ExternalOpenResult> => ({
+      kind: "standalone", path: "/outside/notes.txt", content: "v1"
+    }));
+    let finishWrite: (() => void) | null = null;
+    const writeStandalone = vi.fn(() => new Promise<void>((resolve) => { finishWrite = resolve; }));
+    const closeSession = vi.fn(async () => {});
+    window.openshell = api({ openExternal, writeStandalone, closeSession });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openExternalPath("/outside/notes.txt"));
+    act(() => store.editContent("/outside/notes.txt", "v2"));
+
+    act(() => store.closePanel(store.session!.id));
+    await act(async () => Promise.resolve());
+
+    expect(writeStandalone).toHaveBeenCalledWith("/outside/notes.txt", "v2", "v1", false);
+    expect(closeSession).not.toHaveBeenCalled();
+    expect(store.unsavedEditorFileCount).toBe(1);
+
+    await act(async () => {
+      finishWrite?.();
+      await Promise.resolve();
+    });
+
+    expect(closeSession).toHaveBeenCalledOnce();
+    expect(store.unsavedEditorFileCount).toBe(0);
+  });
+
   it("clears the unsaved state when an edit is undone back to the saved content", async () => {
     const openExternal = vi.fn(async (): Promise<ExternalOpenResult> => ({
       kind: "standalone", path: "/outside/notes.txt", content: "v1"

@@ -278,6 +278,8 @@ const HIDDEN_DIRS = new Set([
   ".git", "node_modules", ".next", ".venv", "__pycache__", ".cache", ".turbo", ".svn", ".hg", ".nx", ".openshell-recovery"
 ]);
 
+const EDITOR_AUTO_SAVE_DELAY_MS = 650;
+
 const MAX_EDITABLE_BYTES = 4 * 1024 * 1024;
 
 function normalizeTodos(value: unknown): TodoItem[] {
@@ -740,6 +742,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     });
   }
   const persistence = persistenceRef.current;
+  const editorAutoSaveTimersRef = useRef(new Map<string, { timer: ReturnType<typeof setTimeout>; revision: number }>());
+  const doSaveRef = useRef<(snapshot: SaveSnapshot, allowConflict?: boolean) => Promise<boolean>>(async () => false);
   const modelsByWorkspaceRef = useRef(modelsByWorkspace);
   modelsByWorkspaceRef.current = modelsByWorkspace;
   const agentsByWorkspaceRef = useRef(agentsByWorkspace);
@@ -756,6 +760,14 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const focusSeqRef = useRef(0);
   const startupRestoreStartedRef = useRef(false);
   const treeRefreshTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  const clearEditorAutoSaveTimer = useCallback((workspaceID: string, path: string): void => {
+    const key = `${workspaceID}\u0000${path}`;
+    const pending = editorAutoSaveTimersRef.current.get(key);
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    editorAutoSaveTimersRef.current.delete(key);
+  }, []);
 
   const refreshActiveSessions = useCallback(async (): Promise<SessionInfo[]> => {
     const sequence = ++activeRefreshSequenceRef.current;
@@ -1510,7 +1522,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     ejectPanelFromView(sessionID);
   }, [ejectPanelFromView]);
 
-  const closePanel = useCallback((sessionID: string, preserveBusy = false): void => {
+  const finishClosePanel = useCallback((sessionID: string, preserveBusy: boolean): void => {
     const closing = panelsRef.current.find((panel) => panel.id === sessionID);
     const active = activeSessionsRef.current.find((session) => session.id === sessionID);
     if (!closing && active) {
@@ -1538,6 +1550,35 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       void window.openshell.closeSession(ejected.workspace).catch(() => {});
     }
   }, [removeActiveSession, ejectPanelFromView]);
+
+  const closePanel = useCallback((sessionID: string, preserveBusy = false): void => {
+    const closing = panelsRef.current.find((panel) => panel.id === sessionID);
+    const active = activeSessionsRef.current.find((session) => session.id === sessionID);
+    const workspace = closing?.workspace ?? active?.workspace;
+    const dirtyTabs = workspace
+      ? (tabsByWorkspaceRef.current[workspace.id] ?? []).filter((tab) => tab.dirty || tab.conflict)
+      : [];
+    if (dirtyTabs.length > 0 && workspace) {
+      if (dirtyTabs.some((tab) => tab.conflict)) {
+        toast("Resolve external file conflicts before closing this workspace.", "error");
+        return;
+      }
+      const snapshots = dirtyTabs.map((tab) => ({
+        workspace,
+        path: tab.path,
+        content: tab.content,
+        expectedContent: tab.saved,
+        revision: tab.revision,
+        standalone: tab.standalone
+      }));
+      for (const tab of dirtyTabs) clearEditorAutoSaveTimer(workspace.id, tab.path);
+      void Promise.all(snapshots.map((snapshot) => doSaveRef.current(snapshot))).then((saved) => {
+        if (saved.every(Boolean)) finishClosePanel(sessionID, preserveBusy);
+      });
+      return;
+    }
+    finishClosePanel(sessionID, preserveBusy);
+  }, [clearEditorAutoSaveTimer, finishClosePanel, toast]);
 
   const replacePanels = useCallback((next: SessionInfo): void => {
     for (const panel of [...panelsRef.current]) {
@@ -2865,23 +2906,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     void refreshTree([...parents.flatMap((parent) => ancestorDirs(parent)), ...ancestorDirs(destDir)], workspace);
   }, [persistence, panelFor, toast, setTabsFor, setActivePathFor, setAgentFilesFor, refreshTree]);
 
-  const closeTab = useCallback((path: string) => {
-    const target = sessionRef.current?.workspace;
-    if (target) persistence.cancelPath(target, path);
-    if (!target) return;
-    setTabsFor(target.id, (prev) => {
-      const next = prev.filter((t) => t.path !== path);
-      setActivePathFor(target.id, (() => {
-        const active = activePathByWorkspace[target.id] ?? null;
-        if (active !== path) return active;
-        const idx = prev.findIndex((t) => t.path === path);
-        const neighbor = next[idx] ?? next[next.length - 1];
-        return neighbor ? neighbor.path : null;
-      })());
-      return next;
-    });
-  }, [persistence, setTabsFor, setActivePathFor, activePathByWorkspace]);
-
   const setActive = useCallback((path: string) => {
     const target = sessionRef.current?.workspace;
     if (target) setActivePathFor(target.id, path);
@@ -2897,10 +2921,12 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     async (snapshot: SaveSnapshot, allowConflict = false) => {
       const workspaceID = snapshot.workspace.id;
       const current = (tabsByWorkspaceRef.current[workspaceID] ?? []).find((tab) => tab.path === snapshot.path);
-      if (!current || (!allowConflict && current.conflict)) return;
+      if (!current || (!allowConflict && current.conflict)) return false;
       try {
         const result = await persistence.save(snapshot);
-        if (result !== "saved") return;
+        if (result !== "saved") return false;
+        const latest = (tabsByWorkspaceRef.current[workspaceID] ?? []).find((tab) => tab.path === snapshot.path);
+        if (!latest || latest.revision !== snapshot.revision) return false;
         setTabsFor(workspaceID, (prev) =>
           prev.map((t) =>
             t.path === snapshot.path && t.revision === snapshot.revision
@@ -2916,12 +2942,94 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
               : t
           )
         );
+        return true;
       } catch (err) {
         toast(`Failed to save ${snapshot.path}: ${err instanceof Error ? err.message : String(err)}`, "error");
+        return false;
       }
     },
     [persistence, toast, setTabsFor]
   );
+  doSaveRef.current = doSave;
+
+  useEffect(() => {
+    const dirtyPaths = new Set<string>();
+    for (const [workspaceID, workspaceTabs] of Object.entries(tabsByWorkspace)) {
+      const workspace = panelsRef.current.find((panel) => panel.workspace.id === workspaceID)?.workspace;
+      if (!workspace) continue;
+      for (const tab of workspaceTabs) {
+        if (!tab.dirty || tab.conflict) continue;
+        const key = `${workspaceID}\u0000${tab.path}`;
+        dirtyPaths.add(key);
+        const pending = editorAutoSaveTimersRef.current.get(key);
+        if (pending?.revision === tab.revision) continue;
+        if (pending) clearTimeout(pending.timer);
+        const timer = setTimeout(() => {
+          if (editorAutoSaveTimersRef.current.get(key)?.timer !== timer) return;
+          editorAutoSaveTimersRef.current.delete(key);
+          const latest = (tabsByWorkspaceRef.current[workspaceID] ?? []).find((candidate) => candidate.path === tab.path);
+          if (!latest?.dirty || latest.conflict || latest.revision !== tab.revision) return;
+          void doSave({
+            workspace,
+            path: latest.path,
+            content: latest.content,
+            expectedContent: latest.saved,
+            revision: latest.revision,
+            standalone: latest.standalone
+          });
+        }, EDITOR_AUTO_SAVE_DELAY_MS);
+        editorAutoSaveTimersRef.current.set(key, { timer, revision: tab.revision });
+      }
+    }
+    for (const [key, pending] of editorAutoSaveTimersRef.current) {
+      if (dirtyPaths.has(key)) continue;
+      clearTimeout(pending.timer);
+      editorAutoSaveTimersRef.current.delete(key);
+    }
+  }, [tabsByWorkspace, doSave]);
+
+  useEffect(() => () => {
+    for (const { timer } of editorAutoSaveTimersRef.current.values()) clearTimeout(timer);
+    editorAutoSaveTimersRef.current.clear();
+  }, []);
+
+  const closeTab = useCallback((path: string) => {
+    const target = sessionRef.current?.workspace;
+    if (!target) return;
+    const tab = (tabsByWorkspaceRef.current[target.id] ?? []).find((candidate) => candidate.path === path);
+    if (!tab) return;
+    clearEditorAutoSaveTimer(target.id, path);
+    const removeIfClean = (): void => {
+      setTabsFor(target.id, (prev) => {
+        const current = prev.find((candidate) => candidate.path === path);
+        if (!current || current.dirty || current.conflict) return prev;
+        const next = prev.filter((candidate) => candidate.path !== path);
+        const active = activePathByWorkspaceRef.current[target.id] ?? null;
+        if (active === path) {
+          const index = prev.findIndex((candidate) => candidate.path === path);
+          const neighbor = next[index] ?? next[next.length - 1];
+          setActivePathFor(target.id, neighbor?.path ?? null);
+        }
+        return next;
+      });
+    };
+    if (tab.dirty) {
+      if (tab.conflict) return;
+      void doSave({
+        workspace: target,
+        path,
+        content: tab.content,
+        expectedContent: tab.saved,
+        revision: tab.revision,
+        standalone: tab.standalone
+      }).then((saved) => {
+        if (saved) removeIfClean();
+      });
+      return;
+    }
+    persistence.cancelPath(target, path);
+    removeIfClean();
+  }, [clearEditorAutoSaveTimer, doSave, persistence, setTabsFor, setActivePathFor]);
 
   const saveTab = useCallback(
     async (path: string) => {
@@ -2930,6 +3038,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         ? (tabsByWorkspaceRef.current[target.id] ?? []).find((candidate) => candidate.path === path)
         : undefined;
       if (!target || !tab || tab.conflict) return;
+      clearEditorAutoSaveTimer(target.id, path);
       await doSave({
         workspace: target,
         path,
@@ -2939,7 +3048,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         standalone: tab.standalone
       });
     },
-    [doSave]
+    [clearEditorAutoSaveTimer, doSave]
   );
 
   const editContent = useCallback(
