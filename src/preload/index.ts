@@ -44,6 +44,7 @@ import type {
   SavedWorkspaceSnapshot,
   ViteServerInfo,
   ViteToggleResult,
+  SassWatchState,
   W3cDiagnostic,
   WorkspaceIdentity
 } from "@shared/types";
@@ -225,6 +226,8 @@ const api = {
     ipcRenderer.invoke("shell:validate-w3c", path, content),
   viteToggle: (workspace: WorkspaceIdentity, entryPath?: string): Promise<ViteToggleResult> =>
     ipcRenderer.invoke("shell:vite-toggle", workspace, entryPath),
+  sassWatchState: (workspace: WorkspaceIdentity): Promise<SassWatchState> => ipcRenderer.invoke("shell:sass-watch-state", workspace),
+  setSassWatch: (workspace: WorkspaceIdentity, enabled: boolean): Promise<SassWatchState> => ipcRenderer.invoke("shell:sass-watch-set", workspace, enabled),
   viteServers: (): Promise<ViteServerInfo[]> =>
     ipcRenderer.invoke("shell:vite-servers"),
   viteStop: (serverID: string): Promise<void> =>

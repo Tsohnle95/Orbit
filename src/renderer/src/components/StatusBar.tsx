@@ -6,6 +6,7 @@ import { monaco } from "../monaco";
 import { getEditor } from "../reveal";
 import type { ValidationReport } from "../validation-report";
 import type { EditorStatus } from "./editor-status";
+import { useSassWatch } from "../use-sass-watch";
 
 const W3C_FILE = /\.(?:html?|css)$/i;
 const SCSS_FILE = /\.scss$/i;
@@ -44,7 +45,8 @@ export function StatusBar({
   editorStatus?: EditorStatus | null;
   onValidationComplete?: (report: ValidationReport) => void;
 }): ReactNode {
-  const { tabs, activePath } = useStore();
+  const { tabs, activePath, session } = useStore();
+  const sass = useSassWatch(session);
   const activeTab = tabs.find((tab) => tab.path === activePath);
   const cursorStatus = editorStatus?.path === activeTab?.path ? editorStatus : null;
   const scssFile = activeTab !== undefined && SCSS_FILE.test(activeTab.path);
@@ -171,6 +173,14 @@ export function StatusBar({
             </span>
           </>
         )}
+        <button
+          className={`statusbar-btn sass-watch-btn ${sass.state?.status ?? "off"}`}
+          aria-pressed={sass.state?.enabled ?? false}
+          aria-label={`Watch Sass for ${session?.directory ?? "workspace"}: ${sass.state?.status ?? "off"}`}
+          title={!session ? "Open a workspace to watch Sass" : !sass.available ? "Restart Orbit to enable Sass watching" : sass.state?.error ? `${sass.state.error}\nSee Sass Output in the terminal panel. Click to ${sass.state.enabled ? "stop watching" : "retry starting"}.` : `${sass.state?.enabled ? "Stop" : "Start"} Sass watching in ${session.directory}; saved Sass files compile to CSS on disk`}
+          disabled={!session || !sass.available || sass.pending}
+          onClick={() => void sass.toggle()}
+        >{sass.state?.status === "starting" ? "Starting Sass…" : sass.state?.status === "error" ? "Sass: Error" : sass.state?.enabled ? "Sass: On" : "Watch Sass"}</button>
       </div>
     </div>
   );

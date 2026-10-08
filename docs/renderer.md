@@ -688,3 +688,12 @@ currently focused session, while all other active sessions remain available in
 the menu and continue running in the backend. Selecting a hidden session in
 normal mode switches the single coding workspace; selecting one in Agent Mode
 attaches it to the visible panel set and focuses it.
+
+## Workspace Sass controls
+
+`use-sass-watch.ts` projects the currently selected immutable workspace's local
+Sass state; previous-workspace events and stale revisions cannot replace it.
+`StatusBar` exposes the bottom-right Watch Sass toggle and `TerminalTray` adds
+Sass Output alongside Terminal and Problems. The watcher compiles only disk
+contents after explicit saves; its state does not affect editor persistence.
+See [Sass configuration and lifecycle](sass.md).

@@ -352,7 +352,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("appearance");
   const [editorStatus, setEditorStatus] = useState<EditorStatus | null>(null);
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
-  const [terminalPanel, setTerminalPanel] = useState<"terminal" | "problems">("terminal");
+  const [terminalPanel, setTerminalPanel] = useState<"terminal" | "problems" | "sass">("terminal");
   const [agentModeActive, setAgentModeActive] = useState(false);
   const [agentModePanelIDs, setAgentModePanelIDs] = useState<string[]>([]);
   const [emptyAgentOpen, setEmptyAgentOpen] = useState(true);

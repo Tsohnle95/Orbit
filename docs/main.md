@@ -187,6 +187,8 @@ Internals:
   session id on the same directory returns the existing context unchanged.
   Commits, starts the context watcher, and emits `{kind:"session"}` plus the
   context's recovery records.
+- Local Sass compilation — `SassWatchManager` owns per-directory workers,
+  preferences and CSS disk writes; see [compiler selection and lifecycle](sass.md).
 - `replayTranscript(messages)` — converts `message.list` output to
   `TranscriptItem[]`: user, internal selection, synthetic/system/skill/shell,
   assistant, and compaction messages in persisted order. Internal selection
@@ -269,6 +271,8 @@ Internals:
 | `shell:update-opencode` | `() → OpenCodeSyncResult` — runs OpenCode's updater, then syncs the shared service to the resulting CLI version |
 | `shell:app-update-check` | `() → OrbitAppUpdateStatus` — in release builds checks the latest published GitHub release against the installed app version; local development/test builds return disabled without network access |
 | `shell:unsaved-editor-files` | `(string[]) → void` — records bounded display paths for dirty editor tabs so the close guard and updater can name them |
+| `shell:sass-watch-state` | `(workspace) → SassWatchState` — validates an open workspace, restores its directory preference, and returns its watcher state/logs |
+| `shell:sass-watch-set` | `(workspace, enabled) → SassWatchState` — toggles the selected workspace's app-owned local compiler; does not invoke workspace scripts or installers |
 | `shell:save-editor-files-result` | `(requestID, saved) → void` — trusted renderer reply to the pending Save All request; a failed or stale reply cannot approve closing |
 | `shell:app-update` | `() → OrbitAppUpdateResult` — release builds reject while editor files are unsaved; shows a reload-safe progress window while hiding Orbit's main window, downloads the published app update, then calls `autoUpdater.quitAndInstall()` to replace and relaunch the app; a failed check/download leaves Orbit open; local builds return disabled without network access |
 | `shell:active-sessions` | `() → SessionInfo[]` — open backend sessions, most recently activated last |

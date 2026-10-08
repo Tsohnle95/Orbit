@@ -3,6 +3,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { useStore } from "../store";
+import { useSassWatch } from "../use-sass-watch";
 import { useOptionalTheme } from "../theme";
 import { terminalThemeForAppearance } from "../appearances";
 import { IconAdd, IconChevronDown, IconChevronUp, IconGlobe } from "./icons";
@@ -163,12 +164,13 @@ export function TerminalTray({
   snapped: boolean;
   request?: { id: number; directory: string } | null;
   validationReport?: ValidationReport | null;
-  activePanel?: "terminal" | "problems";
-  onPanelChange?: (panel: "terminal" | "problems") => void;
+  activePanel?: "terminal" | "problems" | "sass";
+  onPanelChange?: (panel: "terminal" | "problems" | "sass") => void;
   onClose: () => void;
   onExpand: () => void;
 }): ReactNode {
   const { session, activePath, openFile } = useStore();
+  const sass = useSassWatch(session);
   const workspace = session!.workspace;
   const sessionDirectory = session!.directory;
   const [{ terms, activeId }, setTabs] = useState<TerminalTabs>({ terms: [], activeId: null });
@@ -394,6 +396,7 @@ export function TerminalTray({
           Problems{validationReport?.diagnostics.length ? ` ${validationReport.diagnostics.length}` : ""}
         </button>
         {terms.slice(1).map(terminalTab)}
+        <button className={`terminal-tab ${activePanel === "sass" ? "active" : ""}`} aria-pressed={activePanel === "sass"} onClick={() => onPanelChange("sass")}>Sass Output</button>
         <button className="terminal-add" title="New terminal" onClick={() => void createTerminal()}>
           <IconAdd />
         </button>
@@ -449,6 +452,12 @@ export function TerminalTray({
           }}
         />
       )}
+      {activePanel === "sass" && !snapped && <div className="sass-output" role="log" aria-label={`Sass output for ${sessionDirectory}`}>
+        <div className="sass-output-root">{sass.state?.directory ?? sessionDirectory}</div>
+        {sass.state?.error && !sass.state.logs.some((log) => log.level === "error") && <pre className="error">{sass.state.error}</pre>}
+        {!sass.state?.logs.length && !sass.state?.error && <p>Enable Watch Sass in the footer to compile saved Sass files to CSS.</p>}
+        {sass.state?.logs.map((log, index) => <pre key={`${log.time}:${index}`} className={log.level}>{new Date(log.time).toLocaleTimeString()} · {log.message}</pre>)}
+      </div>}
       {viteMenu && (
         <>
           <div

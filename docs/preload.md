@@ -30,6 +30,8 @@ automatically.
 | `checkAppUpdate()` | `Promise<OrbitAppUpdateStatus>` — release builds check the latest published Orbit release; local builds return disabled without network access |
 | `updateApp()` | `Promise<OrbitAppUpdateResult>` — downloads the published app update in release builds and starts the popup; main enforces the unsaved-file guard; local builds return disabled |
 | `reportUnsavedEditorFiles(paths)` | `Promise<void>` — reports display paths for currently dirty editor tabs so main can block close/update and identify the affected files |
+| `sassWatchState(workspace)` | `Promise<SassWatchState>` — restores and reads an opened workspace's Sass watcher state and logs |
+| `setSassWatch(workspace, enabled)` | `Promise<SassWatchState>` — starts or stops local disk compilation for the captured workspace identity |
 | `onSaveAllEditorFiles(save)` | `(save: () → Promise<boolean>) → unsubscribe` — handles main's Save All request and returns the save result through the trusted bridge |
 | `sessions()` | `Promise<SessionSummary[]>` — recent session list |
 | `activeSessions()` | `Promise<SessionInfo[]>` — currently open backend sessions in activation order; the last element is the most recently activated (used for startup restore) |

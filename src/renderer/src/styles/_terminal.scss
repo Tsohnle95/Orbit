@@ -205,6 +205,12 @@
 
 .terminal-body.hidden { display: none; }
 
+.sass-output { min-height: 0; flex: 1; overflow: auto; padding: 10px 14px; user-select: text; }
+.sass-output-root { color: var(--text-dim); margin-bottom: 10px; overflow-wrap: anywhere; }
+.sass-output pre { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.6 var(--font-family-mono); }
+.sass-output .error { color: var(--red); }
+.sass-output .warning { color: var(--yellow); }
+
 .terminal-host {
   flex: 1;
   min-height: 0;

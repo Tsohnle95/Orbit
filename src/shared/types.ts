@@ -78,6 +78,17 @@ export interface ViteToggleResult {
   server?: ViteServerInfo;
 }
 
+export interface SassWatchLog { time: number; level: "info" | "warning" | "error"; message: string }
+export interface SassWatchState {
+  workspace: WorkspaceIdentity;
+  directory: string;
+  enabled: boolean;
+  status: "off" | "starting" | "on" | "error";
+  revision: number;
+  error?: string;
+  logs: SassWatchLog[];
+}
+
 export interface MobileServerSetupStatus {
   state: "ready" | "starting" | "offline" | "setup-required";
   reason?: "companion-checkout-missing" | "node-runtime-missing" | "server-not-running";
@@ -582,4 +593,5 @@ export interface BackendMessageBase {
 export type BackendMessage =
   | BackendMessageBase
   | { kind: "terminal-data"; terminal: TerminalData }
-  | { kind: "terminal-exit"; terminal: TerminalExit };
+  | { kind: "terminal-exit"; terminal: TerminalExit }
+  | { kind: "sass-watch"; state: SassWatchState };

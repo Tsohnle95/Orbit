@@ -15,6 +15,8 @@ Imported everywhere as `@shared/types` (alias in both tsconfigs and
 | `OrbitAppUpdateStatus` | `{ state, currentVersion?, latestVersion?, message? }` | Published GitHub release status for a release build, or disabled status in local development/test builds |
 | `OrbitAppUpdateResult` | `{ ok, updated, currentVersion?, latestVersion?, message }` | Result of downloading a published Orbit release for installation |
 | `W3cDiagnostic` | `{ line, column, endLine, endColumn, message, severity, source }`; source is W3C HTML/CSS or local Monaco SCSS | Validation results passed to Monaco markers and the Problems view |
+| `SassWatchState` | `{ workspace, directory, enabled, status, revision, error?, logs }` | app-owned Sass state for a captured workspace; status is off/starting/on/error; revision prevents stale UI replies |
+| `SassWatchLog` | `{ time, level, message }` | bounded Sass Output entries; info/warning/error |
 | `WorkspaceIdentity` | `{ id, generation }` | Opaque immutable UUID plus monotonic generation minted for one session context; capability calls must echo both; reused while a session stays open so file-updates and editor state keep routing to the same workspace |
 | `SessionInfo` | `{ id, directory, workspace, parentID?, title?, agent? }` | An open OpenCode session (one per panel), immutable workspace identity, and parent/child navigation metadata |
 | `SessionSummary` | `{ id, title, directory, updatedAt, parentID?, agent? }` | Recent-session graph used by Welcome and task/subagent links |

@@ -33,6 +33,8 @@ import {
 import { resolveAppSource } from "./source-resolver";
 import { InspectPickerState } from "./inspect-picker";
 import { SavedWorkspaceStore } from "./saved-workspaces";
+import { SassWatchManager } from "./sass-watch";
+import { SassPreferences } from "./sass-preferences";
 import type {
   FileWriteIdentity,
   OrbitAppUpdateResult,
@@ -97,6 +99,9 @@ let pendingEditorSave: { id: string; finish: (saved: boolean) => void } | null =
 let closeRequestPending = false;
 let appQuitRequested = false;
 let trustedLocation: TrustedApplicationLocation | null = null;
+const sassWatchers = new SassWatchManager(new SassPreferences(path.join(app.getPath("userData"), "sass-watch.json")), (state) => {
+  if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("shell:message", { kind: "sass-watch", state });
+});
 
 function briefFilePath(value: string): string {
   return value.length <= 384 ? value : `…${value.slice(-383)}`;
@@ -931,6 +936,7 @@ function registerIpc(): void {
   handleTrusted("shell:close-session", async (_e, workspace: WorkspaceIdentity) => {
     workspaceId(workspace);
     viteServers.stopWorkspace(workspace.id);
+    await sassWatchers.unregister(workspace);
     return backend.closeSession(workspace);
   });
 
@@ -954,9 +960,28 @@ function registerIpc(): void {
     }
   });
 
-  handleTrusted("shell:delete-session", async (_e, sessionID: string) =>
-    backend.deleteSession(sessionId(sessionID))
-  );
+  handleTrusted("shell:delete-session", async (_e, sessionID: string) => {
+    sessionId(sessionID);
+    await sassWatchers.stopSession(sessionID);
+    return backend.deleteSession(sessionID);
+  });
+
+  const registerSassWorkspace = async (workspace: WorkspaceIdentity): Promise<void> => {
+    workspaceId(workspace);
+    const session = (await backend.activeSessions()).find((entry) => entry.workspace.id === workspace.id && entry.workspace.generation === workspace.generation);
+    if (!session) throw new Error("stale workspace");
+    try { sassWatchers.state(workspace); return; } catch { /* Register only new identities; a missing folder must not prevent stopping an existing watcher. */ }
+    await sassWatchers.register(session);
+  };
+  handleTrusted("shell:sass-watch-state", async (_e, workspace: WorkspaceIdentity) => {
+    await registerSassWorkspace(workspace);
+    return sassWatchers.state(workspace);
+  });
+  handleTrusted("shell:sass-watch-set", async (_e, workspace: WorkspaceIdentity, enabled: unknown) => {
+    if (typeof enabled !== "boolean") throw new Error("Sass watching must be on or off");
+    await registerSassWorkspace(workspace);
+    return sassWatchers.setEnabled(workspace, enabled);
+  });
 
   handleTrusted("shell:runtimes", async () => backend.runtimeManifests());
 
@@ -1423,6 +1448,11 @@ if (!app.requestSingleInstanceLock()) {
       }
     };
     const fwd = (msg: unknown): void => {
+      if (msg && typeof msg === "object") {
+        const message = msg as { kind?: string; type?: string; session?: import("@shared/types").SessionInfo; data?: { sessionID?: string; id?: string } };
+        if (message.kind === "session" && message.session) void sassWatchers.register(message.session).catch((error) => console.warn("[sass]", String(error)));
+        if (message.kind === "event" && message.type === "session.deleted") void sassWatchers.stopSession(message.data?.sessionID ?? message.data?.id ?? "");
+      }
       if (!win || win.isDestroyed() || win.webContents.isDestroyed()) return;
       if (typeof msg === "object" && msg !== null && (msg as { kind?: string }).kind === "file-update") {
         const file = (msg as { file?: { workspace?: { id?: string }; path?: string } }).file;
@@ -1498,6 +1528,7 @@ app.on("before-quit", (event) => {
     // teardown (a late pty exit callback aborts the process), but a wedged
     // child must never block quit forever.
     const shutdown = (async () => {
+      await sassWatchers.stopAll();
       await backend.stop();
       await terminals.stopAll();
       await viteServers.stopAll();

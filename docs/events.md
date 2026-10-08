@@ -211,3 +211,10 @@ to the newest session whose `parentID`, title/description, and agent match the
 task input. Opening the card replays and activates that child; its header links
 back to the parent. Permission replies carry the owning session id so a child
 request is never sent to the parent session.
+
+## App-owned Sass notifications
+
+`kind: "sass-watch"` messages carry `SassWatchState` for an immutable workspace
+identity. Footer and terminal-tray hooks consume them; the chat reducer ignores
+them. These are local app notifications, not OpenCode runtime events. See
+[the Sass service](sass.md) for ownership and lifecycle.

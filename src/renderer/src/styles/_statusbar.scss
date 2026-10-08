@@ -47,6 +47,11 @@
   cursor: default;
 }
 
+.sass-watch-btn { flex-shrink: 0; white-space: nowrap; }
+.sass-watch-btn.on { color: var(--green); }
+.sass-watch-btn.starting { color: var(--accent); }
+.sass-watch-btn.error { color: var(--red); }
+
 .validate-spinner {
   width: 10px;
   height: 10px;

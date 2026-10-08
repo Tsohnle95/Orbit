@@ -361,3 +361,11 @@ shim next to `opencode`; older clients that still spawn
   folder is opened); most agent-panel UI is session-gated.
 - `session.tool.called` events carry NO tool name — names come from
   `session.tool.input.started` (see `docs/events.md`).
+
+## Local Sass worker verification
+
+After `npm run build:compile`, run `npm run test:sass-worker` to exercise the
+emitted worker with Orbit's production Sass dependency in a disposable root.
+It never installs workspace packages or contacts the network. For footer and
+workspace-lifecycle verification use isolated mirror apps as described in
+[the Sass service guide](sass.md).

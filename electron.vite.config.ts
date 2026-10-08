@@ -6,6 +6,9 @@ const isReleaseBuild = process.env.ORBIT_RELEASE_BUILD === "1";
 
 export default defineConfig({
   main: {
+    build: {
+      rollupOptions: { input: { index: resolve(__dirname, "src/main/index.ts"), "sass-worker": resolve(__dirname, "src/main/sass-worker.ts") } }
+    },
     define: {
       __ORBIT_RELEASE_BUILD__: JSON.stringify(isReleaseBuild)
     },
