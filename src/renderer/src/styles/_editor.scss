@@ -82,6 +82,7 @@
 .editor-group-action .os-icon { width: 15px; height: 15px; }
 
 .editor-groups {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
@@ -89,6 +90,37 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.editor-group-resize {
+  position: absolute;
+  z-index: 5;
+  background: transparent;
+}
+
+.editor-group-resize:hover,
+.editor-group-resize:active {
+  background: var(--accent);
+}
+
+.editor-group-resize-x {
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  transform: translateX(-50%);
+  cursor: col-resize;
+}
+
+.editor-groups-count-3 .editor-group-resize-x {
+  bottom: auto;
+}
+
+.editor-group-resize-y {
+  left: 0;
+  right: 0;
+  height: 7px;
+  transform: translateY(-50%);
+  cursor: row-resize;
 }
 
 .editor-groups-count-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

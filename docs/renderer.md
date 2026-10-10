@@ -427,7 +427,7 @@ Key mechanisms:
   folder also inserts the new entry into the tree and opens the new file tab
   optimistically in the renderer (`commitName`), with the authoritative
   `refreshTree`/`listDir` reconcile happening in the background.
-  `.openshell-recovery` is hidden independently in main and renderer.
+  Legacy `.openshell-recovery` and `.orbit-recovery` are hidden independently in main and renderer.
 - **Explorer selection and moves** — ordinary clicks keep opening files and
   expanding folders. Command/Control-click toggles rows and Shift-click selects
   the visible range. Delete/Backspace and the context menu move selected items
@@ -575,6 +575,9 @@ seconds and are cleared on exit, close, registration, or workspace reset.
 Closing the final tab commits an empty tab state before hiding the tray;
 reopening shows that empty state and requires the explicit `+` action to start
 a new process. A natural final exit leaves the empty tray visible.
+Default terminal tab numbers follow the current left-to-right tab order, so
+closing earlier tabs renumbers the remaining default tabs from one. Folder
+terminals keep their folder names.
 With shells open, the leftmost header tab selects the first shell rather than
 acting as a separate panel selector. Selecting any shell tab returns from
 Problems and focuses its input; `+` also returns to the terminal view.
@@ -599,14 +602,18 @@ released at that collapsed position.
 - `languageForPath()` — extension → Monaco language map (fallback
   `plaintext`).
 - JavaScript uses Monaco's TypeScript worker with eager model synchronization,
-  ES2020 and browser DOM libraries, syntax/semantic diagnostics, and explicit
+  ES2020 and browser DOM libraries, `allowNonTsExtensions` for editor model
+  URIs, syntax/semantic diagnostics, and explicit
   quick-suggestion/trigger-character settings in `EditorPane`. Typing after
   `document.` offers DOM API completions such as `querySelectorAll`. Suggestion
-  and hover widgets use `document.body` as their overflow host so split-editor
-  containers cannot clip the completion list. JavaScript/TypeScript, HTML, and
+  and hover widgets stay in Monaco's styled editor tree so their list and
+  colors render correctly. JavaScript/TypeScript, HTML, and
   CSS use Monaco's language-service completions, including pseudo-selector and
   syntax details; local dirty editor buffers stay authoritative during typing
   so React state echoes cannot replace an active model between keystrokes.
+- PHP offers common language keywords and built-in functions through a Monaco
+  completion provider; Monaco also suggests words from the current document
+  for PHP and other languages without bundled language services.
 - HTML attribute `=` inserts a paired quote with the caret between them, and
   Monaco's language-defined quote pairing remains enabled elsewhere.
 - `editor-navigation.ts` handles Command/Control + Arrow keys on the editor

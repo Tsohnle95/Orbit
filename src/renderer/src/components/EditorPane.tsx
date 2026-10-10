@@ -21,8 +21,6 @@ const EDITOR_OPTIONS = {
   fontFamily: "'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace",
   minimap: { enabled: false },
   automaticLayout: true,
-  fixedOverflowWidgets: true,
-  overflowWidgetsDomNode: document.body,
   quickSuggestions: { other: true, comments: false, strings: true },
   quickSuggestionsDelay: 25,
   suggestOnTriggerCharacters: true,
@@ -410,6 +408,8 @@ interface EditorGroupState {
 interface EditorLayoutState {
   groups: EditorGroupState[];
   activeGroup: EditorGroupID;
+  splitX: number;
+  splitY: number;
 }
 
 function isEditorGroupID(value: unknown): value is EditorGroupID {
@@ -557,6 +557,9 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
     activePath: activePath ?? tabs[0]?.path ?? null
   }]);
   const [activeGroup, setActiveGroup] = useState<EditorGroupID>("primary");
+  const [splitX, setSplitX] = useState(50);
+  const [splitY, setSplitY] = useState(50);
+  const groupGridRef = useRef<HTMLDivElement | null>(null);
   const activeGroupRef = useRef<EditorGroupID>("primary");
   const [groupWorkspaceID, setGroupWorkspaceID] = useState(workspaceID);
   const layoutsByWorkspaceRef = useRef(new Map<string, EditorLayoutState>());
@@ -572,14 +575,18 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
     const paths = tabs.map((tab) => tab.path);
     layoutsByWorkspaceRef.current.set(groupWorkspaceID ?? "", {
       groups: groups.map((group) => ({ ...group, paths: [...group.paths] })),
-      activeGroup: activeGroupRef.current
+      activeGroup: activeGroupRef.current,
+      splitX,
+      splitY
     });
     const savedLayout = layoutsByWorkspaceRef.current.get(workspaceID ?? "");
     setGroupWorkspaceID(workspaceID);
     activePathRef.current = activePath;
     setGroups(savedLayout?.groups ?? [{ id: "primary", paths, activePath: activePath ?? paths[0] ?? null }]);
+    setSplitX(savedLayout?.splitX ?? 50);
+    setSplitY(savedLayout?.splitY ?? 50);
     focusGroup(savedLayout?.activeGroup ?? "primary");
-  }, [activeGroup, activePath, focusGroup, groupWorkspaceID, groups, tabs, workspaceID]);
+  }, [activeGroup, activePath, focusGroup, groupWorkspaceID, groups, splitX, splitY, tabs, workspaceID]);
 
   useEffect(() => {
     if (groupWorkspaceID !== workspaceID || activePathRef.current === activePath) return;
@@ -701,6 +708,29 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setExternalDrag(false);
   };
 
+  const startGroupResize = (axis: "x" | "y") => (event: React.MouseEvent): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    const grid = groupGridRef.current;
+    if (!grid) return;
+    const move = (next: MouseEvent): void => {
+      const bounds = grid.getBoundingClientRect();
+      const extent = axis === "x" ? bounds.width : bounds.height;
+      if (extent <= 0) return;
+      const offset = axis === "x" ? next.clientX - bounds.left : next.clientY - bounds.top;
+      const minimum = Math.min(160, extent / 3);
+      const percent = Math.max(minimum, Math.min(extent - minimum, offset)) / extent * 100;
+      if (axis === "x") setSplitX(percent);
+      else setSplitY(percent);
+    };
+    const finish = (): void => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", finish);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", finish);
+  };
+
   return (
     <div
       className={`editor-pane${externalDrag ? " external-drop-active" : ""}`}
@@ -718,7 +748,15 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
           </>}
         </div>
       ) : (
-        <div className={`editor-groups editor-groups-count-${groups.length}`} data-group-count={groups.length}>
+        <div
+          ref={groupGridRef}
+          className={`editor-groups editor-groups-count-${groups.length}`}
+          data-group-count={groups.length}
+          style={groups.length > 1 ? {
+            gridTemplateColumns: `${splitX}% minmax(0, 1fr)`,
+            ...(groups.length > 2 ? { gridTemplateRows: `${splitY}% minmax(0, 1fr)` } : {})
+          } : undefined}
+        >
           {groups.map((group, index) => <EditorGroup
             key={group.id}
             id={group.id}
@@ -736,6 +774,8 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
             onSplit={splitGroupAfter}
             onCloseGroup={closeGroup}
           />)}
+          {groups.length > 1 && <div className="editor-group-resize editor-group-resize-x" role="separator" aria-label="Resize editor columns" aria-orientation="vertical" onMouseDown={startGroupResize("x")} style={{ left: `${splitX}%`, height: groups.length === 3 ? `${splitY}%` : undefined }} />}
+          {groups.length > 2 && <div className="editor-group-resize editor-group-resize-y" role="separator" aria-label="Resize editor rows" aria-orientation="horizontal" onMouseDown={startGroupResize("y")} style={{ top: `${splitY}%` }} />}
         </div>
       )}
     </div>

@@ -68,6 +68,7 @@ store.setActive.mockImplementation((path: string) => { store.activePath = path; 
 vi.mock("../store", () => ({ useStore: () => store }));
 vi.mock("../emmet-keys", () => ({ wireEmmetKeys: vi.fn() }));
 vi.mock("../editor-navigation", () => ({ wireEditorNavigationKeys: vi.fn() }));
+vi.mock("../editor-language-input", () => ({ wireHtmlAttributeQuotes: vi.fn() }));
 vi.mock("../monaco", () => ({ languageForPath: (path: string) => path.endsWith(".js") ? "javascript" : "typescript" }));
 vi.mock("../w3c-validation", () => ({ clearW3cMarkers: vi.fn() }));
 vi.mock("@monaco-editor/react", () => ({
@@ -131,6 +132,25 @@ describe("EditorPane split groups", () => {
     expect(container.querySelectorAll(".editor-group")).toHaveLength(1);
     expect(container.querySelector("[data-testid=editor]")?.getAttribute("data-path")).toBe(firstTab.path);
     expect(container.querySelectorAll('[role="tab"]')).toHaveLength(3);
+  });
+
+  it("resizes split editor columns and rows by dragging their dividers", () => {
+    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
+    const grid = container.querySelector<HTMLElement>(".editor-groups")!;
+    vi.spyOn(grid, "getBoundingClientRect").mockReturnValue({ left: 0, top: 0, width: 800, height: 600 } as DOMRect);
+    const columns = container.querySelector<HTMLElement>('[aria-label="Resize editor columns"]')!;
+    act(() => columns.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, clientX: 400 })));
+    act(() => window.dispatchEvent(new MouseEvent("mousemove", { clientX: 550 })));
+    act(() => window.dispatchEvent(new MouseEvent("mouseup", { clientX: 550 })));
+    expect(grid.style.gridTemplateColumns).toBe("68.75% minmax(0, 1fr)");
+
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor group 2 right"]')!.click());
+    const rows = container.querySelector<HTMLElement>('[aria-label="Resize editor rows"]')!;
+    act(() => rows.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, clientY: 300 })));
+    act(() => window.dispatchEvent(new MouseEvent("mousemove", { clientY: 420 })));
+    act(() => window.dispatchEvent(new MouseEvent("mouseup", { clientY: 420 })));
+    expect(grid.style.gridTemplateRows).toBe("70% minmax(0, 1fr)");
   });
 
   it("can create four editor groups and disables splitting at the limit", () => {
@@ -213,8 +233,8 @@ describe("EditorPane split groups", () => {
     };
     expect(options.quickSuggestions?.other).toBe(true);
     expect(options.suggestOnTriggerCharacters).toBe(true);
-    expect(options.fixedOverflowWidgets).toBe(true);
-    expect(options.overflowWidgetsDomNode).toBe(document.body);
+    expect(options.fixedOverflowWidgets).toBeUndefined();
+    expect(options.overflowWidgetsDomNode).toBeUndefined();
     expect(options.wordBasedSuggestions).toBe("currentDocument");
     expect(options.tabCompletion).toBe("on");
   });

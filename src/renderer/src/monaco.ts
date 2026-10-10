@@ -31,6 +31,8 @@ loader.config({ monaco });
 const javascriptDefaults = monaco.languages.typescript.javascriptDefaults;
 javascriptDefaults.setEagerModelSync(true);
 javascriptDefaults.setCompilerOptions({
+  // Monaco's replacement settings must retain this default for editor model URIs.
+  allowNonTsExtensions: true,
   allowJs: true,
   target: monaco.languages.typescript.ScriptTarget.ES2020,
   lib: ["es2020", "dom", "dom.iterable"]
@@ -43,6 +45,36 @@ javascriptDefaults.setDiagnosticsOptions({
 
 emmetHTML(monaco, ["html"]);
 emmetCSS(monaco, ["css", "scss", "less"]);
+
+const PHP_KEYWORDS = [
+  "abstract", "array", "as", "break", "case", "catch", "class", "clone", "const", "continue",
+  "declare", "default", "do", "echo", "else", "elseif", "enum", "extends", "false", "final",
+  "finally", "fn", "for", "foreach", "function", "if", "implements", "include", "include_once",
+  "instanceof", "interface", "match", "namespace", "new", "null", "private", "protected",
+  "public", "readonly", "require", "require_once", "return", "static", "switch", "throw",
+  "trait", "true", "try", "use", "while", "yield"
+];
+const PHP_FUNCTIONS = [
+  "array_filter", "array_keys", "array_map", "array_merge", "array_pop", "array_push",
+  "array_reduce", "array_search", "array_values", "count", "date", "empty", "explode",
+  "file_exists", "file_get_contents", "file_put_contents", "filter_var", "htmlspecialchars",
+  "implode", "in_array", "is_array", "is_null", "isset", "json_decode", "json_encode",
+  "preg_match", "preg_replace", "print_r", "sprintf", "str_contains", "str_replace",
+  "strlen", "strpos", "strtolower", "strtoupper", "substr", "trim", "unset", "var_dump"
+];
+
+monaco.languages.registerCompletionItemProvider("php", {
+  provideCompletionItems(model, position) {
+    const range = model.getWordUntilPosition(position);
+    const replacement = new monaco.Range(position.lineNumber, range.startColumn, position.lineNumber, range.endColumn);
+    return {
+      suggestions: [
+        ...PHP_KEYWORDS.map((label) => ({ label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label, range: replacement })),
+        ...PHP_FUNCTIONS.map((label) => ({ label, kind: monaco.languages.CompletionItemKind.Function, insertText: label, range: replacement }))
+      ]
+    };
+  }
+});
 
 for (const { id, scheme, colors } of APPEARANCES) {
   const legacyColors = id === "kitty" ? {
