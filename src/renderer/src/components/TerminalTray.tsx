@@ -179,7 +179,6 @@ export function TerminalTray({
   const [viteStarting, setViteStarting] = useState(false);
   const [viteServers, setViteServers] = useState<ViteServerInfo[]>([]);
   const [viteMenu, setViteMenu] = useState<{ x: number; y: number } | null>(null);
-  const counterRef = useRef(0);
   const bootTokenRef = useRef(0);
   const handledRequestRef = useRef<number | null>(null);
   const trayRef = useRef<HTMLDivElement>(null);
@@ -237,9 +236,8 @@ export function TerminalTray({
     setNotice("");
     const id = `term-${crypto.randomUUID()}`;
     pendingOutputRef.current.awaitRegistration(id);
-    const count = ++counterRef.current;
-    const name = directory.split("/").filter(Boolean).pop() ?? `Terminal ${count}`;
-    setTabs((current) => ({ terms: [...current.terms, { id, name }], activeId: id }));
+    const name = directory.split("/").filter(Boolean).pop() ?? "Terminal";
+    setTabs((current) => ({ terms: [...current.terms, { id, name, defaultName: !directory }], activeId: id }));
     try {
       const size = initialTerminalSize(trayRef.current);
       const startedDirectory = await window.openshell.terminalStart(workspace, id, directory, size.cols, size.rows);
@@ -262,8 +260,7 @@ export function TerminalTray({
     void (async () => {
       const id = `term-${crypto.randomUUID()}`;
       pendingOutputRef.current.awaitRegistration(id);
-      const name = `Terminal ${++counterRef.current}`;
-      setTabs({ terms: [{ id, name }], activeId: id });
+      setTabs({ terms: [{ id, name: "Terminal", defaultName: true }], activeId: id });
       try {
         const size = initialTerminalSize(trayRef.current);
         await window.openshell.terminalStart(workspace, id, "", size.cols, size.rows);
@@ -332,37 +329,40 @@ export function TerminalTray({
     if (next.terms.length === 0) onClose();
   };
 
-  const terminalTab = (term: TerminalView): ReactNode => (
-    <span
-      key={term.id}
-      className={`terminal-tab ${activePanel === "terminal" && term.id === activeId ? "active" : ""}`}
-      role="tab"
-      tabIndex={0}
-      aria-selected={activePanel === "terminal" && term.id === activeId}
-      onClick={() => {
-        onPanelChange("terminal");
-        setTabs((current) => ({ ...current, activeId: term.id }));
-        setFocusRevision((current) => current + 1);
-      }}
-      onKeyDown={(event) => {
-        if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
-        event.preventDefault();
-        event.currentTarget.click();
-      }}
-    >
-      {term.name}
-      <button
-        className="terminal-tab-close"
-        title={`Close ${term.name}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          closeTerminal(term.id);
+  const terminalTab = (term: TerminalView): ReactNode => {
+    const name = term.defaultName ? `Terminal ${terms.indexOf(term) + 1}` : term.name;
+    return (
+      <span
+        key={term.id}
+        className={`terminal-tab ${activePanel === "terminal" && term.id === activeId ? "active" : ""}`}
+        role="tab"
+        tabIndex={0}
+        aria-selected={activePanel === "terminal" && term.id === activeId}
+        onClick={() => {
+          onPanelChange("terminal");
+          setTabs((current) => ({ ...current, activeId: term.id }));
+          setFocusRevision((current) => current + 1);
+        }}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+          event.preventDefault();
+          event.currentTarget.click();
         }}
       >
-        ×
-      </button>
-    </span>
-  );
+        {name}
+        <button
+          className="terminal-tab-close"
+          title={`Close ${name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            closeTerminal(term.id);
+          }}
+        >
+          ×
+        </button>
+      </span>
+    );
+  };
 
   return (
     <div ref={trayRef} className="terminal-tray" style={{ "--terminal-height": `${height}px` } as CSSProperties}>

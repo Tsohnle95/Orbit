@@ -1,6 +1,7 @@
 export interface TerminalView {
   id: string;
   name: string;
+  defaultName?: boolean;
 }
 
 export interface TerminalTabs {

@@ -124,6 +124,20 @@ describe("TerminalTray integration", () => {
     expect(window.openshell.terminalStart).toHaveBeenCalledTimes(2);
   });
 
+  it("numbers the remaining shell from one after earlier tabs close", async () => {
+    await act(async () => root.render(<TerminalTray height={240} snapped={false} onClose={onClose} onExpand={() => {}} />));
+    await act(async () => container.querySelector<HTMLButtonElement>('[title="New terminal"]')!.click());
+    await act(async () => container.querySelector<HTMLButtonElement>('[title="New terminal"]')!.click());
+    expect([...container.querySelectorAll(".terminal-tab[role=tab]")].map((tab) => tab.textContent?.replace("×", ""))).toEqual([
+      "Terminal 1", "Terminal 2", "Terminal 3"
+    ]);
+
+    await act(async () => container.querySelector<HTMLButtonElement>('[title="Close Terminal 1"]')!.click());
+    await act(async () => container.querySelector<HTMLButtonElement>('[title="Close Terminal 2"]')!.click());
+    expect(container.querySelector(".terminal-tab[role=tab]")?.textContent).toBe("Terminal 1×");
+    expect(container.querySelector<HTMLButtonElement>('[title="Close Terminal 1"]')).not.toBeNull();
+  });
+
   it("refocuses the existing shell when returning from Problems", async () => {
     const render = (activePanel: "terminal" | "problems") => <TerminalTray height={240} snapped={false} activePanel={activePanel} onClose={onClose} onExpand={() => {}} />;
     await act(async () => root.render(render("terminal")));
