@@ -4,7 +4,7 @@ import { constants, watch, type FSWatcher } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { shell } from "electron";
 import { OpenCode } from "@opencode/client";
 import { Service, type Endpoint } from "@opencode/client/service";
@@ -106,13 +106,14 @@ const sleep = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve) 
 
 const SKIP_DIRS = new Set([
   ".git", "node_modules", ".next", ".venv", "__pycache__", ".cache", ".turbo", ".nx",
-  ".svn", ".hg", ".idea", ".vscode", ".openshell-recovery", "dist", "out", "build", "target", "coverage", ".pytest_cache",
+  ".svn", ".hg", ".idea", ".vscode", ".openshell-recovery", ".orbit-recovery", "dist", "out", "build", "target", "coverage", ".pytest_cache",
   ".opencode", ".claude", ".cursor", ".aider", ".windsurf", ".codeium", ".roo", ".gemini", ".kilocode", ".continue"
 ]);
 
 const MAX_WATCHED_FILE_BYTES = 2 * 1024 * 1024;
 
-const RECOVERY_DIR = ".openshell-recovery";
+const RECOVERY_DIR = ".orbit-recovery";
+const LEGACY_RECOVERY_DIR = ".openshell-recovery";
 
 const RECOVERY_SETTLED_RETENTION_MS = 24 * 60 * 60 * 1000;
 const RECOVERY_INTERRUPTED_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -1109,19 +1110,33 @@ export class OpenShellBackend {
     return rel.split(path.sep).join("/");
   }
 
-  private recoveryRoot(root: string): string {
+  private async recoveryRoot(root: string): Promise<string> {
+    const git = path.join(root, ".git");
+    const gitStat = await fsp.lstat(git).catch(() => null);
+    if (gitStat?.isDirectory() && gitStat.dev === (await fsp.stat(root)).dev) {
+      return path.join(git, RECOVERY_DIR.slice(1));
+    }
+    const parent = path.dirname(root);
+    if ((await fsp.stat(parent)).dev === (await fsp.stat(root)).dev) {
+      const key = createHash("sha256").update(root).digest("hex").slice(0, 16);
+      return path.join(parent, `.orbit-recovery-${key}`);
+    }
     return path.join(root, RECOVERY_DIR);
   }
 
-  private async checkedRecoveryRoot(root: string, create = false): Promise<string> {
-    const recoveryRoot = await confinedPath(root, RECOVERY_DIR);
+  private async checkedRecoveryRoot(root: string, create = false, location?: string): Promise<string> {
+    const selected = location ?? await this.recoveryRoot(root);
+    const parent = path.dirname(selected);
+    const parentStat = await fsp.lstat(parent);
+    if (!parentStat.isDirectory()) throw new Error("invalid recovery parent");
+    const recoveryRoot = await confinedPath(parent, path.basename(selected));
     const stat = await fsp.lstat(recoveryRoot).catch((error) => {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
       throw error;
     });
     if (!stat && create) {
       await fsp.mkdir(recoveryRoot, { mode: 0o700 });
-      return confinedPath(root, RECOVERY_DIR);
+      return confinedPath(parent, path.basename(selected));
     }
     if (stat && !stat.isDirectory()) throw new Error("invalid recovery directory");
     return recoveryRoot;
@@ -1207,22 +1222,25 @@ export class OpenShellBackend {
     directory: string;
     transaction: RecoveryTransaction;
   }>> {
-    const recoveryRoot = await this.checkedRecoveryRoot(root);
-    const entries = await fsp.readdir(recoveryRoot, { withFileTypes: true }).catch(() => []);
-    const transactions = await Promise.all(entries.filter((entry) => entry.isDirectory()).map(async (entry) => {
-      if (!/^\d{13}-[0-9a-f-]{36}$/.test(entry.name)) return null;
-      try {
-        const directory = await confinedPath(root, `${RECOVERY_DIR}/${entry.name}`);
-        const manifest = await confinedPath(root, `${RECOVERY_DIR}/${entry.name}/manifest.json`);
-        if (!(await fsp.lstat(manifest)).isFile()) return null;
-        const transaction = JSON.parse(await fsp.readFile(manifest, "utf8")) as unknown;
-        if (!this.validRecoveryTransaction(transaction, entry.name)) return null;
-        return { directory, transaction };
-      } catch {
-        return null;
-      }
+    const locations = [await this.recoveryRoot(root), path.join(root, LEGACY_RECOVERY_DIR)];
+    const transactions = await Promise.all(locations.map(async (location) => {
+      const recoveryRoot = await this.checkedRecoveryRoot(root, false, location);
+      const entries = await fsp.readdir(recoveryRoot, { withFileTypes: true }).catch(() => []);
+      return Promise.all(entries.filter((entry) => entry.isDirectory()).map(async (entry) => {
+        if (!/^\d{13}-[0-9a-f-]{36}$/.test(entry.name)) return null;
+        try {
+          const directory = await confinedPath(recoveryRoot, entry.name);
+          const manifest = await confinedPath(directory, "manifest.json");
+          if (!(await fsp.lstat(manifest)).isFile()) return null;
+          const transaction = JSON.parse(await fsp.readFile(manifest, "utf8")) as unknown;
+          if (!this.validRecoveryTransaction(transaction, entry.name)) return null;
+          return { directory, transaction };
+        } catch {
+          return null;
+        }
+      }));
     }));
-    return transactions.filter((value): value is NonNullable<typeof value> => value !== null);
+    return transactions.flat().filter((value): value is NonNullable<typeof value> => value !== null);
   }
 
   private async recoveryRecords(root: string): Promise<RecoveryRecord[]> {
@@ -1233,13 +1251,13 @@ export class OpenShellBackend {
         ? [["temporary", "temporary"] as const, ["original", "original"] as const, ["proposed", "proposed"] as const]
         : [["rename-source", "source"] as const];
       for (const [artifact, name] of artifacts) {
-        const file = await confinedPath(root, `${this.relKey(directory, root)}/${name}`);
+        const file = await confinedPath(directory, name);
         if (!(await fsp.lstat(file).catch(() => null))?.isFile()) continue;
         records.push({
           id: `${transaction.id}:${artifact}`,
           artifact,
           originalPath: transaction.originalPath,
-          recoveryPath: this.relKey(file, root),
+          recoveryPath: file,
           createdAt: transaction.createdAt,
           acknowledged: transaction.acknowledged.includes(artifact),
           reason: transaction.reason ?? (transaction.phase === "complete" ? "saved" : "save-failed")
@@ -1256,7 +1274,7 @@ export class OpenShellBackend {
       const { directory, transaction } = item;
       if (transaction.phase === "complete" || transaction.phase === "failed") continue;
       if (transaction.phase !== "source-held" && transaction.phase !== "held-validated") continue;
-      const original = await confinedPath(root, `${this.relKey(directory, root)}/${transaction.operation === "rename" ? "source" : "original"}`);
+      const original = await confinedPath(directory, transaction.operation === "rename" ? "source" : "original");
       if (!(await fsp.lstat(original).catch(() => null))?.isFile()) continue;
       const canonical = await confinedPath(root, transaction.originalPath);
       if (transaction.operation === "rename" && transaction.targetPath) {
@@ -1293,6 +1311,23 @@ export class OpenShellBackend {
     }
   }
 
+  private async migrateLegacyRecovery(root: string, current: () => boolean): Promise<void> {
+    const legacyRoot = path.join(root, LEGACY_RECOVERY_DIR);
+    const legacy = (await this.readRecoveryTransactions(root))
+      .filter(({ directory }) => path.dirname(directory) === legacyRoot);
+    if (legacy.length === 0) return;
+    const destination = await this.checkedRecoveryRoot(root, true);
+    for (const { directory, transaction } of legacy) {
+      if (!current()) return;
+      const target = await confinedPath(destination, transaction.id);
+      if (await fsp.lstat(target).catch(() => null)) continue;
+      await fsp.rename(directory, target).catch(() => {});
+    }
+    await this.syncDirectory(destination).catch(() => {});
+    await this.syncDirectory(legacyRoot).catch(() => {});
+    await fsp.rmdir(legacyRoot).catch(() => {});
+  }
+
   private async emitRecoveryFor(context: SessionContext): Promise<void> {
     const records = await this.recoveryRecords(context.directory);
     if (!this.currentContext(context)) return;
@@ -1311,7 +1346,9 @@ export class OpenShellBackend {
       if (now - transaction.createdAt < retention) continue;
       await fsp.rm(directory, { recursive: true, force: true }).catch(() => {});
     }
-    await this.syncDirectory(path.join(root, RECOVERY_DIR)).catch(() => {});
+    for (const location of [await this.recoveryRoot(root), path.join(root, LEGACY_RECOVERY_DIR)]) {
+      await this.syncDirectory(location).catch(() => {});
+    }
   }
 
   async listRecovery(workspace: WorkspaceIdentity): Promise<RecoveryRecord[]> {
@@ -1344,7 +1381,9 @@ export class OpenShellBackend {
       proposed: "proposed",
       "rename-source": "source"
     };
-    const artifact = await confinedPath(root, `${RECOVERY_DIR}/${match[1]}/${names[record.artifact]}`);
+    const item = (await this.readRecoveryTransactions(root)).find(({ transaction }) => transaction.id === match[1]);
+    if (!item) throw new Error("recovery record not found");
+    const artifact = await confinedPath(item.directory, names[record.artifact]);
     if (!(await fsp.lstat(artifact)).isFile()) throw new Error("recovery record not found");
     const result = await shell.openPath(artifact);
     if (result) throw new Error(result);
@@ -1747,6 +1786,7 @@ export class OpenShellBackend {
     this.contexts.set(context.workspace.id, context);
     this.primary = context.workspace.id;
     await this.reconcileRecovery(directory, () => context.activations.current(generation) && this.currentContext(context));
+    await this.migrateLegacyRecovery(directory, () => context.activations.current(generation) && this.currentContext(context));
     if (!context.activations.current(generation) || !this.currentContext(context)) throw new Error("activation superseded");
     void this.purgeExpiredRecovery(directory, () => context.activations.current(generation) && this.currentContext(context));
     this.startWatcher(context);
@@ -2431,7 +2471,7 @@ export class OpenShellBackend {
     this.assertTarget(target);
     const arr = Array.isArray(res) ? res : (res as { data?: unknown }).data ?? [];
     return (arr as { path?: string }[])
-      .filter((r) => r.path && r.path !== RECOVERY_DIR && !r.path.startsWith(`${RECOVERY_DIR}/`))
+      .filter((r) => typeof r.path === "string" && ![RECOVERY_DIR, LEGACY_RECOVERY_DIR].some((dir) => r.path === dir || r.path?.startsWith(`${dir}/`)))
       .map((r) => {
         const rel = r.path as string;
         return {
@@ -2862,7 +2902,7 @@ export class OpenShellBackend {
     const entries = await fsp.readdir(abs, { withFileTypes: true });
     this.contextFor(workspace);
     return entries
-      .filter((e) => !(clean === "" && e.name === RECOVERY_DIR))
+      .filter((e) => !(clean === "" && (e.name === RECOVERY_DIR || e.name === LEGACY_RECOVERY_DIR)))
       .map((e) => ({
         path: clean ? `${clean}/${e.name}` : e.name,
         type: e.isDirectory() ? "directory" : "file"
@@ -2930,7 +2970,7 @@ export class OpenShellBackend {
     const expected = fileContent(expectedContent);
     const dir = path.dirname(abs);
     await fsp.mkdir(dir, { recursive: true });
-    const temporary = path.join(dir, `.openshell-${randomUUID()}.tmp`);
+    const temporary = path.join(dir, `.orbit-${randomUUID()}.tmp`);
     try {
       const handle = await fsp.open(temporary, "wx", 0o600);
       try {
@@ -3204,7 +3244,7 @@ export class OpenShellBackend {
       const watchContext = context.watchContext;
       if (!this.currentWatch(watchContext)) throw new Error("stale workspace");
       const abs = await confinedPath(root, relativePath(rel));
-      const detachedRoot = path.join(homedir(), ".openshell-detached");
+      const detachedRoot = path.join(homedir(), ".orbit-detached");
       await fsp.mkdir(detachedRoot, { recursive: true });
       const target = path.join(detachedRoot, `${randomUUID()}-${path.basename(abs)}`);
       await fsp.rename(abs, target);
@@ -3308,11 +3348,11 @@ export class OpenShellBackend {
       const watchContext = context.watchContext;
       if (!this.currentWatch(watchContext)) throw new Error("stale workspace");
       const clean = relativePath(rel);
-      if (clean === RECOVERY_DIR || clean.startsWith(`${RECOVERY_DIR}/`)) {
+      if ([RECOVERY_DIR, LEGACY_RECOVERY_DIR].some((dir) => clean === dir || clean.startsWith(`${dir}/`))) {
         throw new Error("cannot move the recovery directory");
       }
       const parentRel = relativePath(newParent, true);
-      if (parentRel === RECOVERY_DIR || parentRel.startsWith(`${RECOVERY_DIR}/`)) {
+      if ([RECOVERY_DIR, LEGACY_RECOVERY_DIR].some((dir) => parentRel === dir || parentRel.startsWith(`${dir}/`))) {
         throw new Error("cannot move into the recovery directory");
       }
       if (parentRel === clean || parentRel.startsWith(`${clean}/`)) {

@@ -251,9 +251,15 @@ server deployments. Do not use `localhost` as the phone's server address.
 
 ## Manual recovery
 
-Orbit stores save and file-rename transactions in
-`<workspace>/.openshell-recovery/`. Explorer and file watching intentionally
-hide this directory. Each transaction contains `manifest.json` plus one or more
+Orbit stores new save and file-rename transactions under
+`<workspace>/.git/orbit-recovery/` for ordinary Git repositories, or a hidden
+`.orbit-recovery-<path-hash>` directory beside the workspace on the same
+filesystem. A non-Git workspace at a filesystem mount point uses
+`<workspace>/.orbit-recovery/` for same-filesystem durability. Legacy
+`<workspace>/.openshell-recovery/` transactions remain
+readable and are hidden from Explorer and file watching. Orbit moves each
+validated legacy transaction to new storage on workspace activation when its
+destination is free. Each transaction contains `manifest.json` plus one or more
 artifacts named `original`, `temporary`, `proposed`, or `source`. On
 activation, Orbit purges settled transactions (`complete`, `failed`,
 acknowledged) older than 24 hours and interrupted ones (`source-held`,

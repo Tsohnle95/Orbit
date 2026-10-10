@@ -2,7 +2,7 @@ import { readdir, readFile, lstat } from "node:fs/promises";
 import path from "node:path";
 import JSON5 from "json5";
 
-export const SASS_IGNORES = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", ".openshell-recovery", "coverage", "out", "vendor"]);
+export const SASS_IGNORES = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", ".openshell-recovery", ".orbit-recovery", "coverage", "out", "vendor"]);
 export const isSassSource = (file: string): boolean => /\.(scss|sass)$/i.test(file);
 export const isSassPartial = (file: string): boolean => path.basename(file).startsWith("_");
 export function insideRoot(root: string, file: string): boolean {

@@ -276,7 +276,7 @@ interface Store {
 const Ctx = createContext<Store | null>(null);
 
 const HIDDEN_DIRS = new Set([
-  ".git", "node_modules", ".next", ".venv", "__pycache__", ".cache", ".turbo", ".svn", ".hg", ".nx", ".openshell-recovery"
+  ".git", "node_modules", ".next", ".venv", "__pycache__", ".cache", ".turbo", ".svn", ".hg", ".nx", ".openshell-recovery", ".orbit-recovery"
 ]);
 
 const MAX_EDITABLE_BYTES = 4 * 1024 * 1024;

@@ -118,10 +118,10 @@ Public methods (all used by IPC):
 | `createFile(workspace, rel)` | Confined `mkdir -p` parents and empty exclusive write; emits `file-update` |
 | `createDir(workspace, rel)` | Confined `mkdir` (fails if exists); renderer re-lists after the call |
 | `deletePath(workspace, rel)` | Confined `shell.trashItem`; emits tracked deletion only after success and preserves Trash failures for the renderer |
-| `detachPath(workspace, rel)` | Confined move to the user-level detached store; removes the entry from the workspace without deleting its contents |
+| `detachPath(workspace, rel)` | Confined move to the user-level `~/.orbit-detached` store; removes the entry from the workspace without deleting its contents. Older `~/.openshell-detached` contents remain where they were created. |
 | `renamePath(workspace, rel, newName)` | Confined same-folder rename; files use the durable no-replace recovery protocol, while directories use one atomic `fs.rename` after rejecting an occupied destination (the same portability tradeoff as directory move) |
-| `movePath(workspace, rel, newParent)` | Confined cross-folder move for files and directories via one atomic `fs.rename` (no recovery hold — see architecture); rejects self/descendant, missing, occupied, cross-filesystem, and `.openshell-recovery` source/destination paths; emits a tracked deletion at the source and, for files, an addition at the target |
-| `listRecovery(workspace)` | Lists validated durable recovery artifacts under the addressed workspace's `.openshell-recovery` directory |
+| `movePath(workspace, rel, newParent)` | Confined cross-folder move for files and directories via one atomic `fs.rename` (no recovery hold — see architecture); rejects self/descendant, missing, occupied, cross-filesystem, and recovery-directory source/destination paths; emits a tracked deletion at the source and, for files, an addition at the target |
+| `listRecovery(workspace)` | Lists validated durable recovery artifacts in Orbit's external storage and legacy workspace-local storage |
 | `openRecovery(workspace, id)` | Opens the validated artifact selected by opaque recovery record id; never accepts a renderer path |
 | `acknowledgeRecovery(workspace, id)` | Persists acknowledgment in the transaction manifest without deleting artifact bytes |
 | `listProjects()` | `project.list`, maps to `{directory, name}` |
@@ -236,7 +236,13 @@ Internals:
   identities remain ordinary delete/add observations.
 - `relKey(abs)` — absolute → `/`-separated path relative to the session
   dir; `abs(rel)` the inverse. `shouldSkip` filters `SKIP_DIRS` roots.
-- Recovery transactions live under `.openshell-recovery/<timestamp>-<uuid>`.
+- New recovery transactions live under `.git/orbit-recovery/<timestamp>-<uuid>`
+  when `.git` is a directory on the workspace filesystem. Otherwise they use
+  a workspace-specific hidden sibling directory on that filesystem. A non-Git
+  filesystem mount point uses workspace-local `.orbit-recovery`. Legacy
+  `.openshell-recovery` transactions remain readable.
+  Activation moves validated legacy transactions to the new storage when the
+  destination is free, preserving their bytes and IDs.
   Atomically replaced, fsynced manifests record save/rename phase and
   acknowledgment state. Activation reconciles only `source-held` and
   `held-validated` interrupted transactions, where Orbit is known to have

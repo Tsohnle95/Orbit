@@ -1,6 +1,7 @@
 // @vitest-environment node
-import { chmod, mkdir, mkdtemp, open, readFile, readdir, realpath, rm, symlink, unlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, open, readFile, readdir, realpath, rename, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -29,8 +30,13 @@ const workspace: WorkspaceIdentity = { id: "11111111-1111-4111-8111-111111111111
 type TestWatchContext = SessionContext["watchContext"];
 
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(roots.splice(0).flatMap((root) => [root, recoveryRootFor(root)].map((location) => rm(location, { recursive: true, force: true }))));
 });
+
+function recoveryRootFor(root: string): string {
+  const key = createHash("sha256").update(root).digest("hex").slice(0, 16);
+  return path.join(path.dirname(root), `.orbit-recovery-${key}`);
+}
 
 async function backendFixture(
   mutationPhase?: ConstructorParameters<typeof OpenShellBackend>[0]
@@ -79,7 +85,7 @@ const writeIdentity = (expectedContent: string) => ({
 });
 
 async function recoveryContents(root: string): Promise<string[]> {
-  const recoveryRoot = path.join(root, ".openshell-recovery");
+  const recoveryRoot = recoveryRootFor(root);
   const transactions = await readdir(recoveryRoot).catch(() => []);
   const contents: string[] = [];
   for (const transaction of transactions) {
@@ -204,6 +210,38 @@ describe("direct mutation observed changes", () => {
     await expect(backend.acknowledgeRecovery(workspace, "../../outside:original")).rejects.toThrow("invalid recovery record");
   });
 
+  it("stores Git workspace recovery in metadata rather than project files", async () => {
+    const { backend, root } = await backendFixture();
+    await mkdir(path.join(root, ".git"));
+    await writeFile(path.join(root, "save.txt"), "original");
+
+    await backend.writeFile(workspace, "save.txt", "proposed", writeIdentity("original"));
+
+    expect(await readdir(path.join(root, ".git", "orbit-recovery"))).toHaveLength(1);
+    expect(await readdir(root)).toEqual([".git", "save.txt"]);
+    expect((await backend.listRecovery(workspace)).some((record) => record.originalPath === "save.txt")).toBe(true);
+  });
+
+  it("can still inspect and acknowledge legacy workspace-local recovery", async () => {
+    const { backend, root } = await backendFixture();
+    await writeFile(path.join(root, "save.txt"), "original");
+    await backend.writeFile(workspace, "save.txt", "proposed", writeIdentity("original"));
+    await rename(recoveryRootFor(root), path.join(root, ".openshell-recovery"));
+
+    const record = (await backend.listRecovery(workspace)).find((item) => item.artifact === "original")!;
+    expect(record.recoveryPath).toContain(".openshell-recovery");
+    await backend.openRecovery(workspace, record.id);
+    await backend.acknowledgeRecovery(workspace, record.id);
+    expect((await backend.listRecovery(workspace)).find((item) => item.id === record.id)?.acknowledged).toBe(true);
+    const state = backend as unknown as { client: unknown };
+    state.client = { session: { create: vi.fn(async () => ({ id: "reactivated" })) } };
+    const activated = await backend.openSession(root);
+    expect(await readdir(path.join(root, ".openshell-recovery")).catch(() => [])).toEqual([]);
+    expect(await readdir(recoveryRootFor(root))).toHaveLength(1);
+    expect((await backend.listRecovery(activated.workspace)).find((item) => item.id === record.id)).toBeDefined();
+    await backend.stop();
+  });
+
   it("emits persistent recovery records when the workspace is activated again", async () => {
     const { backend, root, messages } = await backendFixture();
     await writeFile(path.join(root, "save.txt"), "original");
@@ -225,7 +263,7 @@ describe("direct mutation observed changes", () => {
     const { backend, root } = await backendFixture();
     await writeFile(path.join(root, "save.txt"), "original");
     await backend.writeFile(workspace, "save.txt", "proposed", writeIdentity("original"));
-    const recoveryRoot = path.join(root, ".openshell-recovery");
+    const recoveryRoot = recoveryRootFor(root);
     await ageTransaction(recoveryRoot, (await readdir(recoveryRoot))[0], { ageMs: 25 * HOUR_MS });
     const state = backend as unknown as { client: unknown };
     state.client = { session: { create: vi.fn(async () => ({ id: "reactivated" })) } };
@@ -245,7 +283,7 @@ describe("direct mutation observed changes", () => {
     });
     await writeFile(path.join(root, "save.txt"), "original");
     await expect(backend.writeFile(workspace, "save.txt", "proposed", writeIdentity("original"))).rejects.toThrow();
-    const recoveryRoot = path.join(root, ".openshell-recovery");
+    const recoveryRoot = recoveryRootFor(root);
     await ageTransaction(recoveryRoot, (await readdir(recoveryRoot))[0], { ageMs: 25 * HOUR_MS });
 
     await purgeExpired(backend, root);
@@ -260,7 +298,7 @@ describe("direct mutation observed changes", () => {
     });
     await writeFile(path.join(root, "save.txt"), "original");
     await expect(backend.writeFile(workspace, "save.txt", "proposed", writeIdentity("original"))).rejects.toThrow();
-    const recoveryRoot = path.join(root, ".openshell-recovery");
+    const recoveryRoot = recoveryRootFor(root);
     await ageTransaction(recoveryRoot, (await readdir(recoveryRoot))[0], {
       ageMs: 25 * HOUR_MS,
       phase: "source-held",
@@ -279,7 +317,7 @@ describe("direct mutation observed changes", () => {
       await writeFile(path.join(root, rel), "original");
       await backend.writeFile(workspace, rel, "proposed", writeIdentity("original"));
     }
-    const recoveryRoot = path.join(root, ".openshell-recovery");
+    const recoveryRoot = recoveryRootFor(root);
     const transactions = await readdir(recoveryRoot);
     await ageTransaction(recoveryRoot, transactions[0], { ageMs: HOUR_MS });
     await ageTransaction(recoveryRoot, transactions[1], { ageMs: HOUR_MS, phase: "failed", acknowledged: [] });
@@ -299,7 +337,7 @@ describe("direct mutation observed changes", () => {
       await writeFile(path.join(root, rel), "original");
       await backend.writeFile(workspace, rel, "proposed", writeIdentity("original"));
     }
-    const recoveryRoot = path.join(root, ".openshell-recovery");
+    const recoveryRoot = recoveryRootFor(root);
     const transactions = await readdir(recoveryRoot);
     await ageTransaction(recoveryRoot, transactions[0], { ageMs: 8 * DAY_MS, phase: "source-held", acknowledged: [] });
     await ageTransaction(recoveryRoot, transactions[1], { ageMs: 8 * DAY_MS, phase: "held-validated", acknowledged: [] });
@@ -317,7 +355,7 @@ describe("direct mutation observed changes", () => {
       await writeFile(path.join(root, rel), "original");
       await backend.writeFile(workspace, rel, "proposed", writeIdentity("original"));
     }
-    const recoveryRoot = path.join(root, ".openshell-recovery");
+    const recoveryRoot = recoveryRootFor(root);
     const transactions = await readdir(recoveryRoot);
     const blocked = path.join(recoveryRoot, transactions[0]);
     await ageTransaction(recoveryRoot, transactions[0], { ageMs: 25 * HOUR_MS });
@@ -348,7 +386,7 @@ describe("direct mutation observed changes", () => {
     await expect(backend.writeFile(workspace, "save.txt", "proposed", writeIdentity("original"))).rejects.toThrow();
     await unlink(path.join(root, "save.txt")).catch(() => {});
 
-    const recoveryRoot = path.join(root, ".openshell-recovery");
+    const recoveryRoot = recoveryRootFor(root);
     const transaction = (await readdir(recoveryRoot))[0];
     const manifestPath = path.join(recoveryRoot, transaction, "manifest.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { phase: string };
@@ -378,7 +416,7 @@ describe("direct mutation observed changes", () => {
     roots.push(outside);
     await writeFile(path.join(root, "save.txt"), "original");
     await expect(backend.writeFile(workspace, "save.txt", "proposed", writeIdentity("original"))).rejects.toThrow();
-    const recoveryRoot = path.join(root, ".openshell-recovery");
+    const recoveryRoot = recoveryRootFor(root);
     const transaction = (await readdir(recoveryRoot))[0];
     const manifestPath = path.join(recoveryRoot, transaction, "manifest.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { phase: string; originalPath: string };
@@ -399,7 +437,7 @@ describe("direct mutation observed changes", () => {
     await writeFile(path.join(root, "save.txt"), "original");
     await expect(backend.writeFile(workspace, "save.txt", "proposed", writeIdentity("original"))).rejects.toThrow();
     await unlink(path.join(root, "save.txt")).catch(() => {});
-    const recoveryRoot = path.join(root, ".openshell-recovery");
+    const recoveryRoot = recoveryRootFor(root);
     const transaction = (await readdir(recoveryRoot))[0];
     const manifestPath = path.join(recoveryRoot, transaction, "manifest.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { phase: string };
@@ -669,7 +707,8 @@ describe("direct mutation observed changes", () => {
   it("rejects the recovery directory as move source or destination", async () => {
     const { backend, root, messages } = await backendFixture();
     await mkdir(path.join(root, "docs"));
-    await mkdir(path.join(root, ".openshell-recovery"), { recursive: true });
+    await mkdir(path.join(root, ".openshell-recovery"));
+    await mkdir(path.join(root, ".orbit-recovery"));
     await writeFile(path.join(root, "docs", "note.txt"), "x");
 
     await expect(backend.movePath(workspace, ".openshell-recovery", "docs"))
@@ -678,9 +717,14 @@ describe("direct mutation observed changes", () => {
       .rejects.toThrow("cannot move into the recovery directory");
     await expect(backend.movePath(workspace, "docs", ".openshell-recovery/archive"))
       .rejects.toThrow("cannot move into the recovery directory");
+    await expect(backend.movePath(workspace, ".orbit-recovery", "docs"))
+      .rejects.toThrow("cannot move the recovery directory");
+    await expect(backend.movePath(workspace, "docs/note.txt", ".orbit-recovery"))
+      .rejects.toThrow("cannot move into the recovery directory");
 
     expect(await readFile(path.join(root, "docs", "note.txt"), "utf8")).toBe("x");
     expect(await readdir(path.join(root, ".openshell-recovery"))).toEqual([]);
+    expect(await readdir(path.join(root, ".orbit-recovery"))).toEqual([]);
     expect(messages).toEqual([]);
   });
 

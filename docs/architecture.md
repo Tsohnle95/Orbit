@@ -234,7 +234,10 @@ updates preserve local edits and pause saving until explicit reload, overwrite,
 or keep-editing then save-merged resolution. Lifecycle changes invalidate
 timers and stale completions; external updates advance a conflict generation so
 an already-started completion cannot clear a newer conflict. Writes create a
-transaction under workspace-local `.openshell-recovery`, copy proposed bytes
+transaction under `.git/orbit-recovery` for ordinary Git repositories, or a
+workspace-specific hidden sibling directory on the same filesystem. A non-Git
+workspace at a filesystem mount point uses workspace-local `.orbit-recovery`
+to preserve same-filesystem atomic operations. Orbit then copies proposed bytes
 into a second durable artifact, move the current target inode into the
 transaction, validate the held bytes, and install the temporary inode with a
 no-replace hard link. The original pathname is briefly unavailable between the
@@ -280,7 +283,7 @@ an addition carrying the captured baseline at the target; files inside a
 moved directory surface through the fs watcher, and the renderer
 re-lists both the old parent and the destination. The source/target
 confinement rules are identical to the other mutations, and
-`.openshell-recovery` is rejected as both source and destination.
+legacy `.openshell-recovery` and `.orbit-recovery` are rejected as both source and destination.
 
 Every workspace filesystem call carries the expected workspace UUID and main
 rejects stale generations. Paths are bounded strict relative paths and no
@@ -291,8 +294,10 @@ Absolute reads are not part of the workspace API. DevTools CSS navigation
 resolves only app-root-confined sources in main, then uses the same explicit
 external-file capability as a user-opened standalone file.
 
-`.openshell-recovery` is excluded from watching, Explorer, and application file
-references. The recovery root, transaction directories, artifacts, and
+New recovery storage is normally outside the project file tree. Existing
+`.openshell-recovery` transactions remain readable, move to the new storage on
+workspace activation when safe, and are excluded from
+watching, Explorer, and application file references. The recovery root, transaction directories, artifacts, and
 canonical recovery parents must contain no symlink component. Transaction ids
 and manifests are validated, and Open resolves a known artifact id in main
 rather than accepting a renderer path. Recovery reconciliation is activation-
