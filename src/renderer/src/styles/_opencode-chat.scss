@@ -106,6 +106,9 @@
   overflow-x: hidden;
   background: var(--v2-background-bg-base);
 }
+:root[data-theme="kitty"] .agent-panel .agent-scroll {
+  background: transparent;
+}
 .agent-panel .agent-empty { margin: 0 20px; }
 .opencode-timeline {
   width: 100%;
@@ -136,6 +139,9 @@
   --green: var(--v2-state-fg-success);
   --red: var(--v2-state-fg-danger);
   --accent: var(--v2-text-text-accent);
+}
+:root[data-theme="kitty"] .agent-panel .opencode-timeline {
+  background: transparent;
 }
 .opencode-timeline :where(*, *::before, *::after) { box-sizing: border-box; }
 .opencode-timeline :where(p, h1, h2, h3, h4, h5, h6, blockquote, dl, dd, pre, figure, hr, ul, ol) { margin: 0; }
