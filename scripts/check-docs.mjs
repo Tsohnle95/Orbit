@@ -70,13 +70,15 @@ for (const [file, markdown] of documentation) {
 }
 
 check(
-  packageJson.scripts.check === "npm run typecheck && npm test && npm run docs:check && npm run build:compile",
-  "package.json check script must run typecheck, tests, documented surface presence, and the compile-only build"
+  packageJson.scripts.check === "npm run typecheck && npm test && npm run docs:check && npm run architecture:check && npm run build:compile",
+  "package.json check script must run typecheck, tests, documented surfaces, architecture fitness, and the compile-only build"
 );
+check(packageJson.scripts["architecture:check"] === "node scripts/check-architecture.mjs", "Architecture fitness must use the reviewed checker");
 check(packageJson.engines?.node === ">=22.23.2 <23", "package.json engines.node must be >=22.23.2 <23");
 check((await read(".node-version")).trim() === "22.23.2", ".node-version must select 22.23.2");
 const workflow = await read(".github/workflows/check.yml");
 check(workflow.includes("node-version-file: .node-version"), "CI must select Node through .node-version");
+check(workflow.includes("- run: npm run check"), "CI must run the canonical gate including architecture fitness");
 check(documentation.get("README.md").includes("Node 22.23.2"), "README.md must state the supported Node floor");
 check(documentation.get("docs/operations.md").includes("Node 22.23.2"), "docs/operations.md must state the supported Node floor");
 

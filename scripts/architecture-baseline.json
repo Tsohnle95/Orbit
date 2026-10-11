@@ -1,0 +1,806 @@
+{
+  "version": 1,
+  "baselineCommit": "a1c54a35c3856e56209110cf4db493754699ed00",
+  "reviewPolicy": "Checks never regenerate this manifest. Ratchet only removes or lowers debt budgets. New or increased exceptions require a specific rationale and independent diff review.",
+  "limits": {
+    "module": 800,
+    "codeLines": 100,
+    "cyclomatic": 20,
+    "nesting": 5
+  },
+  "knownFiles": [
+    "src/main/app-updater-window.ts",
+    "src/main/app-updater.ts",
+    "src/main/backend-event-loop.ts",
+    "src/main/exec-path.ts",
+    "src/main/file-baseline.ts",
+    "src/main/index.ts",
+    "src/main/inspect-picker.ts",
+    "src/main/ipc-schema.ts",
+    "src/main/ipc/agent.ts",
+    "src/main/ipc/files.ts",
+    "src/main/ipc/registration.ts",
+    "src/main/ipc/terminal.ts",
+    "src/main/mobile-server.ts",
+    "src/main/open-paths.ts",
+    "src/main/opencode.ts",
+    "src/main/operation-coordinator.ts",
+    "src/main/provider-usage.ts",
+    "src/main/pty-directory.ts",
+    "src/main/recovery-storage.ts",
+    "src/main/runtimes/deepseek/deepseek-adapter.ts",
+    "src/main/runtimes/deepseek/deepseek-events.ts",
+    "src/main/runtimes/deepseek/deepseek-rpc.ts",
+    "src/main/runtimes/deepseek/deepseek-stream.ts",
+    "src/main/runtimes/runtime-adapter.ts",
+    "src/main/runtimes/runtime-session-index.ts",
+    "src/main/sass-compile.ts",
+    "src/main/sass-compiler.ts",
+    "src/main/sass-config.ts",
+    "src/main/sass-preferences.ts",
+    "src/main/sass-watch.ts",
+    "src/main/sass-worker.ts",
+    "src/main/saved-workspaces.ts",
+    "src/main/security.ts",
+    "src/main/session-replay.ts",
+    "src/main/source-resolver.ts",
+    "src/main/sqlite.ts",
+    "src/main/stream-pipeline.ts",
+    "src/main/terminal.ts",
+    "src/main/trash.ts",
+    "src/main/tui-command.ts",
+    "src/main/vite-server.ts",
+    "src/main/w3c-validation.ts",
+    "src/main/window-sizing.ts",
+    "src/main/workspace-location.ts",
+    "src/main/workspace-security.ts",
+    "src/main/workspace-target.ts",
+    "src/preload/index.ts",
+    "src/renderer/src/App.tsx",
+    "src/renderer/src/agent-panels.ts",
+    "src/renderer/src/appearances.ts",
+    "src/renderer/src/assistant-status.ts",
+    "src/renderer/src/binary.ts",
+    "src/renderer/src/chat-projection.ts",
+    "src/renderer/src/chat-records.ts",
+    "src/renderer/src/chat-store.ts",
+    "src/renderer/src/chat-stream.ts",
+    "src/renderer/src/components/AgentPanel.tsx",
+    "src/renderer/src/components/AgentTui.tsx",
+    "src/renderer/src/components/AgentUsage.tsx",
+    "src/renderer/src/components/Composer.tsx",
+    "src/renderer/src/components/ComposerModelMenu.tsx",
+    "src/renderer/src/components/EditorPane.tsx",
+    "src/renderer/src/components/ErrorBoundary.tsx",
+    "src/renderer/src/components/ExternalLink.tsx",
+    "src/renderer/src/components/FileIcons.tsx",
+    "src/renderer/src/components/FileSidebar.tsx",
+    "src/renderer/src/components/FormPrompt.tsx",
+    "src/renderer/src/components/MobileSetup.tsx",
+    "src/renderer/src/components/OpenCodeFile.tsx",
+    "src/renderer/src/components/OpenCodeFileIcon.tsx",
+    "src/renderer/src/components/OpenCodeIcon.tsx",
+    "src/renderer/src/components/OpenCodeMarkdown.tsx",
+    "src/renderer/src/components/OpenCodeSpecialTool.tsx",
+    "src/renderer/src/components/OpenCodeTimeline.tsx",
+    "src/renderer/src/components/OpenCodeTodoDock.tsx",
+    "src/renderer/src/components/OrbitMark.tsx",
+    "src/renderer/src/components/ProviderSettings.tsx",
+    "src/renderer/src/components/QueuedMessageChips.tsx",
+    "src/renderer/src/components/RecoveryNotice.tsx",
+    "src/renderer/src/components/ServerSettings.tsx",
+    "src/renderer/src/components/SessionsPane.tsx",
+    "src/renderer/src/components/SettingsPage.tsx",
+    "src/renderer/src/components/SettingsSidebar.tsx",
+    "src/renderer/src/components/StatusBar.tsx",
+    "src/renderer/src/components/TerminalTray.tsx",
+    "src/renderer/src/components/TextShimmer.tsx",
+    "src/renderer/src/components/ToolCountSummary.tsx",
+    "src/renderer/src/components/ToolStatusTitle.tsx",
+    "src/renderer/src/components/Welcome.tsx",
+    "src/renderer/src/components/agent-scroll.ts",
+    "src/renderer/src/components/composer-completions.ts",
+    "src/renderer/src/components/editor-status.ts",
+    "src/renderer/src/components/icons.tsx",
+    "src/renderer/src/components/use-menu-dismiss.ts",
+    "src/renderer/src/drop.ts",
+    "src/renderer/src/editor-close-guard.ts",
+    "src/renderer/src/editor-language-input.ts",
+    "src/renderer/src/editor-navigation.ts",
+    "src/renderer/src/editor-persistence.ts",
+    "src/renderer/src/emmet-keys.ts",
+    "src/renderer/src/emmet.ts",
+    "src/renderer/src/explorer-selection.ts",
+    "src/renderer/src/global.d.ts",
+    "src/renderer/src/layout/PanelColumn.tsx",
+    "src/renderer/src/layout/panel-interactions.ts",
+    "src/renderer/src/main.tsx",
+    "src/renderer/src/markdown-projection.ts",
+    "src/renderer/src/markdown-stream.ts",
+    "src/renderer/src/message-queue.ts",
+    "src/renderer/src/messages/agent-mentions.ts",
+    "src/renderer/src/messages/synthetic.ts",
+    "src/renderer/src/monaco-internals.d.ts",
+    "src/renderer/src/monaco.ts",
+    "src/renderer/src/opencode-file/default-options.ts",
+    "src/renderer/src/opencode-file/diff-source.ts",
+    "src/renderer/src/opencode-file/file.css",
+    "src/renderer/src/opencode-file/line-comment-styles.ts",
+    "src/renderer/src/opencode-file/worker.ts",
+    "src/renderer/src/opencode-markdown/checksum.ts",
+    "src/renderer/src/opencode-markdown/markdown-cache.ts",
+    "src/renderer/src/opencode-markdown/markdown-code-state.ts",
+    "src/renderer/src/opencode-markdown/markdown-engine.ts",
+    "src/renderer/src/opencode-markdown/markdown-inline-code-kind.ts",
+    "src/renderer/src/opencode-markdown/markdown-test-worker.ts",
+    "src/renderer/src/opencode-markdown/markdown-worker-protocol.ts",
+    "src/renderer/src/opencode-markdown/markdown-worker-queue.ts",
+    "src/renderer/src/opencode-markdown/markdown-worker-transport.ts",
+    "src/renderer/src/opencode-markdown/markdown-worker.ts",
+    "src/renderer/src/opencode-markdown/markdown.worker.ts",
+    "src/renderer/src/opencode-markdown/marked-parser.ts",
+    "src/renderer/src/opencode-markdown/marked-theme.ts",
+    "src/renderer/src/opencode-markdown/render.ts",
+    "src/renderer/src/opencode-markdown/tooltip.ts",
+    "src/renderer/src/opencode-task-agent.ts",
+    "src/renderer/src/reveal.ts",
+    "src/renderer/src/session-activity.ts",
+    "src/renderer/src/store.tsx",
+    "src/renderer/src/streaming.ts",
+    "src/renderer/src/styles/_agent.scss",
+    "src/renderer/src/styles/_buttons.scss",
+    "src/renderer/src/styles/_composer.scss",
+    "src/renderer/src/styles/_editor.scss",
+    "src/renderer/src/styles/_error-boundary.scss",
+    "src/renderer/src/styles/_foundation.scss",
+    "src/renderer/src/styles/_layout.scss",
+    "src/renderer/src/styles/_opencode-chat.scss",
+    "src/renderer/src/styles/_scrollbars.scss",
+    "src/renderer/src/styles/_sessions.scss",
+    "src/renderer/src/styles/_settings.scss",
+    "src/renderer/src/styles/_sidebar.scss",
+    "src/renderer/src/styles/_statusbar.scss",
+    "src/renderer/src/styles/_terminal.scss",
+    "src/renderer/src/styles/_toasts.scss",
+    "src/renderer/src/styles/_welcome.scss",
+    "src/renderer/src/styles/main.scss",
+    "src/renderer/src/terminal-state.ts",
+    "src/renderer/src/theme.tsx",
+    "src/renderer/src/use-sass-watch.ts",
+    "src/renderer/src/validation-report.ts",
+    "src/renderer/src/w3c-validation.ts",
+    "src/shared/errors.ts",
+    "src/shared/forms.ts",
+    "src/shared/generation.ts",
+    "src/shared/message-presentation.ts",
+    "src/shared/retention.ts",
+    "src/shared/tool-presentation.ts",
+    "src/shared/types.ts",
+    "src/shared/url-policy.ts"
+  ],
+  "modules": {
+    "src/renderer/src/store.tsx": {
+      "loc": 3800,
+      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
+    },
+    "src/main/opencode.ts": {
+      "loc": 2609,
+      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
+    },
+    "src/renderer/src/opencode-markdown/markdown-inline-code-kind.ts": {
+      "loc": 1908,
+      "reason": "Cohesive pinned Linguist filename/extension table; retain readable data, do not compress or move out of the production metric."
+    },
+    "src/renderer/src/components/OpenCodeTimeline.tsx": {
+      "loc": 1626,
+      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
+    },
+    "src/main/index.ts": {
+      "loc": 1102,
+      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
+    },
+    "src/renderer/src/styles/_opencode-chat.scss": {
+      "loc": 1047,
+      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
+    },
+    "src/renderer/src/components/FileSidebar.tsx": {
+      "loc": 958,
+      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
+    },
+    "src/main/provider-usage.ts": {
+      "loc": 835,
+      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
+    }
+  },
+  "functions": {
+    "src/renderer/src/store.tsx:StoreBody#1": {
+      "codeLines": 3271,
+      "cyclomatic": 37,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/App.tsx:Layout#1": {
+      "codeLines": 687,
+      "cyclomatic": 63,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage#1": {
+      "codeLines": 620,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/AgentPanel.tsx:AgentPanel#1": {
+      "codeLines": 327,
+      "cyclomatic": 56,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/FileSidebar.tsx:FileSidebar#1": {
+      "codeLines": 578,
+      "cyclomatic": 37,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage/processMessage#1": {
+      "codeLines": 566,
+      "cyclomatic": 248,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/chat-store.ts:applyChatEvent#1": {
+      "codeLines": 497,
+      "cyclomatic": 207,
+      "nesting": 6,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/index.ts:registerIpc#1": {
+      "codeLines": 194,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/SessionsPane.tsx:SessionsPane#1": {
+      "codeLines": 346,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/SettingsPage.tsx:SettingsPage#1": {
+      "codeLines": 338,
+      "cyclomatic": 50,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/TerminalTray.tsx:TerminalTray#1": {
+      "codeLines": 333,
+      "cyclomatic": 28,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/index.ts:createWindow#1": {
+      "codeLines": 260,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/stream-pipeline.ts:createStreamPipeline#1": {
+      "codeLines": 223,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/EditorPane.tsx:EditorPane#1": {
+      "codeLines": 222,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/opencode-markdown/tooltip.ts:mountTooltip#1": {
+      "codeLines": 205,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/EditorPane.tsx:EditorWithSave#1": {
+      "codeLines": 188,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/Welcome.tsx:Welcome#1": {
+      "codeLines": 167,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/chat-stream.ts:reduceChatStream#1": {
+      "codeLines": 161,
+      "cyclomatic": 52,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/OpenCodeTimeline.tsx:ToolPart#1": {
+      "codeLines": 158,
+      "cyclomatic": 55,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/StatusBar.tsx:StatusBar#1": {
+      "codeLines": 141,
+      "cyclomatic": 50,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/provider-usage.ts:fetchCopilot#1": {
+      "codeLines": 136,
+      "cyclomatic": 36,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/OpenCodeFile.tsx:OpenCodeFile#1": {
+      "codeLines": 129,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/index.ts:updateOrbitApp#1": {
+      "codeLines": 128,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/MobileSetup.tsx:MobileSetup#1": {
+      "codeLines": 128,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/opencode-markdown/markdown-engine.ts:createMarkdownWorkerHandler#1": {
+      "codeLines": 120,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/opencode.ts:OpenShellBackend/writeFile#1": {
+      "codeLines": 110,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/ProviderSettings.tsx:OAuthFlow#1": {
+      "codeLines": 110,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/assistant-status.ts:resolveAssistantStatus#1": {
+      "codeLines": 108,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/store.tsx:StoreBody/value#1": {
+      "codeLines": 106,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/EditorPane.tsx:EditorGroup#1": {
+      "codeLines": 105,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/opencode-markdown/markdown-worker.ts:getWorker#1": {
+      "codeLines": 105,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/OpenCodeTimeline.tsx:TimelineEvent#1": {
+      "codeLines": 104,
+      "cyclomatic": 27,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/App.tsx:Layout/useLayoutEffect callback:current#1": {
+      "codeLines": 103,
+      "cyclomatic": 34,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/theme.tsx:applyAppearance#1": {
+      "codeLines": 101,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/ProviderSettings.tsx:ProviderCard#1": {
+      "codeLines": 100,
+      "cyclomatic": 22,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/opencode.ts:OpenShellBackend/openSessionById#1": {
+      "codeLines": 100,
+      "cyclomatic": 32,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/store.tsx:StoreBody/commitName#1": {
+      "codeLines": 100,
+      "cyclomatic": 23,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/store.tsx:StoreBody/sendPrompt#1": {
+      "codeLines": 100,
+      "cyclomatic": 26,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/runtimes/deepseek/deepseek-events.ts:deepSeekTranscript#1": {
+      "codeLines": 100,
+      "cyclomatic": 29,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/sass-config.ts:sassPlan#1": {
+      "codeLines": 100,
+      "cyclomatic": 43,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/opencode.ts:OpenShellBackend/onFsChanged#1": {
+      "codeLines": 100,
+      "cyclomatic": 38,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/store.tsx:StoreBody/reopenSession#1": {
+      "codeLines": 100,
+      "cyclomatic": 27,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/runtimes/deepseek/deepseek-stream.ts:DeepSeekStreamProjector/project#1": {
+      "codeLines": 100,
+      "cyclomatic": 38,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/store.tsx:StoreBody/panelViews#1": {
+      "codeLines": 100,
+      "cyclomatic": 33,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/OpenCodeFile.tsx:OpenCodeFile/useLayoutEffect callback:host#2": {
+      "codeLines": 100,
+      "cyclomatic": 21,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/streaming.ts:updateStreamingState#1": {
+      "codeLines": 100,
+      "cyclomatic": 23,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/OpenCodeTimeline.tsx:toolPresentation#1": {
+      "codeLines": 100,
+      "cyclomatic": 48,
+      "nesting": 13,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/opencode.ts:OpenShellBackend/importExternal/this.mutations.run callback:root#1": {
+      "codeLines": 100,
+      "cyclomatic": 21,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/FormPrompt.tsx:FormPrompt/form.fields.map callback#1": {
+      "codeLines": 100,
+      "cyclomatic": 21,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/workspace-location.ts:locateWorkspace#1": {
+      "codeLines": 100,
+      "cyclomatic": 30,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/OpenCodeTimeline.tsx:consolidateSubagentTools#1": {
+      "codeLines": 100,
+      "cyclomatic": 20,
+      "nesting": 7,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/assistant-status.ts:createParsedStatus#1": {
+      "codeLines": 100,
+      "cyclomatic": 21,
+      "nesting": 6,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/opencode.ts:OpenShellBackend/listSessions#1": {
+      "codeLines": 100,
+      "cyclomatic": 23,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/chat-stream.ts:partFromProjection#1": {
+      "codeLines": 100,
+      "cyclomatic": 26,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/runtimes/deepseek/deepseek-adapter.ts:DeepSeekRuntimeAdapter/subscribe/pump#1": {
+      "codeLines": 100,
+      "cyclomatic": 28,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/components/OpenCodeTimeline.tsx:EditToolCard#1": {
+      "codeLines": 100,
+      "cyclomatic": 30,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/store.tsx:StoreBody/openFile#1": {
+      "codeLines": 100,
+      "cyclomatic": 25,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/opencode.ts:OpenShellBackend/openSession#1": {
+      "codeLines": 100,
+      "cyclomatic": 23,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/opencode.ts:OpenShellBackend/deliverEvents#1": {
+      "codeLines": 100,
+      "cyclomatic": 25,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/opencode.ts:OpenShellBackend/startRuntimeSubscription/anonymous#1": {
+      "codeLines": 100,
+      "cyclomatic": 20,
+      "nesting": 7,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/renderer/src/opencode-file/diff-source.ts:completePatchContents#1": {
+      "codeLines": 100,
+      "cyclomatic": 23,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/opencode.ts:OpenShellBackend/listProviderIntegrations/SUPPORTED_PROVIDER_IDS.flatMap((id) => catalog.filter((row) => row.id === id)).m callback:methods/fields#1": {
+      "codeLines": 100,
+      "cyclomatic": 28,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/runtimes/deepseek/deepseek-stream.ts:DeepSeekStreamProjector/chunk#1": {
+      "codeLines": 100,
+      "cyclomatic": 28,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/sass-watch.ts:SassWatchManager/run/anonymous#1": {
+      "codeLines": 100,
+      "cyclomatic": 21,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/index.ts:createWindow/newWin.webContents.on callback:before-input-event#1": {
+      "codeLines": 100,
+      "cyclomatic": 26,
+      "nesting": 5,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    },
+    "src/main/vite-server.ts:findHtmlEntry#1": {
+      "codeLines": 100,
+      "cyclomatic": 20,
+      "nesting": 6,
+      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+    }
+  },
+  "functionExceptions": {
+    "src/renderer/src/components/Composer.tsx:Composer#1": {
+      "codeLines": 373,
+      "cyclomatic": 44,
+      "nesting": 5,
+      "origin": "src/renderer/src/components/AgentPanel.tsx:Composer#1",
+      "reason": "Independently reviewed retained prompt-draft controller after extracting models, completions, and presentation; named callbacks and attachment/form/keyboard semantics preserved. Current reduced ceilings, no growth; further controller extraction requires lifecycle characterization."
+    },
+    "src/renderer/src/components/Composer.tsx:Composer/textarea.onKeyDown callback#1": {
+      "codeLines": 100,
+      "cyclomatic": 21,
+      "nesting": 5,
+      "origin": "src/renderer/src/components/AgentPanel.tsx:Composer/textarea.onKeyDown callback#1",
+      "reason": "Independently reviewed identical keyboard handler, anchored to textarea.onKeyDown instead of anonymous ordinal. Original complexity ceiling, no growth."
+    },
+    "src/renderer/src/layout/PanelColumn.tsx:PanelColumn#1": {
+      "codeLines": 114,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "origin": "src/renderer/src/App.tsx:PanelColumn#1",
+      "reason": "Independently reviewed identical presenter moved from App; single column composition with separately budgeted drag callbacks. Original 114-line budget, no growth or new policy."
+    },
+    "src/renderer/src/agent-panels.ts:panelSlotFor#1": {
+      "codeLines": 100,
+      "cyclomatic": 28,
+      "nesting": 5,
+      "origin": "src/renderer/src/App.tsx:Layout/slotFor#1",
+      "reason": "Independently reviewed existing panel-slot selection policy extracted with explicit pure inputs. Remembered-slot lookup remains lazy at the caller; original complexity budget, no growth."
+    },
+    "src/renderer/src/chat-projection.ts:hydrateChatState#1": {
+      "codeLines": 100,
+      "cyclomatic": 32,
+      "nesting": 5,
+      "origin": "src/renderer/src/chat-store.ts:hydrateChatState#1",
+      "reason": "Independently reviewed identical body moved from chat-store into its private projection owner; retain hydration failure and prior-state merge semantics. Frozen original complexity budget, no growth."
+    },
+    "src/renderer/src/chat-projection.ts:projectAssistantMessage#1": {
+      "codeLines": 100,
+      "cyclomatic": 22,
+      "nesting": 5,
+      "origin": "src/renderer/src/chat-store.ts:projectAssistantItems#1",
+      "reason": "Independently reviewed identical single-message projection extracted from the old projectAssistantItems loop body; cache separately characterized. Budget retains existing protocol dispatch complexity, no growth."
+    },
+    "src/renderer/src/chat-projection.ts:reconcileAssistantProjection/result.map callback#1": {
+      "codeLines": 100,
+      "cyclomatic": 20,
+      "nesting": 6,
+      "origin": "src/renderer/src/store.tsx:StoreBody/applyProjection/updateSessionTranscript callback:pending/result.map callback#1",
+      "reason": "Independently reviewed identical parent attribution and user metadata backfill moved into pure reconciliation; user cloning preserved. Original nesting budget, no growth."
+    },
+    "src/main/session-replay.ts:replayTranscript#1": {
+      "codeLines": 172,
+      "cyclomatic": 63,
+      "nesting": 5,
+      "origin": "src/main/opencode.ts:replayTranscript#1",
+      "reason": "Reviewed semantics-preserving relocation of the existing protocol replay discriminant dispatch; budget does not exceed its frozen original and must ratchet downward."
+    },
+    "src/main/recovery-storage.ts:RecoveryStorage/reconcileRecovery#1": {
+      "codeLines": 43,
+      "cyclomatic": 21,
+      "nesting": 4,
+      "origin": "src/main/opencode.ts:OpenShellBackend/reconcileRecovery/anonymous#1",
+      "reason": "Independently reviewed exact relocation of recovery reconciliation; preserve generation guards, no-replace link recovery, and every failure path. Limits do not exceed original frozen metrics."
+    },
+    "src/main/ipc/agent.ts:registerAgentIpc#1": {
+      "codeLines": 142,
+      "cyclomatic": 1,
+      "nesting": 0,
+      "reason": "Independently reviewed declarative trusted IPC registration; callbacks are independently budgeted and sender validation stays in index.ts. Registrar owns no session/runtime state."
+    }
+  },
+  "edgeExceptions": [
+    {
+      "from": "src/renderer/src/global.d.ts",
+      "to": "src/preload/index.ts",
+      "typeOnly": true,
+      "reason": "Renderer window.openshell declaration derives the controlled preload interface; type-only bridge has no runtime dependency."
+    }
+  ],
+  "cycleExceptions": [
+    {
+      "mode": "includingTypeOnly",
+      "key": "src/renderer/src/markdown-projection.ts>src/renderer/src/markdown-stream.ts:type|src/renderer/src/markdown-stream.ts>src/renderer/src/markdown-projection.ts:value",
+      "reason": "Existing markdown projection helpers depend only on stream type declarations; runtime import direction remains acyclic. Prefer extracting shared local types during related work."
+    }
+  ],
+  "duplicates": {
+    "functions": {},
+    "blocks": {}
+  },
+  "privateBoundaries": [
+    {
+      "owner": "application layout composition",
+      "targetPrefix": "src/renderer/src/layout/",
+      "allowedFrom": [
+        "src/renderer/src/App.tsx",
+        "src/renderer/src/layout/"
+      ]
+    },
+    {
+      "owner": "dormant DeepSeek runtime",
+      "targetPrefix": "src/main/runtimes/deepseek/",
+      "allowedFrom": [
+        "src/main/runtimes/deepseek/"
+      ]
+    },
+    {
+      "owner": "chat store facade",
+      "targetPrefix": "src/renderer/src/chat-records.ts",
+      "allowedFrom": [
+        "src/renderer/src/chat-store.ts",
+        "src/renderer/src/chat-projection.ts",
+        "src/renderer/src/chat-records.ts"
+      ]
+    },
+    {
+      "owner": "chat store facade",
+      "targetPrefix": "src/renderer/src/chat-projection.ts",
+      "allowedFrom": [
+        "src/renderer/src/chat-store.ts",
+        "src/renderer/src/chat-projection.ts",
+        "src/renderer/src/chat-records.ts"
+      ]
+    },
+    {
+      "owner": "trusted IPC composition",
+      "targetPrefix": "src/main/ipc/",
+      "allowedFrom": [
+        "src/main/index.ts",
+        "src/main/ipc/"
+      ]
+    }
+  ],
+  "pureOwners": [
+    {
+      "file": "src/renderer/src/agent-panels.ts",
+      "allowedLocal": [
+        "src/shared/types.ts"
+      ],
+      "allowedExternal": []
+    },
+    {
+      "file": "src/renderer/src/layout/panel-interactions.ts",
+      "allowedLocal": [],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "prefix": "src/shared/",
+      "allowedLocal": [
+        "src/shared/"
+      ],
+      "allowedExternal": []
+    },
+    {
+      "file": "src/main/session-replay.ts",
+      "allowedLocal": [
+        "src/shared/"
+      ],
+      "allowedExternal": []
+    },
+    {
+      "file": "src/main/recovery-storage.ts",
+      "allowedLocal": [
+        "src/shared/",
+        "src/main/workspace-security.ts"
+      ],
+      "allowedExternal": [
+        "node:"
+      ]
+    },
+    {
+      "file": "src/renderer/src/chat-records.ts",
+      "allowedLocal": [
+        "src/shared/",
+        "src/renderer/src/chat-stream.ts",
+        "src/renderer/src/chat-projection.ts",
+        "src/renderer/src/binary.ts"
+      ],
+      "allowedExternal": []
+    },
+    {
+      "file": "src/renderer/src/chat-projection.ts",
+      "allowedLocal": [
+        "src/shared/",
+        "src/renderer/src/chat-records.ts",
+        "src/renderer/src/chat-stream.ts",
+        "src/renderer/src/binary.ts"
+      ],
+      "allowedExternal": []
+    }
+  ]
+}

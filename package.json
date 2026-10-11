@@ -19,10 +19,13 @@
     "test": "vitest run",
     "test:platform": "vitest run scripts/launch.test.ts src/main/terminal.test.ts && node scripts/pty-smoke.mjs && node scripts/electron-pty-smoke.mjs && node scripts/electron-trust-smoke.mjs",
     "docs:check": "node scripts/check-docs.mjs",
+    "architecture:check": "node scripts/check-architecture.mjs",
+    "architecture:ratchet": "node scripts/check-architecture.mjs --ratchet",
+    "architecture:measure": "node scripts/architecture-analysis.mjs",
     "generate-icons": "electron scripts/generate-icons.mjs",
     "client:drift": "node scripts/check-client-drift.mjs",
     "smoke:opencode": "node scripts/opencode-v2-smoke.mjs",
-    "check": "npm run typecheck && npm test && npm run docs:check && npm run build:compile",
+    "check": "npm run typecheck && npm test && npm run docs:check && npm run architecture:check && npm run build:compile",
     "test:sass-worker": "node scripts/sass-worker-smoke.mjs"
   },
   "dependencies": {

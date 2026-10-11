@@ -89,6 +89,44 @@ untrusted-document IPC rejection without external network access. `npm run typec
 runs `tsc --noEmit` for both node and web configs. `npm run check` is the
 canonical local and CI verification gate.
 
+### Architecture fitness and measurement
+
+`npm run architecture:check` runs automatically in `npm run check` and the
+existing GitHub Actions verify job. It uses the installed TypeScript parser,
+with no additional tool dependency. [Architecture ownership](architecture.md#implementation-ownership-and-fitness)
+defines the protected boundaries; [the manifest](../scripts/architecture-baseline.json)
+owns numeric limits, grandfathered debt budgets, and reviewed exceptions.
+
+New production modules use the default module/function length, complexity, and
+nesting budgets. Existing oversized owners and functions have frozen allowances;
+moving or renaming a function does not transfer an allowance automatically.
+Static IPC channel names and JSX element/attribute names anchor callback
+identities so deleting or reordering registrations or handlers cannot transfer
+their budgets. The check fails
+new cycles, forbidden process/private-owner imports, privileged renderer/shared
+imports, raw IPC authority outside main composition, imports of excluded
+implementation, and substantial new exact token duplication. Duplication
+detection ignores comments, whitespace, and function declaration names; it does
+not claim to detect semantic equivalence or renamed local variables.
+
+After a verified extraction, run `npm run architecture:ratchet` and review the
+manifest diff in the same checkpoint. Ratcheting first requires a passing check;
+it only lowers/removes debt allowances and records current production paths.
+It never blesses new violations. An unavoidable exception needs a specific
+rationale and independent diff review; keep it confined to the existing
+responsibility and remove it when that debt is resolved.
+
+`npm run architecture:measure -- --output /private/tmp/orbit-architecture.json`
+records the exact source inventory, token-bearing noncomment production lines,
+function hotspots, dependencies, clone groups, unused-export candidates, and
+logical bytes under `out/`. Build first to refresh the build-size measurement.
+Use `--ref <commit>` to measure source from a frozen checkpoint and
+`--build-snapshot <json>` to supply its separately captured build inventory.
+The report includes methodology and separate auxiliary/excluded categories;
+unused-export or dependency candidates require caller/entry-point review before
+removal. Baseline and final production scope must remain identical, including
+adapted handwritten code and all newly introduced production modules.
+
 The platform smoke scripts fail boundedly: the direct PTY and Electron-hosted
 PTY checks have 10-second child watchdogs, the Electron parent kills the full
 child process tree on timeout, and the macOS trust check has a 30-second
