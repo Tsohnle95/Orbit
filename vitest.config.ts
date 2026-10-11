@@ -3,10 +3,11 @@ import { resolve } from "node:path";
 
 export default defineConfig({
   resolve: {
-    alias: {
-      "@": resolve(__dirname, "src/renderer/src"),
-      "@shared": resolve(__dirname, "src/shared")
-    }
+    alias: [
+      { find: /^monaco-editor$/, replacement: resolve(__dirname, "node_modules/monaco-editor/esm/vs/editor/editor.main.js") },
+      { find: "@shared", replacement: resolve(__dirname, "src/shared") },
+      { find: "@", replacement: resolve(__dirname, "src/renderer/src") }
+    ]
   },
   test: {
     environment: "jsdom",

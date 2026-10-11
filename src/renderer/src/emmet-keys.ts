@@ -15,6 +15,10 @@ export function wireEmmetKeys(target: editor.IStandaloneCodeEditor): void {
     if (e.keyCode === monaco.KeyCode.KEY_IN_COMPOSITION) return;
     if (e.keyCode !== monaco.KeyCode.Tab && e.keyCode !== monaco.KeyCode.Enter) return;
     if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    if (
+      target.getDomNode()?.querySelector(".suggest-widget.visible") ||
+      document.getElementById("orbit-monaco-overflow")?.querySelector(".suggest-widget.visible")
+    ) return;
     if ((target.getSelections() ?? []).length !== 1) return;
     const snippetController = SnippetController2.get(target);
     if (!snippetController || snippetController.isInSnippet()) return;

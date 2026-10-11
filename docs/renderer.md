@@ -606,8 +606,9 @@ released at that collapsed position.
   URIs, syntax/semantic diagnostics, and explicit
   quick-suggestion/trigger-character settings in `EditorPane`. Typing after
   `document.` offers DOM API completions such as `querySelectorAll`. Suggestion
-  and hover widgets stay in Monaco's styled editor tree so their list and
-  colors render correctly. JavaScript/TypeScript, HTML, and
+  and hover widgets use a Monaco-styled body-level overflow host so split-pane
+  clipping cannot hide them. Visible suggestions retain a selected item for
+  Arrow Up/Down navigation and Tab/Enter acceptance. JavaScript/TypeScript, HTML, and
   CSS use Monaco's language-service completions, including pseudo-selector and
   syntax details; local dirty editor buffers stay authoritative during typing
   so React state echoes cannot replace an active model between keystrokes.
@@ -630,10 +631,9 @@ released at that collapsed position.
   at the end of a recognized abbreviation — including `!` at the top of an
   HTML file — replaces it with the expanded markup through Monaco's snippet
   controller, so the caret lands on the first tab stop (the `<title>` text
-  for `!`) without depending on the suggestion widget having finished
-  opening. The key handling lives in `emmet-keys.ts` (`wireEmmetKeys`,
-  called from the `EditorPane` edit editor's `onMount`) and expands valid
-  abbreviations on Enter or Tab even when a completion popup is open; it is
+  for `!`) when the suggestion list is closed. The key handling lives in
+  `emmet-keys.ts` (`wireEmmetKeys`, called from the `EditorPane` edit editor's
+  `onMount`) and yields Tab/Enter to Monaco while a completion popup is open. It is
   skipped inside a `<script>` block or while a snippet session is active.
   `emmet.ts` mirrors the
   provider's noise checks (unknown tags, unresolved CSS values, unknown

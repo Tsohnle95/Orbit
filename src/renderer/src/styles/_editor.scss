@@ -270,6 +270,19 @@
 
 .editor-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 
+body > #orbit-monaco-overflow {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  pointer-events: none;
+  background: transparent;
+}
+
+.orbit-monaco-overflow-host .suggest-widget,
+.orbit-monaco-overflow-host .suggest-details {
+  pointer-events: auto;
+}
+
 .editor-wrap .monaco-diff-editor .diffOverview {
   transform: scaleX(0.5);
   transform-origin: right center;

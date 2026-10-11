@@ -21,6 +21,7 @@ const EDITOR_OPTIONS = {
   fontFamily: "'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace",
   minimap: { enabled: false },
   automaticLayout: true,
+  fixedOverflowWidgets: true,
   quickSuggestions: { other: true, comments: false, strings: true },
   quickSuggestionsDelay: 25,
   suggestOnTriggerCharacters: true,
@@ -28,7 +29,7 @@ const EDITOR_OPTIONS = {
     showInlineDetails: true,
     showSnippets: true,
     showWords: true,
-    selectionMode: "whenTriggerCharacter"
+    selectionMode: "always"
   } as const,
   wordBasedSuggestions: "currentDocument" as const,
   tabCompletion: "on" as const,
@@ -50,6 +51,17 @@ const EDITOR_OPTIONS = {
   wordWrap: "on" as const
 };
 const ignoreEditorStatus = (): void => {};
+
+function overflowWidgetsHost(): HTMLElement {
+  let host = document.getElementById("orbit-monaco-overflow");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "orbit-monaco-overflow";
+    host.className = "monaco-editor orbit-monaco-overflow-host";
+    document.body.append(host);
+  }
+  return host;
+}
 
 function SplitRightIcon(): ReactNode {
   return (
@@ -218,7 +230,7 @@ function EditorWithSave({
   const w3cFile = useMemo(() => /\.(?:html?|css)$/i.test(tab.path), [tab.path]);
   const diffAvailable = tab.baseline?.kind === "known";
   const mode = tab.mode === "diff" && !diffAvailable ? "edit" : tab.mode;
-  const options = EDITOR_OPTIONS;
+  const options = useMemo(() => ({ ...EDITOR_OPTIONS, overflowWidgetsDomNode: overflowWidgetsHost() }), []);
 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const cursorListenerRef = useRef<{ dispose: () => void } | null>(null);

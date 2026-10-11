@@ -226,6 +226,7 @@ describe("EditorPane split groups", () => {
     const options = capturedEditorOptions.mock.calls.at(-1)?.[0] as {
       quickSuggestions?: { other?: boolean };
       suggestOnTriggerCharacters?: boolean;
+      suggest?: { selectionMode?: string };
       fixedOverflowWidgets?: boolean;
       overflowWidgetsDomNode?: HTMLElement;
       wordBasedSuggestions?: string;
@@ -233,8 +234,10 @@ describe("EditorPane split groups", () => {
     };
     expect(options.quickSuggestions?.other).toBe(true);
     expect(options.suggestOnTriggerCharacters).toBe(true);
-    expect(options.fixedOverflowWidgets).toBeUndefined();
-    expect(options.overflowWidgetsDomNode).toBeUndefined();
+    expect(options.suggest?.selectionMode).toBe("always");
+    expect(options.fixedOverflowWidgets).toBe(true);
+    expect(options.overflowWidgetsDomNode?.classList.contains("monaco-editor")).toBe(true);
+    expect(options.overflowWidgetsDomNode?.parentElement).toBe(document.body);
     expect(options.wordBasedSuggestions).toBe("currentDocument");
     expect(options.tabCompletion).toBe("on");
   });
