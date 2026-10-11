@@ -23,10 +23,6 @@ export function emptyStreamingStore(): StreamingStore {
   };
 }
 
-export function resetStreamingStore(): StreamingStore {
-  return emptyStreamingStore();
-}
-
 export function findTrailingAssistantMessage(messages: ChatMessageRecord[] | undefined): ChatMessageRecord | null {
   if (!messages) return null;
 

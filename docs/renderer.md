@@ -47,6 +47,17 @@ Exposed via `useStore()` (context). State:
 
 ## Authoritative chat store (`chat-store.ts`)
 
+`chat-store.ts` remains the public entry point for chat reduction, records,
+projection and hydration. It owns runtime-event dispatch and protocol adapters.
+Its internal `chat-records.ts` owns ordered record mutations, delta overlap,
+terminal-state preservation and record types; `chat-projection.ts` owns
+assistant presentation, history hydration and reconciliation with auxiliary
+transcript rows. These internal modules depend on shared contracts and renderer
+chat primitives; components and lifecycle consumers use the `chat-store.ts`
+interface rather than importing record mechanics directly. New event behavior
+belongs in the reducer; record consistency belongs in the record owner;
+presentation and replay reconciliation belong in the projection owner.
+
 Model-response events (`session.step.*`, `session.text.*`,
 `session.reasoning.*`, `session.tool.*`, `session.retry.scheduled`,
 `message.*`, plus execution/status lifecycle events) mutate a per-session
@@ -67,6 +78,16 @@ entries while keeping interleaved prose between them. Distinct parts and
 assistant messages remain visible even when their content repeats. Text and
 reasoning segments without an explicit `ordinal` resolve to the newest
 same-type part, matching upstream's implicit ordinal.
+
+Projection reuses unchanged assistant rows through a weak cache scoped to the
+chat state. Both the message object and its parts-array identity must match:
+part deltas replace the parts array without replacing the message, while
+metadata and lifecycle changes replace the message. Record updates must retain
+this replacement rule, and projection consumers must not mutate projected
+assistant rows. Reconciliation clones user rows before backfilling the responding
+agent/model and preserves auxiliary chronology and inferred parent ownership.
+The focused unsaved-file inventory is memoized on workspace tabs and panels;
+chat updates do not rescan editor buffers.
 
 Prompt submission reconciles the returned canonical snapshot once without
 polling, deleting, or rebuilding the live store. Pushed reasoning and text

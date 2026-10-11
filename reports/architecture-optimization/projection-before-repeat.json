@@ -1,0 +1,104 @@
+{
+  "source": "a1c54a35c3856e56209110cf4db493754699ed00",
+  "head": "1fc039741aedc2473e9c884e7d476cdebc37a3ef",
+  "node": "v22.23.2",
+  "workload": {
+    "historicalAssistants": 400,
+    "historicalEvents": 2400,
+    "deltas": 500,
+    "deltaChars": 11,
+    "toolOutputChars": 32768,
+    "warmups": 3,
+    "samples": 9
+  },
+  "scope": "Reducer and assistant projection; setup excluded; excludes Store, React, IPC, Chromium layout and paint",
+  "reducerMs": {
+    "min": 0.312,
+    "median": 0.463,
+    "max": 1.085
+  },
+  "projectionMs": {
+    "min": 234.564,
+    "median": 241.05,
+    "max": 257.521
+  },
+  "elapsedMs": {
+    "min": 235.538,
+    "median": 242.583,
+    "max": 259.33
+  },
+  "samples": [
+    {
+      "reducerMs": 0.9134460000010449,
+      "projectionMs": 251.74391999999864,
+      "elapsedMs": 253.8399159999999,
+      "historicalIdentitiesReused": 0,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 1.084747999999081,
+      "projectionMs": 249.83479299999635,
+      "elapsedMs": 252.09787499999993,
+      "historicalIdentitiesReused": 0,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.6336930000036318,
+      "projectionMs": 241.04983399999833,
+      "elapsedMs": 242.58349999999996,
+      "historicalIdentitiesReused": 0,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.44722100000285536,
+      "projectionMs": 240.37653899999896,
+      "elapsedMs": 241.57462499999997,
+      "historicalIdentitiesReused": 0,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.31176100000584483,
+      "projectionMs": 234.56350999999745,
+      "elapsedMs": 235.53837499999986,
+      "historicalIdentitiesReused": 0,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.36143200000105935,
+      "projectionMs": 240.86743699999533,
+      "elapsedMs": 241.95350000000008,
+      "historicalIdentitiesReused": 0,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.38377700000091863,
+      "projectionMs": 239.41241999999647,
+      "elapsedMs": 240.52004099999976,
+      "historicalIdentitiesReused": 0,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.4626200000011522,
+      "projectionMs": 247.6696639999991,
+      "elapsedMs": 248.95849999999973,
+      "historicalIdentitiesReused": 0,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.6363430000019434,
+      "projectionMs": 257.5211800000029,
+      "elapsedMs": 259.32995800000026,
+      "historicalIdentitiesReused": 0,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    }
+  ]
+}

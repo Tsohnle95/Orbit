@@ -40,8 +40,8 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 1 | Responsibility maps and reviewed extraction design | complete | Agent F adversarial review; resolutions below | — |
 | 2a | Pure session replay and identical shared presentation normalization | complete | 73 targeted tests; 993 full tests/type/docs/build; independent AST equivalence review | f2906a7 |
 | 2b | Recovery storage owner with captured root/current guard | complete | 67 targeted tests; 1,006 canonical tests/type/docs/build; native platform/trust; independent AST equivalence | 1fc0397 |
-| 2c | Domain IPC registration with centralized trust | complete | 32 targeted tests; identical 95 callbacks/channels and trust gate; 1,031 canonical tests/build; native platform/trust and isolated OpenCode smoke | pending checkpoint |
-| 3a | Renderer record/projection/reconciliation ownership and cache | active | state/lifecycle characterization + performance + check | — |
+| 2c | Domain IPC registration with centralized trust | complete | 32 targeted tests; identical 95 callbacks/channels and trust gate; 1,031 canonical tests/build; native platform/trust and isolated OpenCode smoke | 2029e83 |
+| 3a | Renderer record/projection/reconciliation ownership and cache | complete | 149 targeted tests; 1,031 full tests/type/docs/build; independent equivalence/invalidation review; paired projection benchmark | pending checkpoint |
 | 4 | Components and styles | pending | component tests + live interaction + check | — |
 | 5 | Confirmed consolidation/efficiency | pending | equivalent workloads + check | — |
 | 6 | Ownership, permanent architecture enforcement | pending | guardrail adversarial fixtures + docs + check/CI | — |

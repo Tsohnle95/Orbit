@@ -41,7 +41,6 @@ import type {
   WorkspaceIdentity
 } from "@shared/types";
 import { mergeChatHistory, reconcilePromptHistory, reduceChatStream, type ChatStreamEvent } from "./chat-stream";
-import { messagePresentation } from "@shared/message-presentation";
 import { compactExplorerSelection, movableExplorerPaths } from "./explorer-selection";
 import {
   applyChatEvent,
@@ -50,6 +49,7 @@ import {
   hydrateChatState,
   insertUserMessage,
   projectAssistantItems,
+  reconcileAssistantProjection,
   snapshotChatState,
   buildRateLimitNotice,
   findTurnStartedAt,
@@ -93,7 +93,6 @@ import { EditorPersistence, type SaveSnapshot } from "./editor-persistence";
 import { requestReveal } from "./reveal";
 import { sameWorkspace } from "@shared/generation";
 import { retainSessionRecord } from "@shared/retention";
-import { createChatStreamPipeline } from "./chat-stream-pipeline";
 
 export interface Toast {
   id: number;
@@ -635,7 +634,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const transcript = session ? transcriptsBySession[session.id] ?? [] : [];
   const sessionUsage = session ? usageBySession[session.id] ?? null : null;
   const tabs = session ? tabsByWorkspace[session.workspace.id] ?? EMPTY_TABS : EMPTY_TABS;
-  const unsavedEditorFiles = Object.entries(tabsByWorkspace).flatMap(([workspaceID, workspaceTabs]) => {
+  const unsavedEditorFiles = useMemo(() => Object.entries(tabsByWorkspace).flatMap(([workspaceID, workspaceTabs]) => {
     const owner = panels.find((panel) => panel.workspace.id === workspaceID);
     return workspaceTabs.filter((tab) => tab.dirty).map((tab) => ({
       workspaceID,
@@ -647,7 +646,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         ? tab.path
         : `${owner.directory.replace(/[\\/]+$/, "")}/${tab.path.replace(/^[\\/]+/, "")}`
     }));
-  });
+  }), [tabsByWorkspace, panels]);
   const unsavedEditorFileCount = unsavedEditorFiles.length;
   const activePath = session ? activePathByWorkspace[session.workspace.id] ?? null : null;
   const singleFile = session ? singleFileByWorkspace[session.workspace.id] ?? null : null;
@@ -972,48 +971,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const state = chatStatesRef.current.get(sessionID);
     if (!state) return;
     const projected = projectAssistantItems(state, sessionID);
-    const userMetadata = new Map((state.message[sessionID] ?? [])
-      .filter((message) => message.role === "user")
-      .map((message) => [message.id, messagePresentation(message)]));
-    updateSessionTranscript(sessionID, (prev) => {
-      const pending = new Map(projected.map((item) => [item.id, item] as const));
-      const result: TranscriptItem[] = [];
-      for (const item of prev) {
-        if (item.kind === "assistant") {
-          const next = pending.get(item.id);
-          if (next) {
-            result.push(next);
-            pending.delete(item.id);
-          }
-          continue;
-        }
-        result.push(item.kind === "user" ? { ...item, ...userMetadata.get(item.id) } : item);
-      }
-      for (const item of projected) {
-        if (pending.has(item.id)) result.push(item);
-      }
-      let parentID: string | undefined;
-      const users = new Map<string, Extract<TranscriptItem, { kind: "user" }>>();
-      return result.map((item) => {
-        if (item.kind === "user") {
-          parentID = item.id;
-          users.set(item.id, item);
-        } else if (item.kind === "synthetic" && item.description?.trim()) {
-          parentID = item.id;
-        } else if (item.kind === "shell") {
-          parentID = undefined;
-        } else if (item.kind === "assistant") {
-          const ownerID = item.parentID ?? parentID;
-          const user = ownerID ? users.get(ownerID) : undefined;
-          if (user) {
-            if (item.agent !== undefined) user.agent = item.agent;
-            if (item.model) user.model = item.model;
-          }
-          return ownerID ? { ...item, parentID: ownerID } : item;
-        }
-        return item;
-      });
-    });
+    const messages = state.message[sessionID] ?? [];
+    updateSessionTranscript(sessionID, (previous) => reconcileAssistantProjection(previous, projected, messages));
   }, [updateSessionTranscript]);
 
   const commitStreaming = useCallback((next: StreamingStore) => {

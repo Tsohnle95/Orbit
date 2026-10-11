@@ -1,0 +1,104 @@
+{
+  "source": "working tree",
+  "head": "1fc039741aedc2473e9c884e7d476cdebc37a3ef",
+  "node": "v22.23.2",
+  "workload": {
+    "historicalAssistants": 400,
+    "historicalEvents": 2400,
+    "deltas": 500,
+    "deltaChars": 11,
+    "toolOutputChars": 32768,
+    "warmups": 3,
+    "samples": 9
+  },
+  "scope": "Reducer and assistant projection; setup excluded; excludes Store, React, IPC, Chromium layout and paint",
+  "reducerMs": {
+    "min": 0.17,
+    "median": 0.215,
+    "max": 0.463
+  },
+  "projectionMs": {
+    "min": 6.399,
+    "median": 7.136,
+    "max": 8.756
+  },
+  "elapsedMs": {
+    "min": 7.132,
+    "median": 8.004,
+    "max": 13.308
+  },
+  "samples": [
+    {
+      "reducerMs": 0.46325399999997785,
+      "projectionMs": 7.503752999999705,
+      "elapsedMs": 8.610917,
+      "historicalIdentitiesReused": 200000,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.3810060000004398,
+      "projectionMs": 6.711965000000305,
+      "elapsedMs": 7.6683749999999975,
+      "historicalIdentitiesReused": 200000,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.32988400000024853,
+      "projectionMs": 8.756164000000183,
+      "elapsedMs": 13.308292000000023,
+      "historicalIdentitiesReused": 200000,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.27574699999962604,
+      "projectionMs": 6.824204999999864,
+      "elapsedMs": 11.235957999999982,
+      "historicalIdentitiesReused": 200000,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.1703830000001858,
+      "projectionMs": 6.398784000000518,
+      "elapsedMs": 7.132249999999999,
+      "historicalIdentitiesReused": 200000,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.19410200000012878,
+      "projectionMs": 6.913789000000378,
+      "elapsedMs": 7.564792000000011,
+      "historicalIdentitiesReused": 200000,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.21457800000069938,
+      "projectionMs": 7.325028999999859,
+      "elapsedMs": 8.00437500000001,
+      "historicalIdentitiesReused": 200000,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.17067500000021596,
+      "projectionMs": 7.13609099999988,
+      "elapsedMs": 7.759459000000021,
+      "historicalIdentitiesReused": 200000,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    },
+    {
+      "reducerMs": 0.19758899999956725,
+      "projectionMs": 8.143475999999652,
+      "elapsedMs": 8.777917000000002,
+      "historicalIdentitiesReused": 200000,
+      "tailIdentityChanges": 500,
+      "outputChars": 13107200
+    }
+  ]
+}
