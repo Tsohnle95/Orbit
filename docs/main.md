@@ -271,6 +271,16 @@ Internals:
 
 ## IPC surface (`src/main/index.ts`)
 
+`index.ts` owns the sender trust gate and invokes the domain registrars under
+`src/main/ipc/`: `files.ts` owns workspace/external file and recovery calls,
+`agent.ts` owns conversation, interaction, catalog and provider calls, and
+`terminal.ts` owns PTY/TUI calls. Their supported interface is registration
+through the injected `TrustedIpcRegistrar`; they never register directly with
+Electron or import the window entry point. Payload validation stays in
+`ipc-schema.ts` and `workspace-security.ts`; backend methods remain the
+authority for addressed workspace/generation checks. Window dialogs, lifecycle,
+updates, preview, Sass and mobile coordination remain in `index.ts`.
+
 | Channel | Args → Returns |
 |---|---|
 | `shell:select-folder` | `(generation, runtimeID?) → SessionInfo \| null` (generation accepted before native dialog; only OpenCode is enabled); the returned session is mounted by the caller — replacing the displayed panels, added as a new panel, or swapped into an existing panel — depending on the store action that opened the dialog |

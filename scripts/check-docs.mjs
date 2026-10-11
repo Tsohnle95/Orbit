@@ -89,9 +89,9 @@ const modulePaths = tableColumn(
 checkInventory("AGENTS.md", "module map", modulePaths);
 for (const file of modulePaths) check(await exists(file), `AGENTS.md module map lists missing path ${file}`);
 
-const mainIndex = await parseSource("src/main/index.ts");
+const ipcOwners = ["src/main/index.ts", "src/main/ipc/files.ts", "src/main/ipc/agent.ts", "src/main/ipc/terminal.ts"];
 const ipcChannels = [];
-visit(mainIndex, (node) => {
+for (const owner of ipcOwners) visit(await parseSource(owner), (node) => {
   if (!ts.isCallExpression(node) || node.arguments.length === 0) return;
   const expression = node.expression;
   const registered = ts.isIdentifier(expression) && expression.text === "handleTrusted"
@@ -104,7 +104,7 @@ visit(mainIndex, (node) => {
 });
 const mainDoc = documentation.get("docs/main.md");
 const mainTable = tableColumn(mainDoc, "## IPC surface", /^\| `(shell:[\w-]+)` \|/gm);
-checkInventory("src/main/index.ts", "IPC registrations", ipcChannels);
+checkInventory("main IPC owners", "IPC registrations", ipcChannels);
 checkInventory("docs/main.md", "IPC table", mainTable);
 for (const channel of unique(ipcChannels)) check(mainTable.includes(channel), `docs/main.md IPC table is missing ${channel}`);
 for (const channel of unique(mainTable)) check(ipcChannels.includes(channel), `docs/main.md lists unregistered IPC channel ${channel}`);

@@ -20,7 +20,6 @@ import {
   type TrustedApplicationLocation
 } from "./security";
 import { safeExternalUrl } from "@shared/url-policy";
-import { formatFailure, normalizeFailure } from "@shared/errors";
 import { validateWithW3c } from "./w3c-validation";
 import {
   DEFAULT_SESSION_SIZE,
@@ -36,44 +35,29 @@ import { SavedWorkspaceStore } from "./saved-workspaces";
 import { SassWatchManager } from "./sass-watch";
 import { SassPreferences } from "./sass-preferences";
 import type {
-  FileWriteIdentity,
   OrbitAppUpdateResult,
   ProjectInfo,
-  PermissionReply,
-  FormAnswers,
-  PromptDelivery,
-  PromptFile,
   ViteServerInfo,
   ViteToggleResult,
   WorkspaceIdentity
 } from "@shared/types";
 import {
   absoluteFilePath,
-  absoluteFilePaths,
   confinedPath,
   fileContent,
   relativePath,
-  terminalDimensions,
-  terminalId,
-  terminalInput,
   workspaceId
 } from "./workspace-security";
 import {
   activationGeneration,
-  commandPayload,
   directoryPath,
-  fileWriteIdentity,
-  movePayload,
-  optionalSelectionId,
   optionalRuntimeId,
-  permissionPayload,
-  providerCredentialPayload,
-  promptPayload,
-  queryText,
-  selectionId,
   sessionId,
   workspacePath
 } from "./ipc-schema";
+import { registerFilesIpc } from "./ipc/files";
+import { registerAgentIpc } from "./ipc/agent";
+import { registerTerminalIpc } from "./ipc/terminal";
 import { applyExecPath } from "./exec-path";
 
 declare const __ORBIT_RELEASE_BUILD__: boolean;
@@ -853,6 +837,9 @@ async function resolveViteTarget(workspace: WorkspaceIdentity, requestedEntry?: 
 }
 
 function registerIpc(): void {
+  registerFilesIpc(handleTrusted, backend);
+  registerAgentIpc(handleTrusted, backend);
+  registerTerminalIpc(handleTrusted, backend, terminals);
   handleTrusted("shell:select-folder", async (e, requestGeneration: number, requestedRuntimeID?: unknown) => {
     const generation = backend.beginActivation(activationGeneration(requestGeneration));
     const parent = BrowserWindow.fromWebContents(e.sender);
@@ -887,35 +874,6 @@ function registerIpc(): void {
 
   handleTrusted("shell:open-file", async (_e, file: string, requestGeneration: number, requestedRuntimeID?: unknown) =>
     backend.openFileWorkspace(absoluteFilePath(file), backend.beginActivation(activationGeneration(requestGeneration)), optionalRuntimeId(requestedRuntimeID)));
-
-  handleTrusted("shell:open-external", async (_e, workspace: WorkspaceIdentity, file: string) => {
-    workspaceId(workspace);
-    return backend.resolveExternalOpen(workspace, absoluteFilePath(file));
-  });
-
-  handleTrusted("shell:stat-external", async (_e, file: string) =>
-    backend.statExternal(absoluteFilePath(file))
-  );
-
-  handleTrusted("shell:fs-write-standalone", async (
-    _e,
-    file: string,
-    content: string,
-    expectedContent: string,
-    overwrite: boolean
-  ) =>
-    backend.writeStandaloneFile(absoluteFilePath(file), fileContent(content), fileContent(expectedContent), overwrite)
-  );
-
-  handleTrusted("shell:fs-import", async (
-    _e,
-    workspace: WorkspaceIdentity,
-    destDir: string,
-    sources: string[]
-  ) => {
-    workspaceId(workspace);
-    return backend.importExternal(workspace, workspacePath(workspace, destDir, true).rel, absoluteFilePaths(sources));
-  });
 
   handleTrusted("shell:open-session", async (_e, dir: string, requestGeneration: number, requestedRuntimeID?: unknown) => {
     const requestedDirectory = directoryPath(dir);
@@ -1005,50 +963,6 @@ function registerIpc(): void {
 
   handleTrusted("shell:app-update", async () => updateOrbitApp());
 
-  handleTrusted("shell:session-transcript", async (_e, sessionID: string) =>
-    backend.sessionTranscript(sessionId(sessionID))
-  );
-
-  handleTrusted("shell:session-usage", async (_e, sessionID: string) =>
-    backend.sessionUsage(sessionId(sessionID))
-  );
-
-  handleTrusted("shell:prompt", async (_e, workspace: WorkspaceIdentity, text: string, files: PromptFile[] = [], delivery?: PromptDelivery) => {
-    try {
-      const payload = promptPayload(workspace, text, files);
-      return await backend.prompt(payload.workspace, payload.text, payload.files, delivery);
-    } catch (error) {
-      const failure = normalizeFailure(error, "ORBIT_PROMPT_FAILED", "Prompt failed");
-      const reported = new Error(formatFailure(failure));
-      reported.name = failure.code;
-      Object.assign(reported, failure);
-      throw reported;
-    }
-  });
-
-  handleTrusted("shell:inbox-list", async (_e, workspace: WorkspaceIdentity) => backend.listInbox(workspace));
-  handleTrusted("shell:inbox-cancel", async (_e, workspace: WorkspaceIdentity, inboxID: string) => backend.cancelInbox(workspace, inboxID));
-  handleTrusted("shell:inbox-steer", async (_e, workspace: WorkspaceIdentity, inboxID: string) => backend.steerInbox(workspace, inboxID));
-  handleTrusted("shell:forms-list", async (_e, workspace: WorkspaceIdentity) => backend.listForms(workspace));
-  handleTrusted("shell:form-reply", async (_e, workspace: WorkspaceIdentity, formID: string, answers: FormAnswers, formSessionID?: string) => backend.replyForm(workspace, formID, answers, formSessionID));
-  handleTrusted("shell:form-cancel", async (_e, workspace: WorkspaceIdentity, formID: string, formSessionID?: string) => backend.cancelForm(workspace, formID, formSessionID));
-
-  handleTrusted("shell:commands", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.listCommands(workspace);
-  });
-
-  handleTrusted("shell:run-command", async (_e, workspace: WorkspaceIdentity, name: string, args: string = "") => {
-    await backend.workspaceDirectory(workspace);
-    const command = commandPayload(name, args);
-    return backend.runCommand(workspace, command.name, command.args);
-  });
-
-  handleTrusted("shell:find-files", async (_e, workspace: WorkspaceIdentity, query: string) => {
-    workspaceId(workspace);
-    return backend.searchFiles(workspace, queryText(query));
-  });
-
   handleTrusted("shell:select-files", async (e) => {
     const parent = BrowserWindow.fromWebContents(e.sender);
     const result = await dialog.showOpenDialog(parent ?? win!, {
@@ -1079,71 +993,6 @@ function registerIpc(): void {
     }
   });
 
-  handleTrusted("shell:interrupt", async (_e, workspace: WorkspaceIdentity) => backend.interrupt(workspace));
-
-  handleTrusted("shell:fs-list", async (_e, workspace: WorkspaceIdentity, rel: string) => {
-    const target = workspacePath(workspace, rel, true);
-    return backend.listDir(target.workspace, target.rel);
-  });
-
-  handleTrusted("shell:fs-reveal", async (_e, workspace: WorkspaceIdentity, rel: string) => {
-    const target = workspacePath(workspace, rel, true);
-    return backend.revealInFileManager(target.workspace, target.rel);
-  });
-
-  handleTrusted("shell:fs-read", async (_e, workspace: WorkspaceIdentity, rel: string) => {
-    const target = workspacePath(workspace, rel);
-    return backend.readFile(target.workspace, target.rel);
-  });
-
-  handleTrusted("shell:fs-write", async (
-    _e,
-    workspace: WorkspaceIdentity,
-    rel: string,
-    content: string,
-    write: FileWriteIdentity
-  ) => {
-    const target = workspacePath(workspace, rel);
-    return backend.writeFile(target.workspace, target.rel, fileContent(content), fileWriteIdentity(write, target.workspace));
-  });
-
-  handleTrusted("shell:fs-create-file", async (_e, workspace: WorkspaceIdentity, rel: string) =>
-    backend.createFile(workspace, rel)
-  );
-
-  handleTrusted("shell:fs-create-dir", async (_e, workspace: WorkspaceIdentity, rel: string) =>
-    backend.createDir(workspace, rel)
-  );
-
-  handleTrusted("shell:fs-delete", async (_e, workspace: WorkspaceIdentity, rel: string) =>
-    backend.deletePath(workspace, rel)
-  );
-
-  handleTrusted("shell:fs-detach", async (_e, workspace: WorkspaceIdentity, rel: string) =>
-    backend.detachPath(workspace, rel)
-  );
-
-  handleTrusted("shell:fs-rename", async (_e, workspace: WorkspaceIdentity, rel: string, newName: string) =>
-    backend.renamePath(workspace, rel, newName)
-  );
-
-  handleTrusted("shell:fs-move", async (_e, workspace: WorkspaceIdentity, rel: string, newParent: string) => {
-    const target = movePayload(workspace, rel, newParent);
-    return backend.movePath(target.workspace, target.rel, target.newParent);
-  });
-
-  handleTrusted("shell:recovery-list", async (_e, workspace: WorkspaceIdentity) =>
-    backend.listRecovery(workspace)
-  );
-
-  handleTrusted("shell:recovery-open", async (_e, workspace: WorkspaceIdentity, id: string) =>
-    backend.openRecovery(workspace, selectionId(id, "recovery id"))
-  );
-
-  handleTrusted("shell:recovery-acknowledge", async (_e, workspace: WorkspaceIdentity, id: string) =>
-    backend.acknowledgeRecovery(workspace, selectionId(id, "recovery id"))
-  );
-
   handleTrusted("shell:projects", async () => backend.listProjects());
 
   handleTrusted("shell:saved-workspaces", async () => {
@@ -1155,171 +1004,6 @@ function registerIpc(): void {
   });
 
   handleTrusted("shell:saved-workspaces-save", async (_e, workspaces: ProjectInfo[]) => savedWorkspaceStore.save(workspaces));
-
-  handleTrusted("shell:models", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.listModels(workspace);
-  });
-
-  handleTrusted("shell:model-default", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.modelDefault(workspace);
-  });
-
-  handleTrusted("shell:switch-model", async (_e, workspace: WorkspaceIdentity, id: string, providerID: string, variant?: string) =>
-    backend.switchModel(
-      workspace,
-      selectionId(id, "model id"),
-      selectionId(providerID, "provider id"),
-      optionalSelectionId(variant, "model variant")
-    )
-  );
-
-  handleTrusted("shell:permission-reply", async (
-    _e,
-    workspace: WorkspaceIdentity,
-    requestID: string,
-    reply: PermissionReply,
-    sessionID: string
-  ) => {
-    const permission = permissionPayload(requestID, reply, sessionID);
-    return backend.replyPermission(workspace, permission.requestID, permission.reply, permission.sessionID);
-  });
-
-  handleTrusted("shell:list-permissions", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.listPermissions(workspace);
-  });
-
-  handleTrusted("shell:agents", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.listAgents(workspace);
-  });
-
-  handleTrusted("shell:switch-agent", async (_e, workspace: WorkspaceIdentity, id: string) =>
-    backend.switchAgent(workspace, selectionId(id, "agent id")));
-
-  handleTrusted("shell:terminal-start", async (_e, workspace: WorkspaceIdentity, requestedId: string, rel = "", cols = 100, rows = 24) => {
-    const target = workspacePath(workspace, rel, true);
-    const root = await backend.workspaceDirectory(target.workspace);
-    const directory = await confinedPath(root, target.rel, true);
-    const stat = await fsp.stat(directory);
-    if (!stat.isDirectory()) throw new Error("terminal path is not a directory");
-    const id = terminalId(requestedId);
-    const dimensions = terminalDimensions(cols, rows);
-    await terminals.start(id, directory, target.workspace, undefined, dimensions);
-    try {
-      await backend.workspaceDirectory(target.workspace);
-    } catch (error) {
-      terminals.stop(id, target.workspace);
-      throw error;
-    }
-    return directory;
-  });
-
-  handleTrusted("shell:agent-tui-start", async (_e, workspace: WorkspaceIdentity, requestedId: string) => {
-    const directory = await backend.ptyDirectory(workspace);
-    const command = await backend.tuiCommand(workspace);
-    const id = terminalId(requestedId);
-    await terminals.start(id, directory, workspace, command);
-    try {
-      await backend.workspaceDirectory(workspace);
-    } catch (error) {
-      terminals.stop(id, workspace);
-      throw error;
-    }
-  });
-
-  handleTrusted("shell:terminal-input", async (_e, workspace: WorkspaceIdentity, id: string, data: string) => {
-    await backend.workspaceDirectory(workspace);
-    terminals.write(terminalId(id), terminalInput(data), workspace);
-  });
-
-  handleTrusted("shell:terminal-resize", async (_e, workspace: WorkspaceIdentity, id: string, cols: number, rows: number) => {
-    await backend.workspaceDirectory(workspace);
-    const dimensions = terminalDimensions(cols, rows);
-    terminals.resize(terminalId(id), dimensions.cols, dimensions.rows, workspace);
-  });
-
-  handleTrusted("shell:terminal-stop", async (_e, workspace: WorkspaceIdentity, id: string) => {
-    await backend.workspaceDirectory(workspace);
-    terminals.stop(terminalId(id), workspace);
-  });
-
-  handleTrusted("shell:state", async () => backend.getState());
-
-  handleTrusted("shell:session-selection", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.sessionSelection(workspace);
-  });
-
-  handleTrusted("shell:mcp-list", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.listMcpServers(workspace);
-  });
-  handleTrusted("shell:plugins-list", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.listPlugins(workspace);
-  });
-  handleTrusted("shell:skills-list", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.listSkills(workspace);
-  });
-
-  handleTrusted("shell:provider-usage", async () => backend.providerUsage());
-
-  handleTrusted("shell:provider-integrations", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.listProviderIntegrations(workspace);
-  });
-
-  handleTrusted("shell:provider-key-connect", async (
-    _e,
-    workspace: WorkspaceIdentity,
-    integrationID: unknown,
-    key: unknown,
-    label: unknown,
-    answers: unknown
-  ) => {
-    workspaceId(workspace);
-    const credential = providerCredentialPayload(integrationID, key, label, answers);
-    return backend.connectProviderKey(workspace, credential.integrationID, credential.key, credential.label, credential.answers);
-  });
-
-  handleTrusted("shell:provider-oauth-start", async (_e, workspace: WorkspaceIdentity, integrationID: string, methodID: string) => {
-    workspaceId(workspace);
-    return backend.startProviderOAuth(workspace, integrationID, methodID);
-  });
-  handleTrusted("shell:provider-oauth-poll", async (_e, workspace: WorkspaceIdentity, integrationID: string, attemptID: string) => {
-    workspaceId(workspace);
-    return backend.pollProviderOAuth(workspace, integrationID, attemptID);
-  });
-  handleTrusted("shell:provider-oauth-complete", async (_e, workspace: WorkspaceIdentity, integrationID: string, attemptID: string, code?: string) => {
-    workspaceId(workspace);
-    return backend.completeProviderOAuth(workspace, integrationID, attemptID, code);
-  });
-  handleTrusted("shell:provider-oauth-cancel", async (_e, workspace: WorkspaceIdentity, integrationID: string, attemptID: string) => {
-    workspaceId(workspace);
-    return backend.cancelProviderOAuth(workspace, integrationID, attemptID);
-  });
-
-  handleTrusted("shell:session-revert-stage", async (_e, workspace: WorkspaceIdentity, messageID: string, files: boolean) => {
-    workspaceId(workspace);
-    return backend.stageRevert(workspace, messageID, files);
-  });
-  handleTrusted("shell:session-revert-commit", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.commitRevert(workspace);
-  });
-  handleTrusted("shell:session-revert-clear", async (_e, workspace: WorkspaceIdentity) => {
-    workspaceId(workspace);
-    return backend.clearRevert(workspace);
-  });
-
-  handleTrusted("shell:provider-credential-remove", async (_e, workspace: WorkspaceIdentity, credentialID: unknown) => {
-    workspaceId(workspace);
-    return backend.removeProviderCredential(workspace, selectionId(credentialID, "provider credential id"));
-  });
 
   handleTrusted("shell:mobile-setup-status", async () => {
     await mobileServerStartup;
