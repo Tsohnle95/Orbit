@@ -1,4 +1,15 @@
-import type { Block, Projection } from "./markdown-stream";
+export type Block = {
+  raw: string;
+  src: string;
+  mode: "full" | "live" | "code";
+  language?: string;
+  complete?: boolean;
+};
+
+export type Projection = {
+  text: string;
+  blocks: Block[];
+};
 
 export function completedProjection(text: string): Projection {
   return { text, blocks: [{ raw: text, src: text, mode: "full" }] };

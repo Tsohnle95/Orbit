@@ -1,5 +1,5 @@
 // Adapted from anomalyco/opencode at 03e67171ab2dc1e7f16e8cebfbc7f778f61b89f0 (MIT; see LICENSE).
-import type { Projection } from "../markdown-stream"
+import type { Projection } from "../markdown-projection"
 
 export type MarkdownToken = [content: string, style: string]
 

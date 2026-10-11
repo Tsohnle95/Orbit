@@ -360,8 +360,21 @@ Key mechanisms:
   background panel focuses that panel first, and permission replies address
   the owning session.
 
-- **Runtime-neutral transcript presentation** — `OpenCodeTimeline.tsx` renders
-  the shared transcript shape; dormant DeepSeek metadata rendering remains in
+- **Runtime-neutral transcript presentation** — `OpenCodeTimeline.tsx` owns
+  chronological run/turn composition, auxiliary events and permission prompts.
+  Its pure `timeline-model.ts` owns tool/path/edit metadata, task descriptors,
+  delegation reconciliation, turn grouping and reasoning-heading projection;
+  it depends only on shared contracts. `OpenCodeTool.tsx` owns tool dispatch and
+  edit/error/delegation/context/shell/native presenters; its file activation
+  owner maps tool paths to the addressed workspace before focusing and opening
+  it. Main retains authoritative filesystem path confinement.
+  `TimelineProse.tsx` owns prose pacing, clipboard/text controls, user rows,
+  thinking transitions and shared row presentation. Feature changes enter through
+  those owners; presentation does not acquire another transcript or runtime
+  authority. Task display descriptions fall back from an empty description to a
+  trimmed prompt, while dispatch signatures retain explicit empty descriptions.
+  Tool dispatch preserves eager formatting failure behavior, branch order and
+  its mounted controller state across failure/recovery. Dormant DeepSeek metadata rendering remains in
   source, but the production app only opens OpenCode sessions. The response layout
   follows OpenCode V2’s message timeline: a right-aligned user bubble, flat assistant
   parts, and a hover footer with copy plus the owning message’s agent/model and turn
@@ -440,6 +453,13 @@ Key mechanisms:
   A separate generous 5,000 ms budget measures React reconciliation and 800
   actual rows constructed in jsdom. It does not cover Chromium layout, paint,
   compositor work, or browser memory and is not a browser render budget.
+- **Delegation consolidation benchmark** —
+  `scripts/benchmark-timeline-consolidation.mjs` compares identical pure
+  transcript workloads with absent, available and explicit child-session
+  identities, plus ordinary assistant rows. `--ref <commit>` loads the same
+  projection symbols from Git; both snapshots check output hashes and input
+  immutability under the pinned Node version. It reports sample variability
+  and excludes Store updates, React rendering, IPC, layout and paint.
 - **Tree normalization** — `filterEntries` hides `HIDDEN_DIRS`; the main
   process `listDir` reads each directory directly from the filesystem
   (`fs.readdir`, with trailing slashes normalized away) rather than
@@ -574,6 +594,13 @@ Key cross-component invariants:
 - Workspace-dependent actions remain inert when no workspace is active.
 
 ## Styles (`src/renderer/src/styles/`)
+
+`_opencode-chat.scss` owns the ordered integration of the pinned upstream
+partials and Orbit's transcript overrides. Prompt, permission/form/revert,
+todo and compact composer presentation lives in `_agent-prompt-dock.scss`;
+the transcript owner includes its mixin at the existing cascade position.
+Keep `main.scss` ordering explicit. Move related rules together rather than
+creating per-selector partials; inherited palette overrides are intentional.
 
 `main.scss` is the single renderer stylesheet entry and uses ordered Sass
 partials so the cascade stays explicit. Orbit's runtime-neutral chat tokens,

@@ -8,7 +8,7 @@ import {
   type MarkdownWorkerState,
 } from "./markdown-worker-protocol"
 import { createWorkerTransport } from "./markdown-worker-transport"
-import type { Projection } from "../markdown-stream"
+import type { Projection } from "../markdown-projection"
 
 type HighlightPending = {
   key: string

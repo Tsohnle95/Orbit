@@ -1,0 +1,202 @@
+{
+  "node": "v22.23.2",
+  "sourcePath": "/private/tmp/orbit-timeline-before.tsx",
+  "sourceHash": "45b3e6e4c864a3539376f241085c237838aae32e971af2dea1b5bb5d2984733c",
+  "scope": "Pure delegation consolidation only; no Store, React, IPC, browser layout or paint",
+  "warmups": 3,
+  "samples": 9,
+  "results": {
+    "no-delegation": {
+      "transcriptItems": 600,
+      "assistantItems": 450,
+      "iterations": 100,
+      "outputHash": "1f8b3b25d8d4d3bd6da52cc9a11f0205fe6ac66975e718e8153e585aab36612d",
+      "fixtureHash": "1f8b3b25d8d4d3bd6da52cc9a11f0205fe6ac66975e718e8153e585aab36612d",
+      "minMs": 4.088584000000026,
+      "medianMs": 4.573542000000032,
+      "maxMs": 5.828624999999988,
+      "samples": [
+        {
+          "elapsedMs": 4.881957999999997,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 4.573542000000032,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 4.77883300000002,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 4.4570830000000115,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 4.549167000000011,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 5.828624999999988,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 5.669542000000035,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 4.088584000000026,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 4.356416999999965,
+          "retainedAssistantRows": 0
+        }
+      ]
+    },
+    "known-graph": {
+      "transcriptItems": 750,
+      "assistantItems": 450,
+      "iterations": 100,
+      "outputHash": "156f8f865704c374d1bea74c5d5ed4873ce432adb0e34c6baaff57dd2eeb2f7a",
+      "fixtureHash": "e07d1e6d4aa138d0bb578291c28b672cf5e082eca5f908c397bd213189b2788d",
+      "minMs": 298.441875,
+      "medianMs": 300.27233300000034,
+      "maxMs": 309.1079999999997,
+      "samples": [
+        {
+          "elapsedMs": 300.02099999999996,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 299.9786670000001,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 298.441875,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 302.75183400000014,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 300.27233300000034,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 304.86887499999966,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 309.1079999999997,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 299.8847499999997,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 300.61754199999996,
+          "retainedAssistantRows": 0
+        }
+      ]
+    },
+    "missing-graph": {
+      "transcriptItems": 750,
+      "assistantItems": 450,
+      "iterations": 100,
+      "outputHash": "c155e06d4cab774570c49834a725d6985c715235cc364a343f8ee42ed7119689",
+      "fixtureHash": "eabb363a22997086aa9b0c7c396bdcf23724abcab7549dfbbbddfa5129da279b",
+      "minMs": 71.43920800000069,
+      "medianMs": 71.90858300000036,
+      "maxMs": 72.78349999999955,
+      "samples": [
+        {
+          "elapsedMs": 72.78349999999955,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 71.6098750000001,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 71.64479100000062,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 72.28925000000072,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 71.76133300000038,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 72.1006669999997,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 71.90858300000036,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 71.43920800000069,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 72.21462500000052,
+          "retainedAssistantRows": 0
+        }
+      ]
+    },
+    "explicit-id": {
+      "transcriptItems": 750,
+      "assistantItems": 450,
+      "iterations": 100,
+      "outputHash": "53e36cc743cafc0996385e013e9963a5ea60c31c5ed4f05e98977c4aa2ed3eee",
+      "fixtureHash": "14a782734936960bfd9d7aababb396d33dcf9d394e6d3422d64a9eb50f70796f",
+      "minMs": 76.07549999999992,
+      "medianMs": 77.33745900000031,
+      "maxMs": 78.29370800000015,
+      "samples": [
+        {
+          "elapsedMs": 78.07645800000046,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 78.26116699999966,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 76.07549999999992,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 76.71520799999962,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 76.20524999999998,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 77.15220899999986,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 78.29370800000015,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 78.160167,
+          "retainedAssistantRows": 0
+        },
+        {
+          "elapsedMs": 77.33745900000031,
+          "retainedAssistantRows": 0
+        }
+      ]
+    }
+  }
+}

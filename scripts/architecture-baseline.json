@@ -25,6 +25,7 @@
     "src/main/open-paths.ts",
     "src/main/opencode.ts",
     "src/main/operation-coordinator.ts",
+    "src/main/provider-credentials.ts",
     "src/main/provider-usage.ts",
     "src/main/pty-directory.ts",
     "src/main/recovery-storage.ts",
@@ -84,6 +85,7 @@
     "src/renderer/src/components/OpenCodeSpecialTool.tsx",
     "src/renderer/src/components/OpenCodeTimeline.tsx",
     "src/renderer/src/components/OpenCodeTodoDock.tsx",
+    "src/renderer/src/components/OpenCodeTool.tsx",
     "src/renderer/src/components/OrbitMark.tsx",
     "src/renderer/src/components/ProviderSettings.tsx",
     "src/renderer/src/components/QueuedMessageChips.tsx",
@@ -95,6 +97,7 @@
     "src/renderer/src/components/StatusBar.tsx",
     "src/renderer/src/components/TerminalTray.tsx",
     "src/renderer/src/components/TextShimmer.tsx",
+    "src/renderer/src/components/TimelineProse.tsx",
     "src/renderer/src/components/ToolCountSummary.tsx",
     "src/renderer/src/components/ToolStatusTitle.tsx",
     "src/renderer/src/components/Welcome.tsx",
@@ -102,6 +105,7 @@
     "src/renderer/src/components/composer-completions.ts",
     "src/renderer/src/components/editor-status.ts",
     "src/renderer/src/components/icons.tsx",
+    "src/renderer/src/components/timeline-model.ts",
     "src/renderer/src/components/use-menu-dismiss.ts",
     "src/renderer/src/drop.ts",
     "src/renderer/src/editor-close-guard.ts",
@@ -147,6 +151,7 @@
     "src/renderer/src/session-activity.ts",
     "src/renderer/src/store.tsx",
     "src/renderer/src/streaming.ts",
+    "src/renderer/src/styles/_agent-prompt-dock.scss",
     "src/renderer/src/styles/_agent.scss",
     "src/renderer/src/styles/_buttons.scss",
     "src/renderer/src/styles/_composer.scss",
@@ -174,41 +179,30 @@
     "src/shared/generation.ts",
     "src/shared/message-presentation.ts",
     "src/shared/retention.ts",
+    "src/shared/session-presentation.ts",
     "src/shared/tool-presentation.ts",
     "src/shared/types.ts",
     "src/shared/url-policy.ts"
   ],
   "modules": {
     "src/renderer/src/store.tsx": {
-      "loc": 3800,
+      "loc": 3770,
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     },
     "src/main/opencode.ts": {
-      "loc": 2609,
+      "loc": 2601,
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     },
     "src/renderer/src/opencode-markdown/markdown-inline-code-kind.ts": {
       "loc": 1908,
       "reason": "Cohesive pinned Linguist filename/extension table; retain readable data, do not compress or move out of the production metric."
     },
-    "src/renderer/src/components/OpenCodeTimeline.tsx": {
-      "loc": 1626,
-      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
-    },
     "src/main/index.ts": {
       "loc": 1102,
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     },
-    "src/renderer/src/styles/_opencode-chat.scss": {
-      "loc": 1047,
-      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
-    },
     "src/renderer/src/components/FileSidebar.tsx": {
       "loc": 958,
-      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
-    },
-    "src/main/provider-usage.ts": {
-      "loc": 835,
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     }
   },
@@ -318,12 +312,6 @@
     "src/renderer/src/chat-stream.ts:reduceChatStream#1": {
       "codeLines": 161,
       "cyclomatic": 52,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/renderer/src/components/OpenCodeTimeline.tsx:ToolPart#1": {
-      "codeLines": 158,
-      "cyclomatic": 55,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -489,12 +477,6 @@
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
-    "src/renderer/src/components/OpenCodeTimeline.tsx:toolPresentation#1": {
-      "codeLines": 100,
-      "cyclomatic": 48,
-      "nesting": 13,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
     "src/main/opencode.ts:OpenShellBackend/importExternal/this.mutations.run callback:root#1": {
       "codeLines": 100,
       "cyclomatic": 21,
@@ -511,12 +493,6 @@
       "codeLines": 100,
       "cyclomatic": 30,
       "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/renderer/src/components/OpenCodeTimeline.tsx:consolidateSubagentTools#1": {
-      "codeLines": 100,
-      "cyclomatic": 20,
-      "nesting": 7,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/assistant-status.ts:createParsedStatus#1": {
@@ -540,12 +516,6 @@
     "src/main/runtimes/deepseek/deepseek-adapter.ts:DeepSeekRuntimeAdapter/subscribe/pump#1": {
       "codeLines": 100,
       "cyclomatic": 28,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/renderer/src/components/OpenCodeTimeline.tsx:EditToolCard#1": {
-      "codeLines": 100,
-      "cyclomatic": 30,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -679,6 +649,34 @@
       "cyclomatic": 1,
       "nesting": 0,
       "reason": "Independently reviewed declarative trusted IPC registration; callbacks are independently budgeted and sender validation stays in index.ts. Registrar owns no session/runtime state."
+    },
+    "src/renderer/src/components/OpenCodeTool.tsx:ToolPart#1": {
+      "codeLines": 155,
+      "cyclomatic": 55,
+      "nesting": 5,
+      "origin": "src/renderer/src/components/OpenCodeTimeline.tsx:ToolPart#1",
+      "reason": "Independently reviewed retained tool/delegation policy extracted into its cohesive owner; eager formatting failure behavior, hook lifetime, branch order and input immutability are characterized. Current ceilings do not exceed the original; no growth and downward ratcheting required."
+    },
+    "src/renderer/src/components/OpenCodeTool.tsx:EditToolCard#1": {
+      "codeLines": 100,
+      "cyclomatic": 30,
+      "nesting": 5,
+      "origin": "src/renderer/src/components/OpenCodeTimeline.tsx:EditToolCard#1",
+      "reason": "Independently reviewed retained tool/delegation policy extracted into its cohesive owner; eager formatting failure behavior, hook lifetime, branch order and input immutability are characterized. Current ceilings do not exceed the original; no growth and downward ratcheting required."
+    },
+    "src/renderer/src/components/timeline-model.ts:toolPresentation#1": {
+      "codeLines": 100,
+      "cyclomatic": 48,
+      "nesting": 13,
+      "origin": "src/renderer/src/components/OpenCodeTimeline.tsx:toolPresentation#1",
+      "reason": "Independently reviewed retained tool/delegation policy extracted into its cohesive owner; eager formatting failure behavior, hook lifetime, branch order and input immutability are characterized. Current ceilings do not exceed the original; no growth and downward ratcheting required."
+    },
+    "src/renderer/src/components/timeline-model.ts:consolidateSubagentTools#1": {
+      "codeLines": 100,
+      "cyclomatic": 20,
+      "nesting": 7,
+      "origin": "src/renderer/src/components/OpenCodeTimeline.tsx:consolidateSubagentTools#1",
+      "reason": "Independently reviewed retained tool/delegation policy extracted into its cohesive owner; eager formatting failure behavior, hook lifetime, branch order and input immutability are characterized. Current ceilings do not exceed the original; no growth and downward ratcheting required."
     }
   },
   "edgeExceptions": [
@@ -689,13 +687,7 @@
       "reason": "Renderer window.openshell declaration derives the controlled preload interface; type-only bridge has no runtime dependency."
     }
   ],
-  "cycleExceptions": [
-    {
-      "mode": "includingTypeOnly",
-      "key": "src/renderer/src/markdown-projection.ts>src/renderer/src/markdown-stream.ts:type|src/renderer/src/markdown-stream.ts>src/renderer/src/markdown-projection.ts:value",
-      "reason": "Existing markdown projection helpers depend only on stream type declarations; runtime import direction remains acyclic. Prefer extracting shared local types during related work."
-    }
-  ],
+  "cycleExceptions": [],
   "duplicates": {
     "functions": {},
     "blocks": {}
@@ -740,6 +732,29 @@
       "allowedFrom": [
         "src/main/index.ts",
         "src/main/ipc/"
+      ]
+    },
+    {
+      "targetPrefix": "src/renderer/src/components/timeline-model.ts",
+      "owner": "timeline model",
+      "allowedFrom": [
+        "src/renderer/src/components/OpenCodeTimeline.tsx",
+        "src/renderer/src/components/OpenCodeTool.tsx",
+        "src/renderer/src/components/TimelineProse.tsx"
+      ]
+    },
+    {
+      "targetPrefix": "src/main/provider-credentials.ts",
+      "owner": "provider credential discovery",
+      "allowedFrom": [
+        "src/main/provider-usage.ts"
+      ]
+    },
+    {
+      "targetPrefix": "src/renderer/src/styles/_agent-prompt-dock.scss",
+      "owner": "ordered agent prompt dock styling",
+      "allowedFrom": [
+        "src/renderer/src/styles/_opencode-chat.scss"
       ]
     }
   ],
@@ -799,6 +814,13 @@
         "src/renderer/src/chat-records.ts",
         "src/renderer/src/chat-stream.ts",
         "src/renderer/src/binary.ts"
+      ],
+      "allowedExternal": []
+    },
+    {
+      "file": "src/renderer/src/components/timeline-model.ts",
+      "allowedLocal": [
+        "src/shared/"
       ],
       "allowedExternal": []
     }

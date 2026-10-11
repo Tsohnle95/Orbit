@@ -1,0 +1,23 @@
+{
+  "scope": "Expanded Sass compilation; surviving selector/declaration occurrences and at-rule contexts compared; complete rule order compared except three equivalent grouped dock roots",
+  "beforeBytes": 317535,
+  "afterBytes": 315002,
+  "survivingSelectors": 2012,
+  "changedDeclarations": 0,
+  "otherRuleOrderIdentical": true,
+  "beforeSha256": "b8eea70bc17595dd1e6b5d4239ddacb45e67173d172b2f96093af6b409199c6b",
+  "afterSha256": "1b6ea168f6ca0ca272c3c72b54aaa1bab70fbd288c72c2eabbe230e1acf5e303",
+  "removedUnusedFamilies": [
+    "agent-input",
+    "agent-busy-line",
+    "agent-hint",
+    "composer-icon-button",
+    "composer-approval",
+    "assistant-activity-pulse"
+  ],
+  "groupedIdenticalRoots": [
+    "permission",
+    "form",
+    "revert"
+  ]
+}

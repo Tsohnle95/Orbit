@@ -78,14 +78,6 @@ export function IconChevronDown(props: IconProps): ReactNode {
   );
 }
 
-export function IconChevronLeft(props: IconProps): ReactNode {
-  return (
-    <Icon name="chevron-left" {...props}>
-      <path d="M9.8 4.5L6.2 8l3.6 3.5" />
-    </Icon>
-  );
-}
-
 export function IconChevronRight(props: IconProps): ReactNode {
   return (
     <Icon name="chevron-right" {...props}>
@@ -119,22 +111,6 @@ export function IconCloudDownload(props: IconProps): ReactNode {
   );
 }
 
-export function IconCollapse(props: IconProps): ReactNode {
-  return (
-    <Icon name="collapse" {...props}>
-      <path d="M3.6 4.2L7.4 8l-3.8 3.8M8.6 4.2L12.4 8l-3.8 3.8" />
-    </Icon>
-  );
-}
-
-export function IconExpand(props: IconProps): ReactNode {
-  return (
-    <Icon name="expand" {...props}>
-      <path d="M12.4 4.2L8.6 8l3.8 3.8M7.4 4.2L3.6 8l3.8 3.8" />
-    </Icon>
-  );
-}
-
 export function IconDashboard(props: IconProps): ReactNode {
   return (
     <Icon name="dashboard" {...props}>
@@ -150,15 +126,6 @@ export function IconEdit(props: IconProps): ReactNode {
     <Icon name="edit" {...props}>
       <path d="M3.2 12.8l.7-2.9 6.7-6.7a1.53 1.53 0 0 1 2.2 2.2l-6.7 6.7-2.9.7z" />
       <path d="M10 4.8l1.2 1.2" />
-    </Icon>
-  );
-}
-
-export function IconError(props: IconProps): ReactNode {
-  return (
-    <Icon name="error" {...props}>
-      <circle cx="8" cy="8" r="5.8" />
-      <path d="M6.2 6.2l3.6 3.6M9.8 6.2L6.2 9.8" />
     </Icon>
   );
 }
@@ -293,15 +260,6 @@ export function IconRobot(props: IconProps): ReactNode {
       <path d="M8 5.4V3.6" />
       <circle cx="8" cy="2.7" r="0.9" />
       <path d="M5.9 8.1v1.7M10.1 8.1v1.7" />
-    </Icon>
-  );
-}
-
-export function IconSearch(props: IconProps): ReactNode {
-  return (
-    <Icon name="search" {...props}>
-      <circle cx="7.2" cy="7.2" r="4.4" />
-      <path d="M10.4 10.4l3.2 3.2" />
     </Icon>
   );
 }

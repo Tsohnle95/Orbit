@@ -12,7 +12,8 @@ import {
 } from "shiki"
 import type { MarkdownToken, MarkdownWorkerRequest, MarkdownWorkerResponse } from "./markdown-worker-protocol"
 import { createLatestWorkerQueue } from "./markdown-worker-queue"
-import { project, type Projection } from "../markdown-stream"
+import { project } from "../markdown-stream"
+import type { Projection } from "../markdown-projection"
 
 type Stream = {
   language: string

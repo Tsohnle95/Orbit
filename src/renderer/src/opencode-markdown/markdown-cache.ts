@@ -1,7 +1,5 @@
 // Adapted from anomalyco/opencode at 03e67171ab2dc1e7f16e8cebfbc7f778f61b89f0 (MIT; see LICENSE).
-import { checksum } from "./checksum"
 import DOMPurify from "dompurify"
-import { parseMarkdown } from "./markdown-worker"
 
 export type MarkdownCacheEntry = {
   raw: string
@@ -51,20 +49,4 @@ export function touchCachedMarkdown(key: string, value: MarkdownCacheEntry) {
   const first = cache.keys().next().value
   if (!first) return
   cache.delete(first)
-}
-
-export async function preloadMarkdown(text: string, cacheKey: string) {
-  const key = `${cacheKey}:0:full`
-  const cached = getCachedMarkdown(key)
-  if (cached?.raw === text) {
-    touchCachedMarkdown(key, cached)
-    return
-  }
-  const hash = checksum(text)
-  if (!hash) return
-  touchCachedMarkdown(key, {
-    raw: text,
-    hash,
-    html: sanitizeMarkdown(await parseMarkdown(text)),
-  })
 }

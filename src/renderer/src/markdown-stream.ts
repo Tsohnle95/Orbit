@@ -1,19 +1,6 @@
 import { marked, type Tokens } from "marked";
 import remend from "remend";
-import { completedProjection } from "./markdown-projection";
-
-export type Block = {
-  raw: string;
-  src: string;
-  mode: "full" | "live" | "code";
-  language?: string;
-  complete?: boolean;
-};
-
-export type Projection = {
-  text: string;
-  blocks: Block[];
-};
+import { completedProjection, type Block, type Projection } from "./markdown-projection";
 
 function refs(text: string): boolean {
   if (!text.includes("]:")) return false;

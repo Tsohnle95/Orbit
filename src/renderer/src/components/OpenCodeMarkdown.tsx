@@ -1,7 +1,7 @@
 // React lifecycle adapter for OpenCode's Markdown renderer. Upstream: 03e67171ab2dc1e7f16e8cebfbc7f778f61b89f0.
 import { useId, useLayoutEffect, useRef, type HTMLAttributes } from "react";
 import { completedProjection } from "../markdown-projection";
-import type { Projection } from "../markdown-stream";
+import type { Projection } from "../markdown-projection";
 import {
   disposeMarkdownProjection,
   disposeStreamingCode,

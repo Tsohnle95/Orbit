@@ -3,7 +3,7 @@ import morphdom from "morphdom"
 import { checksum } from "./checksum"
 import { safeExternalUrl } from "@shared/url-policy"
 import { canReusePendingBlock } from "../markdown-projection"
-import type { Block, Projection } from "../markdown-stream"
+import type { Block, Projection } from "../markdown-projection"
 import { highlightStreamingCode, parseMarkdown, MarkdownWorkerDisposedError, MarkdownWorkerSupersededError, MarkdownWorkerUnavailableError } from "./markdown-worker"
 import { markdownBlockKey, type MarkdownToken } from "./markdown-worker-protocol"
 import { shouldResetCodeTokens, type RenderedCodeState } from "./markdown-code-state"
@@ -106,10 +106,6 @@ export function setCopyState(host: HTMLElement, labels: CopyLabels, copied: bool
   else host.removeAttribute("data-copied")
 }
 
-// Native DOM copy buttons have no framework root to dispose.
-export function disposeCopyButtons(_root: Element) {}
-function disposeCopyButton(_host: HTMLElement) {}
-
 const shellLanguages = new Set(["bash", "sh", "shell", "zsh", "fish", "console", "terminal"])
 
 function codeKind(language: string | undefined) {
@@ -159,7 +155,6 @@ function ensureCodeWrapper(block: HTMLPreElement, labels: CopyLabels) {
   }
 
   for (const button of buttons.slice(1)) {
-    disposeCopyButton(button)
     button.remove()
   }
 }
@@ -269,7 +264,6 @@ export function setupCodeCopy(root: HTMLDivElement, getLabels: () => CopyLabels)
     for (const timeout of timeouts.values()) {
       clearTimeout(timeout)
     }
-    disposeCopyButtons(root)
   }
 }
 
@@ -433,10 +427,6 @@ export function updateBlock(container: HTMLDivElement, index: number, block: Ren
       if (fromEl.isEqualNode(toEl)) return false
       return true
     },
-    onBeforeNodeDiscarded: (node) => {
-      if (node instanceof Element) disposeCopyButtons(node)
-      return true
-    },
   })
 }
 
@@ -506,7 +496,6 @@ function updateCodeBlock(
     raw: block.raw,
   })
   if (current) {
-    disposeCopyButtons(current)
     current.replaceWith(next)
     return
   }
