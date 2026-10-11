@@ -9,7 +9,7 @@ vi.mock("electron", () => ({
 vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
 vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
-import { replayTranscript } from "./opencode";
+import { replayTranscript } from "./session-replay";
 
 describe("replay retention", () => {
   it("assigns type-specific ordinals to interleaved V2 parts while retaining repeated text and explicit IDs", () => {

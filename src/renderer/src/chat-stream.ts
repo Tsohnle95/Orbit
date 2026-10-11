@@ -1,7 +1,8 @@
-import type { AssistantPartView, ToolCallView, ToolContentView, TranscriptItem } from "@shared/types";
+import type { AssistantPartView, ToolCallView, TranscriptItem } from "@shared/types";
 import { messagePresentation } from "@shared/message-presentation";
 import { formatFailure } from "@shared/errors";
 import { retainToolContent } from "@shared/retention";
+import { collectFilePaths as paths, record as metadata, toolContentViews, toolDetailText as toolDetail } from "@shared/tool-presentation";
 
 export interface ChatStreamEvent {
   id: string;
@@ -25,12 +26,6 @@ function stringify(value: unknown): string {
   }
 }
 
-function metadata(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined;
-}
-
 function toolOutput(data: Record<string, any>): string {
   const content = data.content ?? data.output;
   if (Array.isArray(content)) {
@@ -40,57 +35,6 @@ function toolOutput(data: Record<string, any>): string {
       .join("\n");
   }
   return stringify(content);
-}
-
-function toolContent(data: Record<string, any>): ToolContentView[] | undefined {
-  const content = data.content;
-  if (!Array.isArray(content)) return undefined;
-  const items = content.flatMap((raw): ToolContentView[] => {
-    if (!raw || typeof raw !== "object") return [];
-    const item = raw as Record<string, unknown>;
-    if (item.type === "text") return [{ type: "text", text: String(item.text ?? "") }];
-    if (item.type !== "file" || typeof item.uri !== "string" || typeof item.mime !== "string") return [];
-    return [{
-      type: "file",
-      uri: item.uri,
-      mime: item.mime,
-      ...(typeof item.name === "string" ? { name: item.name } : {})
-    }];
-  });
-  return items.length > 0 ? items : undefined;
-}
-
-function paths(input: unknown): string[] {
-  const result: string[] = [];
-  const walk = (value: unknown): void => {
-    if (!value || typeof value !== "object") return;
-    if (Array.isArray(value)) {
-      value.forEach(walk);
-      return;
-    }
-    for (const [key, child] of Object.entries(value)) {
-      if (
-        (key === "filePath" || key === "file_path" || key === "path") &&
-        typeof child === "string" &&
-        !child.startsWith("http")
-      ) {
-        result.push(child);
-      } else {
-        walk(child);
-      }
-    }
-  };
-  walk(input);
-  return [...new Set(result)];
-}
-
-function toolDetail(input: unknown): string {
-  if (!input || typeof input !== "object") return "";
-  const value = input as Record<string, unknown>;
-  if (typeof value.filePath === "string") return value.filePath;
-  if (typeof value.file_path === "string") return value.file_path;
-  if (typeof value.command === "string") return `$ ${value.command}`;
-  return "";
 }
 
 function inferTool(input: unknown): string {
@@ -153,7 +97,7 @@ export function partFromProjection(part: Record<string, any>, created: number): 
       paths: paths(input),
       metadata: metadata(state.metadata),
       inputValue: input,
-      content: retainToolContent(toolContent(state)),
+      content: retainToolContent(toolContentViews(state.content)),
       ...(typeof part.executed === "boolean" ? { executed: part.executed } : {}),
       providerState: metadata(part.providerState),
       providerResultState: metadata(part.providerResultState)

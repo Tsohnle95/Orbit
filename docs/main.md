@@ -189,7 +189,8 @@ Internals:
   context's recovery records.
 - Local Sass compilation — `SassWatchManager` owns per-directory workers,
   preferences and CSS disk writes; see [compiler selection and lifecycle](sass.md).
-- `replayTranscript(messages)` — converts `message.list` output to
+- Pure history projection lives in `src/main/session-replay.ts`;
+  `replayTranscript(messages)` converts `message.list` output to
   `TranscriptItem[]`: user, internal selection, synthetic/system/skill/shell,
   assistant, and compaction messages in persisted order. Internal selection
   and system prompt entries are retained for state reconstruction but filtered
@@ -198,6 +199,12 @@ Internals:
   metadata, provider state, duration, retry, error, and completion are restored.
   V2 text/reasoning blocks without explicit IDs use per-type ordinals matching
   the live stream, so prompt completion and rehydration update the same parts.
+  `replayTodos` restores the latest nonempty todo-tool snapshot. This module
+  depends only on shared presentation/contracts; service requests, pagination,
+  activation, and live event routing remain owned by `OpenShellBackend`.
+  Replay and live streaming share content/path/detail normalization in
+  `src/shared/tool-presentation.ts`, while retaining their distinct input
+  serialization, title inference, output fallback, and timing policies.
 - `loadSessionMessages(sessionID)` — `message.list` with one retry; follows
   `cursor.next` pages (first page `order: "asc"`, later pages cursor-only, capped
   at 200) so conversations longer than the server's default page size load

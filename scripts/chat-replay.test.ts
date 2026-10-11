@@ -6,7 +6,7 @@ vi.mock("electron", () => ({ app: { getPath: () => tmpdir() }, shell: { trashIte
 vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
 vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
-import { replayTranscript } from "../src/main/opencode";
+import { replayTranscript } from "../src/main/session-replay";
 import { applyChatEvent, hydrateChatState, projectAssistantItems, type ChatDirectoryState } from "../src/renderer/src/chat-store";
 import { mergeChatHistory } from "../src/renderer/src/chat-stream";
 
