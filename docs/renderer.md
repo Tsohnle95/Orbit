@@ -508,12 +508,32 @@ express a cross-component invariant or non-obvious state contract.
 | `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
 | `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and up to four groups with independent tab membership, selection, and drag transfer; new tabs route to the focused group |
 | `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status; Shift+Tab cycles agents, Shift+P cycles favorite models, and Ctrl+Tab cycles response strength without intercepting typed Shift+S |
+| `Composer` | `Composer.tsx` | Authoritative local prompt draft, attachments, keyboard dispatch and agent controls; completion and model-menu behavior have the owners below |
 | `AgentTui` | `AgentTui.tsx` | xterm view for the active runtime's PTY-backed TUI |
 | `OpenCodeTimeline` | `OpenCodeTimeline.tsx` | Runtime-neutral chronological rendering of assistant text/tools/delegation with hidden reasoning |
 | `OpenCodeTodoDock` | `OpenCodeTodoDock.tsx` | Structured todo/checklist state near the composer |
 | `AgentTray` | `AgentTray.tsx` | Collapsed agent-panel affordance and session activity indication |
 | `TerminalTray` | `TerminalTray.tsx` | Integrated terminal tabs backed by main-process `node-pty` |
 | `ServerSettings` | `ServerSettings.tsx` | Settings inventory of active Vite preview servers with per-server and stop-all controls |
+
+`AgentPanel.tsx` composes the session surface and owns GUI/TUI selection and
+prompt-dock placement. `Composer.tsx` owns the sole input/files/mentions draft;
+`composer-completions.ts` owns candidate acquisition, insertion and captured
+workspace/sequence guards without keeping a second draft. `ComposerModelMenu.tsx`
+owns model preference persistence, filtering, response strength and menu rows;
+keyboard model cycling uses that same owner. `AgentUsage.tsx` owns the usage
+toggle/popup, quota presentation, refresh lifecycle and turn timer.
+`agent-scroll.ts` owns remount scroll memory, reader intent and content following;
+`use-menu-dismiss.ts` owns the shared document mouse/Escape subscription.
+Related changes belong in those owners; they use renderer state and the controlled
+preload bridge and do not perform privileged filesystem or runtime work.
+
+`App.tsx` retains mode/session slot memory and shell composition. Pure panel
+geometry lives in `agent-panels.ts` without React or Store dependencies;
+`layout/PanelColumn.tsx` owns column presentation, and
+`layout/panel-interactions.ts` owns drag/tray previews and their final state
+commits. Layout features enter through `App.tsx` and use those owners rather
+than introducing another geometry or resize implementation.
 
 The terminal tray's server button passes the active workspace-relative HTML
 tab to Vite when available, so nested standalone sites get the correct document

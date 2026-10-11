@@ -64,7 +64,9 @@ vi.mock("../store", () => ({
   })
 }));
 
-import { AgentPanel, Composer, clearAgentScrollMemoryForTests } from "./AgentPanel";
+import { AgentPanel } from "./AgentPanel";
+import { Composer } from "./Composer";
+import { clearAgentScrollMemoryForTests } from "./agent-scroll";
 
 function session(id: string, generation: number): SessionInfo {
   return {

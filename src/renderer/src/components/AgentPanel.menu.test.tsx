@@ -10,6 +10,7 @@ let currentModels: ModelOption[];
 let currentModel: ModelOption | null;
 const loadAgentsMock = vi.fn();
 const loadModelsMock = vi.fn();
+const switchModelMock = vi.fn();
 
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
@@ -33,7 +34,7 @@ vi.mock("../store", () => ({
     toggleApprovalMode: vi.fn(),
     models: currentModels,
     currentModel: currentModel,
-    switchModel: vi.fn(),
+    switchModel: switchModelMock,
     agents: currentAgents,
     currentAgent: null,
     switchAgent: vi.fn(),
@@ -57,7 +58,7 @@ vi.mock("../store", () => ({
   })
 }));
 
-import { Composer } from "./AgentPanel";
+import { Composer } from "./Composer";
 
 describe("composer agent menu", () => {
   let container: HTMLDivElement;
@@ -67,6 +68,7 @@ describe("composer agent menu", () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     loadAgentsMock.mockClear();
     loadModelsMock.mockClear();
+    switchModelMock.mockClear();
     currentAgents = [];
     currentModels = [];
     currentModel = null;
@@ -182,6 +184,36 @@ describe("composer agent menu", () => {
     );
     expect(favoritesGroup).not.toBeNull();
     expect(favoritesGroup!.textContent).toContain("GPT");
+  });
+
+  it("toggles stars in either model list without selecting the row or closing the menu", async () => {
+    currentModels = [{ id: "gpt", name: "GPT", providerID: "openai" }];
+    await act(async () => root.render(<Composer />));
+    await act(async () => container.querySelector<HTMLButtonElement>('button[title="Change model and response strength"]')!.click());
+    await act(async () => container.querySelector<HTMLElement>('.composer-menu-star[title="Add to favorites"]')!.click());
+    expect(switchModelMock).not.toHaveBeenCalled();
+    expect(container.querySelector(".composer-menu")).not.toBeNull();
+    expect(JSON.parse(window.localStorage.getItem("favoriteModels")!)).toEqual(["openai::gpt"]);
+    const favoriteStar = container.querySelector<HTMLElement>(".composer-menu-favorites .composer-menu-star")!;
+    expect(favoriteStar.classList.contains("on")).toBe(true);
+    await act(async () => favoriteStar.click());
+    expect(switchModelMock).not.toHaveBeenCalled();
+    expect(JSON.parse(window.localStorage.getItem("favoriteModels")!)).toEqual([]);
+    expect(container.querySelector(".composer-menu-favorites")).toBeNull();
+  });
+
+  it("dismisses menus only for outside mouse clicks or Escape", async () => {
+    currentModels = [{ id: "gpt", name: "GPT", providerID: "openai" }];
+    await act(async () => root.render(<Composer />));
+    const toggle = container.querySelector<HTMLButtonElement>('button[title="Change model and response strength"]')!;
+    await act(async () => toggle.click());
+    await act(async () => container.querySelector(".composer-menu")!.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })));
+    expect(container.querySelector(".composer-menu")).not.toBeNull();
+    await act(async () => document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })));
+    expect(container.querySelector(".composer-menu")).toBeNull();
+    await act(async () => toggle.click());
+    await act(async () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(container.querySelector(".composer-menu")).toBeNull();
   });
 
   it("reaches response strength from the model menu when the model has variants", async () => {

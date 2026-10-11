@@ -41,10 +41,13 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 2a | Pure session replay and identical shared presentation normalization | complete | 73 targeted tests; 993 full tests/type/docs/build; independent AST equivalence review | f2906a7 |
 | 2b | Recovery storage owner with captured root/current guard | complete | 67 targeted tests; 1,006 canonical tests/type/docs/build; native platform/trust; independent AST equivalence | 1fc0397 |
 | 2c | Domain IPC registration with centralized trust | complete | 32 targeted tests; identical 95 callbacks/channels and trust gate; 1,031 canonical tests/build; native platform/trust and isolated OpenCode smoke | 2029e83 |
-| 3a | Renderer record/projection/reconciliation ownership and cache | complete | 149 targeted tests; 1,031 full tests/type/docs/build; independent equivalence/invalidation review; paired projection benchmark | pending checkpoint |
-| 4 | Components and styles | pending | component tests + live interaction + check | — |
+| 3a | Renderer record/projection/reconciliation ownership and cache | complete | 149 targeted tests; 1,031 full tests/type/docs/build; independent equivalence/invalidation review; paired projection benchmark | 0cee93e |
+| 4a | AgentPanel/composer/usage/menu/scroll owners and App geometry/interactions | complete | 1,042 canonical tests/type/docs/architecture/build; independent110tests/ASTreview; native mock-IPC fixture: menus/usage/stream/GUI-TUI/theme/Settings/layout | pending checkpoint |
+| 4b | Timeline models and presenters | pending | exactextraction + targetedpresentation/runtimefixtures + check | — |
+| 4c | Styling ownership and confirmed stale rules | pending | cascade comparison + livefixture + check | — |
 | 5 | Confirmed consolidation/efficiency | pending | equivalent workloads + check | — |
-| 6 | Ownership, permanent architecture enforcement | pending | guardrail adversarial fixtures + docs + check/CI | — |
+| 6a | Permanent architecture enforcement and reproducible baseline | complete | 28 adversarial/parser tests; unchanged38,430 baseline; canonical/CI wiring; independentdownward-ratchet review | pending checkpoint |
+| 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
 ## Validation plan
@@ -90,3 +93,5 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 ## Latest integration verification
 
 - 2026-10-11 — Combined IPC/renderer working tree passed supported canonical gate: 128 files / 1,031 tests, typecheck, docs, production build. Isolated OpenCode discovery/create/read/delete/SSE smoke passed without model prompts. Native platform/renderer trust gate passed. Renderer paired projection medians 234.893 → 7.030 ms; repeat 241.050 → 7.136 ms, identical content/500 deltas. Scope is projection only.
+
+- 2026-10-11 — Native disposable QA used actual production renderer/preload with mock IPC/session data: folder/editor opening, model favorites/filter, menu Escape/outside dismissal, session/provider usage, draft clearing, streamed response, GUI/TUI mounting, light/dark theme, Settings tab preservation and Agent Mode enter/exit. This does not verify real provider prompting or full native TUI execution; existing platform PTY and isolated OpenCode smoke cover narrower boundaries. GUI/TUI reader position reset is independently proven pre-existing (600→0 in both historical and current25-turn tests), recorded in follow-ups, and not fixed. Parser JSDoc correction did not change the frozen baseline count.

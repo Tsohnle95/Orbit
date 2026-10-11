@@ -34,7 +34,7 @@ Five connection points cover most debugging:
 
 | # | Connection | Follow |
 |---|---|---|
-| 1 | renderer → main calls | component/store action → `window.openshell.*` → preload wrapper → `registerIpc()` / backend method |
+| 1 | renderer → main calls | component/store action → `window.openshell.*` → preload wrapper → centralized trusted registrar → domain IPC handler / backend method |
 | 2 | main → renderer messages | backend/terminal emitter → `webContents.send("shell:message")` → preload `onMessage` → renderer store |
 | 3 | main → runtime request | backend/runtime manager → selected adapter / OpenCode client |
 | 4 | runtime → main stream | OpenCode SSE or runtime-native downlink → normalization → shared event vocabulary |
@@ -97,7 +97,7 @@ Read next: `architecture.md#session-lifecycle`, `main.md`, `preload.md`.
 Request path:
 
 ```text
-AgentPanel / store sendPrompt()
+Composer / store sendPrompt()
 → window.openshell.prompt(...)
 → backend.prompt()
 → active runtime adapter

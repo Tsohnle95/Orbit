@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionInfo, SessionSelection } from "@shared/types";
 import { StoreProvider, useStore } from "./store";
-import { Composer } from "./components/AgentPanel";
+import { Composer } from "./components/Composer";
 
 type Store = ReturnType<typeof useStore>;
 

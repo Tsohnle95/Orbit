@@ -39,7 +39,7 @@ vi.mock("../store", () => ({
   })
 }));
 
-import { Composer } from "./AgentPanel";
+import { Composer } from "./Composer";
 
 function session(id: string, generation: number): SessionInfo {
   return {
@@ -188,6 +188,26 @@ describe("composer slash and mention completions", () => {
     expect(sendPrompt).toHaveBeenCalledOnce();
     expect(inputDuringSubmission).toBe("");
     expect(input.value).toBe("");
+  });
+
+  it("clears a typed command before synchronous updates and preserves its rejection notice", async () => {
+    window.openshell = {} as Window["openshell"];
+    await act(async () => root.render(<Composer />));
+    const input = container.querySelector<HTMLTextAreaElement>("textarea")!;
+    await act(async () => type(input, "/compact please"));
+    let inputDuringSubmission = "unsubmitted";
+    runCommand.mockImplementationOnce(async () => {
+      flushSync(() => root.render(<Composer />));
+      inputDuringSubmission = container.querySelector<HTMLTextAreaElement>("textarea")!.value;
+      throw new Error("Command failed");
+    });
+
+    await pressEnter(input);
+    expect(runCommand).toHaveBeenCalledWith("compact", "please", currentSession.workspace);
+    expect(inputDuringSubmission).toBe("");
+    expect(input.value).toBe("");
+    expect(container.querySelector(".composer-notice")?.textContent).toBe("Command failed");
+    expect(sendPrompt).not.toHaveBeenCalled();
   });
 
   it("assembles a PromptFile with a mention span for a chosen file mention", async () => {
