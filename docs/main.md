@@ -243,7 +243,13 @@ Internals:
   identities remain ordinary delete/add observations.
 - `relKey(abs)` — absolute → `/`-separated path relative to the session
   dir; `abs(rel)` the inverse. `shouldSkip` filters `SKIP_DIRS` roots.
-- New recovery transactions live under `.git/orbit-recovery/<timestamp>-<uuid>`
+- `src/main/recovery-storage.ts` owns recovery storage selection, transaction
+  manifests, artifact inventory, reconciliation, migration, and retention.
+  Its operations receive a captured workspace root and, where required, a
+  current-activation predicate. It has no session, SDK, IPC, or focused-window
+  dependency. `OpenShellBackend` retains workspace authorization, mutation
+  ordering and post-await checks, recovery emissions, and OS artifact opening.
+  New recovery transactions live under `.git/orbit-recovery/<timestamp>-<uuid>`
   when `.git` is a directory on the workspace filesystem. Otherwise they use
   a workspace-specific hidden sibling directory on that filesystem. A non-Git
   filesystem mount point uses workspace-local `.orbit-recovery`. Legacy

@@ -38,8 +38,8 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 |---|---|---|---|---|
 | 0 | Baseline and characterization | active | supported check; reproducible metrics/performance/platform | — |
 | 1 | Responsibility maps and reviewed extraction design | complete | Agent F adversarial review; resolutions below | — |
-| 2a | Pure session replay and identical shared presentation normalization | active | replay retention, chat stream/store, session retention + check | — |
-| 2b | Recovery storage owner with captured root/current guard | pending | mutation/security/target/multi-context + check + platform | — |
+| 2a | Pure session replay and identical shared presentation normalization | complete | 73 targeted tests; 993 full tests/type/docs/build; independent AST equivalence review | f2906a7 |
+| 2b | Recovery storage owner with captured root/current guard | complete | 67 targeted tests; 1,006 canonical tests/type/docs/build; native platform/trust; independent AST equivalence | pending checkpoint |
 | 3 | Renderer state/projection ownership | pending | state/lifecycle characterization + performance + check | — |
 | 4 | Components and styles | pending | component tests + live interaction + check | — |
 | 5 | Confirmed consolidation/efficiency | pending | equivalent workloads + check | — |
@@ -67,6 +67,7 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - macOS platform baseline passed after running native GUI checks outside sandbox: launcher/terminal tests, direct and Electron PTY, hidden renderer trust smoke with trusted IPC, denied navigation/popups and untrusted IPC rejection. Log `/private/tmp/orbit-architecture-baseline-platform.log`.
 - Existing deterministic large-session workload: 2,400 events/400 turns/800 DOM rows, 13,107,200 retained output chars; median reducer 9.04 ms, derivation 0.24 ms, React/jsdom construction 558.14 ms. One independent run; further identical samples needed before conclusions.
 - Tail-delta projection workload: 400 assistants with 32 KiB tool output, 2,400 setup events, 500 deltas, 3 warmups/9 samples. Baseline projection median 240.375 ms (236.637–253.834), zero historical identity reuse. Temporary reproduction `/private/tmp/orbit-projection-benchmark.mjs`; baseline bundle/JSON retained. Excludes Store/React/IPC/layout.
+- Frozen production baseline: 38,430 LOC, 152 files, 11 modules >800 LOC, 37 functions >100 LOC, 54 complexity/nesting hotspots. Target 26,901 LOC (11,529 net reduction). Zero runtime SCCs; one explicit type-only markdown cycle. Exact duplication detector initially zero at substantial whole-function/block threshold; audited helper duplication tracked separately. Build 50,276,995 bytes / 720 files.
 - Metrics inventory/methodology owner: `scripts/architecture-analysis.mjs`, frozen report `reports/architecture-optimization/baseline.json` (Agent E generating). Exclude tests/fixtures and pinned vendored OpenCode SCSS, retain adapted handwritten implementations; no production scope changes permitted.
 - Coverage percentage is not configured; existing behavioral tests cover named invariants, not all native/live surfaces. No coverage percentage claimed.
 

@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { RecoveryStorage } from "./recovery-storage";
 import { chmod, mkdir, mkdtemp, open, readFile, readdir, realpath, rename, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
@@ -117,10 +118,8 @@ async function ageTransaction(recoveryRoot: string, transaction: string, update:
   await writeFile(manifestPath, JSON.stringify(manifest));
 }
 
-function purgeExpired(backend: OpenShellBackend, root: string): Promise<void> {
-  return (backend as unknown as {
-    purgeExpiredRecovery(root: string, current: () => boolean): Promise<void>;
-  }).purgeExpiredRecovery(root, () => true);
+function purgeExpired(root: string): Promise<void> {
+  return new RecoveryStorage().purgeExpiredRecovery(root, () => true);
 }
 
 describe("direct mutation observed changes", () => {
@@ -286,7 +285,7 @@ describe("direct mutation observed changes", () => {
     const recoveryRoot = recoveryRootFor(root);
     await ageTransaction(recoveryRoot, (await readdir(recoveryRoot))[0], { ageMs: 25 * HOUR_MS });
 
-    await purgeExpired(backend, root);
+    await purgeExpired(root);
 
     expect(await readdir(recoveryRoot).catch(() => [])).toEqual([]);
     expect(await readFile(path.join(root, "save.txt"), "utf8")).toBe("original");
@@ -305,7 +304,7 @@ describe("direct mutation observed changes", () => {
       acknowledged: ["original"]
     });
 
-    await purgeExpired(backend, root);
+    await purgeExpired(root);
 
     expect(await readdir(recoveryRoot).catch(() => [])).toEqual([]);
   });
@@ -324,7 +323,7 @@ describe("direct mutation observed changes", () => {
     await ageTransaction(recoveryRoot, transactions[2], { ageMs: 6 * DAY_MS, phase: "source-held", acknowledged: [] });
     await ageTransaction(recoveryRoot, transactions[3], { ageMs: 6 * DAY_MS, phase: "held-validated", acknowledged: [] });
 
-    await purgeExpired(backend, root);
+    await purgeExpired(root);
 
     expect(await readdir(recoveryRoot)).toHaveLength(4);
     expect(await readFile(path.join(root, "complete.txt"), "utf8")).toBe("proposed");
@@ -343,7 +342,7 @@ describe("direct mutation observed changes", () => {
     await ageTransaction(recoveryRoot, transactions[1], { ageMs: 8 * DAY_MS, phase: "held-validated", acknowledged: [] });
     await ageTransaction(recoveryRoot, transactions[2], { ageMs: HOUR_MS });
 
-    await purgeExpired(backend, root);
+    await purgeExpired(root);
 
     expect(await readdir(recoveryRoot)).toHaveLength(1);
     expect(await readFile(path.join(root, "source-held.txt"), "utf8")).toBe("proposed");
@@ -392,7 +391,7 @@ describe("direct mutation observed changes", () => {
     const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { phase: string };
     manifest.phase = crashPhase === "save:source-held" ? "source-held" : "held-validated";
     await writeFile(manifestPath, JSON.stringify(manifest));
-    await (backend as unknown as { reconcileRecovery(root: string): Promise<void> }).reconcileRecovery(root);
+    await new RecoveryStorage().reconcileRecovery(root);
 
     expect(await readFile(path.join(root, "save.txt"), "utf8")).toBe("original");
   });
@@ -403,7 +402,7 @@ describe("direct mutation observed changes", () => {
     await backend.writeFile(workspace, "save.txt", "proposed", writeIdentity("original"));
     await unlink(path.join(root, "save.txt"));
 
-    await (backend as unknown as { reconcileRecovery(root: string): Promise<void> }).reconcileRecovery(root);
+    await new RecoveryStorage().reconcileRecovery(root);
 
     await expect(readFile(path.join(root, "save.txt"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
@@ -425,7 +424,7 @@ describe("direct mutation observed changes", () => {
     await writeFile(manifestPath, JSON.stringify(manifest));
     await symlink(outside, path.join(root, "escape"));
 
-    await expect((backend as unknown as { reconcileRecovery(root: string): Promise<void> }).reconcileRecovery(root))
+    await expect(new RecoveryStorage().reconcileRecovery(root))
       .rejects.toThrow("workspace symlinks are not allowed");
     await expect(readFile(path.join(outside, "payload"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
@@ -444,9 +443,7 @@ describe("direct mutation observed changes", () => {
     manifest.phase = "source-held";
     await writeFile(manifestPath, JSON.stringify(manifest));
 
-    await expect((backend as unknown as {
-      reconcileRecovery(root: string, current: () => boolean): Promise<void>;
-    }).reconcileRecovery(root, () => false)).rejects.toThrow("activation superseded");
+    await expect(new RecoveryStorage().reconcileRecovery(root, () => false)).rejects.toThrow("activation superseded");
     await expect(readFile(path.join(root, "save.txt"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -459,7 +456,7 @@ describe("direct mutation observed changes", () => {
     await unlink(path.join(root, "save.txt"));
     await writeFile(path.join(root, "save.txt"), "concurrent", { flag: "wx" });
 
-    await (backend as unknown as { reconcileRecovery(root: string): Promise<void> }).reconcileRecovery(root);
+    await new RecoveryStorage().reconcileRecovery(root);
 
     expect(await readFile(path.join(root, "save.txt"), "utf8")).toBe("concurrent");
     expect(await recoveryContents(root)).toContain("original");
