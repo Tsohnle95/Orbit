@@ -6,6 +6,16 @@
 Imported everywhere as `@shared/types` (alias in both tsconfigs and
 `electron.vite.config.ts`).
 
+`src/shared/session-presentation.ts` owns the common todo normalization and
+finite usage-field construction used by main replay and renderer state.
+`normalizeTodos` retains source-index fallback ids, string priorities, and
+pending status defaults. `sessionUsageValues` consumes an explicitly captured
+cache snapshot; callers retain their envelope/token acceptance guards and read
+order. It does not apply renderer validation policy to backend responses.
+The separately established reopen usage constructor retains its distinct cache
+read semantics in main. These are internal projections of existing contracts,
+not new IPC payloads.
+
 ## Domain types
 
 | Type | Shape | Used for |

@@ -1,5 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { promises as fsp } from "node:fs";
+import { sessionUsageValues } from "@shared/session-presentation";
 import { constants, watch, type FSWatcher } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -1518,17 +1519,8 @@ export class OpenShellBackend {
     // See openSessionById above: tokens are required, cost coerces to 0 so
     // cost-less local providers still get a refreshable usage snapshot.
     if (!tokens) return null;
-    const num = (n: unknown): number => (typeof n === "number" && Number.isFinite(n) ? n : 0);
     const cache = tokens.cache as Record<string, unknown> | undefined;
-    return {
-      cost: num(cost),
-      tokens: {
-        input: num(tokens.input),
-        output: num(tokens.output),
-        reasoning: num(tokens.reasoning),
-        cache: { read: num(cache?.read), write: num(cache?.write) }
-      }
-    };
+    return sessionUsageValues(cost, tokens, cache);
   }
 
   async getState(): Promise<SessionInfo | null> {

@@ -1,3 +1,4 @@
+import { normalizeTodos, sessionUsageValues } from "@shared/session-presentation";
 import {
   createContext,
   useCallback,
@@ -280,26 +281,6 @@ const HIDDEN_DIRS = new Set([
 
 const MAX_EDITABLE_BYTES = 4 * 1024 * 1024;
 
-function normalizeTodos(value: unknown): TodoItem[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((raw, index) => {
-    if (!raw || typeof raw !== "object") return [];
-    const item = raw as Record<string, unknown>;
-    const content = typeof item.content === "string" ? item.content : "";
-    const rawStatus = typeof item.status === "string" ? item.status : "pending";
-    const status = ["pending", "in_progress", "completed", "cancelled"].includes(rawStatus)
-      ? rawStatus as TodoItem["status"]
-      : "pending";
-    if (!content) return [];
-    return [{
-      id: typeof item.id === "string" && item.id ? item.id : `todo-${index}`,
-      content,
-      status,
-      ...(typeof item.priority === "string" ? { priority: item.priority } : {})
-    }];
-  });
-}
-
 function todoToolName(value: string): boolean {
   return value.toLowerCase().replace(/[^a-z]/g, "") === "todowrite";
 }
@@ -310,19 +291,7 @@ function normalizeSessionUsage(value: unknown): SessionUsage | null {
   const tokens = data.tokens as Record<string, unknown> | undefined;
   if (!tokens || typeof tokens !== "object") return null;
   const cache = tokens.cache as Record<string, unknown> | undefined;
-  const num = (n: unknown): number => (typeof n === "number" && Number.isFinite(n) ? n : 0);
-  return {
-    cost: num(data.cost),
-    tokens: {
-      input: num(tokens.input),
-      output: num(tokens.output),
-      reasoning: num(tokens.reasoning),
-      cache: {
-        read: num(cache?.read),
-        write: num(cache?.write)
-      }
-    }
-  };
+  return sessionUsageValues(data.cost, tokens, cache);
 }
 
 function todoSnapshotFromTranscript(items: TranscriptItem[]): { key: string; todos: TodoItem[] } | null {

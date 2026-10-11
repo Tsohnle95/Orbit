@@ -160,9 +160,15 @@ work without an auth login. Tokens never leave the main process; the
 renderer only receives normalized provider snapshots. Each refresh prefers a
 new live response and falls back per provider to a plugin snapshot younger
 than 15 minutes only when live credentials or the provider endpoint are unavailable.
-A provider whose credentials fail authentication and which has no snapshot
-is omitted from the result (no subscription to show); retryable network
-failures stay visible so a transient outage cannot silently hide an active sub.
+Authentication and retryable network failures remain visible when no snapshot
+can supply a fallback. Credential discovery is owned by
+`src/main/provider-credentials.ts`; provider HTTP parsing and snapshot fallback
+remain in `src/main/provider-usage.ts`. Discovery keeps the first nonempty JSON
+OAuth map, then overlays every database candidate in order, with credential
+rows taking precedence over account rows. Provider requests remain sequential:
+expected transport/authentication failures produce results, while unhandled
+credential or response parsing failures reject the refresh before later
+providers issue requests. Tokens stay in these main-process owners.
 
 Internals:
 

@@ -2,13 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fetchProviderUsage, readOAuthEntries } from "./provider-usage";
+import { promises as fsp } from "node:fs";
+import { fetchProviderUsage } from "./provider-usage";
+import { readOAuthEntries } from "./provider-credentials";
 import { sqliteQuery } from "./sqlite";
 
 vi.mock("./sqlite", () => ({ sqliteQuery: vi.fn() }));
 
 const sqliteQueryMock = sqliteQuery as unknown as ReturnType<typeof vi.fn>;
 const tempRoots: string[] = [];
+const fixtureReadFile = fsp.readFile.bind(fsp);
 
 function mockDbRows(accounts: unknown[], credentials: unknown[]): void {
   sqliteQueryMock.mockImplementation((_db: string, sql: string) => {
@@ -25,10 +28,17 @@ describe("provider usage from opencode store", () => {
   beforeEach(() => {
     vi.stubEnv("COMMAND_CODE_API_KEY", "");
     vi.stubEnv("COMMANDCODE_API_KEY", "");
+    vi.spyOn(fsp, "readFile").mockImplementation(async (file, options) => {
+      const filename = String(file);
+      if (tempRoots.some((root) => filename.startsWith(root + path.sep))) return fixtureReadFile(file, options);
+      if (filename.endsWith(path.sep + "auth.json")) return "{}";
+      throw new Error("Missing isolated usage fixture");
+    });
   });
 
   afterEach(async () => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     vi.unstubAllEnvs();
     await Promise.all(tempRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
   });

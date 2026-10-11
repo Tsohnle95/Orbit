@@ -1,3 +1,4 @@
+import { normalizeTodos } from "@shared/session-presentation";
 import type { AssistantPartView, TodoItem, ToolCallView, TranscriptItem } from "@shared/types";
 import { messagePresentation } from "@shared/message-presentation";
 import { retainToolContent } from "@shared/retention";
@@ -68,26 +69,6 @@ function replayToolCard(part: Record<string, unknown>): ToolCallView {
   };
 }
 
-function todoItems(value: unknown): TodoItem[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((raw, index) => {
-    if (!raw || typeof raw !== "object") return [];
-    const item = raw as Record<string, unknown>;
-    const content = typeof item.content === "string" ? item.content : "";
-    const rawStatus = typeof item.status === "string" ? item.status : "pending";
-    const status = ["pending", "in_progress", "completed", "cancelled"].includes(rawStatus)
-      ? rawStatus as TodoItem["status"]
-      : "pending";
-    if (!content) return [];
-    return [{
-      id: typeof item.id === "string" && item.id ? item.id : `todo-${index}`,
-      content,
-      status,
-      ...(typeof item.priority === "string" ? { priority: item.priority } : {})
-    }];
-  });
-}
-
 export function replayTodos(messages: unknown[]): TodoItem[] {
   let result: TodoItem[] = [];
   for (const raw of messages) {
@@ -110,7 +91,7 @@ export function replayTodos(messages: unknown[]): TodoItem[] {
       const input = state.input && typeof state.input === "object"
         ? state.input as Record<string, unknown>
         : {};
-      const next = todoItems(metadata.todos ?? input.todos);
+      const next = normalizeTodos(metadata.todos ?? input.todos);
       if (next.length > 0) result = next;
     }
   }

@@ -214,6 +214,13 @@ The prototype covers two providers; porting the remaining adapters from
 `provider-usage.ts` and eventually deleting the scraping path is tracked as
 follow-up work.
 
+Provider credential discovery and refresh ordering are characterized with
+isolated fixtures in `src/main/provider-credentials.test.ts` and
+`src/main/provider-usage.orchestration.test.ts`. They mock credential reads,
+SQLite, and HTTP; tests do not contact provider endpoints or inspect real
+credentials. Sequential refresh is deliberate: parallel requests would alter
+which later providers are contacted after unexpected parsing failures.
+
 ## Large-session benchmark
 
 Run the deterministic renderer fixture independently with:

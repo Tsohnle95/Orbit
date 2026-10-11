@@ -36,17 +36,18 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 
 | Phase | Scope | Status | Validation | Commit |
 |---|---|---|---|---|
-| 0 | Baseline and characterization | complete | frozen metrics/hash inventory; supported check/platform; reproducible benchmark | pending metrics checkpoint |
+| 0 | Baseline and characterization | complete | frozen metrics/hash inventory; supported check/platform; reproducible benchmark | c0950fa |
 | 1 | Responsibility maps and reviewed extraction design | complete | Agent F adversarial review; resolutions below | — |
 | 2a | Pure session replay and identical shared presentation normalization | complete | 73 targeted tests; 993 full tests/type/docs/build; independent AST equivalence review | f2906a7 |
 | 2b | Recovery storage owner with captured root/current guard | complete | 67 targeted tests; 1,006 canonical tests/type/docs/build; native platform/trust; independent AST equivalence | 1fc0397 |
 | 2c | Domain IPC registration with centralized trust | complete | 32 targeted tests; identical 95 callbacks/channels and trust gate; 1,031 canonical tests/build; native platform/trust and isolated OpenCode smoke | 2029e83 |
 | 3a | Renderer record/projection/reconciliation ownership and cache | complete | 149 targeted tests; 1,031 full tests/type/docs/build; independent equivalence/invalidation review; paired projection benchmark | 0cee93e |
 | 4a | AgentPanel/composer/usage/menu/scroll owners and App geometry/interactions | complete | 1,042 canonical tests/type/docs/architecture/build; independent110tests/ASTreview; native mock-IPC fixture: menus/usage/stream/GUI-TUI/theme/Settings/layout | 341129f |
-| 4b | Timeline models and presenters | pending | exactextraction + targetedpresentation/runtimefixtures + check | — |
-| 4c | Styling ownership and confirmed stale rules | pending | cascade comparison + livefixture + check | — |
-| 5 | Confirmed consolidation/efficiency | pending | equivalent workloads + check | — |
-| 6a | Permanent architecture enforcement and reproducible baseline | complete | 28 adversarial/parser tests; unchanged38,430 baseline; canonical/CI wiring; independentdownward-ratchet review | pending checkpoint |
+| 4b | Timeline models and presenters | active | 95 targeted tests; independent review; exact fixture hashes; paired descriptor benchmark; 1,092 canonical tests/type/docs/fitness/build | — |
+| 4c | Styling ownership and confirmed stale rules | active | 2012 surviving selector/declaration occurrences and non-grouped order identical; independent review; 1,092 canonical tests/type/docs/fitness/build | — |
+| 5a | Credentials and shared session presentation | active | 72 targeted tests, read-order/failure-path characterization; 26 net LOC; independent review; 1,092 canonical tests/type/docs/fitness/build, repeated after66-package prune | pending checkpoint |
+| 5b | Confirmed dead exports/dependencies and markdown type cycle | active | 34 markdown tests; 66 unused packages removed, no retained version changes; independent review; 1,092 canonical tests/type/docs/fitness/build | — |
+| 6a | Permanent architecture enforcement and reproducible baseline | complete | 28 adversarial/parser tests; unchanged38,430 baseline; canonical/CI wiring; independentdownward-ratchet review | c0950fa |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
@@ -97,3 +98,7 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - 2026-10-11 — Native disposable QA used actual production renderer/preload with mock IPC/session data: folder/editor opening, model favorites/filter, menu Escape/outside dismissal, session/provider usage, draft clearing, streamed response, GUI/TUI mounting, light/dark theme, Settings tab preservation and Agent Mode enter/exit. This does not verify real provider prompting or full native TUI execution; existing platform PTY and isolated OpenCode smoke cover narrower boundaries. GUI/TUI reader position reset is independently proven pre-existing (600→0 in both historical and current25-turn tests), recorded in follow-ups, and not fixed. Parser JSDoc correction did not change the frozen baseline count.
 
 - 2026-10-11 — UI ownership checkpoint341129f followed by permanent-fitness checkpoint; gate1042tests, actual168modulefitnesscheck, boundedexceptions/downwardratchet, nativeplatformtrustpassed. CurrentprimaryLOC38,480 (+50vsbaseline),8modulesover800 (11baseline),0runtimecycles; extractiondoesnotconstituteLOCsavings. Nextapprovedscopesare pureTimelineextraction (retain formattingfailuresemantics; allocationprototypesrejected), credentialdiscovery/sharednormalization, verifiedstale styles/deadexports andtypecyclecleanup.
+
+- 2026-10-11 — Further owner audits found feasible remaining extractions in Store bookmarks/panel views, backend observation, main DevTools and Explorer tree presentation. Coupling alone does not justify declaring the large Store/backend resolved; these remain implementation work. Linguist lookup data is cohesive and has 1,879 entries without duplicates; retain the readable data and its explicit size budget.
+
+- 2026-10-11 — Native filesystem baseline ran outside the sandbox: 75 watcher/mutation/recovery/multi-context/external-file tests passed with no EMFILE warnings. Both combined canonical gates passed 1,092 tests, including a repeat after physically pruning the66 unused packages. No retained dependency versions changed. Rejected the panel cache prototype: all8 panels changing regressed about18%; retain original projection and pursue cohesive ownership only.
