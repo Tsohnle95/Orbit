@@ -318,6 +318,12 @@ Key mechanisms:
   `sessionSelection()` before falling back to `modelDefault()`, so a newly
   created or reopened GPT/agent session cannot be mislabeled with the previous
   session's model in the composer.
+  `use-session-selection.ts` owns workspace model/agent catalogs and selections,
+  the global last-loaded catalog/selection fallback, catalog refs, load/switch
+  actions and selection-event updates. Its host supplies the focused-session
+  ref, workspace generation resolver and notification callback. Store keeps
+  event attribution and refresh scheduling; callers use the facade or these
+  domain methods rather than mutating selection records directly.
 - **Catalog self-heal** — the store re-checks backend health every 2s until
   the first successful connect; a `connected` effect then re-runs
   `loadModels()` / `loadAgents()` once the backend client is up, so a boot or

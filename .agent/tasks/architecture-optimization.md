@@ -54,7 +54,8 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 4d | Recursive Explorer presentation owner | complete | 51 targeted tests; 1111 staged canonical tests/type/docs/fitness/build; independent AST review; native menu/open/rename cancellation; native drag unverified | 545a170 |
 | 2g | Release update window owner | complete | 19 targeted tests; isolated canonical gate; independent AST/failure review; signed install unverified | 0bc986a |
 | 3c | Workspace editor state and persistence owner | complete | 147 targeted tests; repeated87focused tests; independent callback/ref/cancellation review; isolated canonical gate | 17a5b72 |
-| 2f | Workspace mutation workflow owner | complete | 111 native targeted tests; identical11method bodies and repeated durable-workflow benchmark; isolated canonical gate; independent review | checkpoint pending |
+| 2f | Workspace mutation workflow owner | complete | 111 native targeted tests; identical11method bodies and repeated durable-workflow benchmark; isolated canonical gate; independent review | 840bc7a |
+| 3d | Session catalog and selection state owner | complete | 152 targeted tests; exact4action initializer ASTs; isolated canonical gate; no new effect/subscription | checkpoint pending |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
@@ -125,3 +126,5 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - 2026-10-12 — Editor staged canonical passed1124 tests/type/docs/fitness/build. Native disposable QA loaded the actual renderer/preload and real mutation/recovery/observer owners: opened notes.txt, edited in Monaco, observed unsaved marker/report, saved with original-content expectation and revision1 strong write ID, verified actual disk content and cleared unsaved report, then closed/reopened the saved tab. This does not exercise the production quit/save dialog or real provider prompting.
 
 - 2026-10-12 — Workspace mutation staged gate passed1130 tests/type/docs/fitness/build; native113 tests passed. Two public promise-order tests pass against original8970569, fail with extra async delegate wrappers and pass with direct Promise-typed delegates. Supported bound-call contracts and original queue/rejection ordering preserved; unbound/malformed receivers are unsupported. Final quiet repeated mutation benchmark has equal outcomes and overlapping timings, with currentsource hashes in mutations-comparison.json.
+
+- 2026-10-12 — Selection staged canonical passed1135 tests/type/docs/fitness/build. Native staged renderer/preload fixture verified initial catalog, model switch QAFirstHigh→QASecondAuto, variant QASecondHigh, and Build→Plan while retaining model/variant. IPC logs confirm captured UUID/generation/provider/variant. Mocked catalogs/switch replies are not real-provider integration. Independent actualdiff/4initializer AST/59focusedtest review approved.

@@ -14,10 +14,8 @@ import { normalizePendingForm } from "@shared/forms";
 import { formatFailure, normalizeFailure } from "@shared/errors";
 import type {
   AgentFileState,
-  AgentOption,
   ApprovalMode,
   BackendMessage,
-  ModelOption,
   OpenFileWorkspaceResult,
   PendingPermissionRequest,
   PermissionReply,
@@ -83,6 +81,7 @@ import { sameWorkspace } from "@shared/generation";
 import { retainSessionRecord } from "@shared/retention";
 import { useSavedWorkspaces } from "./use-saved-workspaces";
 import { useWorkspaceEditor } from "./use-workspace-editor";
+import { useSessionSelection } from "./use-session-selection";
 import { projectPanelViews } from "./panel-projection";
 import type { Toast, CtxMenuState, CtxMenuApi, PendingCreate, PanelView, Store } from "./store-contract";
 
@@ -296,12 +295,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const [hiddenPathsByWorkspace, setHiddenPathsByWorkspace] = useState<Record<string, Set<string>>>({});
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [recoveryByWorkspace, setRecoveryByWorkspace] = useState<Record<string, RecoveryRecord[]>>({});
-  const [modelsByWorkspace, setModelsByWorkspace] = useState<Record<string, ModelOption[]>>({});
-  const [currentModelByWorkspace, setCurrentModelByWorkspace] = useState<Record<string, ModelOption | null>>({});
-  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
-  const [lastModel, setLastModel] = useState<ModelOption | null>(null);
-  const [agentsByWorkspace, setAgentsByWorkspace] = useState<Record<string, AgentOption[]>>({});
-  const [currentAgentByWorkspace, setCurrentAgentByWorkspace] = useState<Record<string, AgentOption | null>>({});
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>(
     () => (window.localStorage.getItem("approvalMode") === "approve" ? "approve" : "ask")
   );
@@ -353,11 +346,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const expanded = session ? expandedByWorkspace[session.workspace.id] ?? EMPTY_EXPANDED : EMPTY_EXPANDED;
   const hiddenPaths = session ? hiddenPathsByWorkspace[session.workspace.id] ?? EMPTY_EXPANDED : EMPTY_EXPANDED;
   const recoveryRecords = session ? recoveryByWorkspace[session.workspace.id] ?? [] : [];
-  const models = session ? modelsByWorkspace[session.workspace.id] ?? [] : [];
-  const currentModel = session ? currentModelByWorkspace[session.workspace.id] ?? null : null;
-  const agents = session ? agentsByWorkspace[session.workspace.id] ?? [] : [];
-  const currentAgent = session ? currentAgentByWorkspace[session.workspace.id] ?? null : null;
-
   const refreshRuntimes = useCallback(async (): Promise<RuntimeManifest[]> => {
     const items = await window.openshell.runtimes();
     setRuntimes(items);
@@ -424,10 +412,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   pendingCreateRef.current = pendingCreate;
   const pendingRenameRef = useRef(pendingRename);
   pendingRenameRef.current = pendingRename;
-  const modelsByWorkspaceRef = useRef(modelsByWorkspace);
-  modelsByWorkspaceRef.current = modelsByWorkspace;
-  const agentsByWorkspaceRef = useRef(agentsByWorkspace);
-  agentsByWorkspaceRef.current = agentsByWorkspace;
   const todoKeysRef = useRef<Record<string, string>>({});
   const approvalModeRef = useRef<ApprovalMode>(approvalMode);
   approvalModeRef.current = approvalMode;
@@ -732,6 +716,12 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   }, []);
 
   const { savedWorkspaces, rememberWorkspace, replaceSavedWorkspace, saveWorkspace, removeWorkspace } = useSavedWorkspaces(connected, toast);
+  const {
+    models, currentModel, agents, currentAgent, availableModels, lastModel,
+    modelsByWorkspace, currentModelByWorkspace, agentsByWorkspace, currentAgentByWorkspace,
+    loadModels, switchModel, loadAgents, switchAgent,
+    applyModelSelection, applyAgentSelection
+  } = useSessionSelection({ sessionRef, panelFor, notify: toast });
 
   const refreshInbox = useCallback(async (sessionID: string): Promise<void> => {
     const panel = panelsRef.current.find((candidate) => candidate.id === sessionID);
@@ -1167,105 +1157,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
     }
   }, [toast, panelFor, setRecoveryFor]);
-
-  const loadModels = useCallback(async (workspace?: WorkspaceIdentity) => {
-    const target = workspace ?? sessionRef.current?.workspace;
-    if (!target) return;
-    try {
-      const [list, def, selection] = await Promise.all([
-        window.openshell.models(target),
-        window.openshell.modelDefault(target),
-        window.openshell.sessionSelection(target)
-      ]);
-      if (!panelFor(target)) return;
-      setModelsByWorkspace((prev) => {
-        const current = prev[target.id] ?? [];
-        if (JSON.stringify(current) === JSON.stringify(list)) {
-          return prev;
-        }
-        return { ...prev, [target.id]: list };
-      });
-      setAvailableModels(list);
-      setCurrentModelByWorkspace((prev) => {
-        const current = prev[target.id] ?? null;
-        const pick = selection?.model ?? def ?? current;
-        if (!pick) return prev;
-        const match = list.find((m) => m.id === pick.id && m.providerID === pick.providerID);
-        const next = match ? { ...match, ...(pick.variant ? { variant: pick.variant } : {}) } : pick;
-        setLastModel(next);
-        return prev[target.id] === next ? prev : { ...prev, [target.id]: next };
-      });
-    } catch (err) {
-      if (panelFor(target)) toast(err instanceof Error ? err.message : String(err), "error");
-    }
-  }, [toast, panelFor]);
-
-  const switchModel = useCallback(
-    async (id: string, providerID: string, variant?: string, workspace?: WorkspaceIdentity) => {
-      const target = workspace ?? sessionRef.current?.workspace;
-      if (!target) return;
-      try {
-        await window.openshell.switchModel(target, id, providerID, variant);
-        if (!panelFor(target)) return;
-        const base = modelsByWorkspaceRef.current[target.id]?.find((m) => m.id === id && m.providerID === providerID);
-        if (base) setCurrentModelByWorkspace((prev) => ({ ...prev, [target.id]: { ...base, ...(variant ? { variant } : {}) } }));
-      } catch (err) {
-        if (panelFor(target)) toast(err instanceof Error ? err.message : String(err), "error");
-      }
-    },
-    [toast, panelFor]
-  );
-
-  const loadAgents = useCallback(async (workspace?: WorkspaceIdentity) => {
-    const target = workspace ?? sessionRef.current?.workspace;
-    if (!target) return;
-    try {
-      const [list, selection] = await Promise.all([
-        window.openshell.agents(target),
-        window.openshell.sessionSelection(target)
-      ]);
-      if (!panelFor(target)) return;
-      setAgentsByWorkspace((prev) => {
-        const current = prev[target.id] ?? [];
-        if (
-          current.length === list.length &&
-          current.every((a, i) => a.id === list[i].id && a.name === list[i].name && a.color === list[i].color)
-        ) {
-          return prev;
-        }
-        return { ...prev, [target.id]: list };
-      });
-      setCurrentAgentByWorkspace((prev) => {
-        const panel = panelFor(target);
-        const id = selection?.agent?.id ?? panel?.agent ?? "build";
-        const next = list.find((agent) => agent.id === id) ?? selection?.agent ?? { id, name: id };
-        return prev[target.id] === next ? prev : { ...prev, [target.id]: next };
-      });
-      const panel = panelFor(target);
-      const id = selection?.agent?.id ?? panel?.agent ?? "build";
-      if (!selection?.agent && list.some((agent) => agent.id === id) && panel?.agent !== id) {
-        await window.openshell.switchAgent(target, id);
-      }
-    } catch (err) {
-      if (panelFor(target)) toast(err instanceof Error ? err.message : String(err), "error");
-    }
-  }, [toast, panelFor]);
-
-  const switchAgent = useCallback(
-    async (id: string, workspace?: WorkspaceIdentity) => {
-      const target = workspace ?? sessionRef.current?.workspace;
-      if (!target) return;
-      try {
-        await window.openshell.switchAgent(target, id);
-        if (!panelFor(target)) return;
-        const base = agentsByWorkspaceRef.current[target.id]?.find((agent) => agent.id === id);
-        if (base) setCurrentAgentByWorkspace((prev) => ({ ...prev, [target.id]: base }));
-      } catch (err) {
-        if (panelFor(target)) toast(err instanceof Error ? err.message : String(err), "error");
-      }
-    },
-    [toast, panelFor]
-  );
 
   const sessionsRequestRef = useRef(0);
   const loadSessions = useCallback(async () => {
@@ -2712,32 +2603,12 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
         case "session.model.selected": {
           if (!targetWorkspace) break;
-          const model = data.model as { id?: string; providerID?: string; variant?: string } | undefined;
-          if (model?.id && model.providerID) {
-            const modelID = model.id;
-            const providerID = model.providerID;
-            const match = modelsByWorkspaceRef.current[targetWorkspace.id]?.find(
-              (m) => m.id === modelID && m.providerID === providerID
-            );
-            setCurrentModelByWorkspace((prev) => ({
-              ...prev,
-              [targetWorkspace.id]: {
-                ...(match ?? { id: modelID, providerID, name: modelID }),
-                ...(model.variant ? { variant: model.variant } : {})
-              }
-            }));
-          }
+          applyModelSelection(targetWorkspace, data.model as { id?: string; providerID?: string; variant?: string } | undefined);
           break;
         }
         case "session.agent.selected": {
           if (!targetWorkspace) break;
-          const agent = data.agent as string | undefined;
-          if (agent) {
-            setCurrentAgentByWorkspace((prev) => ({
-              ...prev,
-              [targetWorkspace.id]: agentsByWorkspaceRef.current[targetWorkspace.id]?.find((a) => a.id === agent) ?? { id: agent, name: agent }
-            }));
-          }
+          applyAgentSelection(targetWorkspace, data.agent as string | undefined);
           break;
         }
         case "agent.updated": {
@@ -2899,6 +2770,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     openSourceTarget,
     loadModels,
     loadAgents,
+    applyModelSelection,
+    applyAgentSelection,
     loadRecovery,
     reopenSession,
     setSessionBusy,

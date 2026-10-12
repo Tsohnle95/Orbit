@@ -726,6 +726,13 @@
       "nesting": 5,
       "origin": "src/main/opencode.ts:OpenShellBackend/writeFile#1",
       "reason": "Moved unchanged atomic-save transaction with no-replace inode validation, rollback and recovery emissions. Existing105-line ceiling retains sequencing; cannot grow."
+    },
+    "src/renderer/src/use-session-selection.ts:useSessionSelection#1": {
+      "codeLines": 146,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "origin": "src/renderer/src/store.tsx:StoreBody#1 catalog/selection state and actions",
+      "reason": "Owns existing six catalog/selection records and four unchanged async actions. Inclusive146 lines include separately checked nested callbacks; independent composition-only count43 lines. No effect/subscription or competing state. Fixed composition ceiling cannot grow."
     }
   },
   "edgeExceptions": [
@@ -862,6 +869,13 @@
       "targetPrefix": "src/main/workspace-mutations.ts",
       "allowedFrom": [
         "src/main/opencode.ts"
+      ]
+    },
+    {
+      "owner": "session selection state",
+      "targetPrefix": "src/renderer/src/use-session-selection.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
       ]
     }
   ],
@@ -1006,6 +1020,15 @@
       "allowedExternal": [
         "node:",
         "electron"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-session-selection.ts",
+      "allowedLocal": [
+        "src/shared/types.ts"
+      ],
+      "allowedExternal": [
+        "react"
       ]
     }
   ]
