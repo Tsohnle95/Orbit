@@ -1,0 +1,728 @@
+{
+  "scope": "Only five reviewed selector groups in three handwritten SCSS owners; no selector/declaration/context removed, no stylesheet minification, pinned upstream styles untouched.",
+  "sourceCheckpoint": "840bc7af7125798c0d1784e33ed5556ddbb51dc1",
+  "versions": {
+    "node": "v22.23.2",
+    "sass": "dart-sass\t1.102.0\t(Sass Compiler)\t[Dart]",
+    "postcss": "8.5.26",
+    "collation": "en-US"
+  },
+  "before": {
+    "compiledBytes": 315002,
+    "compiledSHA256": "1b6ea168f6ca0ca272c3c72b54aaa1bab70fbd288c72c2eabbe230e1acf5e303",
+    "selectorContextCount": 2012,
+    "canonicalDeclarationVectorSHA256": "4094d0d88af5ae243caf4334cab0024705a17b06c51d67f4d3b92aa06ddb98fa",
+    "remainingSelectorOrderCount": 2090,
+    "remainingSelectorOrderSHA256": "6279e7d95bc0897f92fb374ccc688ec0862986854a2b6fce537356618ab1318a"
+  },
+  "after": {
+    "compiledBytes": 314722,
+    "compiledSHA256": "e0150070def90e6ef064257b960f358ee57e478547e0ced9ec47daa0def8e5a4",
+    "selectorContextCount": 2012,
+    "canonicalDeclarationVectorSHA256": "4094d0d88af5ae243caf4334cab0024705a17b06c51d67f4d3b92aa06ddb98fa",
+    "remainingSelectorOrderCount": 2090,
+    "remainingSelectorOrderSHA256": "6279e7d95bc0897f92fb374ccc688ec0862986854a2b6fce537356618ab1318a"
+  },
+  "verification": {
+    "selectorContextDeclarationsIdentical": true,
+    "remainingSelectorOrderIdentical": true,
+    "specificityAndMutualExclusionChecksPassed": true,
+    "productionLOC": [
+      {
+        "file": "_sessions.scss",
+        "before": 406,
+        "after": 402
+      },
+      {
+        "file": "_agent.scss",
+        "before": 702,
+        "after": 700
+      },
+      {
+        "file": "_opencode-chat.scss",
+        "before": 761,
+        "after": 753
+      }
+    ],
+    "netProductionLOCReduction": 14,
+    "groupedDeclarationOccurrencesUnique": true,
+    "groupedOccurrenceCounts": [
+      {
+        "selector": ".sessions-project-head:hover",
+        "beforeCount": 1,
+        "afterCount": 1
+      },
+      {
+        "selector": ".sessions-project-head:hover .sessions-project-open",
+        "beforeCount": 1,
+        "afterCount": 1
+      },
+      {
+        "selector": ".sessions-row:hover .sessions-row-title",
+        "beforeCount": 1,
+        "afterCount": 1
+      },
+      {
+        "selector": ".sessions-row:hover",
+        "beforeCount": 1,
+        "afterCount": 1
+      },
+      {
+        "selector": ".sessions-row.focused",
+        "beforeCount": 1,
+        "afterCount": 1
+      },
+      {
+        "selector": ".agent-tui-host .xterm-screen",
+        "beforeCount": 1,
+        "afterCount": 1
+      },
+      {
+        "selector": ".agent-tui-host .xterm-viewport",
+        "beforeCount": 1,
+        "afterCount": 1
+      },
+      {
+        "selector": "[data-component=tool-status-title] [data-slot=tool-status-suffix]",
+        "beforeCount": 1,
+        "afterCount": 1
+      },
+      {
+        "selector": "[data-component=tool-status-title] [data-slot=tool-status-prefix]",
+        "beforeCount": 1,
+        "afterCount": 1
+      },
+      {
+        "selector": "[data-component=tool-count-summary]",
+        "beforeCount": 1,
+        "afterCount": 1
+      },
+      {
+        "selector": "[data-component=tool-status-title] [data-slot=tool-status-active]",
+        "beforeCount": 1,
+        "afterCount": 1
+      },
+      {
+        "selector": "[data-component=tool-status-title][data-active=true] [data-slot=tool-status-done]",
+        "beforeCount": 1,
+        "afterCount": 1
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "session project hover color",
+      "file": "_sessions.scss",
+      "beforeLines": [
+        242,
+        246
+      ],
+      "selectors": [
+        ".sessions-project-head:hover",
+        ".sessions-project-head:hover .sessions-project-open",
+        ".sessions-row:hover .sessions-row-title"
+      ],
+      "proof": "Adjacent rules with identical ordered declarations; selector specificity unchanged; no crossed declaration.",
+      "declarations": [
+        {
+          "property": "color",
+          "value": "var(--text)",
+          "important": false
+        }
+      ],
+      "afterSource": {
+        "file": "src/renderer/src/styles/_sessions.scss",
+        "line": 242
+      },
+      "afterCompiledRuleLine": 824
+    },
+    {
+      "name": "session hover/focus color",
+      "file": "_sessions.scss",
+      "beforeLines": [
+        375,
+        379
+      ],
+      "selectors": [
+        ".sessions-row:hover",
+        ".sessions-row.focused"
+      ],
+      "proof": "Adjacent rules with identical ordered declarations; selector specificity unchanged; no crossed declaration.",
+      "declarations": [
+        {
+          "property": "color",
+          "value": "var(--text)",
+          "important": false
+        }
+      ],
+      "afterSource": {
+        "file": "src/renderer/src/styles/_sessions.scss",
+        "line": 372
+      },
+      "afterCompiledRuleLine": 954
+    },
+    {
+      "name": "native TUI transparent surfaces",
+      "file": "_agent.scss",
+      "beforeLines": [
+        790,
+        794
+      ],
+      "selectors": [
+        ".agent-tui-host .xterm-screen",
+        ".agent-tui-host .xterm-viewport"
+      ],
+      "proof": "Adjacent rules with identical ordered background:transparent!important; importance and selector specificity unchanged.",
+      "declarations": [
+        {
+          "property": "background",
+          "value": "transparent",
+          "important": true
+        }
+      ],
+      "afterSource": {
+        "file": "src/renderer/src/styles/_agent.scss",
+        "line": 790
+      },
+      "afterCompiledRuleLine": 3358
+    },
+    {
+      "name": "inline motion/count layout",
+      "file": "_opencode-chat.scss",
+      "beforeLines": [
+        261,
+        314
+      ],
+      "selectors": [
+        "[data-component=tool-status-title] [data-slot=tool-status-suffix]",
+        "[data-component=tool-status-title] [data-slot=tool-status-prefix]",
+        "[data-component=tool-count-summary]"
+      ],
+      "proof": "Moved count-summary selector has specificity[0,1,0]. Every crossed selector that could compete has specificity[0,2,0] or[0,3,0], and remains a stronger winner both before and after. Existing prefix/suffix selectors stay in place.",
+      "declarations": [
+        {
+          "property": "display",
+          "value": "inline-flex",
+          "important": false
+        },
+        {
+          "property": "align-items",
+          "value": "baseline",
+          "important": false
+        },
+        {
+          "property": "white-space",
+          "value": "nowrap",
+          "important": false
+        }
+      ],
+      "crossedRules": [
+        {
+          "selector": "[data-component=tool-status-title] [data-slot=tool-status-prefix]",
+          "specificity": [
+            0,
+            2,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "flex-shrink",
+              "value": "0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title] [data-slot=tool-status-swap]",
+          "specificity": [
+            0,
+            2,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "display",
+              "value": "inline-grid",
+              "important": false
+            },
+            {
+              "property": "overflow",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "justify-items",
+              "value": "start",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "width var(--tool-motion-spring-ms, 480ms) var(--tool-motion-ease, cubic-bezier(0.22, 1, 0.36, 1))",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title] [data-slot=tool-status-tail]",
+          "specificity": [
+            0,
+            2,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "display",
+              "value": "inline-grid",
+              "important": false
+            },
+            {
+              "property": "overflow",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "justify-items",
+              "value": "start",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "width var(--tool-motion-spring-ms, 480ms) var(--tool-motion-ease, cubic-bezier(0.22, 1, 0.36, 1))",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title] [data-slot=tool-status-active]",
+          "specificity": [
+            0,
+            2,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "grid-area",
+              "value": "1/1",
+              "important": false
+            },
+            {
+              "property": "justify-self",
+              "value": "start",
+              "important": false
+            },
+            {
+              "property": "white-space",
+              "value": "nowrap",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "start",
+              "important": false
+            },
+            {
+              "property": "transition-property",
+              "value": "opacity, filter, transform",
+              "important": false
+            },
+            {
+              "property": "transition-duration",
+              "value": "var(--tool-motion-fade-ms, 240ms), calc(var(--tool-motion-fade-ms, 240ms) * 0.8), calc(var(--tool-motion-fade-ms, 240ms) * 0.8)",
+              "important": false
+            },
+            {
+              "property": "transition-timing-function",
+              "value": "ease-out, ease-out, ease-out",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title] [data-slot=tool-status-done]",
+          "specificity": [
+            0,
+            2,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "grid-area",
+              "value": "1/1",
+              "important": false
+            },
+            {
+              "property": "justify-self",
+              "value": "start",
+              "important": false
+            },
+            {
+              "property": "white-space",
+              "value": "nowrap",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "start",
+              "important": false
+            },
+            {
+              "property": "transition-property",
+              "value": "opacity, filter, transform",
+              "important": false
+            },
+            {
+              "property": "transition-duration",
+              "value": "var(--tool-motion-fade-ms, 240ms), calc(var(--tool-motion-fade-ms, 240ms) * 0.8), calc(var(--tool-motion-fade-ms, 240ms) * 0.8)",
+              "important": false
+            },
+            {
+              "property": "transition-timing-function",
+              "value": "ease-out, ease-out, ease-out",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title][data-ready=false] [data-slot=tool-status-swap]",
+          "specificity": [
+            0,
+            3,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "transition-duration",
+              "value": "0ms",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title][data-ready=false] [data-slot=tool-status-tail]",
+          "specificity": [
+            0,
+            3,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "transition-duration",
+              "value": "0ms",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title][data-ready=false] [data-slot=tool-status-active]",
+          "specificity": [
+            0,
+            3,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "transition-duration",
+              "value": "0ms",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title][data-ready=false] [data-slot=tool-status-done]",
+          "specificity": [
+            0,
+            3,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "transition-duration",
+              "value": "0ms",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title] [data-slot=tool-status-active]",
+          "specificity": [
+            0,
+            2,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "filter",
+              "value": "blur(calc(var(--tool-motion-blur, 2px) * 0.45))",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "translateY(0.03em)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title] [data-slot=tool-status-done]",
+          "specificity": [
+            0,
+            2,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "color",
+              "value": "var(--v2-text-text-strong)",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "filter",
+              "value": "blur(0)",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "translateY(0)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title][data-active=true] [data-slot=tool-status-active]",
+          "specificity": [
+            0,
+            3,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "filter",
+              "value": "blur(0)",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "translateY(0)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title][data-active=true] [data-slot=tool-status-done]",
+          "specificity": [
+            0,
+            3,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "filter",
+              "value": "blur(calc(var(--tool-motion-blur, 2px) * 0.45))",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "translateY(0.03em)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title][data-mode=suffix] [data-slot=tool-status-prefix]",
+          "specificity": [
+            0,
+            3,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "color",
+              "value": "var(--v2-text-text-strong)",
+              "important": false
+            }
+          ]
+        }
+      ],
+      "afterSource": {
+        "file": "src/renderer/src/styles/_opencode-chat.scss",
+        "line": 261
+      },
+      "afterCompiledRuleLine": 8543
+    },
+    {
+      "name": "hidden motion tracks",
+      "file": "_opencode-chat.scss",
+      "beforeLines": [
+        291,
+        307
+      ],
+      "selectors": [
+        "[data-component=tool-status-title] [data-slot=tool-status-active]",
+        "[data-component=tool-status-title][data-active=true] [data-slot=tool-status-done]"
+      ],
+      "proof": "Moved active=true done selector has specificity[0,3,0], stronger than crossed default-done[0,2,0]. Crossed active=true active also has[0,3,0] but targets data-slot=tool-status-active, mutually exclusive with the exact data-slot=tool-status-done value. Existing default-active selector stays in place.",
+      "declarations": [
+        {
+          "property": "opacity",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "filter",
+          "value": "blur(calc(var(--tool-motion-blur, 2px) * 0.45))",
+          "important": false
+        },
+        {
+          "property": "transform",
+          "value": "translateY(0.03em)",
+          "important": false
+        }
+      ],
+      "crossedRules": [
+        {
+          "selector": "[data-component=tool-status-title] [data-slot=tool-status-done]",
+          "specificity": [
+            0,
+            2,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "color",
+              "value": "var(--v2-text-text-strong)",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "filter",
+              "value": "blur(0)",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "translateY(0)",
+              "important": false
+            }
+          ]
+        },
+        {
+          "selector": "[data-component=tool-status-title][data-active=true] [data-slot=tool-status-active]",
+          "specificity": [
+            0,
+            3,
+            0
+          ],
+          "declarations": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "filter",
+              "value": "blur(0)",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "translateY(0)",
+              "important": false
+            }
+          ]
+        }
+      ],
+      "afterSource": {
+        "file": "src/renderer/src/styles/_opencode-chat.scss",
+        "line": 292
+      },
+      "afterCompiledRuleLine": 8581
+    }
+  ],
+  "retainedMarkupEvidence": [
+    {
+      "file": "src/renderer/src/components/SessionsPane.tsx",
+      "lines": [
+        55,
+        70,
+        317,
+        328,
+        335
+      ],
+      "sha256": "71b5d32e6678b50d707ed6005a23418e4304fca9fb74550be0cdbb5ee7bd3104",
+      "unchangedFromCurrentCheckpoint": true
+    },
+    {
+      "file": "src/renderer/src/components/AgentTui.tsx",
+      "lines": [
+        164
+      ],
+      "sha256": "2c8cbce79a44c352f6ae0a5983723b3dd388d65d8b5e149e79bb11b43e4aa5ef",
+      "unchangedFromCurrentCheckpoint": true
+    },
+    {
+      "file": "src/renderer/src/components/ToolStatusTitle.tsx",
+      "lines": [
+        83,
+        88,
+        104,
+        105
+      ],
+      "sha256": "767765e41048957c2b87296f30aca6b395b42b643388e0a7906fe2d1e2301ac7",
+      "unchangedFromCurrentCheckpoint": true
+    },
+    {
+      "file": "src/renderer/src/components/ToolCountSummary.tsx",
+      "lines": [
+        165
+      ],
+      "sha256": "cbe2d3a140e182e542fa5838d3cc8fee2c3f330852046296d0f5cd7c1ff99504",
+      "unchangedFromCurrentCheckpoint": true
+    },
+    {
+      "file": "node_modules/@xterm/xterm/css/xterm.css",
+      "lines": [
+        93,
+        105
+      ],
+      "sha256": "854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6",
+      "unchangedFromCurrentCheckpoint": null
+    }
+  ],
+  "reproduction": {
+    "compileCommand": "PATH=/Users/tdawg/.local/share/orbit-toolchains/node-v22.23.2/bin:$PATH node --input-type=commonjs -e 'const fs=require(\"node:fs\"),sass=require(\"sass\");fs.writeFileSync(\"/private/tmp/orbit-styles.css\",sass.compile(\"src/renderer/src/styles/main.scss\",{style:\"expanded\"}).css)'",
+    "beforeSource": "Read the three pre-change stylesheets from sourceCheckpoint in Git; retain all other main.scss inputs unchanged.",
+    "procedure": [
+      "Compile main.scss with sass.compile(path,{style:\"expanded\"}) for the before/after source snapshots.",
+      "Use PostCSS walkRules; split rule.selectors. For each selector retain complete ancestor at-rule {name,params} context and every ordered {property,value,important} declaration occurrence.",
+      "Sort vector entries by JSON.stringify([context,selector]) with localeCompare using en-US collation; retain insertion order within each declaration occurrence. SHA256 JSON.stringify(the ordered vector array).",
+      "Compare the exact remaining walkRules selector/context sequence, excluding only root occurrences whose selector AND full ordered declarations match one of the five groups. Check each grouped occurrence is unique before and after.",
+      "Check crossed count-summary selectors have attribute specificity greater than1. For the hidden done track, crossed equal/higher specificity selectors must target the mutually exclusive active slot; lower specificity default-done remains overridden."
+    ],
+    "temporaryCompleteEvidence": "/private/tmp/orbit-style-consolidation-full.json",
+    "temporaryVerifier": "/private/tmp/orbit-verify-style-consolidation.mjs"
+  }
+}

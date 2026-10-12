@@ -239,10 +239,7 @@
   transition: background 100ms var(--ease);
 }
 
-.sessions-project-head:hover {
-  color: var(--text);
-}
-
+.sessions-project-head:hover,
 .sessions-project-head:hover .sessions-project-open,
 .sessions-row:hover .sessions-row-title {
   color: var(--text);
@@ -372,10 +369,7 @@
   transition: background 100ms var(--ease);
 }
 
-.sessions-row:hover {
-  color: var(--text);
-}
-
+.sessions-row:hover,
 .sessions-row.focused {
   color: var(--text);
 }
