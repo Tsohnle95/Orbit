@@ -261,9 +261,10 @@ describe("readFile", () => {
 
     const context = (backend as unknown as { contexts: Map<string, SessionContext> })
       .contexts.get(workspace.id)!.watchContext;
-    const onFsChanged = (backend as unknown as {
-      onFsChanged(context: SessionContext["watchContext"], abs: string, event: string): Promise<void>;
-    }).onFsChanged.bind(backend);
+    const observer = (backend as unknown as {
+      observation: import("./workspace-observation").WorkspaceObservation<SessionContext>;
+    }).observation;
+    const onFsChanged = observer.onFsChanged.bind(observer);
     await onFsChanged(context, newPath, "rename");
     await onFsChanged(context, oldPath, "rename");
 

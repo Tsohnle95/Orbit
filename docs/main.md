@@ -232,23 +232,32 @@ Internals:
   suffix. History resolves display paths without changing conversations; reopen
   moves only the selected session through OpenCode's supported API and preserves
   its ID and transcript. Confirmed aliases survive bookmark removal and restart.
-- `snapshotInputs(context, input)` — recursively walks the tool-call input for
-  `filePath`/`file_path`/`path` keys and snapshots those files
-  (skips http URLs, dedupes) into the addressed context.
-- `gitShow(rel)` — `git show HEAD:<rel>` with a 10s timeout, 16 MiB
-  buffer; null on any failure.
+- `src/main/workspace-observation.ts` owns per-context watcher lifecycle,
+  debounce/import suppression, Git baselines, opened-file identities, move
+  correlation, and identity-bound `file-update` emissions. `WatchContext` retains
+  the same structural map references; only this owner mutates observation maps.
+  `WorkspaceObservation` receives current-watch/current-session predicates and
+  an emission callback. It has no SDK, session registry, IPC, or focused-window
+  dependency. Add observation behavior here through explicit snapshot, read,
+  import, save/create/delete/detach/rename/move recording operations.
+- `OpenShellBackend` retains workspace authorization, SDK event routing,
+  session/context registration, ordered filesystem mutations, and their
+  post-await checks. `snapshotInputs(context, input)` recursively collects
+  tool-call file paths, uses the authorized backend read, then records the
+  baseline through the observation owner. Imported-file baselines and direct
+  mutation results are recorded after the existing backend operations.
+- `WorkspaceObservation.gitShow(context, rel)` uses `git show HEAD:<rel>` with
+  a 10s timeout and 16 MiB buffer; null on any failure.
 - `startWatcher(context)` / `scheduleWatch(context, abs)` /
-  `onFsChanged(context, ...)` — one recursive `fs.watch` and 200ms debounced
-  pipeline per open context. Every callback captures its
-  root/session/generation/maps and checks `currentWatch` after awaits and
-  before map mutation or emission.
-- `emitFileUpdate(context, ...)` — emits identity-bound `{kind:"file-update"}`.
+  `onFsChanged(context, ...)` remain one recursive `fs.watch` and a 200ms
+  debounced pipeline per open context, with the 2 MiB watched-file limit.
+  Callbacks capture the same root/session/maps and retain current-context
+  checks around asynchronous work and emission.
 - Opened workspace files retain their filesystem identity in the watch context.
   `onFsChanged` correlates an old missing path with a unique destination that
   has the same identity and emits `movedFrom`; ambiguous or unsupported
-  identities remain ordinary delete/add observations.
-- `relKey(abs)` — absolute → `/`-separated path relative to the session
-  dir; `abs(rel)` the inverse. `shouldSkip` filters `SKIP_DIRS` roots.
+  identities remain ordinary delete/add observations. `SKIP_DIRS` also supplies
+  the backend's external-copy exclusions.
 - `src/main/recovery-storage.ts` owns recovery storage selection, transaction
   manifests, artifact inventory, reconciliation, migration, and retention.
   Its operations receive a captured workspace root and, where required, a

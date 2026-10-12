@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { FileBaseline, WorkspaceIdentity } from "@shared/types";
 import { LatestGeneration } from "@shared/generation";
 import { OpenShellBackend, type SessionContext } from "./opencode";
+import type { WorkspaceObservation } from "./workspace-observation";
 
 vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
 vi.mock("@opencode/client/service", () => ({ Service: {} }));
@@ -24,9 +25,8 @@ interface WatchContext {
 type BackendHarness = {
   contexts: Map<string, SessionContext>;
   primary: string | null;
-  onFsChanged(context: WatchContext, abs: string, event: string): Promise<void>;
+  observation: WorkspaceObservation<SessionContext>;
   handleServerEvent(type: string, data: unknown, location?: { directory?: string }): Promise<void>;
-  gitShow(context: WatchContext, rel: string): Promise<string | null>;
 };
 
 function deferred<T>() {
@@ -98,7 +98,7 @@ describe("backend watcher generation phases", () => {
     const messages: unknown[] = [];
     backend.onMessage((message) => messages.push(message));
 
-    const pending = internals.onFsChanged(context, `${context.root}/file.txt`, "change");
+    const pending = internals.observation.onFsChanged(context, `${context.root}/file.txt`, "change");
     await Promise.resolve();
     supersede();
     read.resolve("new content");
@@ -113,11 +113,11 @@ describe("backend watcher generation phases", () => {
     vi.spyOn(fsp, "stat").mockResolvedValueOnce({ isFile: () => true } as Awaited<ReturnType<typeof fsp.stat>>);
     vi.spyOn(fsp, "readFile").mockResolvedValueOnce("new content");
     const git = deferred<string | null>();
-    vi.spyOn(internals, "gitShow").mockReturnValueOnce(git.promise);
+    vi.spyOn(internals.observation, "gitShow").mockReturnValueOnce(git.promise);
     const messages: unknown[] = [];
     backend.onMessage((message) => messages.push(message));
 
-    const pending = internals.onFsChanged(context, `${context.root}/file.txt`, "change");
+    const pending = internals.observation.onFsChanged(context, `${context.root}/file.txt`, "change");
     await Promise.resolve();
     await Promise.resolve();
     supersede();
@@ -132,11 +132,11 @@ describe("backend watcher generation phases", () => {
     const { backend, internals, context, supersede } = harness();
     vi.spyOn(fsp, "stat").mockRejectedValueOnce(new Error("missing"));
     const git = deferred<string | null>();
-    vi.spyOn(internals, "gitShow").mockReturnValueOnce(git.promise);
+    vi.spyOn(internals.observation, "gitShow").mockReturnValueOnce(git.promise);
     const messages: unknown[] = [];
     backend.onMessage((message) => messages.push(message));
 
-    const pending = internals.onFsChanged(context, `${context.root}/deleted.txt`, "unlink");
+    const pending = internals.observation.onFsChanged(context, `${context.root}/deleted.txt`, "unlink");
     await Promise.resolve();
     supersede();
     git.resolve("old content");
@@ -151,8 +151,7 @@ describe("watched file guards", () => {
   it("ignores agent/tooling directories so their internal writes never reach the renderer", () => {
     const { internals, context } = harness();
     const skip = (rel: string): boolean =>
-      (internals as unknown as { shouldSkip(abs: string, root: string): boolean })
-        .shouldSkip(`${context.root}/${rel}`, context.root);
+      internals.observation.shouldSkip(`${context.root}/${rel}`, context.root);
     expect(skip(".opencode/session.jsonl")).toBe(true);
     expect(skip(".opencode/node_modules/zod/index.js")).toBe(true);
     expect(skip(".claude/foo")).toBe(true);
@@ -171,7 +170,7 @@ describe("watched file guards", () => {
     const messages: unknown[] = [];
     backend.onMessage((message) => messages.push(message));
 
-    await internals.onFsChanged(context, `${context.root}/huge.json`, "change");
+    await internals.observation.onFsChanged(context, `${context.root}/huge.json`, "change");
 
     expect(readSpy).not.toHaveBeenCalled();
     expect(messages).toEqual([]);

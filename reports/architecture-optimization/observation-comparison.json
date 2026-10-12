@@ -1,0 +1,142 @@
+{
+  "node": "22.23.2",
+  "baselineRef": "22eed79",
+  "sources": {
+    "baselineBackendSha256": "fbb83c570338a89dca22753ae84c5856b3525d119595dbae7f1aacc984fcfa9e",
+    "currentBackendSha256": "128204c42be9632e60d9a198c6eababd80984c470d08976a95843bbbb61b37d9",
+    "currentObservationSha256": "a21804bdc4bb4f258968b544958789517037e596505021aa349898a8f645d8f8",
+    "benchmarkSha256": "c7c4c3a36f6e1047359ca52eee176b97dcc4df71beadec17e871fd976a9ee1d6"
+  },
+  "currentCommit": "22eed79a9fb0de73ba91b8cdaeeab5518fe70d7e",
+  "note": "Current means the working tree. Samples measure native stat/read and observation processing, excluding file creation and one warmup. They do not measure OS notification delivery. Historical backend imports use current dependency modules to isolate the observation extraction. Order is current then baseline for each repeat; cache and system noise can affect results.",
+  "runs": [
+    {
+      "repeat": 1,
+      "variant": "current",
+      "implementation": "WorkspaceObservation",
+      "workload": {
+        "files": 20,
+        "eventsPerSample": 200,
+        "warmups": 1,
+        "samples": 8
+      },
+      "fixture": {
+        "bytesPerFile": 4000,
+        "sha256": "bc98307afa2a5bb426db0207154c1dc8727668aff381d943660bd9b50b577c2b"
+      },
+      "retained": {
+        "snapshots": 20,
+        "lastKnown": 20,
+        "identities": 20,
+        "timers": 0
+      },
+      "emissions": 20,
+      "samplesMs": [
+        15.440832999999998,
+        15.820499999999981,
+        15.224333000000001,
+        14.751541999999972,
+        14.662832999999978,
+        14.619416000000001,
+        14.525750000000016,
+        14.477000000000032
+      ]
+    },
+    {
+      "repeat": 1,
+      "variant": "baseline",
+      "implementation": "OpenShellBackend",
+      "workload": {
+        "files": 20,
+        "eventsPerSample": 200,
+        "warmups": 1,
+        "samples": 8
+      },
+      "fixture": {
+        "bytesPerFile": 4000,
+        "sha256": "bc98307afa2a5bb426db0207154c1dc8727668aff381d943660bd9b50b577c2b"
+      },
+      "retained": {
+        "snapshots": 20,
+        "lastKnown": 20,
+        "identities": 20,
+        "timers": 0
+      },
+      "emissions": 20,
+      "samplesMs": [
+        15.25766699999997,
+        15.719666000000018,
+        14.671666999999957,
+        15.261625000000038,
+        14.942707999999982,
+        14.91662500000001,
+        14.763917000000049,
+        14.490124999999978
+      ]
+    },
+    {
+      "repeat": 2,
+      "variant": "current",
+      "implementation": "WorkspaceObservation",
+      "workload": {
+        "files": 20,
+        "eventsPerSample": 200,
+        "warmups": 1,
+        "samples": 8
+      },
+      "fixture": {
+        "bytesPerFile": 4000,
+        "sha256": "bc98307afa2a5bb426db0207154c1dc8727668aff381d943660bd9b50b577c2b"
+      },
+      "retained": {
+        "snapshots": 20,
+        "lastKnown": 20,
+        "identities": 20,
+        "timers": 0
+      },
+      "emissions": 20,
+      "samplesMs": [
+        15.987707999999998,
+        15.543041000000017,
+        15.221041000000014,
+        14.880667000000017,
+        15.268208999999956,
+        14.874000000000024,
+        14.690791999999988,
+        14.578792000000021
+      ]
+    },
+    {
+      "repeat": 2,
+      "variant": "baseline",
+      "implementation": "OpenShellBackend",
+      "workload": {
+        "files": 20,
+        "eventsPerSample": 200,
+        "warmups": 1,
+        "samples": 8
+      },
+      "fixture": {
+        "bytesPerFile": 4000,
+        "sha256": "bc98307afa2a5bb426db0207154c1dc8727668aff381d943660bd9b50b577c2b"
+      },
+      "retained": {
+        "snapshots": 20,
+        "lastKnown": 20,
+        "identities": 20,
+        "timers": 0
+      },
+      "emissions": 20,
+      "samplesMs": [
+        15.227040999999986,
+        15.584625000000017,
+        15.081666999999982,
+        15.268374999999992,
+        14.91216700000001,
+        15.118875000000003,
+        14.991250000000036,
+        14.802833999999962
+      ]
+    }
+  ]
+}

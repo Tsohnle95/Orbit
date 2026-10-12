@@ -393,6 +393,7 @@ of application state.
 | Runtime/session orchestration and service traffic | `src/main/opencode.ts` | Main remains the only OpenCode SDK owner. Adapter contracts remain under `src/main/runtimes/`; dormant DeepSeek implementation is private to its retained runtime directory. |
 | History projection | `src/main/session-replay.ts` | Pure normalized replay depends on shared contracts/presentation, not SDK or privileged effects. |
 | Recovery artifacts and transactions | `src/main/recovery-storage.ts` | Captured workspace root/current predicate come from backend orchestration; storage uses Node filesystem operations and workspace security, without owning sessions or events. |
+| Workspace observation | `src/main/workspace-observation.ts`, private to the backend | Owns watch maps, debounce/import suppression, Git baselines and inode/file emissions; accepts session/watch authority predicates. SDK, session identity, confined mutation and recovery stay backend-owned. |
 | Renderer state and chat projection | `src/renderer/src/store.tsx`, `src/renderer/src/chat-store.ts`; private `chat-records.ts` and `chat-projection.ts` | The chat facade owns authoritative reducer state; consumers do not import its private record/projection owners. Pure projection depends on renderer stream/record transformations and shared contracts. |
 | Panel geometry and layout interaction | `src/renderer/src/agent-panels.ts`; App composes private `src/renderer/src/layout/` | Geometry imports only shared session contracts; drag/tray interaction imports only React, not store or backend owners. Layout presenters stay private to App composition. |
 | Controlled cross-process bridge | `src/preload/index.ts` | Preload depends on shared contracts, never main/renderer implementation. Renderer declarations may derive its interface through an explicit type-only exception. |
@@ -400,8 +401,8 @@ of application state.
 
 Architecture fitness is executable through the canonical gate. Module/function
 budgets ratchet existing debt downward while enforcing defaults immediately for
-new owners. The existing type-only markdown projection/stream cycle is a narrow,
-documented exception; runtime imports remain acyclic. Substantial exact-token
+new owners. Both runtime and type-only imports remain acyclic; shared markdown
+projection types have one owner in `markdown-projection.ts`. Substantial exact-token
 clones, new cycles, process direction violations, private-owner leaks, excluded
 implementation imports, and privileged authority leaks fail validation.
 The cohesive inline-code language table is retained as baseline size debt;

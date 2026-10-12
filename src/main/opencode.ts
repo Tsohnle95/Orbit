@@ -1,7 +1,7 @@
 import { execFile, spawn } from "node:child_process";
 import { promises as fsp } from "node:fs";
 import { sessionUsageValues } from "@shared/session-presentation";
-import { constants, watch, type FSWatcher } from "node:fs";
+import { constants, type FSWatcher } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -19,7 +19,6 @@ import type {
   ExternalKind,
   ExternalOpenResult,
   FileWriteIdentity,
-  FileBaseline,
   ImportResult,
   OpenFileWorkspaceResult,
   PendingPermissionRequest,
@@ -65,7 +64,7 @@ import { fetchProviderUsage } from "./provider-usage";
 import { WorkspaceOperationCoordinator } from "./operation-coordinator";
 import { BackendEventLoop } from "./backend-event-loop";
 import { createStreamPipeline, type RawStreamEvent } from "./stream-pipeline";
-import { knownBaseline, observedBaseline, preserveBaseline, unknownBaseline } from "./file-baseline";
+import { WorkspaceObservation, SKIP_DIRS, type WatchContext } from "./workspace-observation";
 import { movePathToTrash } from "./trash";
 import {
   assertPermissionSession,
@@ -102,14 +101,6 @@ const sleep = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve) 
     resolve();
   }, { once: true });
 });
-
-const SKIP_DIRS = new Set([
-  ".git", "node_modules", ".next", ".venv", "__pycache__", ".cache", ".turbo", ".nx",
-  ".svn", ".hg", ".idea", ".vscode", ".openshell-recovery", ".orbit-recovery", "dist", "out", "build", "target", "coverage", ".pytest_cache",
-  ".opencode", ".claude", ".cursor", ".aider", ".windsurf", ".codeium", ".roo", ".gemini", ".kilocode", ".continue"
-]);
-
-const MAX_WATCHED_FILE_BYTES = 2 * 1024 * 1024;
 
 const BUILTIN_COMMANDS: {
   name: string;
@@ -166,22 +157,6 @@ function isAcceptedNoContentInterrupt(error: unknown): boolean {
   const value = error as { reason?: unknown; cause?: unknown };
   if (value.reason !== "UnexpectedStatus" || !value.cause || typeof value.cause !== "object") return false;
   return (value.cause as { status?: unknown }).status === 204;
-}
-
-interface WatchContext {
-  root: string;
-  sessionID: string;
-  workspace: WorkspaceIdentity;
-  snapshots: Map<string, FileBaseline>;
-  lastKnown: Map<string, string>;
-  hasGit: boolean | null;
-  gitRoot?: string | null;
-  timers: Map<string, ReturnType<typeof setTimeout>>;
-  identities?: Map<string, string>;
-  deletedPaths?: Set<string>;
-  recentMoves?: Map<string, number>;
-  importing?: number;
-  suppressedUntil?: Map<string, number>;
 }
 
 export interface SessionContext {
@@ -251,6 +226,11 @@ export class OpenShellBackend {
   private updatingOpenCode = false;
   private readonly recovery = new RecoveryStorage();
   private readonly contexts = new Map<string, SessionContext>();
+  private readonly observation = new WorkspaceObservation<SessionContext>(
+    (context) => this.currentWatch(context),
+    (context) => this.currentContext(context),
+    (message) => this.emit(message)
+  );
   private primary: string | null = null;
   private listeners = new Set<(msg: unknown) => void>();
   private stopped = false;
@@ -715,7 +695,7 @@ export class OpenShellBackend {
         const abs = this.abs(f.file, context.directory);
         const rel = path.relative(context.directory, abs);
         if (!rel || rel === ".." || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) continue;
-        await this.onFsChanged(context.watchContext, abs, f.event);
+        await this.observation.onFsChanged(context.watchContext, abs, f.event);
       }
     }
   }
@@ -797,16 +777,6 @@ export class OpenShellBackend {
     if (result) throw new Error(result);
   }
 
-  private shouldSkip(abs: string, root: string): boolean {
-    const rel = path.relative(root, abs);
-    return rel.split(path.sep).some((segment) => SKIP_DIRS.has(segment));
-  }
-
-  private isGitMetadata(abs: string, root: string): boolean {
-    const rel = path.relative(root, abs);
-    return rel === ".git" || rel.startsWith(`.git${path.sep}`);
-  }
-
   private async snapshotInputs(context: SessionContext, input: unknown): Promise<void> {
     const watchContext = context.watchContext;
     if (!this.currentContext(context)) return;
@@ -815,286 +785,10 @@ export class OpenShellBackend {
       if (watchContext.snapshots.has(abs)) continue;
       try {
         const content = await this.readFile(context.workspace, this.relKey(abs, watchContext.root));
-        if (this.currentWatch(watchContext)) {
-          watchContext.snapshots.set(abs, knownBaseline(content ?? "", content !== null));
-        }
+        this.observation.recordSnapshot(watchContext, abs, content);
       } catch {
         /* ignore */
       }
-    }
-  }
-
-  private async gitShow(context: WatchContext, rel: string): Promise<string | null> {
-    if (context.hasGit === false) return null;
-    if (context.hasGit === null) {
-      let cur: string | null = context.root;
-      let gitRoot: string | null = null;
-      while (cur) {
-        try {
-          await fsp.access(path.join(cur, ".git"));
-          gitRoot = cur;
-          break;
-        } catch {
-          const parent = path.dirname(cur);
-          if (parent === cur) break;
-          cur = parent;
-        }
-      }
-      if (!this.currentWatch(context)) return null;
-      if (gitRoot) {
-        context.hasGit = true;
-        (context as { gitRoot: string | null }).gitRoot = gitRoot;
-      } else {
-        context.hasGit = false;
-        (context as { gitRoot: string | null }).gitRoot = null;
-        return null;
-      }
-    }
-    const gitRoot = (context as { gitRoot: string | null }).gitRoot ?? context.root;
-    const abs = path.isAbsolute(rel) ? rel : path.join(context.root, rel);
-    const relGit = path.relative(gitRoot, abs).split(path.sep).join("/");
-    if (!relGit || relGit.startsWith("..")) return null;
-    return new Promise((resolve) => {
-      execFile(
-        "git",
-        ["show", `HEAD:${relGit}`],
-        { cwd: gitRoot, maxBuffer: 16 * 1024 * 1024, timeout: 10_000 },
-        (err, stdout) => {
-          resolve(err ? null : stdout);
-        }
-      );
-    });
-  }
-
-  private startWatcher(context: SessionContext): void {
-    try {
-      context.watcher = watch(context.directory, { recursive: true }, (event, filename) => {
-        if (!this.currentContext(context)) return;
-        if (!filename || typeof filename !== "string") return;
-        const abs = this.abs(filename, context.directory);
-        if (this.isGitMetadata(abs, context.directory)) {
-          this.scheduleGitRefresh(context.watchContext);
-          return;
-        }
-        if (this.shouldSkip(abs, context.directory)) return;
-        this.scheduleWatch(context.watchContext, abs, event);
-      });
-      context.watcher.on("error", (err) => console.error("[orbit] watcher error:", err));
-      console.log("[orbit] watching", context.directory);
-    } catch (err) {
-      console.error("[orbit] fs.watch unavailable, live updates disabled:", err);
-    }
-  }
-
-  private stopWatcher(context: SessionContext): void {
-    for (const t of context.watchContext.timers.values()) clearTimeout(t);
-    context.watchContext.timers.clear();
-    context.watcher?.close();
-    context.watcher = null;
-  }
-
-  private scheduleWatch(context: WatchContext, abs: string, event: string): void {
-    if ((context.importing ?? 0) > 0) return;
-    const now = Date.now();
-    const suppressedUntil = context.suppressedUntil ?? (context.suppressedUntil = new Map());
-    for (const [prefix, until] of suppressedUntil) {
-      if (until <= now) suppressedUntil.delete(prefix);
-      else if (abs === prefix || abs.startsWith(`${prefix}${path.sep}`)) return;
-    }
-    const existing = context.timers.get(abs);
-    if (existing) clearTimeout(existing);
-    context.timers.set(
-      abs,
-      setTimeout(() => {
-        context.timers.delete(abs);
-        if (this.currentWatch(context)) void this.onFsChanged(context, abs, event);
-      }, 200)
-    );
-  }
-
-  private scheduleGitRefresh(context: WatchContext): void {
-    const key = path.join(context.root, ".git");
-    const existing = context.timers.get(key);
-    if (existing) clearTimeout(existing);
-    context.timers.set(key, setTimeout(() => {
-      context.timers.delete(key);
-      if (this.currentWatch(context)) void this.refreshGitBaselines(context);
-    }, 200));
-  }
-
-  private async refreshGitBaselines(context: WatchContext): Promise<void> {
-    for (const [abs] of context.snapshots) {
-      if (!this.currentWatch(context)) return;
-      const rel = this.relKey(abs, context.root);
-      const git = await this.gitShow(context, rel);
-      if (!this.currentWatch(context)) return;
-      const baseline = observedBaseline(true, git);
-      let content: string | null = null;
-      try {
-        content = await fsp.readFile(abs, "utf8");
-      } catch {
-      }
-      context.snapshots.set(abs, baseline);
-      if (content === null) context.lastKnown.delete(abs);
-      else context.lastKnown.set(abs, content);
-      this.emitFileUpdate(context, abs, content, baseline);
-    }
-  }
-
-  private async onFsChanged(context: WatchContext, abs: string, event: string): Promise<void> {
-    if (!this.currentWatch(context)) return;
-    if ((context.importing ?? 0) > 0) return;
-    const now = Date.now();
-    const suppressedUntil = context.suppressedUntil ?? (context.suppressedUntil = new Map());
-    for (const [prefix, until] of suppressedUntil) {
-      if (until <= now) suppressedUntil.delete(prefix);
-      else if (abs === prefix || abs.startsWith(`${prefix}${path.sep}`)) return;
-    }
-    if (this.isGitMetadata(abs, context.root)) {
-      await this.refreshGitBaselines(context);
-      return;
-    }
-    if (this.shouldSkip(abs, context.root)) return;
-    let stat: Awaited<ReturnType<typeof fsp.stat>> | null = null;
-    try {
-      stat = await fsp.stat(abs);
-    } catch {
-      /* missing */
-    }
-    if (!this.currentWatch(context)) return;
-    if (!stat || !stat.isFile()) {
-      const movedUntil = context.recentMoves?.get(abs);
-      if (movedUntil !== undefined) {
-        if (movedUntil > Date.now()) return;
-        context.recentMoves?.delete(abs);
-      }
-      if (event === "unlink" || context.lastKnown.has(abs) || context.snapshots.has(abs)) {
-        let baseline = context.snapshots.get(abs);
-        if (!baseline) {
-          const lastKnown = context.lastKnown.get(abs);
-          if (lastKnown !== undefined) {
-            baseline = knownBaseline(lastKnown);
-          } else {
-            const git = await this.gitShow(context, this.relKey(abs, context.root));
-            if (!this.currentWatch(context)) return;
-            baseline = observedBaseline(context.hasGit === true, git);
-          }
-        }
-        if (!this.currentWatch(context)) return;
-        context.snapshots.set(abs, baseline);
-        context.lastKnown.delete(abs);
-        (context.deletedPaths ??= new Set()).add(abs);
-        this.emitFileUpdate(context, abs, null, baseline);
-      }
-      return;
-    }
-    if (stat.size > MAX_WATCHED_FILE_BYTES) return;
-    let content: string;
-    try {
-      content = await fsp.readFile(abs, "utf8");
-    } catch {
-      return;
-    }
-    if (!this.currentWatch(context)) return;
-    const identity = this.fileIdentity(stat);
-    const movedFrom = identity ? await this.missingIdentitySource(context, abs, identity) : null;
-    if (!this.currentWatch(context)) return;
-    if (movedFrom && identity) {
-      const oldBaseline = await this.baselineForObservedPath(context, movedFrom);
-      if (!this.currentWatch(context)) return;
-      const targetBaseline = await this.baselineForObservedPath(context, abs);
-      if (!this.currentWatch(context)) return;
-      if (!context.deletedPaths?.has(movedFrom)) {
-        context.snapshots.set(movedFrom, oldBaseline);
-        context.lastKnown.delete(movedFrom);
-        this.emitFileUpdate(context, movedFrom, null, oldBaseline);
-      }
-      context.snapshots.set(abs, targetBaseline);
-      context.lastKnown.set(abs, content);
-      context.identities?.delete(movedFrom);
-      context.identities?.set(abs, identity);
-      context.deletedPaths?.delete(movedFrom);
-      context.deletedPaths?.delete(abs);
-      (context.recentMoves ??= new Map()).set(movedFrom, Date.now() + 2_000);
-      this.emitFileUpdate(context, abs, content, targetBaseline, undefined, this.relKey(movedFrom, context.root));
-      return;
-    }
-    if (identity) (context.identities ??= new Map()).set(abs, identity);
-    context.deletedPaths?.delete(abs);
-    if (content === context.lastKnown.get(abs)) return;
-    context.lastKnown.set(abs, content);
-    if (!context.snapshots.has(abs)) {
-      const git = await this.gitShow(context, this.relKey(abs, context.root));
-      if (!this.currentWatch(context)) return;
-      const baseline = observedBaseline(context.hasGit === true, git);
-      context.snapshots.set(abs, baseline);
-    }
-    this.emitFileUpdate(context, abs, content);
-  }
-
-  private emitFileUpdate(
-    context: WatchContext,
-    abs: string,
-    content: string | null,
-    baselineOverride?: FileBaseline,
-    write?: FileWriteIdentity,
-    movedFrom?: string
-  ): void {
-    const baseline =
-      baselineOverride !== undefined
-        ? baselineOverride
-        : (context.snapshots.get(abs) ?? unknownBaseline);
-    if (!this.currentWatch(context)) return;
-    this.emit({
-      kind: "file-update",
-      file: {
-        workspace: context.workspace,
-        sessionID: context.sessionID,
-        path: this.relKey(abs, context.root),
-        ...(movedFrom ? { movedFrom } : {}),
-        baseline,
-        content,
-        deleted: content === null,
-        ...(write ? { write } : {})
-      }
-    });
-  }
-
-  private fileIdentity(stat: Awaited<ReturnType<typeof fsp.stat>>): string | null {
-    if (!Number.isFinite(stat.dev) || !Number.isFinite(stat.ino) || stat.ino <= 0) return null;
-    return `${stat.dev}:${stat.ino}`;
-  }
-
-  private async missingIdentitySource(context: WatchContext, abs: string, identity: string): Promise<string | null> {
-    const candidates = [...(context.identities ?? [])]
-      .filter(([candidate, value]) => candidate !== abs && value === identity)
-      .map(([candidate]) => candidate);
-    const missing: string[] = [];
-    for (const candidate of candidates) {
-      const stat = await fsp.stat(candidate).catch(() => null);
-      if (!this.currentWatch(context)) return null;
-      if (!stat) missing.push(candidate);
-    }
-    return missing.length === 1 ? missing[0] : null;
-  }
-
-  private async baselineForObservedPath(context: WatchContext, abs: string): Promise<FileBaseline> {
-    const established = context.snapshots.get(abs);
-    if (established) return established;
-    const git = await this.gitShow(context, this.relKey(abs, context.root));
-    return observedBaseline(context.hasGit === true, git);
-  }
-
-  private async captureDirectMutation(context: WatchContext, abs: string): Promise<{
-    baseline: FileBaseline;
-    content: string | null;
-  }> {
-    const established = context.snapshots.get(abs);
-    try {
-      const content = await fsp.readFile(abs, "utf8");
-      return { baseline: established ?? knownBaseline(content), content };
-    } catch {
-      return { baseline: established ?? unknownBaseline, content: null };
     }
   }
 
@@ -1169,16 +863,7 @@ export class OpenShellBackend {
       sessionID: info.id,
       directory,
       sessionInfo: { ...info, directory } as SessionInfo,
-      watchContext: {
-        root: directory,
-        sessionID: info.id,
-        workspace: {} as WorkspaceIdentity,
-        snapshots: new Map(),
-        lastKnown: new Map(),
-        hasGit: null,
-        gitRoot: null,
-        timers: new Map()
-      },
+      watchContext: this.observation.createContext(directory, info.id, {} as WorkspaceIdentity),
       watcher: null,
       activations: new LatestGeneration(),
       runtime
@@ -1188,7 +873,7 @@ export class OpenShellBackend {
     const generation = context.activations.accept();
     if (existing) {
       existing.activations.invalidate();
-      this.stopWatcher(existing);
+      this.observation.stopWatcher(existing);
       this.contexts.delete(existing.workspace.id);
     }
     this.contexts.set(context.workspace.id, context);
@@ -1197,7 +882,7 @@ export class OpenShellBackend {
     await this.recovery.migrateLegacyRecovery(directory, () => context.activations.current(generation) && this.currentContext(context));
     if (!context.activations.current(generation) || !this.currentContext(context)) throw new Error("activation superseded");
     void this.recovery.purgeExpiredRecovery(directory, () => context.activations.current(generation) && this.currentContext(context));
-    this.startWatcher(context);
+    this.observation.startWatcher(context);
     this.emit({ kind: "session", session: context.sessionInfo });
     await this.emitRecoveryFor(context);
     return context.sessionInfo;
@@ -1541,7 +1226,7 @@ export class OpenShellBackend {
   async closeSession(workspace: WorkspaceIdentity): Promise<void> {
     const context = this.contextFor(workspace);
     context.activations.invalidate();
-    this.stopWatcher(context);
+    this.observation.stopWatcher(context);
     this.contexts.delete(workspace.id);
     if (this.primary === workspace.id) {
       const keys = [...this.contexts.keys()];
@@ -2329,8 +2014,7 @@ export class OpenShellBackend {
     if (content !== null) {
       const stat = await fsp.stat(abs).catch(() => null);
       this.contextFor(workspace);
-      const identity = stat?.isFile() ? this.fileIdentity(stat) : null;
-      if (identity) (context.watchContext.identities ??= new Map()).set(abs, identity);
+      this.observation.recordReadIdentity(context.watchContext, abs, stat);
     }
     return content;
   }
@@ -2421,9 +2105,7 @@ export class OpenShellBackend {
       if (!this.currentWatch(watchContext)) throw new Error("stale workspace");
       const cleanDest = relativePath(destDir, true);
       const destAbs = await confinedPath(root, cleanDest, true);
-      const restartWatcher = context.watcher !== null;
-      if (restartWatcher) this.stopWatcher(context);
-      watchContext.importing = (watchContext.importing ?? 0) + 1;
+      const restartWatcher = this.observation.beginImport(context);
       try {
         await fsp.mkdir(destAbs, { recursive: true });
         await confinedPath(root, cleanDest, true);
@@ -2455,8 +2137,7 @@ export class OpenShellBackend {
           for (const abs of copied) {
             const content = await fsp.readFile(abs, "utf8").catch(() => null);
             if (content === null) continue;
-            watchContext.snapshots.set(abs, knownBaseline(content));
-            watchContext.lastKnown.set(abs, content);
+            this.observation.recordImported(watchContext, abs, content);
           }
           results.push({ name, rel, imported: true });
         } catch (error) {
@@ -2466,16 +2147,7 @@ export class OpenShellBackend {
         }
         return results;
       } finally {
-        const prefix = `${destAbs}${path.sep}`;
-        for (const [abs, timer] of watchContext.timers) {
-          if (abs === destAbs || abs.startsWith(prefix)) {
-            clearTimeout(timer);
-            watchContext.timers.delete(abs);
-          }
-        }
-        watchContext.importing = Math.max(0, (watchContext.importing ?? 1) - 1);
-        (watchContext.suppressedUntil ??= new Map()).set(destAbs, Date.now() + 10_000);
-        if (restartWatcher && this.currentWatch(watchContext)) this.startWatcher(context);
+        this.observation.endImport(context, destAbs, restartWatcher);
       }
     });
   }
@@ -2575,18 +2247,13 @@ export class OpenShellBackend {
         recovery.transaction.reason = "save-failed";
         await this.recovery.writeRecoveryTransaction(recovery.directory, recovery.transaction).catch(() => {});
         const current = await fsp.readFile(abs, "utf8").catch(() => null);
-        this.emitFileUpdate(watchContext, abs, current);
+        this.observation.emitFileUpdate(watchContext, abs, current);
         await this.emitRecoveryFor(context);
         const detail = error instanceof Error ? error.message : String(error);
         throw new Error(`${detail}; recovery artifacts preserved in ${this.relKey(recovery.directory, root)}`);
       }
       this.contextFor(workspace);
-      watchContext.snapshots.set(
-        abs,
-        preserveBaseline(watchContext.snapshots.get(abs), knownBaseline(expectedContent))
-      );
-      watchContext.lastKnown.set(abs, cleanContent);
-      this.emitFileUpdate(watchContext, abs, cleanContent, undefined, write);
+      this.observation.recordSave(watchContext, abs, cleanContent, expectedContent, write);
       await this.emitRecoveryFor(context);
     });
   }
@@ -2604,9 +2271,7 @@ export class OpenShellBackend {
       this.contextFor(workspace);
       await fsp.writeFile(abs, "", { flag: "wx" });
       this.contextFor(workspace);
-      watchContext.snapshots.set(abs, preserveBaseline(watchContext.snapshots.get(abs), knownBaseline("", false)));
-      watchContext.lastKnown.set(abs, "");
-      this.emitFileUpdate(watchContext, abs, "");
+      this.observation.recordCreate(watchContext, abs);
     });
   }
 
@@ -2626,13 +2291,11 @@ export class OpenShellBackend {
       const watchContext = context.watchContext;
       if (!this.currentWatch(watchContext)) throw new Error("stale workspace");
       const abs = await confinedPath(root, relativePath(rel));
-      const captured = await this.captureDirectMutation(watchContext, abs);
+      const captured = await this.observation.captureDirectMutation(watchContext, abs);
       this.contextFor(workspace);
       await movePathToTrash(abs, (target) => shell.trashItem(target));
       this.contextFor(workspace);
-      watchContext.snapshots.set(abs, captured.baseline);
-      watchContext.lastKnown.delete(abs);
-      this.emitFileUpdate(watchContext, abs, null, captured.baseline);
+      this.observation.recordDelete(watchContext, abs, captured.baseline);
     });
   }
 
@@ -2648,9 +2311,7 @@ export class OpenShellBackend {
       const target = path.join(detachedRoot, `${randomUUID()}-${path.basename(abs)}`);
       await fsp.rename(abs, target);
       this.contextFor(workspace);
-      watchContext.snapshots.delete(abs);
-      watchContext.lastKnown.delete(abs);
-      this.emitFileUpdate(watchContext, abs, null, unknownBaseline);
+      this.observation.recordDetach(watchContext, abs);
     });
   }
 
@@ -2685,7 +2346,7 @@ export class OpenShellBackend {
         this.contextFor(workspace);
         return;
       }
-      const captured = await this.captureDirectMutation(watchContext, abs);
+      const captured = await this.observation.captureDirectMutation(watchContext, abs);
       await this.mutationPhase("rename:source-inspected", abs, target);
       const recovery = await this.recovery.createRecoveryTransaction(
         root,
@@ -2729,14 +2390,7 @@ export class OpenShellBackend {
         throw error;
       }
       this.contextFor(workspace);
-      watchContext.snapshots.set(abs, captured.baseline);
-      watchContext.lastKnown.delete(abs);
-      watchContext.snapshots.set(target, captured.baseline);
-      this.emitFileUpdate(watchContext, abs, null, captured.baseline);
-      if (!this.currentWatch(watchContext)) return;
-      if (captured.content !== null) watchContext.lastKnown.set(target, captured.content);
-      else watchContext.lastKnown.delete(target);
-      this.emitFileUpdate(watchContext, target, captured.content, captured.baseline);
+      this.observation.recordRename(watchContext, abs, target, captured);
     });
   }
 
@@ -2766,7 +2420,7 @@ export class OpenShellBackend {
       if (target === abs) throw new Error("entry is already in that folder");
       const occupied = await fsp.lstat(target).catch(() => null);
       if (occupied) throw new Error(`destination already exists: ${name}`);
-      const captured = await this.captureDirectMutation(watchContext, abs);
+      const captured = await this.observation.captureDirectMutation(watchContext, abs);
       this.contextFor(workspace);
       try {
         await fsp.rename(abs, target);
@@ -2777,15 +2431,7 @@ export class OpenShellBackend {
         throw error;
       }
       this.contextFor(workspace);
-      watchContext.snapshots.set(abs, captured.baseline);
-      watchContext.lastKnown.delete(abs);
-      this.emitFileUpdate(watchContext, abs, null, captured.baseline);
-      if (!this.currentWatch(watchContext)) return;
-      if (captured.content !== null) {
-        watchContext.snapshots.set(target, captured.baseline);
-        watchContext.lastKnown.set(target, captured.content);
-        this.emitFileUpdate(watchContext, target, captured.content, captured.baseline);
-      }
+      this.observation.recordMove(watchContext, abs, target, captured);
     });
   }
 
@@ -2809,7 +2455,7 @@ export class OpenShellBackend {
     this.activations.invalidate();
     for (const context of this.contexts.values()) {
       context.activations.invalidate();
-      this.stopWatcher(context);
+      this.observation.stopWatcher(context);
     }
     this.contexts.clear();
     this.primary = null;

@@ -677,6 +677,13 @@
       "nesting": 7,
       "origin": "src/renderer/src/components/OpenCodeTimeline.tsx:consolidateSubagentTools#1",
       "reason": "Independently reviewed retained tool/delegation policy extracted into its cohesive owner; eager formatting failure behavior, hook lifetime, branch order and input immutability are characterized. Current ceilings do not exceed the original; no growth and downward ratcheting required."
+    },
+    "src/main/workspace-observation.ts:WorkspaceObservation/onFsChanged#1": {
+      "codeLines": 100,
+      "cyclomatic": 38,
+      "nesting": 5,
+      "reason": "Moved unchanged watcher reconciliation branch tree from OpenShellBackend; retains after-await stale guards and file failure semantics. Refactor only with explicit equivalent-behavior review.",
+      "origin": "src/main/opencode.ts:OpenShellBackend/onFsChanged#1"
     }
   },
   "edgeExceptions": [
@@ -756,6 +763,13 @@
       "allowedFrom": [
         "src/renderer/src/styles/_opencode-chat.scss"
       ]
+    },
+    {
+      "owner": "workspace observation",
+      "targetPrefix": "src/main/workspace-observation.ts",
+      "allowedFrom": [
+        "src/main/opencode.ts"
+      ]
     }
   ],
   "pureOwners": [
@@ -823,6 +837,16 @@
         "src/shared/"
       ],
       "allowedExternal": []
+    },
+    {
+      "file": "src/main/workspace-observation.ts",
+      "allowedLocal": [
+        "src/shared/",
+        "src/main/file-baseline.ts"
+      ],
+      "allowedExternal": [
+        "node:"
+      ]
     }
   ]
 }

@@ -21,7 +21,7 @@ and verified in real sessions.
 ```sh
 npm run dev      # electron-vite dev with HMR (main/preload/renderer)
 npm test         # Vitest unit/component tests in jsdom
-npm run test:platform # launcher tests and real Electron-hosted PTY smoke
+npm run test:platform # native launcher, PTY, trust and filesystem lifecycle checks
 npm run build    # compile then launch the production app (one command)
 npm run build:compile # compile only -> out/ (no launch)
 npm run pack     # build + package a real macOS app -> release/mac/Orbit.app
@@ -79,6 +79,10 @@ Keychain (`ORBIT_MAC_CERTIFICATE_NAME`), its password
 issuer ID (`ORBIT_APPLE_API_ISSUER`). Without them CI stops before publishing.
 The app's release update feed is configured in `electron-builder.release.yml`;
 local packaging remains in `electron-builder.yml`.
+`npm run test:platform` also opts into the real workspace-observation
+close/reopen and rename/move tests through `scripts/workspace-observation-smoke.mjs`.
+The ordinary unit suite skips these OS event-delivery checks.
+
 `npm run test:platform` also runs the hidden-window renderer trust smoke on
 macOS. Linux and Windows run the launcher and Electron PTY coverage but skip the
 GUI smoke because a normal `BrowserWindow` requires a display there; macOS CI is

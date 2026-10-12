@@ -28,7 +28,9 @@ import { LatestGeneration } from "@shared/generation";
 
 const roots: string[] = [];
 const workspace: WorkspaceIdentity = { id: "11111111-1111-4111-8111-111111111111", generation: 1 };
-type TestWatchContext = SessionContext["watchContext"];
+function observation(backend: OpenShellBackend) {
+  return (backend as unknown as { observation: import("./workspace-observation").WorkspaceObservation<SessionContext> }).observation;
+}
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).flatMap((root) => [root, recoveryRootFor(root)].map((location) => rm(location, { recursive: true, force: true }))));
@@ -485,13 +487,13 @@ describe("direct mutation observed changes", () => {
     const { backend, root, messages } = await backendFixture();
     const context = (backend as unknown as { contexts: Map<string, SessionContext> }).contexts.get(workspace.id)!.watchContext;
     context.hasGit = true;
-    vi.spyOn(backend as unknown as { gitShow: (context: TestWatchContext, rel: string) => Promise<string | null> }, "gitShow")
+    vi.spyOn(observation(backend), "gitShow")
       .mockResolvedValue("before");
     await writeFile(path.join(root, "restore.txt"), "changed");
-    await (backend as unknown as { onFsChanged(context: TestWatchContext, abs: string, event: string): Promise<void> })
+    await observation(backend)
       .onFsChanged(context, path.join(root, "restore.txt"), "change");
     await writeFile(path.join(root, "restore.txt"), "before");
-    await (backend as unknown as { onFsChanged(context: TestWatchContext, abs: string, event: string): Promise<void> })
+    await observation(backend)
       .onFsChanged(context, path.join(root, "restore.txt"), "change");
 
     expect(messages.map((message) => message.kind === "file-update" ? message.file?.content : null))
@@ -502,13 +504,13 @@ describe("direct mutation observed changes", () => {
     const { backend, root, messages } = await backendFixture();
     const context = (backend as unknown as { contexts: Map<string, SessionContext> }).contexts.get(workspace.id)!.watchContext;
     context.hasGit = true;
-    const gitShow = vi.spyOn(backend as unknown as { gitShow: (context: TestWatchContext, rel: string) => Promise<string | null> }, "gitShow")
+    const gitShow = vi.spyOn(observation(backend), "gitShow")
       .mockResolvedValue("committed");
     const file = path.join(root, "commit.txt");
     context.snapshots.set(file, { kind: "known", content: "old commit" });
     await writeFile(file, "working tree");
 
-    await (backend as unknown as { refreshGitBaselines(context: TestWatchContext): Promise<void> }).refreshGitBaselines(context);
+    await observation(backend).refreshGitBaselines(context);
 
     const update = messages.find((message) => message.kind === "file-update");
     expect(update?.kind === "file-update" ? update.file : null).toMatchObject({
@@ -524,18 +526,18 @@ describe("direct mutation observed changes", () => {
     const { backend, root, messages } = await backendFixture();
     const context = (backend as unknown as { contexts: Map<string, SessionContext> }).contexts.get(workspace.id)!.watchContext;
     context.hasGit = true;
-    const gitShow = vi.spyOn(backend as unknown as { gitShow: (context: TestWatchContext, rel: string) => Promise<string | null> }, "gitShow")
+    const gitShow = vi.spyOn(observation(backend), "gitShow")
       .mockResolvedValueOnce("")
       .mockResolvedValueOnce(null);
     const file = path.join(root, "empty.txt");
     context.snapshots.set(file, { kind: "known", content: "" });
-    await (backend as unknown as { refreshGitBaselines(context: TestWatchContext): Promise<void> }).refreshGitBaselines(context);
+    await observation(backend).refreshGitBaselines(context);
     expect(messages.at(-1)).toMatchObject({
       kind: "file-update",
       file: { path: "empty.txt", baseline: { kind: "known", content: "" }, content: null, deleted: true }
     });
 
-    await (backend as unknown as { refreshGitBaselines(context: TestWatchContext): Promise<void> }).refreshGitBaselines(context);
+    await observation(backend).refreshGitBaselines(context);
     expect(messages.at(-1)).toMatchObject({
       kind: "file-update",
       file: { path: "empty.txt", baseline: { kind: "known", content: "", exists: false }, content: null, deleted: true }
