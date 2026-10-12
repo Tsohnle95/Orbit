@@ -719,6 +719,13 @@
       "nesting": 5,
       "origin": "src/renderer/src/store.tsx:StoreBody/openFile#1",
       "reason": "Moved unchanged generation-confined read/open action; retains binary, size, snapshot and stale-read guards. Original complexity25; cannot grow."
+    },
+    "src/main/workspace-mutations.ts:WorkspaceMutations/writeFile#1": {
+      "codeLines": 105,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "origin": "src/main/opencode.ts:OpenShellBackend/writeFile#1",
+      "reason": "Moved unchanged atomic-save transaction with no-replace inode validation, rollback and recovery emissions. Existing105-line ceiling retains sequencing; cannot grow."
     }
   },
   "edgeExceptions": [
@@ -803,7 +810,8 @@
       "owner": "workspace observation",
       "targetPrefix": "src/main/workspace-observation.ts",
       "allowedFrom": [
-        "src/main/opencode.ts"
+        "src/main/opencode.ts",
+        "src/main/workspace-mutations.ts"
       ]
     },
     {
@@ -847,6 +855,13 @@
       "targetPrefix": "src/renderer/src/use-workspace-editor.ts",
       "allowedFrom": [
         "src/renderer/src/store.tsx"
+      ]
+    },
+    {
+      "owner": "workspace mutation workflows",
+      "targetPrefix": "src/main/workspace-mutations.ts",
+      "allowedFrom": [
+        "src/main/opencode.ts"
       ]
     }
   ],
@@ -976,6 +991,21 @@
       ],
       "allowedExternal": [
         "react"
+      ]
+    },
+    {
+      "file": "src/main/workspace-mutations.ts",
+      "allowedLocal": [
+        "src/shared/types.ts",
+        "src/main/operation-coordinator.ts",
+        "src/main/workspace-observation.ts",
+        "src/main/recovery-storage.ts",
+        "src/main/workspace-security.ts",
+        "src/main/trash.ts"
+      ],
+      "allowedExternal": [
+        "node:",
+        "electron"
       ]
     }
   ]

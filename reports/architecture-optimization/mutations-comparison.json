@@ -1,0 +1,263 @@
+{
+  "operation": "mutations",
+  "node": "22.23.2",
+  "baselineRef": "8970569",
+  "sources": {
+    "baselineBackendSha256": "128204c42be9632e60d9a198c6eababd80984c470d08976a95843bbbb61b37d9",
+    "currentBackendSha256": "f618abc00568855b9101d808771a95bac6f33478bc41cc019fe0dfe767f3e96b",
+    "currentMutationSha256": "736ff2a670861f7f3825f3fd3d3bba864907d2ef369a120fa76b86cc0280ebe6",
+    "benchmarkSha256": "8dfacdc490bce263c83c8783fba35466183bf3603088bbd8743086b36538a234"
+  },
+  "currentCommit": "0bc986a18c5a6d79297fa07ac714f510447931c8",
+  "note": "Current means the working tree. Samples measure native durable save/rename/create/delete workflows, including recovery sync and guarded emissions, excluding file preparation and one warmup. Trash is modeled by native unlink in both variants. Historical backend imports use current dependency modules to isolate the selected extraction. Order is current then baseline for each repeat; cache and system noise can affect results.",
+  "runs": [
+    {
+      "repeat": 1,
+      "variant": "current",
+      "implementation": "WorkspaceMutations",
+      "workload": {
+        "roundsPerSample": 3,
+        "operationsPerRound": [
+          "save",
+          "rename",
+          "create",
+          "delete-renamed",
+          "delete-created"
+        ],
+        "warmups": 1,
+        "samples": 8
+      },
+      "fixture": {
+        "beforeBytes": 4000,
+        "beforeSha256": "bc98307afa2a5bb426db0207154c1dc8727668aff381d943660bd9b50b577c2b",
+        "afterBytes": 4000,
+        "afterSha256": "6c354f7ecaf342fa5abff23465abfbed34646b8f92b74f74f1c14a62e6aa9eed"
+      },
+      "retained": {
+        "snapshots": 81,
+        "lastKnown": 0,
+        "identities": 0,
+        "timers": 0,
+        "baselineSha256": "116ba944abbd42cbbf5635beddeb5ed9c3e3ea6be0521fc07b24d13972ad0f12"
+      },
+      "recovery": {
+        "manifests": {
+          "save:complete:saved": 27,
+          "rename:complete:renamed": 27
+        },
+        "phases": {
+          "save:temporary-ready": 27,
+          "save:source-held": 27,
+          "save:held-validated": 27,
+          "save:target-installed": 27,
+          "rename:source-inspected": 27,
+          "rename:source-held": 27,
+          "rename:target-installed": 27
+        },
+        "artifactBytes": 432000,
+        "artifactCount": 108,
+        "artifactsSha256": "edcc630ba2406d83081d7c62c9878bd2499f371d94274e96ad66bf9d23a6abe2"
+      },
+      "emissions": {
+        "file-update": 162,
+        "recovery": 27
+      },
+      "samplesMs": [
+        448.0085,
+        456.646166,
+        472.8251670000002,
+        463.1374589999996,
+        479.17912499999966,
+        462.7516249999999,
+        467.3867500000001,
+        473.7770409999998
+      ]
+    },
+    {
+      "repeat": 1,
+      "variant": "baseline",
+      "implementation": "OpenShellBackend",
+      "workload": {
+        "roundsPerSample": 3,
+        "operationsPerRound": [
+          "save",
+          "rename",
+          "create",
+          "delete-renamed",
+          "delete-created"
+        ],
+        "warmups": 1,
+        "samples": 8
+      },
+      "fixture": {
+        "beforeBytes": 4000,
+        "beforeSha256": "bc98307afa2a5bb426db0207154c1dc8727668aff381d943660bd9b50b577c2b",
+        "afterBytes": 4000,
+        "afterSha256": "6c354f7ecaf342fa5abff23465abfbed34646b8f92b74f74f1c14a62e6aa9eed"
+      },
+      "retained": {
+        "snapshots": 81,
+        "lastKnown": 0,
+        "identities": 0,
+        "timers": 0,
+        "baselineSha256": "116ba944abbd42cbbf5635beddeb5ed9c3e3ea6be0521fc07b24d13972ad0f12"
+      },
+      "recovery": {
+        "manifests": {
+          "save:complete:saved": 27,
+          "rename:complete:renamed": 27
+        },
+        "phases": {
+          "save:temporary-ready": 27,
+          "save:source-held": 27,
+          "save:held-validated": 27,
+          "save:target-installed": 27,
+          "rename:source-inspected": 27,
+          "rename:source-held": 27,
+          "rename:target-installed": 27
+        },
+        "artifactBytes": 432000,
+        "artifactCount": 108,
+        "artifactsSha256": "edcc630ba2406d83081d7c62c9878bd2499f371d94274e96ad66bf9d23a6abe2"
+      },
+      "emissions": {
+        "file-update": 162,
+        "recovery": 27
+      },
+      "samplesMs": [
+        436.48199999999997,
+        455.60179199999993,
+        467.3042909999999,
+        454.3272499999998,
+        462.6483330000001,
+        467.0872079999999,
+        463.66645900000003,
+        478.1671249999995
+      ]
+    },
+    {
+      "repeat": 2,
+      "variant": "current",
+      "implementation": "WorkspaceMutations",
+      "workload": {
+        "roundsPerSample": 3,
+        "operationsPerRound": [
+          "save",
+          "rename",
+          "create",
+          "delete-renamed",
+          "delete-created"
+        ],
+        "warmups": 1,
+        "samples": 8
+      },
+      "fixture": {
+        "beforeBytes": 4000,
+        "beforeSha256": "bc98307afa2a5bb426db0207154c1dc8727668aff381d943660bd9b50b577c2b",
+        "afterBytes": 4000,
+        "afterSha256": "6c354f7ecaf342fa5abff23465abfbed34646b8f92b74f74f1c14a62e6aa9eed"
+      },
+      "retained": {
+        "snapshots": 81,
+        "lastKnown": 0,
+        "identities": 0,
+        "timers": 0,
+        "baselineSha256": "116ba944abbd42cbbf5635beddeb5ed9c3e3ea6be0521fc07b24d13972ad0f12"
+      },
+      "recovery": {
+        "manifests": {
+          "save:complete:saved": 27,
+          "rename:complete:renamed": 27
+        },
+        "phases": {
+          "save:temporary-ready": 27,
+          "save:source-held": 27,
+          "save:held-validated": 27,
+          "save:target-installed": 27,
+          "rename:source-inspected": 27,
+          "rename:source-held": 27,
+          "rename:target-installed": 27
+        },
+        "artifactBytes": 432000,
+        "artifactCount": 108,
+        "artifactsSha256": "edcc630ba2406d83081d7c62c9878bd2499f371d94274e96ad66bf9d23a6abe2"
+      },
+      "emissions": {
+        "file-update": 162,
+        "recovery": 27
+      },
+      "samplesMs": [
+        458.043416,
+        457.6546249999999,
+        469.3208750000001,
+        469.4292919999998,
+        465.68112500000007,
+        495.314625,
+        475.3243339999999,
+        475.19954099999995
+      ]
+    },
+    {
+      "repeat": 2,
+      "variant": "baseline",
+      "implementation": "OpenShellBackend",
+      "workload": {
+        "roundsPerSample": 3,
+        "operationsPerRound": [
+          "save",
+          "rename",
+          "create",
+          "delete-renamed",
+          "delete-created"
+        ],
+        "warmups": 1,
+        "samples": 8
+      },
+      "fixture": {
+        "beforeBytes": 4000,
+        "beforeSha256": "bc98307afa2a5bb426db0207154c1dc8727668aff381d943660bd9b50b577c2b",
+        "afterBytes": 4000,
+        "afterSha256": "6c354f7ecaf342fa5abff23465abfbed34646b8f92b74f74f1c14a62e6aa9eed"
+      },
+      "retained": {
+        "snapshots": 81,
+        "lastKnown": 0,
+        "identities": 0,
+        "timers": 0,
+        "baselineSha256": "116ba944abbd42cbbf5635beddeb5ed9c3e3ea6be0521fc07b24d13972ad0f12"
+      },
+      "recovery": {
+        "manifests": {
+          "save:complete:saved": 27,
+          "rename:complete:renamed": 27
+        },
+        "phases": {
+          "save:temporary-ready": 27,
+          "save:source-held": 27,
+          "save:held-validated": 27,
+          "save:target-installed": 27,
+          "rename:source-inspected": 27,
+          "rename:source-held": 27,
+          "rename:target-installed": 27
+        },
+        "artifactBytes": 432000,
+        "artifactCount": 108,
+        "artifactsSha256": "edcc630ba2406d83081d7c62c9878bd2499f371d94274e96ad66bf9d23a6abe2"
+      },
+      "emissions": {
+        "file-update": 162,
+        "recovery": 27
+      },
+      "samplesMs": [
+        438.4815829999999,
+        449.42100000000005,
+        450.0944579999998,
+        457.6901660000003,
+        465.43429100000003,
+        472.09054100000003,
+        474.49420800000007,
+        469.4005830000001
+      ]
+    }
+  ]
+}

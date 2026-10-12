@@ -245,8 +245,8 @@ Internals:
   dependency. Add observation behavior here through explicit snapshot, read,
   import, save/create/delete/detach/rename/move recording operations.
 - `OpenShellBackend` retains workspace authorization, SDK event routing,
-  session/context registration, ordered filesystem mutations, and their
-  post-await checks. `snapshotInputs(context, input)` recursively collects
+  session/context registration, and the current-context predicates used by
+  filesystem workflows. `snapshotInputs(context, input)` recursively collects
   tool-call file paths, uses the authorized backend read, then records the
   baseline through the observation owner. Imported-file baselines and direct
   mutation results are recorded after the existing backend operations.
@@ -262,12 +262,24 @@ Internals:
   has the same identity and emits `movedFrom`; ambiguous or unsupported
   identities remain ordinary delete/add observations. `SKIP_DIRS` also supplies
   the backend's external-copy exclusions.
+- `src/main/workspace-mutations.ts` owns serialized workspace import, save,
+  create, delete, detach, rename, and move workflows, including confinement,
+  recovery phase ordering, rollback, and observation recording. Its supported
+  interface mirrors those backend methods; the backend remains their public
+  IPC-facing facade. The owner receives the existing operation coordinator,
+  recovery storage, and observation instances, a lazily delegated phase hook,
+  and three backend authority callbacks: context lookup, current-watch checks,
+  and guarded recovery emission. It creates no session registry or duplicated
+  state, and imports no SDK or backend implementation. Preserve the existing
+  validation and post-await check positions when adding mutation behavior.
+  Standalone writes retain their distinct backend capability and failure policy.
 - `src/main/recovery-storage.ts` owns recovery storage selection, transaction
   manifests, artifact inventory, reconciliation, migration, and retention.
   Its operations receive a captured workspace root and, where required, a
   current-activation predicate. It has no session, SDK, IPC, or focused-window
-  dependency. `OpenShellBackend` retains workspace authorization, mutation
-  ordering and post-await checks, recovery emissions, and OS artifact opening.
+  dependency. `WorkspaceMutations` preserves transaction/mutation sequencing;
+  `OpenShellBackend` retains workspace authority, guarded recovery emissions,
+  activation reconciliation, and OS artifact opening.
   New recovery transactions live under `.git/orbit-recovery/<timestamp>-<uuid>`
   when `.git` is a directory on the workspace filesystem. Otherwise they use
   a workspace-specific hidden sibling directory on that filesystem. A non-Git
