@@ -1,0 +1,130 @@
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AgentFileState, FileUpdate, FileWriteIdentity, SessionInfo } from "@shared/types";
+import type { OpenShellApi } from "../../preload";
+import { useWorkspaceEditor } from "./use-workspace-editor";
+
+const first: SessionInfo = { id: "first", directory: "/first", workspace: { id: "workspace-first", generation: 1 } };
+const second: SessionInfo = { id: "second", directory: "/second", workspace: { id: "workspace-second", generation: 2 } };
+let editor: ReturnType<typeof useWorkspaceEditor>;
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+describe("workspace editor authority", () => {
+  let root: Root;
+  let container: HTMLDivElement;
+  const sessionRef = { current: first as SessionInfo | null };
+  const panelsRef = { current: [first, second] };
+  const agentFilesRef = { current: {} as Record<string, Map<string, AgentFileState>> };
+  const notify = vi.fn();
+  const focusSession = vi.fn((id: string) => { sessionRef.current = panelsRef.current.find((panel) => panel.id === id) ?? null; });
+  const panelFor = (workspace: SessionInfo["workspace"]) => panelsRef.current.find((panel) => panel.workspace.id === workspace.id && panel.workspace.generation === workspace.generation) ?? null;
+  function Probe() {
+    editor = useWorkspaceEditor({ sessionRef, panelsRef, panelFor, focusSession, agentFilesRef, notify });
+    return null;
+  }
+  const render = async () => act(async () => root.render(<Probe />));
+  beforeEach(async () => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    sessionRef.current = first;
+    panelsRef.current = [first, second];
+    agentFilesRef.current = {};
+    notify.mockReset();
+    focusSession.mockClear();
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    window.openshell = {
+      readFile: async () => "saved",
+      writeFile: async () => {},
+      writeStandalone: async () => {},
+      openExternal: async () => ({ kind: "standalone", path: "/outside/file", content: "outside" })
+    } as unknown as OpenShellApi;
+    await render();
+  });
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("rejects a captured read after its workspace generation is replaced", async () => {
+    const read = deferred<string>();
+    window.openshell.readFile = async () => read.promise;
+    const opening = editor.openFile("file");
+    panelsRef.current = [second];
+    sessionRef.current = second;
+    await render();
+    await act(async () => { read.resolve("old"); await opening; });
+    expect(editor.tabs).toEqual([]);
+    expect(editor.unsavedEditorFiles).toEqual([]);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("uses synchronous focused-session updates and the last-panel standalone fallback", async () => {
+    sessionRef.current = second;
+    await act(async () => editor.openFile("second-file"));
+    expect(editor.tabs.map((tab) => tab.path)).toEqual(["second-file"]);
+    sessionRef.current = null;
+    await act(async () => editor.openExternalPath("/outside/file"));
+    expect(focusSession).toHaveBeenCalledWith(second.id);
+    expect(editor.tabs.map((tab) => tab.path)).toEqual(["second-file", "/outside/file"]);
+  });
+
+  it("retains dirty buffers when subscription cleanup cancels an in-flight save", async () => {
+    const write = deferred<void>();
+    window.openshell.writeFile = async () => write.promise;
+    await act(async () => editor.openFile("file"));
+    act(() => editor.editContent("file", "changed"));
+    const saving = editor.saveTab("file");
+    await act(async () => { await Promise.resolve(); });
+    editor.cancelAll();
+    await act(async () => { write.resolve(); await saving; });
+    expect(editor.tabs[0]).toMatchObject({ content: "changed", saved: "saved", dirty: true });
+  });
+
+  it("classifies echoes before applying tabs and keeps newer external conflicts", async () => {
+    const write = deferred<void>();
+    let identity!: FileWriteIdentity;
+    window.openshell.writeFile = async (_workspace, _path, _content, id) => { identity = id; return write.promise; };
+    await act(async () => editor.openFile("file"));
+    act(() => editor.editContent("file", "changed"));
+    const saving = editor.saveTab("file");
+    await act(async () => { await Promise.resolve(); });
+    const echo: FileUpdate = { workspace: first.workspace, sessionID: first.id, path: "file", content: "changed", deleted: false, baseline: { kind: "known", content: "saved" }, write: identity };
+    const origin = editor.prepareFileUpdate(echo);
+    expect(origin).toBe("echo");
+    act(() => editor.applyFileUpdate(echo, origin));
+    expect(editor.tabs[0].dirty).toBe(true);
+    const external = { ...echo, content: "external", write: undefined };
+    act(() => editor.applyFileUpdate(external, editor.prepareFileUpdate(external)));
+    await act(async () => { write.resolve(); await saving; });
+    expect(editor.tabs[0]).toMatchObject({ content: "changed", dirty: true, conflict: { content: "external" } });
+  });
+
+  it("keeps dirty files whose workspace is closed in the unsaved inventory", async () => {
+    await act(async () => editor.openFile("file"));
+    act(() => editor.editContent("file", "changed"));
+    panelsRef.current = [second];
+    sessionRef.current = second;
+    await render();
+    expect(editor.unsavedEditorFiles).toMatchObject([{ workspaceID: first.workspace.id, sessionID: null, workspace: null, path: "file" }]);
+    let saved = true;
+    await act(async () => { saved = await editor.saveAllEditorFiles(); });
+    expect(saved).toBe(false);
+    expect(notify).toHaveBeenCalledWith(expect.stringContaining("its workspace is closed"), "error");
+  });
+
+  it("preserves captured-active rename semantics independently of the latest focused tab", async () => {
+    await act(async () => editor.openFile("old"));
+    await act(async () => editor.openFile("other"));
+    expect(editor.activePath).toBe("other");
+    act(() => editor.renameTabs(first.workspace, "old", "new", "new", "old"));
+    expect(editor.activePath).toBe("new");
+    expect(editor.tabs.map((tab) => tab.path)).toEqual(["new", "other"]);
+  });
+});

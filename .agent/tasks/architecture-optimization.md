@@ -52,7 +52,8 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 3b | Bookmark, panel projection and renderer contract owners | complete | 138 targeted tests; 1103 staged-checkpoint tests/type/docs/fitness/build; independent hydration/dependency review | 865c1aa |
 | 2e | DevTools lifecycle owner | complete | 21 targeted tests; 1111 staged canonical tests/type/docs/fitness/build; independent AST review; native picker/Escape/F12/close-reopen and compiled source denial | 8e0c108 |
 | 4d | Recursive Explorer presentation owner | complete | 51 targeted tests; 1111 staged canonical tests/type/docs/fitness/build; independent AST review; native menu/open/rename cancellation; native drag unverified | 545a170 |
-| 2g | Release update window owner | complete | 19 targeted tests; isolated canonical gate; independent AST/failure review; signed install unverified | checkpoint pending |
+| 2g | Release update window owner | complete | 19 targeted tests; isolated canonical gate; independent AST/failure review; signed install unverified | 0bc986a |
+| 3c | Workspace editor state and persistence owner | complete | 147 targeted tests; repeated87focused tests; independent callback/ref/cancellation review; isolated canonical gate | checkpoint pending |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
@@ -119,3 +120,5 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - 2026-10-12 — Resumed pending editor/mutation/release-window owners. Fresh independent29 focused owner/updater tests plus87 editor tests are being refreshed; no completion claim. Permanent fitness will record exact moved origins. Editor hook502 inclusive lines contain30 separately checked callbacks; independent composition-only count96. Signed release install remains external/unverified.
 
 - 2026-10-12 — Release controller staged canonical gate passed1118 tests/type/docs/fitness/build. Fresh native platform/trust/PTY/watcher checks passed. Disposable popup QA verified unsaved guard, failure status, main restoration and reload prevention. Native Return action failed; independent Electron37.10.3 old/current probe proves pre-existing data-page/hash and event-slot issues, recorded separately without a behavior fix. Real signed installation remains unverified.
+
+- 2026-10-12 — Editor staged canonical passed1124 tests/type/docs/fitness/build. Native disposable QA loaded the actual renderer/preload and real mutation/recovery/observer owners: opened notes.txt, edited in Monaco, observed unsaved marker/report, saved with original-content expectation and revision1 strong write ID, verified actual disk content and cleared unsaved report, then closed/reopened the saved tab. This does not exercise the production quit/save dialog or real provider prompting.

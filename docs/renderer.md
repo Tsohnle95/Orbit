@@ -9,8 +9,9 @@ their local interaction state. Monaco is configured in `monaco.ts`.
 ## Store (`store.tsx`)
 
 `store.tsx` remains the public `useStore()` / `usePanel()` facade and the owner
-of session orchestration, workspace generation guards, editor operations and
-backend-event dispatch. `store-contract.ts` owns its renderer-only contracts;
+of session orchestration, workspace generation guards, filesystem action routing
+and backend-event dispatch; editor state and actions belong to
+`use-workspace-editor.ts`. `store-contract.ts` owns its renderer-only contracts;
 existing type imports from the facade remain supported. It depends only on shared
 contracts and renderer domain types, so internal owners can use those types
 without importing the orchestration module.
@@ -341,6 +342,15 @@ Key mechanisms:
   receives an immutable workspace/path/content/revision snapshot, serializes
   writes per workspace/file, and strongly identifies echoes. Save and ⌘S/Ctrl+S
   still save immediately. Dirty clears only for the matching current revision.
+  `use-workspace-editor.ts` owns workspace tab/active-path/single-file records,
+  unsaved-file projection, opening, save/conflict actions and editor reactions to
+  filesystem changes. Its host supplies focused/attached session access,
+  generation validation, focus, captured agent baselines and notifications.
+  Store retains session lifecycle, mutation IPC, agent-file records and tree
+  refresh; it forwards successful mutations through editor domain operations.
+  File updates prepare rename/echo classification before agent-file updates,
+  then apply tab conflicts. Backend-subscription cleanup still cancels editor
+  persistence at its original lifecycle boundary, including subscription reruns.
 - **Lifecycle and conflicts** — reset, close, delete, rename, switch, and
   unmount invalidate expected echoes and in-flight completions. Closing a dirty
   tab saves it first; unresolved conflicts keep the tab open. Any dirty tab in

@@ -705,6 +705,20 @@
       "nesting": 5,
       "origin": "src/main/index.ts:updateOrbitApp#1",
       "reason": "Moved release progress-window workflow byte-equivalent after receiver qualification; preserves timer, close gate, dynamic main/unsaved reads and failure cleanup. Original128-line ceiling; cannot grow."
+    },
+    "src/renderer/src/use-workspace-editor.ts:useWorkspaceEditor#1": {
+      "codeLines": 502,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "origin": "src/renderer/src/store.tsx:StoreBody#1 editor state/persistence/action slices",
+      "reason": "Cohesive editor hook owns records, refs and persistence. Inclusive502 lines count30 separately guarded nested callbacks; independently measured composition-only body is96 token-code lines. No subscriptions/effects or session authority. Exact composition ceiling cannot grow."
+    },
+    "src/renderer/src/use-workspace-editor.ts:useWorkspaceEditor/openFile#1": {
+      "codeLines": 100,
+      "cyclomatic": 25,
+      "nesting": 5,
+      "origin": "src/renderer/src/store.tsx:StoreBody/openFile#1",
+      "reason": "Moved unchanged generation-confined read/open action; retains binary, size, snapshot and stale-read guards. Original complexity25; cannot grow."
     }
   },
   "edgeExceptions": [
@@ -827,6 +841,13 @@
       "allowedFrom": [
         "src/main/index.ts"
       ]
+    },
+    {
+      "owner": "workspace editor state",
+      "targetPrefix": "src/renderer/src/use-workspace-editor.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
+      ]
     }
   ],
   "pureOwners": [
@@ -945,6 +966,16 @@
       ],
       "allowedExternal": [
         "electron"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-workspace-editor.ts",
+      "allowedLocal": [
+        "src/shared/types.ts",
+        "src/renderer/src/editor-persistence.ts"
+      ],
+      "allowedExternal": [
+        "react"
       ]
     }
   ]
