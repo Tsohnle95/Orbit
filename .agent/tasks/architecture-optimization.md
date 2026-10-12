@@ -49,7 +49,8 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 5b | Confirmed dead exports/dependencies and markdown type cycle | complete | 34 markdown tests; 66 unused packages removed, no retained version changes; independent review; 1,092 canonical tests/type/docs/fitness/build | 22eed79 |
 | 6a | Permanent architecture enforcement and reproducible baseline | complete | 28 adversarial/parser tests; unchanged38,430 baseline; canonical/CI wiring; independentdownward-ratchet review | c0950fa |
 | 2d | Filesystem observation owner | complete | 105 targeted native tests; 1094 staged-checkpoint tests/type/docs/fitness/build; platform with native close/reopen and rename/move; exact moved-method independent review | 8970569 |
-| 3b | Bookmark, panel projection and renderer contract owners | complete | 138 targeted tests; 1103 staged-checkpoint tests/type/docs/fitness/build; independent hydration/dependency review | commit recorded at next checkpoint |
+| 3b | Bookmark, panel projection and renderer contract owners | complete | 138 targeted tests; 1103 staged-checkpoint tests/type/docs/fitness/build; independent hydration/dependency review | 865c1aa |
+| 2e | DevTools lifecycle owner | complete | 21 targeted tests; 1111 staged canonical tests/type/docs/fitness/build; independent AST review; native picker/Escape/F12/close-reopen and compiled source denial | commit recorded at next checkpoint |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
@@ -108,3 +109,5 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - 2026-10-11 — Credential/session presentation checkpoint d8892e3. Interactive QA became unavailable when the Mac locked; computer-use instructions require a manual unlock. Request is pending while independent source/native filesystem checks continue; no post-cleanup GUI pass claimed.
 
 - 2026-10-11 — User unlocked the Mac; native fixture resumed. Remaining reviewed owner slices: observation, bookmark/panel projection, DevTools and Explorer presenters. These are ownership extractions, not code reduction or performance gains. Observer native105 tests passed; benchmark differences are inconclusive. Canonical integration gates and checkpoints pending.
+
+- 2026-10-11 — Native disposable fixture confirmed DevTools DOM.enable→Overlay.enable→searchForNode, one picked Explorer span selected in Elements via disable→DOM.getBoxModel, Escape cancellation and bottom docking. Frontend F12 closes; reopening reinstalls polling. Compiled CSS bundle source links remain denied. No user app/profile was changed.

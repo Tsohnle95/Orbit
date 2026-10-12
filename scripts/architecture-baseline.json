@@ -691,6 +691,13 @@
       "nesting": 5,
       "reason": "Moved existing panel status/queue fallback projection; complexity33 is unchanged. Six destructuring lines expose explicit inputs. Narrow simplification requires equivalent status-presence and queue behavior.",
       "origin": "src/renderer/src/store.tsx:StoreBody/panelViews#1"
+    },
+    "src/main/devtools-controller.ts:DevToolsController/handleInput#1": {
+      "codeLines": 100,
+      "cyclomatic": 21,
+      "nesting": 5,
+      "reason": "Existing before-input-event DevTools branches moved unchanged from createWindow. Modifier and picker rules retain their original separate early returns; budget is lower than the original handler and cannot grow.",
+      "origin": "src/main/index.ts:createWindow/newWin.webContents.on callback:before-input-event#1"
     }
   },
   "edgeExceptions": [
@@ -791,6 +798,13 @@
       "allowedFrom": [
         "src/renderer/src/store.tsx"
       ]
+    },
+    {
+      "owner": "window DevTools controller",
+      "targetPrefix": "src/main/devtools-controller.ts",
+      "allowedFrom": [
+        "src/main/index.ts"
+      ]
     }
   ],
   "pureOwners": [
@@ -889,6 +903,15 @@
       ],
       "allowedExternal": [
         "react"
+      ]
+    },
+    {
+      "file": "src/main/devtools-controller.ts",
+      "allowedLocal": [
+        "src/main/inspect-picker.ts"
+      ],
+      "allowedExternal": [
+        "electron"
       ]
     }
   ]

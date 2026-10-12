@@ -481,6 +481,12 @@ updater also checks the same dirty-file list before starting.
 Backend and terminal shutdown starts only after the window has closed.
 `before-input-event` intercepts ⌘W / Ctrl+W so it never closes the window.
 Editor word wrap is always enabled.
+`src/main/devtools-controller.ts` owns DevTools attachment, picker lifecycle,
+frontend polling and source-link dispatch. Main keeps one controller across
+window lifetimes, cancels its picker when creating a window, and supplies the
+application-confined resolver from `source-resolver.ts`. Window security and
+IPC sender validation remain in `index.ts`.
+
 DevTools follow the browser conventions: F12 toggles a
 bottom-docked inspector (never detached) and ⌘⇧C (Ctrl+Shift+C) toggles
 element-picking mode. Hover highlighting runs over the Chrome DevTools
