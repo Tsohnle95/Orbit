@@ -57,7 +57,7 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 2f | Workspace mutation workflow owner | complete | 111 native targeted tests; identical11method bodies and repeated durable-workflow benchmark; isolated canonical gate; independent review | 840bc7a |
 | 3d | Session catalog and selection state owner | complete | 152 targeted tests; exact4action initializer ASTs; isolated canonical gate; no new effect/subscription | 8a42e53 |
 | 5c | Confirmed SDK type and retained parser consolidation | complete | 61 targeted tests; exactparser bodies/session-reopen JS; no cycles/side effects; 26net production LOC; isolated canonical gate | dd78940 |
-| 4e | Verified duplicate style declarations | complete | 14production LOC; 2012declarationvectors and2090remainingoccurrences identical; specificity proof; isolated canonical gate | checkpoint pending |
+| 4e | Verified duplicate style declarations | complete | 14production LOC; 2012declarationvectors and2090remainingoccurrences identical; specificity proof; isolated canonical gate | 0db849e |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
@@ -134,3 +134,5 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - 2026-10-12 — Confirmed consolidation staged canonical passed1147 tests/type/docs/fitness/build. Three parser bodies remain AST-identical and startup-pure; dormant features preserved. Existing shared token type substitutes erased duplicate shapes with unchanged session-reopen JS; one unused static forwarding method removed. Net26 production LOC. Independent1910-line SDK/session-facade exception accepted under frozen single-SDK-owner routing and individually constrained methods.
 
 - 2026-10-12 — Style consolidation staged canonical passed1147 tests/type/docs/fitness/build. Independent Sass/PostCSS reparse confirms2012unique selector/context vectors,2102ordered occurrences, exact2090other-occurrence order, and specificity/mutuallyexclusive-slot proof for all5groups. Source14LOC removed; CSS280bytes smaller, no runtime speed claim. Permanent compact22KB evidence retains source/compiler hashes and reproduction procedure; megabyte temporary vectors excluded from Git.
+
+- 2026-10-12 — Intermediate downward guard ratchet computed from the completed184-module checkpoint only: Store3770→2835 ceiling, retire Index/FileSidebar module exceptions, remove/tighten obsolete function keys62→55, preserve22reviewed moved/composition exceptions, known files174→184. Inventory remains an uncommitted separately reviewed slice; no violation is automatically blessed.

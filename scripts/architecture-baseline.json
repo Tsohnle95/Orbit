@@ -9,9 +9,11 @@
     "nesting": 5
   },
   "knownFiles": [
+    "src/main/app-update-controller.ts",
     "src/main/app-updater-window.ts",
     "src/main/app-updater.ts",
     "src/main/backend-event-loop.ts",
+    "src/main/devtools-controller.ts",
     "src/main/exec-path.ts",
     "src/main/file-baseline.ts",
     "src/main/index.ts",
@@ -54,6 +56,8 @@
     "src/main/w3c-validation.ts",
     "src/main/window-sizing.ts",
     "src/main/workspace-location.ts",
+    "src/main/workspace-mutations.ts",
+    "src/main/workspace-observation.ts",
     "src/main/workspace-security.ts",
     "src/main/workspace-target.ts",
     "src/preload/index.ts",
@@ -73,6 +77,7 @@
     "src/renderer/src/components/ComposerModelMenu.tsx",
     "src/renderer/src/components/EditorPane.tsx",
     "src/renderer/src/components/ErrorBoundary.tsx",
+    "src/renderer/src/components/ExplorerTree.tsx",
     "src/renderer/src/components/ExternalLink.tsx",
     "src/renderer/src/components/FileIcons.tsx",
     "src/renderer/src/components/FileSidebar.tsx",
@@ -147,8 +152,10 @@
     "src/renderer/src/opencode-markdown/render.ts",
     "src/renderer/src/opencode-markdown/tooltip.ts",
     "src/renderer/src/opencode-task-agent.ts",
+    "src/renderer/src/panel-projection.ts",
     "src/renderer/src/reveal.ts",
     "src/renderer/src/session-activity.ts",
+    "src/renderer/src/store-contract.ts",
     "src/renderer/src/store.tsx",
     "src/renderer/src/streaming.ts",
     "src/renderer/src/styles/_agent-prompt-dock.scss",
@@ -172,6 +179,9 @@
     "src/renderer/src/terminal-state.ts",
     "src/renderer/src/theme.tsx",
     "src/renderer/src/use-sass-watch.ts",
+    "src/renderer/src/use-saved-workspaces.ts",
+    "src/renderer/src/use-session-selection.ts",
+    "src/renderer/src/use-workspace-editor.ts",
     "src/renderer/src/validation-report.ts",
     "src/renderer/src/w3c-validation.ts",
     "src/shared/errors.ts",
@@ -186,7 +196,7 @@
   ],
   "modules": {
     "src/renderer/src/store.tsx": {
-      "loc": 3770,
+      "loc": 2835,
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     },
     "src/main/opencode.ts": {
@@ -196,20 +206,12 @@
     "src/renderer/src/opencode-markdown/markdown-inline-code-kind.ts": {
       "loc": 1908,
       "reason": "Cohesive pinned Linguist filename/extension table; retain readable data, do not compress or move out of the production metric."
-    },
-    "src/main/index.ts": {
-      "loc": 1102,
-      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
-    },
-    "src/renderer/src/components/FileSidebar.tsx": {
-      "loc": 958,
-      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     }
   },
   "functions": {
     "src/renderer/src/store.tsx:StoreBody#1": {
-      "codeLines": 3271,
-      "cyclomatic": 37,
+      "codeLines": 2545,
+      "cyclomatic": 22,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -220,7 +222,7 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage#1": {
-      "codeLines": 620,
+      "codeLines": 563,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -238,8 +240,8 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage/processMessage#1": {
-      "codeLines": 566,
-      "cyclomatic": 248,
+      "codeLines": 509,
+      "cyclomatic": 240,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -274,7 +276,7 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/main/index.ts:createWindow#1": {
-      "codeLines": 260,
+      "codeLines": 152,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -333,12 +335,6 @@
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
-    "src/main/index.ts:updateOrbitApp#1": {
-      "codeLines": 128,
-      "cyclomatic": 20,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
     "src/renderer/src/components/MobileSetup.tsx:MobileSetup#1": {
       "codeLines": 128,
       "cyclomatic": 20,
@@ -347,12 +343,6 @@
     },
     "src/renderer/src/opencode-markdown/markdown-engine.ts:createMarkdownWorkerHandler#1": {
       "codeLines": 120,
-      "cyclomatic": 20,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/main/opencode.ts:OpenShellBackend/writeFile#1": {
-      "codeLines": 110,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -419,7 +409,7 @@
     },
     "src/renderer/src/store.tsx:StoreBody/commitName#1": {
       "codeLines": 100,
-      "cyclomatic": 23,
+      "cyclomatic": 21,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -441,12 +431,6 @@
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
-    "src/main/opencode.ts:OpenShellBackend/onFsChanged#1": {
-      "codeLines": 100,
-      "cyclomatic": 38,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
     "src/renderer/src/store.tsx:StoreBody/reopenSession#1": {
       "codeLines": 100,
       "cyclomatic": 27,
@@ -459,12 +443,6 @@
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
-    "src/renderer/src/store.tsx:StoreBody/panelViews#1": {
-      "codeLines": 100,
-      "cyclomatic": 33,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
     "src/renderer/src/components/OpenCodeFile.tsx:OpenCodeFile/useLayoutEffect callback:host#2": {
       "codeLines": 100,
       "cyclomatic": 21,
@@ -474,12 +452,6 @@
     "src/renderer/src/streaming.ts:updateStreamingState#1": {
       "codeLines": 100,
       "cyclomatic": 23,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/main/opencode.ts:OpenShellBackend/importExternal/this.mutations.run callback:root#1": {
-      "codeLines": 100,
-      "cyclomatic": 21,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -516,12 +488,6 @@
     "src/main/runtimes/deepseek/deepseek-adapter.ts:DeepSeekRuntimeAdapter/subscribe/pump#1": {
       "codeLines": 100,
       "cyclomatic": 28,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/renderer/src/store.tsx:StoreBody/openFile#1": {
-      "codeLines": 100,
-      "cyclomatic": 25,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -564,12 +530,6 @@
     "src/main/sass-watch.ts:SassWatchManager/run/anonymous#1": {
       "codeLines": 100,
       "cyclomatic": 21,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/main/index.ts:createWindow/newWin.webContents.on callback:before-input-event#1": {
-      "codeLines": 100,
-      "cyclomatic": 26,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
