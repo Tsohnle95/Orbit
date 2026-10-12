@@ -12,11 +12,11 @@ interface HistoryEntry {
   view?: unknown;
 }
 
-function record(value: unknown): Record<string, unknown> | null {
+export function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
 
-function blocks(value: unknown): Record<string, unknown>[] {
+export function blocks(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => record(item) !== null) : [];
 }
 
@@ -24,7 +24,7 @@ function blockText(value: unknown): string {
   return blocks(value).filter((item) => item.type === "text").map((item) => String(item.text ?? "")).join("\n");
 }
 
-function parsedArguments(value: unknown): unknown {
+export function parsedArguments(value: unknown): unknown {
   if (typeof value !== "string") return value;
   try {
     return JSON.parse(value);

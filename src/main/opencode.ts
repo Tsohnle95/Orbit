@@ -315,10 +315,6 @@ export class OpenShellBackend {
 
   private static streamFailureLimit = 3;
 
-  private static serverVersionPredicate(installedVersion: string | null): (version: string) => boolean {
-    return serverVersionPredicate(installedVersion);
-  }
-
   /** Version of the V2 `opencode` on PATH, or null when it cannot be probed. */
   private async installedServerVersion(): Promise<string | null> {
     return new Promise((resolve) => {
@@ -338,7 +334,7 @@ export class OpenShellBackend {
   }
 
   async connect(): Promise<boolean> {
-    const version = OpenShellBackend.serverVersionPredicate(await this.installedServerVersion());
+    const version = serverVersionPredicate(await this.installedServerVersion());
     const existing = await this.discoverEndpoint(version);
     const endpoint = existing?.endpoint ?? (await this.ensureBounded(version));
     if (!endpoint) return false;
@@ -1079,12 +1075,7 @@ export class OpenShellBackend {
       parentID?: string;
       agent?: string;
       cost?: number;
-      tokens?: {
-        input?: number;
-        output?: number;
-        reasoning?: number;
-        cache?: { read?: number; write?: number };
-      };
+      tokens?: SessionTokenUsage;
       location?: { directory?: string };
       data?: {
         id?: string;
@@ -1093,12 +1084,7 @@ export class OpenShellBackend {
         parentID?: string;
         agent?: string;
         cost?: number;
-        tokens?: {
-          input?: number;
-          output?: number;
-          reasoning?: number;
-          cache?: { read?: number; write?: number };
-        };
+        tokens?: SessionTokenUsage;
         location?: { directory?: string };
       };
     };

@@ -190,8 +190,8 @@
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     },
     "src/main/opencode.ts": {
-      "loc": 2601,
-      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
+      "loc": 1910,
+      "reason": "Reviewed protected OpenCode SDK/session integration facade: SDK-only routing, context/generation/SSE authority and distinct bounded read/standalone capabilities remain here. Watch, recovery engine and mutation transactions are separate owners. Frozen1910 ceiling; re-evaluate helpers/capability boundaries before growth."
     },
     "src/renderer/src/opencode-markdown/markdown-inline-code-kind.ts": {
       "loc": 1908,

@@ -415,3 +415,11 @@ The cohesive inline-code language table is retained as baseline size debt;
 compressing data literals or moving them outside the measured scope would not
 improve responsibility ownership. See [operations](operations.md#architecture-fitness-and-measurement)
 for commands, measurement semantics, and exception review.
+
+The reviewed `opencode.ts` size exception retains OpenCode SDK/service/session
+authority under the protected single-SDK-owner policy. Watcher, recovery engine
+and transaction workflows live in their private owners. Remaining read and
+standalone-file capabilities have distinct confinement/failure semantics; their
+methods remain individually constrained. The integration ceiling ratchets down;
+new growth requires reassessing helper and capability ownership rather than
+raising the baseline automatically.

@@ -1,4 +1,5 @@
 import type { RuntimeEvent } from "../runtime-adapter";
+import { blocks, parsedArguments as parseArguments, record } from "./deepseek-events";
 
 interface NativeEvent {
   type: string;
@@ -12,23 +13,6 @@ interface StreamEnvelope {
   eventType: string;
   data: Record<string, unknown>;
   created: number;
-}
-
-function record(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
-}
-
-function blocks(value: unknown): Record<string, unknown>[] {
-  return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => record(item) !== null) : [];
-}
-
-function parseArguments(value: unknown): unknown {
-  if (typeof value !== "string") return value;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return value;
-  }
 }
 
 function resultContent(message: Record<string, unknown> | null): Array<Record<string, unknown>> {

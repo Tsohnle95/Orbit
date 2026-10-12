@@ -110,3 +110,15 @@ describe("DeepSeekStreamProjector", () => {
     });
   });
 });
+
+it.each([
+  ["{broken", "{broken"],
+  ["null", null],
+  ["false", false],
+  ['{"file_path":"README.md"}', { file_path: "README.md" }],
+  [{ file_path: "README.md" }, { file_path: "README.md" }]
+])("retains live native tool arguments for %j", (argumentsValue, expected) => {
+  const projector = new DeepSeekStreamProjector();
+  expect(projector.project("s", event("tool/call", 1, { callId: "call", name: "read", arguments: argumentsValue })))
+    .toMatchObject([{ type: "stream.event", eventType: "session.tool.called", data: { input: expected } }]);
+});

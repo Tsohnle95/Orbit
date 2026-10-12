@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deepSeekRuntimeEvent, deepSeekTranscript } from "./deepseek-events";
+import { blocks, deepSeekRuntimeEvent, deepSeekTranscript, parsedArguments, record } from "./deepseek-events";
 
 describe("deepSeekTranscript", () => {
   it("projects user, assistant, tool, and todo events", () => {
@@ -44,4 +44,41 @@ describe("deepSeekTranscript", () => {
     expect(deepSeekRuntimeEvent({ type: "session/event", sessionId: "s", event: { type: "turn/end", data: { reason: { kind: "error", error: { message: "Provider failed" } } } } })).toEqual({ type: "execution.error", code: "DEEPSEEK_TURN_FAILED", message: "Provider failed" });
     expect(deepSeekRuntimeEvent({ type: "session/event", sessionId: "s", event: { type: "unknown" } })).toBeNull();
   });
+});
+
+describe("native event value acceptance", () => {
+  it.each([
+    ["{broken", "{broken"],
+    ["null", null],
+    ["false", false],
+    ['{"file_path":"README.md"}', { file_path: "README.md" }],
+    [{ file_path: "README.md" }, { file_path: "README.md" }]
+  ])("retains JSON parse and passthrough behavior for %j", (argumentsValue, expected) => {
+    const result = deepSeekTranscript([{ event: {
+      type: "assistant/message", seq: 1,
+      data: { message: { content: [null, [], { type: "tool-call", id: "call", name: "read", arguments: argumentsValue }] } }
+    } }]);
+    const assistant = result.transcript[0];
+    expect(assistant?.kind).toBe("assistant");
+    if (assistant?.kind !== "assistant") throw new Error("assistant transcript missing");
+    expect(assistant.parts).toHaveLength(1);
+    expect(assistant.parts[0]).toMatchObject({ kind: "tool", tool: { inputValue: expected } });
+  });
+
+  it("ignores an array masquerading as an assistant message", () => {
+    const message = Object.assign([], { content: [{ type: "text", text: "hidden" }] });
+    expect(deepSeekTranscript([{ event: { type: "assistant/message", seq: 1, data: { message } } }]).transcript).toEqual([]);
+  });
+});
+
+it("preserves native record identity, fresh filtered arrays, and nonstring argument identity", () => {
+  const value = { type: "text", text: "body" };
+  expect(record(value)).toBe(value);
+  expect(record([])).toBeNull();
+  expect(record(null)).toBeNull();
+  expect(blocks(null)).not.toBe(blocks(null));
+  const filtered = blocks([null, [], value]);
+  expect(filtered).toEqual([value]);
+  expect(filtered[0]).toBe(value);
+  expect(parsedArguments(value)).toBe(value);
 });
