@@ -48,7 +48,8 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 5a | Credentials and shared session presentation | complete | 72 targeted tests, read-order/failure-path characterization; 26 net LOC; independent review; 1,092 canonical tests/type/docs/fitness/build, repeated after 66-package prune | d8892e3 |
 | 5b | Confirmed dead exports/dependencies and markdown type cycle | complete | 34 markdown tests; 66 unused packages removed, no retained version changes; independent review; 1,092 canonical tests/type/docs/fitness/build | 22eed79 |
 | 6a | Permanent architecture enforcement and reproducible baseline | complete | 28 adversarial/parser tests; unchanged38,430 baseline; canonical/CI wiring; independentdownward-ratchet review | c0950fa |
-| 2d | Filesystem observation owner | complete | 105 targeted native tests; 1094 staged-checkpoint tests/type/docs/fitness/build; platform with native close/reopen and rename/move; exact moved-method independent review | commit recorded at next checkpoint |
+| 2d | Filesystem observation owner | complete | 105 targeted native tests; 1094 staged-checkpoint tests/type/docs/fitness/build; platform with native close/reopen and rename/move; exact moved-method independent review | 8970569 |
+| 3b | Bookmark, panel projection and renderer contract owners | complete | 138 targeted tests; 1103 staged-checkpoint tests/type/docs/fitness/build; independent hydration/dependency review | commit recorded at next checkpoint |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 

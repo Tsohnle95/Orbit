@@ -2,13 +2,29 @@
 
 > **Document role:** canonical owner for renderer state ownership, renderer-side invariants, major actions, and component responsibilities. Keep presentation minutiae in source/tests unless they encode a non-obvious invariant.
 
-`src/renderer/src/` — React 19 app. All state lives in one store
-(`store.tsx`); components are presentational consumers of it. Monaco is
-configured in `monaco.ts`.
+`src/renderer/src/` — React 19 app. `store.tsx` exposes shared application state
+and orchestrates its domain owners; components consume that facade and retain
+their local interaction state. Monaco is configured in `monaco.ts`.
 
 ## Store (`store.tsx`)
 
-Exposed via `useStore()` (context). State:
+`store.tsx` remains the public `useStore()` / `usePanel()` facade and the owner
+of session orchestration, workspace generation guards, editor operations and
+backend-event dispatch. `store-contract.ts` owns its renderer-only contracts;
+existing type imports from the facade remain supported. It depends only on shared
+contracts and renderer domain types, so internal owners can use those types
+without importing the orchestration module.
+
+`use-saved-workspaces.ts` owns bookmark state, hydration, pending mutation replay,
+revision protection and bookmark actions. It receives connection readiness and a
+stable notification callback; main-process storage remains authoritative after
+initialization. Related bookmark behavior belongs in this owner rather than
+session attachment code. `panel-projection.ts` owns the pure panel view derivation
+from session/workspace records and the authoritative chat state. It preserves
+record references and queue ordering without owning subscriptions or caches;
+generation filtering and React memoization remain in the facade.
+
+Exposed state:
 
 | Slice | Shape | Notes |
 |---|---|---|

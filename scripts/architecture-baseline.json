@@ -684,6 +684,13 @@
       "nesting": 5,
       "reason": "Moved unchanged watcher reconciliation branch tree from OpenShellBackend; retains after-await stale guards and file failure semantics. Refactor only with explicit equivalent-behavior review.",
       "origin": "src/main/opencode.ts:OpenShellBackend/onFsChanged#1"
+    },
+    "src/renderer/src/panel-projection.ts:projectPanelViews#1": {
+      "codeLines": 86,
+      "cyclomatic": 33,
+      "nesting": 5,
+      "reason": "Moved existing panel status/queue fallback projection; complexity33 is unchanged. Six destructuring lines expose explicit inputs. Narrow simplification requires equivalent status-presence and queue behavior.",
+      "origin": "src/renderer/src/store.tsx:StoreBody/panelViews#1"
     }
   },
   "edgeExceptions": [
@@ -770,6 +777,20 @@
       "allowedFrom": [
         "src/main/opencode.ts"
       ]
+    },
+    {
+      "owner": "Store bookmark persistence",
+      "targetPrefix": "src/renderer/src/use-saved-workspaces.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
+      ]
+    },
+    {
+      "owner": "Store panel projection",
+      "targetPrefix": "src/renderer/src/panel-projection.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
+      ]
     }
   ],
   "pureOwners": [
@@ -846,6 +867,28 @@
       ],
       "allowedExternal": [
         "node:"
+      ]
+    },
+    {
+      "file": "src/renderer/src/panel-projection.ts",
+      "allowedLocal": [
+        "src/shared/",
+        "src/renderer/src/chat-store.ts",
+        "src/renderer/src/store-contract.ts",
+        "src/renderer/src/session-activity.ts",
+        "src/renderer/src/assistant-status.ts",
+        "src/renderer/src/streaming.ts",
+        "src/renderer/src/message-queue.ts"
+      ],
+      "allowedExternal": []
+    },
+    {
+      "file": "src/renderer/src/use-saved-workspaces.ts",
+      "allowedLocal": [
+        "src/shared/types.ts"
+      ],
+      "allowedExternal": [
+        "react"
       ]
     }
   ]

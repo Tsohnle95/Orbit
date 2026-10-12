@@ -27,7 +27,6 @@ import type {
   PendingFormRequest,
   PromptFile,
   ProviderUsageResult,
-  ProjectInfo,
   RecoveryRecord,
   RuntimeManifest,
   SessionInboxEntry,
@@ -53,7 +52,6 @@ import {
   reconcileAssistantProjection,
   snapshotChatState,
   buildRateLimitNotice,
-  findTurnStartedAt,
   type ChatDirectoryState,
   type ChatStateSnapshot,
   type RateLimitAction
@@ -63,23 +61,14 @@ import {
   touchStreamingSession,
   updateChangedStreamingSessions,
   updateStreamingState,
-  type MessageStreamState,
   type StreamingStore
 } from "./streaming";
-import { IDLE_ACTIVITY, resolveSessionActivity, type SessionActivityResult } from "./session-activity";
-import {
-  getActiveAssistantContext,
-  resolveAssistantStatus,
-  type ActiveAssistantModel,
-  type FormingSummary,
-  type SessionAbortFlag,
-  type WorkingSummary
-} from "./assistant-status";
+import { IDLE_ACTIVITY, resolveSessionActivity } from "./session-activity";
+import type { SessionAbortFlag } from "./assistant-status";
 import {
   addToQueue,
   createMessageQueueTarget,
   getMessageQueueKey,
-  getQueueForTarget,
   loadMessageQueueState,
   persistMessageQueueState,
   removeFromQueue,
@@ -94,25 +83,11 @@ import { EditorPersistence, type SaveSnapshot } from "./editor-persistence";
 import { requestReveal } from "./reveal";
 import { sameWorkspace } from "@shared/generation";
 import { retainSessionRecord } from "@shared/retention";
+import { useSavedWorkspaces } from "./use-saved-workspaces";
+import { projectPanelViews } from "./panel-projection";
+import type { Toast, CtxMenuState, CtxMenuApi, PendingCreate, PanelView, Store } from "./store-contract";
 
-export interface Toast {
-  id: number;
-  text: string;
-  tone: "info" | "error";
-}
-
-export interface CtxMenuState {
-  x: number;
-  y: number;
-  target: TreeEntry | null;
-  workspaceSessionID?: string;
-}
-
-export interface CtxMenuApi {
-  ctxMenu: CtxMenuState | null;
-  openCtxMenu: (x: number, y: number, target: TreeEntry | null, workspaceSessionID?: string) => void;
-  closeCtxMenu: () => void;
-}
+export type { Toast, CtxMenuState, CtxMenuApi, PendingCreate, PanelView, UnsavedEditorFile } from "./store-contract";
 
 const CtxMenuContext = createContext<CtxMenuApi | null>(null);
 
@@ -122,155 +97,11 @@ export function useCtxMenu(): CtxMenuApi {
   return ctx;
 }
 
-export interface PendingCreate {
-  parent: string;
-  kind: "file" | "dir";
-}
-
-export interface PanelView {
-  session: SessionInfo | null;
-  busy: boolean;
-  transcript: TranscriptItem[];
-  todos: TodoItem[];
-  sessionUsage: SessionUsage | null;
-  compactionBaseline: number | null;
-  models: ModelOption[];
-  currentModel: ModelOption | null;
-  agents: AgentOption[];
-  currentAgent: AgentOption | null;
-  activity: SessionActivityResult;
-  assistantStatus: WorkingSummary | null;
-  forming: FormingSummary | null;
-  activeModel: ActiveAssistantModel | null;
-  streaming: MessageStreamState | null;
-  turnStartedAt: number | null;
-  queuedCount: number;
-  queuedMessages: QueuedMessage[];
-  pendingForms: PendingFormRequest[];
-  stagedRevert: SessionRevertStage | null;
-}
-
-export interface UnsavedEditorFile {
-  workspaceID: string;
-  sessionID: string | null;
-  workspace: WorkspaceIdentity | null;
-  path: string;
-  displayPath: string;
-  standalone: boolean;
-}
-
 function ancestorDirs(path: string): string[] {
   const parts = path.split("/");
   const out: string[] = [];
   for (let i = parts.length; i > 0; i--) out.push(parts.slice(0, i).join("/"));
   return out;
-}
-
-interface Store {
-  session: SessionInfo | null;
-  connected: boolean;
-  runtimes: RuntimeManifest[];
-  refreshRuntimes: () => Promise<RuntimeManifest[]>;
-  busy: boolean;
-  todos: TodoItem[];
-  transcript: TranscriptItem[];
-  sessionUsage: SessionUsage | null;
-  providerUsage: ProviderUsageResult[];
-  providerUsageLoading: boolean;
-  tabs: Tab[];
-  unsavedEditorFileCount: number;
-  unsavedEditorFiles: UnsavedEditorFile[];
-  activePath: string | null;
-  singleFile: string | null;
-  agentFiles: Map<string, AgentFileState>;
-  tree: Record<string, TreeEntry[]>;
-  expanded: Set<string>;
-  hiddenPaths: Set<string>;
-  toasts: Toast[];
-  recoveryRecords: RecoveryRecord[];
-  models: ModelOption[];
-  availableModels: ModelOption[];
-  lastModel: ModelOption | null;
-  currentModel: ModelOption | null;
-  agents: AgentOption[];
-  currentAgent: AgentOption | null;
-  approvalMode: ApprovalMode;
-  followUpBehavior: FollowUpBehavior;
-  setFollowUpBehavior: (behavior: FollowUpBehavior) => void;
-  sessions: SessionSummary[];
-  savedWorkspaces: ProjectInfo[];
-  saveWorkspace: () => Promise<void>;
-  removeWorkspace: (directory: string) => void;
-  activeSessions: SessionInfo[];
-  panels: SessionInfo[];
-  workspaceOnlyPanelIDs: Set<string>;
-  panelViews: Record<string, PanelView>;
-  activeSessionID: string | null;
-  focusSession: (sessionID: string) => void;
-  closePanel: (sessionID: string, preserveBusy?: boolean) => void;
-  openSession: (dir: string) => Promise<SessionInfo | null>;
-  addModelPanel: (dir: string) => Promise<void>;
-  openWorkspacePanel: (dir: string) => Promise<void>;
-  selectAddPanel: () => Promise<SessionInfo | null>;
-  selectFolder: () => Promise<void>;
-  selectFile: () => Promise<void>;
-  openFileWorkspace: (file: string) => Promise<SessionInfo | null>;
-  openExternalPath: (absolutePath: string, workspace?: WorkspaceIdentity) => Promise<string | null>;
-  importPaths: (destDir: string, sources: string[]) => Promise<void>;
-  dropIntoExplorer: (paths: string[]) => Promise<void>;
-  openPaths: (paths: string[]) => Promise<void>;
-  dismissChange: (path: string) => void;
-  dismissChanges: () => void;
-  selectPanelDirectory: (workspace: WorkspaceIdentity) => Promise<void>;
-  changePanelDirectory: (workspace: WorkspaceIdentity, dir: string) => Promise<void>;
-  reopenSession: (sessionID: string, silent?: boolean, directoryHint?: string) => Promise<SessionInfo | null>;
-  deleteSession: (sessionID: string) => Promise<void>;
-  loadSessions: () => Promise<void>;
-  sendPrompt: (text: string, files?: PromptFile[], workspace?: WorkspaceIdentity) => Promise<void>;
-  runCommand: (name: string, args?: string, workspace?: WorkspaceIdentity) => Promise<void>;
-  stop: (workspace?: WorkspaceIdentity) => Promise<void>;
-  refreshProviderUsage: () => Promise<void>;
-  loadModels: (workspace?: WorkspaceIdentity) => Promise<void>;
-  switchModel: (id: string, providerID: string, variant?: string, workspace?: WorkspaceIdentity) => Promise<void>;
-  loadAgents: (workspace?: WorkspaceIdentity) => Promise<void>;
-  switchAgent: (id: string, workspace?: WorkspaceIdentity) => Promise<void>;
-  toggleApprovalMode: () => void;
-  openFile: (path: string, opts?: { mode?: "edit" | "diff"; source?: boolean }, workspace?: WorkspaceIdentity) => Promise<void>;
-  closeTab: (path: string) => void;
-  setActive: (path: string) => void;
-  setTabMode: (path: string, mode: "edit" | "diff") => void;
-  editContent: (path: string, content: string) => void;
-  saveTab: (path: string) => Promise<void>;
-  saveAllEditorFiles: () => Promise<boolean>;
-  reloadTab: (path: string) => void;
-  overwriteTab: (path: string) => Promise<void>;
-  mergeTab: (path: string) => void;
-  toggleDir: (path: string) => Promise<void>;
-  ensureRootOpen: () => Promise<void>;
-  revealInFileManager: (path: string) => Promise<void>;
-  replyPermission: (requestID: string, reply: PermissionReply, sessionID?: string) => Promise<void>;
-  removeQueuedMessage: (workspace: WorkspaceIdentity, messageID: string) => void;
-  popQueuedMessage: (workspace: WorkspaceIdentity, messageID: string) => QueuedMessage | null;
-  sendQueuedNow: (workspace: WorkspaceIdentity, messageID: string) => Promise<void>;
-  submitForm: (workspace: WorkspaceIdentity, formID: string, answers: FormAnswers, formSessionID?: string) => Promise<void>;
-  dismissForm: (workspace: WorkspaceIdentity, formID: string, formSessionID?: string) => void;
-  stageRevert: (workspace: WorkspaceIdentity, messageID: string) => Promise<void>;
-  commitStagedRevert: (workspace: WorkspaceIdentity) => Promise<void>;
-  clearStagedRevert: (workspace: WorkspaceIdentity) => Promise<void>;
-  reorderQueuedMessage: (workspace: WorkspaceIdentity, fromID: string, toID: string) => void;
-  pendingCreate: PendingCreate | null;
-  pendingRename: { path: string } | null;
-  startCreate: (parent: string, kind: "file" | "dir") => void;
-  startRename: (path: string) => void;
-  cancelPending: () => void;
-  commitName: (name: string) => Promise<void>;
-  deleteEntry: (path: string, workspace?: WorkspaceIdentity) => Promise<void>;
-  deleteEntries: (paths: string[]) => Promise<void>;
-  removeFromWorkspace: (path: string) => void;
-  moveEntry: (path: string, destDir: string, workspace?: WorkspaceIdentity) => Promise<void>;
-  moveEntries: (paths: string[], destDir: string) => Promise<void>;
-  openRecovery: (id: string) => Promise<void>;
-  acknowledgeRecovery: (id: string) => Promise<void>;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -427,56 +258,10 @@ const EMPTY_TABS: Tab[] = [];
 const EMPTY_AGENT_FILES: Map<string, AgentFileState> = new Map();
 const EMPTY_TREE: Record<string, TreeEntry[]> = {};
 const EMPTY_EXPANDED: Set<string> = new Set();
-const SAVED_WORKSPACES_KEY = "orbit.savedWorkspaces";
 const STALE_SESSION_LAYOUT_KEY = "orbit.sessionLayout";
 const STREAM_SETTLE_MS = 60_000;
 const STREAM_SETTLE_IDLE_MS = 2_000;
 const STREAM_SETTLE_POLL_MS = 1_000;
-
-function workspaceName(directory: string): string {
-  return directory.split(/[\\/]/).filter(Boolean).pop() ?? directory;
-}
-
-function readSavedWorkspaceData(): { workspaces: ProjectInfo[]; present: boolean } {
-  try {
-    const raw = window.localStorage.getItem(SAVED_WORKSPACES_KEY);
-    if (raw === null) return { workspaces: [], present: false };
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return { workspaces: [], present: false };
-    const seen = new Set<string>();
-    const workspaces = parsed.flatMap((item): ProjectInfo[] => {
-      if (!item || typeof item !== "object") return [];
-      const value = item as { directory?: unknown; name?: unknown };
-      if (typeof value.directory !== "string" || !value.directory || seen.has(value.directory)) return [];
-      seen.add(value.directory);
-      return [{
-        directory: value.directory,
-        name: typeof value.name === "string" && value.name.trim() ? value.name : workspaceName(value.directory)
-      }];
-    });
-    return { workspaces, present: true };
-  } catch {
-    return { workspaces: [], present: false };
-  }
-}
-
-function readSavedWorkspaces(): ProjectInfo[] {
-  return readSavedWorkspaceData().workspaces;
-}
-
-function mergeSavedWorkspaces(...lists: ProjectInfo[][]): ProjectInfo[] {
-  const merged = new Map<string, ProjectInfo>();
-  for (const list of lists) {
-    for (const workspace of list) {
-      if (!workspace?.directory || merged.has(workspace.directory)) continue;
-      merged.set(workspace.directory, {
-        directory: workspace.directory,
-        name: workspace.name?.trim() || workspaceName(workspace.directory)
-      });
-    }
-  }
-  return [...merged.values()];
-}
 
 export function StoreProvider({ children }: { children: ReactNode }): ReactNode {
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null);
@@ -528,19 +313,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     () => (window.localStorage.getItem("approvalMode") === "approve" ? "approve" : "ask")
   );
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [savedWorkspaces, setSavedWorkspaces] = useState<ProjectInfo[]>(() => readSavedWorkspaces());
-  const savedWorkspacesRef = useRef(savedWorkspaces);
-  savedWorkspacesRef.current = savedWorkspaces;
-  const savedWorkspacesHydratedRef = useRef(false);
-  const pendingWorkspaceUpdatesRef = useRef<Array<(current: ProjectInfo[]) => ProjectInfo[]>>([]);
-  const workspaceRevisionRef = useRef(0);
-  const updateSavedWorkspaces = useCallback((update: (current: ProjectInfo[]) => ProjectInfo[]): void => {
-    if (!savedWorkspacesHydratedRef.current) pendingWorkspaceUpdatesRef.current.push(update);
-    workspaceRevisionRef.current += 1;
-    const next = update(savedWorkspacesRef.current);
-    savedWorkspacesRef.current = next;
-    setSavedWorkspaces(next);
-  }, []);
   const [usageBySession, setUsageBySession] = useState<Record<string, SessionUsage>>({});
   const [compactionBaselineBySession, setCompactionBaselineBySession] = useState<Record<string, number>>(() => {
     try {
@@ -564,25 +336,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const session = activeWorkspaceID
     ? (panels.find((panel) => panel.workspace.id === activeWorkspaceID) ?? null)
     : null;
-
-  const rememberWorkspace = useCallback((directory: string): void => {
-    if (!directory) return;
-    const saved = { directory, name: workspaceName(directory) };
-    updateSavedWorkspaces((current) =>
-      current.some((workspace) => workspace.directory === directory) ? current : [...current, saved]
-    );
-  }, [updateSavedWorkspaces]);
-
-  const replaceSavedWorkspace = useCallback((previousDirectory: string, directory: string): void => {
-    if (!directory) return;
-    const saved = { directory, name: workspaceName(directory) };
-    updateSavedWorkspaces((current) => {
-      const remaining = current.filter((workspace) => workspace.directory !== previousDirectory);
-      return remaining.some((workspace) => workspace.directory === directory)
-        ? remaining
-        : [...remaining, saved];
-    });
-  }, [updateSavedWorkspaces]);
 
   useEffect(() => {
     if (!session) return;
@@ -1040,55 +793,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const legacy = readSavedWorkspaceData();
-    const revision = workspaceRevisionRef.current;
-    const storedWorkspaces = window.openshell.savedWorkspaces?.();
-    if (!storedWorkspaces) {
-      toast("Restart Orbit to load saved workspaces from app storage.", "error");
-      return () => { cancelled = true; };
-    }
-    void storedWorkspaces
-      .then(async (stored) => {
-        const projects = !stored.initialized && !legacy.present
-          ? await window.openshell.projects().catch(() => [])
-          : [];
-        if (cancelled) return;
-        if (savedWorkspacesHydratedRef.current && revision !== workspaceRevisionRef.current) return;
-        let merged = stored.initialized
-          ? stored.workspaces
-          : mergeSavedWorkspaces(legacy.workspaces, projects);
-        for (const update of pendingWorkspaceUpdatesRef.current) merged = update(merged);
-        pendingWorkspaceUpdatesRef.current = [];
-        savedWorkspacesRef.current = merged;
-        savedWorkspacesHydratedRef.current = true;
-        setSavedWorkspaces(merged);
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        const detail = error instanceof Error ? error.message : String(error);
-        if (/No handler registered for ['"]?shell:saved-workspaces['"]?/i.test(detail)) {
-          toast("Orbit's app process is older than this window. Quit and reopen Orbit completely; Cmd+R only refreshes the window. Saved workspaces are still stored.", "error");
-          return;
-        }
-        toast(`Saved workspaces could not be loaded; their stored data was left untouched. ${detail}`, "error");
-      });
-    return () => { cancelled = true; };
-  }, [connected, toast]);
-
-  useEffect(() => {
-    if (!savedWorkspacesHydratedRef.current) return;
-    try {
-      window.localStorage.setItem(SAVED_WORKSPACES_KEY, JSON.stringify(savedWorkspaces));
-    } catch {}
-    const save = window.openshell.saveSavedWorkspaces?.(savedWorkspaces);
-    if (!save) return;
-    void save.catch((error) => {
-      const detail = error instanceof Error ? error.message : String(error);
-      toast(`Saved workspaces could not be written to app storage. ${detail}`, "error");
-    });
-  }, [savedWorkspaces, toast]);
+  const { savedWorkspaces, rememberWorkspace, replaceSavedWorkspace, saveWorkspace, removeWorkspace } = useSavedWorkspaces(connected, toast);
 
   const refreshInbox = useCallback(async (sessionID: string): Promise<void> => {
     const panel = panelsRef.current.find((candidate) => candidate.id === sessionID);
@@ -1628,25 +1333,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   useEffect(() => {
     if (connected) void loadSessions();
   }, [connected, loadSessions]);
-
-  const saveWorkspace = useCallback(async (): Promise<void> => {
-    try {
-      const directory = await window.openshell.selectDirectory();
-      if (!directory) return;
-      const saved = { directory, name: workspaceName(directory) };
-      updateSavedWorkspaces((current) => {
-        if (current.some((workspace) => workspace.directory === directory)) return current;
-        return [...current, saved];
-      });
-      toast(`Saved workspace ${saved.name}`);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : String(err), "error");
-    }
-  }, [toast, updateSavedWorkspaces]);
-
-  const removeWorkspace = useCallback((directory: string): void => {
-    updateSavedWorkspaces((current) => current.filter((workspace) => workspace.directory !== directory));
-  }, [updateSavedWorkspaces]);
 
   const deleteSession = useCallback(async (sessionID: string): Promise<void> => {
     const panel = panelForSession(sessionID);
@@ -3712,86 +3398,24 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   }, [connected, loadModels, loadAgents]);
 
 
-  const panelViews = useMemo<Record<string, PanelView>>(() => {
-    const views: Record<string, PanelView> = {};
-    for (const panel of panels) {
-      const transcript = transcriptsBySession[panel.id] ?? [];
-      const trailingAssistant = [...transcript].reverse().find((item) => item.kind === "assistant");
-      const trailingAssistantIncomplete = trailingAssistant?.kind === "assistant" && !trailingAssistant.completed;
-      const pendingPermissions = transcript.filter((item) => item.kind === "permission" && item.pending).length;
-      const activity = resolveSessionActivity({
-        sessionId: panel.id,
-        statusType: panel.id in busyBySession
-          ? (busyBySession[panel.id]
-              ? (trailingAssistant?.kind === "assistant" && trailingAssistant.retry ? "retry" : "busy")
-              : "idle")
-          : undefined,
-        trailingAssistantIncomplete,
-        pendingPermissions
-      });
-       const streamingID = trailingAssistantIncomplete ? streamingStore.streamingMessageIds.get(panel.id) : null;
-      const streaming = streamingID ? streamingStore.messageStreamStates.get(streamingID) ?? null : null;
-      const chatState = chatStatesRef.current.get(panel.id);
-      const rawMessages = chatState?.message[panel.id] ?? [];
-      const rawParts = trailingAssistant?.kind === "assistant"
-        ? chatState?.part[trailingAssistant.id] ?? []
-        : [];
-      const turnStartedAt = activity.isWorking
-        ? findTurnStartedAt(
-            rawMessages,
-            trailingAssistant?.kind === "assistant" ? trailingAssistant.messageID : undefined
-          )
-        : null;
-      const activeContext = getActiveAssistantContext(rawMessages);
-      const statusSnapshot = resolveAssistantStatus({
-        assistantId: activeContext.assistantId,
-        model: activeContext.model,
-        activity,
-        parts: rawParts,
-        pendingPermissions,
-        abortFlag: sessionAbortFlags[panel.id] ?? null,
-        retryInfo: trailingAssistant?.kind === "assistant" && trailingAssistant.retry
-          ? { attempt: trailingAssistant.retry.attempt, next: trailingAssistant.retry.next }
-          : null
-      });
-      const queueTarget = createMessageQueueTarget(panel.id, panel.workspace.id);
-      const localQueue = queueTarget ? getQueueForTarget(messageQueue, queueTarget) : [];
-      const queuedMessages: QueuedMessage[] = [
-        ...(inboxBySession[panel.id] ?? []).map((entry) => ({
-          id: entry.id,
-          content: entry.text,
-          createdAt: entry.createdAt,
-          attachmentCount: entry.attachmentCount
-        })),
-        ...localQueue
-      ];
-      const pendingForms = formsBySession[panel.id] ?? [];
-      const compactionBaseline = compactionBaselineBySession[panel.id] ?? null;
-      views[panel.workspace.id] = {
-        session: panel,
-        busy: activity.isWorking,
-        transcript,
-        todos: todosByWorkspace[panel.workspace.id] ?? [],
-        sessionUsage: usageBySession[panel.id] ?? null,
-        compactionBaseline,
-        models: modelsByWorkspace[panel.workspace.id] ?? [],
-        currentModel: currentModelByWorkspace[panel.workspace.id] ?? null,
-        agents: agentsByWorkspace[panel.workspace.id] ?? [],
-        currentAgent: currentAgentByWorkspace[panel.workspace.id] ?? null,
-        activity,
-        assistantStatus: statusSnapshot?.working ?? null,
-        forming: statusSnapshot?.forming ?? null,
-        activeModel: statusSnapshot?.activeModel ?? null,
-        streaming,
-        turnStartedAt,
-        queuedCount: queuedMessages.length,
-        queuedMessages,
-        pendingForms,
-        stagedRevert: stagedReverts[panel.id] ?? null
-      };
-    }
-    return views;
-  }, [
+  const panelViews = useMemo<Record<string, PanelView>>(() => projectPanelViews(panels, {
+    busyBySession,
+    transcriptsBySession,
+    todosByWorkspace,
+    usageBySession,
+    compactionBaselineBySession,
+    modelsByWorkspace,
+    currentModelByWorkspace,
+    agentsByWorkspace,
+    currentAgentByWorkspace,
+    streamingStore,
+    messageQueue,
+    inboxBySession,
+    formsBySession,
+    stagedReverts,
+    sessionAbortFlags,
+    chatStates: chatStatesRef.current
+  }), [
     panels,
     busyBySession,
     transcriptsBySession,
