@@ -80,3 +80,7 @@ export function setAppUpdaterWindowStatus(window: BrowserWindow, status: AppUpda
   const argument = JSON.stringify(status);
   void window.webContents.executeJavaScript(`window.setOrbitUpdaterStatus?.(${argument})`).catch(() => {});
 }
+
+export function briefFilePath(value: string): string {
+  return value.length <= 384 ? value : `…${value.slice(-383)}`;
+}

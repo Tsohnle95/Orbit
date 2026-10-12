@@ -7,7 +7,11 @@
 Orbit's release updater lives in `src/main/app-updater.ts`; it checks published
 GitHub releases and installs the packaged app through `electron-updater`. Local
 development/test builds disable this updater and never fetch or merge GitHub
-source.
+source. `src/main/app-update-controller.ts` owns the release progress-window
+lifecycle, concurrency guard and unsaved-file gate; main supplies the existing
+updater and live main-window/editor-file readers. Popup HTML/status and bounded
+path labels remain in `app-updater-window.ts`. IPC trust and editor close/save
+coordination stay in `index.ts`.
 
 `src/main/opencode.ts` is the only file that imports `@opencode/client`.
 Provider usage is a separate main-process integration with provider APIs in

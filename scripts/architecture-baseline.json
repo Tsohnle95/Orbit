@@ -698,6 +698,13 @@
       "nesting": 5,
       "reason": "Existing before-input-event DevTools branches moved unchanged from createWindow. Modifier and picker rules retain their original separate early returns; budget is lower than the original handler and cannot grow.",
       "origin": "src/main/index.ts:createWindow/newWin.webContents.on callback:before-input-event#1"
+    },
+    "src/main/app-update-controller.ts:AppUpdateController/update#1": {
+      "codeLines": 128,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "origin": "src/main/index.ts:updateOrbitApp#1",
+      "reason": "Moved release progress-window workflow byte-equivalent after receiver qualification; preserves timer, close gate, dynamic main/unsaved reads and failure cleanup. Original128-line ceiling; cannot grow."
     }
   },
   "edgeExceptions": [
@@ -813,6 +820,13 @@
         "src/renderer/src/components/FileSidebar.tsx",
         "src/renderer/src/components/ExplorerTree.tsx"
       ]
+    },
+    {
+      "owner": "release update window lifecycle",
+      "targetPrefix": "src/main/app-update-controller.ts",
+      "allowedFrom": [
+        "src/main/index.ts"
+      ]
     }
   ],
   "pureOwners": [
@@ -917,6 +931,17 @@
       "file": "src/main/devtools-controller.ts",
       "allowedLocal": [
         "src/main/inspect-picker.ts"
+      ],
+      "allowedExternal": [
+        "electron"
+      ]
+    },
+    {
+      "file": "src/main/app-update-controller.ts",
+      "allowedLocal": [
+        "src/shared/types.ts",
+        "src/main/app-updater.ts",
+        "src/main/app-updater-window.ts"
       ],
       "allowedExternal": [
         "electron"

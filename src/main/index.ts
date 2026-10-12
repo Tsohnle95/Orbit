@@ -7,7 +7,8 @@ import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { OpenShellBackend, SessionWorkspaceNotFoundError } from "./opencode";
 import { createDisabledOrbitAppUpdater, createOrbitAppUpdater } from "./app-updater";
-import { appUpdaterWindowUrl, setAppUpdaterWindowStatus, shouldBlockAppUpdaterReload, type AppUpdaterWindowStatus } from "./app-updater-window";
+import { briefFilePath } from "./app-updater-window";
+import { AppUpdateController } from "./app-update-controller";
 import { TerminalManager } from "./terminal";
 import { MobileServer } from "./mobile-server";
 import { defaultViteDeps, findHtmlEntry, resolveViteCommand, viteServerKey, VitePreviewManager } from "./vite-server";
@@ -35,7 +36,6 @@ import { SavedWorkspaceStore } from "./saved-workspaces";
 import { SassWatchManager } from "./sass-watch";
 import { SassPreferences } from "./sass-preferences";
 import type {
-  OrbitAppUpdateResult,
   ProjectInfo,
   ViteServerInfo,
   ViteToggleResult,
@@ -74,9 +74,6 @@ let mobileServerStartup: Promise<void> = Promise.resolve();
 const viteCommand = resolveViteCommand(app.getAppPath(), __dirname);
 const viteServers = new VitePreviewManager(defaultViteDeps(viteCommand.command, viteCommand.prefix));
 let win: BrowserWindow | null = null;
-let appUpdaterWindow: BrowserWindow | null = null;
-let appUpdaterWindowCanClose = false;
-let appUpdateRunning = false;
 let unsavedEditorFileNames: string[] = [];
 let editorSaveSequence = 0;
 let pendingEditorSave: { id: string; finish: (saved: boolean) => void } | null = null;
@@ -87,9 +84,6 @@ const sassWatchers = new SassWatchManager(new SassPreferences(path.join(app.getP
   if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("shell:message", { kind: "sass-watch", state });
 });
 
-function briefFilePath(value: string): string {
-  return value.length <= 384 ? value : `…${value.slice(-383)}`;
-}
 const pendingOpenPaths = new PendingOpenPaths();
 
 const isOrbitReleaseBuild = app.isPackaged && __ORBIT_RELEASE_BUILD__;
@@ -114,6 +108,7 @@ const appIconPath = (() => {
   const fromOut = path.join(__dirname, "../../resources/icon.png");
   return existsSync(fromApp) ? fromApp : fromOut;
 })();
+const appUpdate = new AppUpdateController(orbitAppUpdater, isOrbitReleaseBuild, appIconPath, () => win, () => unsavedEditorFileNames);
 const devTools = new DevToolsController((file, title) => resolveAppSource(app.getAppPath(), file, title));
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -455,141 +450,6 @@ async function chooseWorkspaceDirectory(missingDirectory: string): Promise<strin
   return result.canceled ? null : result.filePaths[0] ?? null;
 }
 
-async function updateOrbitApp(): Promise<OrbitAppUpdateResult> {
-  if (!isOrbitReleaseBuild) {
-    return {
-      ok: false,
-      updated: false,
-      currentVersion: app.getVersion(),
-      message: "GitHub release updates are disabled in local development and test builds."
-    };
-  }
-  if (unsavedEditorFileNames.length > 0) {
-    const files = unsavedEditorFileNames.slice(0, 8).map(briefFilePath).join(", ");
-    const remaining = unsavedEditorFileNames.length > 8 ? ` and ${unsavedEditorFileNames.length - 8} more` : "";
-    return {
-      ok: false,
-      updated: false,
-      message: `Save unsaved files before updating Orbit: ${files}${remaining}.`
-    };
-  }
-  if (appUpdateRunning) return { ok: false, updated: false, message: "An Orbit update is already running." };
-  appUpdateRunning = true;
-
-  if (appUpdaterWindow && !appUpdaterWindow.isDestroyed()) {
-    appUpdaterWindowCanClose = true;
-    appUpdaterWindow.close();
-  }
-
-  const popup = new BrowserWindow({
-    width: 460,
-    height: 270,
-    minWidth: 460,
-    minHeight: 270,
-    maxWidth: 460,
-    maxHeight: 270,
-    title: "Updating Orbit",
-    icon: appIconPath,
-    show: false,
-    resizable: false,
-    minimizable: false,
-    maximizable: false,
-    fullscreenable: false,
-    autoHideMenuBar: true,
-    backgroundColor: "#111214",
-    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      devTools: false
-    }
-  });
-  appUpdaterWindow = popup;
-  appUpdaterWindowCanClose = false;
-  popup.on("close", (event) => {
-    if (!appUpdaterWindowCanClose) event.preventDefault();
-  });
-  popup.on("closed", () => {
-    if (appUpdaterWindow === popup) appUpdaterWindow = null;
-  });
-  popup.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-
-  let lastStatus: AppUpdaterWindowStatus = {
-    title: "Preparing update…",
-    message: "Checking the latest published GitHub release.",
-    tone: "progress"
-  };
-  popup.webContents.on("dom-ready", () => setAppUpdaterWindowStatus(popup, lastStatus));
-  popup.webContents.on("before-input-event", (event, input) => {
-    if (shouldBlockAppUpdaterReload(input)) event.preventDefault();
-  });
-  popup.webContents.on("did-navigate-in-page", (_event, url, _isInPlace, isMainFrame) => {
-    if (isMainFrame && url.endsWith("#return-to-orbit") && appUpdaterWindowCanClose) popup.close();
-  });
-
-  const report = (title: string, message: string, tone: "progress" | "success" | "error" = "progress"): void => {
-    lastStatus = { title, message, tone };
-    if (!popup.isDestroyed()) popup.setTitle(`${title} — ${message}`);
-    setAppUpdaterWindowStatus(popup, lastStatus);
-  };
-
-  try {
-    await popup.loadURL(appUpdaterWindowUrl());
-    popup.show();
-    popup.focus();
-    if (win && !win.isDestroyed()) win.hide();
-  } catch (error) {
-    appUpdaterWindowCanClose = true;
-    if (!popup.isDestroyed()) popup.destroy();
-    if (appUpdaterWindow === popup) appUpdaterWindow = null;
-    appUpdateRunning = false;
-    const detail = error instanceof Error ? error.message : String(error);
-    return { ok: false, updated: false, message: "Orbit could not open its update window. " + detail };
-  }
-
-  try {
-    const result = await orbitAppUpdater.update((message) => report("Updating Orbit", message));
-    if (result.updated) {
-      report("Update downloaded", `${result.message} Orbit will close to install the release and reopen shortly.`, "success");
-      setTimeout(() => {
-        try {
-          appUpdaterWindowCanClose = true;
-          orbitAppUpdater.installAndRestart();
-        } catch (error) {
-          const detail = error instanceof Error ? error.message : String(error);
-          report("Update could not be installed", detail, "error");
-          appUpdaterWindowCanClose = true;
-          if (win && !win.isDestroyed()) {
-            win.show();
-            win.focus();
-          }
-        }
-      }, 1_400);
-    } else if (result.ok) {
-      report("Already up to date", result.message, "success");
-      appUpdaterWindowCanClose = true;
-      if (win && !win.isDestroyed()) {
-        win.show();
-        win.focus();
-      }
-      setTimeout(() => {
-        if (!popup.isDestroyed()) popup.close();
-      }, 1_800);
-    } else {
-      report("Update could not be completed", result.message, "error");
-      appUpdaterWindowCanClose = true;
-      if (win && !win.isDestroyed()) {
-        win.show();
-        win.focus();
-      }
-    }
-    return result;
-  } finally {
-    appUpdateRunning = false;
-  }
-}
-
 function viteEntry(fileName: string): string {
   return fileName.toLowerCase() === "index.html" ? "" : fileName;
 }
@@ -740,7 +600,7 @@ function registerIpc(): void {
     if (typeof requestID === "string" && pendingEditorSave?.id === requestID) pendingEditorSave.finish(saved === true);
   });
 
-  handleTrusted("shell:app-update", async () => updateOrbitApp());
+  handleTrusted("shell:app-update", async () => appUpdate.update());
 
   handleTrusted("shell:select-files", async (e) => {
     const parent = BrowserWindow.fromWebContents(e.sender);

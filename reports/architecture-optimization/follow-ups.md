@@ -30,6 +30,17 @@ They are not acceptance claims or silently bundled behavior changes.
   would change failure side effects. Keep sequencing unless a separate behavior
   change deliberately defines normalization and continuation policy.
 
+- **Release-update Return action needs a separate behavior fix.** Native Electron
+  37.10.3 QA displayed the expected failed-update popup, but its Return button did
+  not close it. Independent old/current probes found that the encoded `data:`
+  page ignores `location.hash` assignment and emits no in-page navigation event.
+  Both historical `545a170` and extracted source use this same action. The handler
+  also reads Electron's fourth argument (`frameProcessId`) as the main-frame flag,
+  although the actual flag is third; old and current handlers behave identically.
+  A future fix should characterize an actual data-page button activation and
+  main/subframe event gating. The architectural extraction preserves this existing
+  behavior; unit fixtures now use Electron's actual five-argument event shape.
+
 Design experiments, mockups, dormant adapters, public/test-only exports and
 prototype plugins remain intentionally preserved without an established
 deletion policy. Static unused-consumer findings alone do not authorize removal.

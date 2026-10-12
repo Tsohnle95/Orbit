@@ -51,7 +51,8 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 2d | Filesystem observation owner | complete | 105 targeted native tests; 1094 staged-checkpoint tests/type/docs/fitness/build; platform with native close/reopen and rename/move; exact moved-method independent review | 8970569 |
 | 3b | Bookmark, panel projection and renderer contract owners | complete | 138 targeted tests; 1103 staged-checkpoint tests/type/docs/fitness/build; independent hydration/dependency review | 865c1aa |
 | 2e | DevTools lifecycle owner | complete | 21 targeted tests; 1111 staged canonical tests/type/docs/fitness/build; independent AST review; native picker/Escape/F12/close-reopen and compiled source denial | 8e0c108 |
-| 4d | Recursive Explorer presentation owner | complete | 51 targeted tests; 1111 staged canonical tests/type/docs/fitness/build; independent AST review; native menu/open/rename cancellation; native drag unverified | commit recorded at next checkpoint |
+| 4d | Recursive Explorer presentation owner | complete | 51 targeted tests; 1111 staged canonical tests/type/docs/fitness/build; independent AST review; native menu/open/rename cancellation; native drag unverified | 545a170 |
+| 2g | Release update window owner | complete | 19 targeted tests; isolated canonical gate; independent AST/failure review; signed install unverified | checkpoint pending |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
@@ -114,3 +115,7 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - 2026-10-11 — Native disposable fixture confirmed DevTools DOM.enable→Overlay.enable→searchForNode, one picked Explorer span selected in Elements via disable→DOM.getBoxModel, Escape cancellation and bottom docking. Frontend F12 closes; reopening reinstalls polling. Compiled CSS bundle source links remain denied. No user app/profile was changed.
 
 - 2026-10-11 — Explorer native fixture verified row opening, root expand/collapse, file-specific context menu and inline rename cancellation. CUA internal drag attempt did not dispatch a move; no native drag success claimed. Existing51 component tests and unchanged presenter ASTs cover routing equivalence; paired historical fixture validation is pending.
+
+- 2026-10-12 — Resumed pending editor/mutation/release-window owners. Fresh independent29 focused owner/updater tests plus87 editor tests are being refreshed; no completion claim. Permanent fitness will record exact moved origins. Editor hook502 inclusive lines contain30 separately checked callbacks; independent composition-only count96. Signed release install remains external/unverified.
+
+- 2026-10-12 — Release controller staged canonical gate passed1118 tests/type/docs/fitness/build. Fresh native platform/trust/PTY/watcher checks passed. Disposable popup QA verified unsaved guard, failure status, main restoration and reload prevention. Native Return action failed; independent Electron37.10.3 old/current probe proves pre-existing data-page/hash and event-slot issues, recorded separately without a behavior fix. Real signed installation remains unverified.
