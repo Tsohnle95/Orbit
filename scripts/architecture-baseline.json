@@ -837,6 +837,13 @@
       "allowedFrom": [
         "src/renderer/src/store.tsx"
       ]
+    },
+    {
+      "owner": "session inventory state",
+      "targetPrefix": "src/renderer/src/use-session-inventory.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
+      ]
     }
   ],
   "pureOwners": [
@@ -984,6 +991,15 @@
     },
     {
       "file": "src/renderer/src/use-session-selection.ts",
+      "allowedLocal": [
+        "src/shared/types.ts"
+      ],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-session-inventory.ts",
       "allowedLocal": [
         "src/shared/types.ts"
       ],

@@ -58,6 +58,7 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 3d | Session catalog and selection state owner | complete | 152 targeted tests; exact4action initializer ASTs; isolated canonical gate; no new effect/subscription | 8a42e53 |
 | 5c | Confirmed SDK type and retained parser consolidation | complete | 61 targeted tests; exactparser bodies/session-reopen JS; no cycles/side effects; 26net production LOC; isolated canonical gate | dd78940 |
 | 4e | Verified duplicate style declarations | complete | 14production LOC; 2012declarationvectors and2090remainingoccurrences identical; specificity proof; isolated canonical gate | 0db849e |
+| 3e | Session inventory state owner | complete | 158targeted and56independent tests; isolated1153-test canonical gate; native recent reopen/open-context list/polling; no new effect | pending commit |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
@@ -136,3 +137,7 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - 2026-10-12 — Style consolidation staged canonical passed1147 tests/type/docs/fitness/build. Independent Sass/PostCSS reparse confirms2012unique selector/context vectors,2102ordered occurrences, exact2090other-occurrence order, and specificity/mutuallyexclusive-slot proof for all5groups. Source14LOC removed; CSS280bytes smaller, no runtime speed claim. Permanent compact22KB evidence retains source/compiler hashes and reproduction procedure; megabyte temporary vectors excluded from Git.
 
 - 2026-10-12 — Intermediate downward guard ratchet computed from the completed184-module checkpoint only: Store3770→2835 ceiling, retire Index/FileSidebar module exceptions, remove/tighten obsolete function keys62→55, preserve22reviewed moved/composition exceptions, known files174→184. Inventory remains an uncommitted separately reviewed slice; no violation is automatically blessed.
+
+- 2026-10-12 — Intermediate downward ratchet committed as1ecbf38 after independent approval and supported1147-test canonical snapshot gate. Session inventory slice owns two records/current readers and refresh identities, retains effect ordering and failure/stale response semantics;158 targeted tests and independent56 tests passed. Net+31LOC reflects ownership interfaces, not reduction. Canonical/native integration pending.
+
+- 2026-10-12 — Inventory supported isolated canonical gate passed1153tests/type/docs/fitness/build. Native disposable staged renderer/preload displayed recent summary, reopened it and displayed the open-context session; fixture IPC logs confirm continuing active-session polling. Catalog/runtime responses remain mocked. Independent exact4initializer/effect-order/config/docs review approved; new owner meets default budgets.

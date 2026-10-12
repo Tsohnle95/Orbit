@@ -62,6 +62,14 @@ Exposed state:
 | `pendingCreate` | `{parent, kind} \| null` | inline "new file/folder" name input target |
 | `pendingRename` | `{path} \| null` | inline rename input target |
 
+`use-session-inventory.ts` owns the backend-open and recent-history records,
+their current refs, refresh request identities and local upsert/removal actions.
+Store retains the polling/readiness lifecycle and invokes refreshes at the
+existing scheduling points. Lifecycle callers use named inventory readers;
+they do not mutate inventory state or refs. A superseded open-context refresh
+still returns its fetched list to its caller while leaving the newer inventory
+intact; a failed refresh returns an empty result without clearing known contexts.
+
 ## Authoritative chat store (`chat-store.ts`)
 
 `chat-store.ts` remains the public entry point for chat reduction, records,

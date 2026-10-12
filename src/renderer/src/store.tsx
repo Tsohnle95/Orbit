@@ -82,6 +82,7 @@ import { retainSessionRecord } from "@shared/retention";
 import { useSavedWorkspaces } from "./use-saved-workspaces";
 import { useWorkspaceEditor } from "./use-workspace-editor";
 import { useSessionSelection } from "./use-session-selection";
+import { useSessionInventory } from "./use-session-inventory";
 import { projectPanelViews } from "./panel-projection";
 import type { Toast, CtxMenuState, CtxMenuApi, PendingCreate, PanelView, Store } from "./store-contract";
 
@@ -278,7 +279,6 @@ export function StoreProvider({ children }: { children: ReactNode }): ReactNode 
 
 const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children: ReactNode; closeCtxMenu: () => void }): ReactNode {
   const [panels, setPanels] = useState<SessionInfo[]>([]);
-  const [activeSessions, setActiveSessions] = useState<SessionInfo[]>([]);
   const [workspaceOnlyPanelIDs, setWorkspaceOnlyPanelIDs] = useState<Set<string>>(() => new Set());
   const [activeSessionID, setActiveSessionID] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
@@ -298,7 +298,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>(
     () => (window.localStorage.getItem("approvalMode") === "approve" ? "approve" : "ask")
   );
-  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [usageBySession, setUsageBySession] = useState<Record<string, SessionUsage>>({});
   const [compactionBaselineBySession, setCompactionBaselineBySession] = useState<Record<string, number>>(() => {
     try {
@@ -382,11 +381,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
 
   const panelsRef = useRef(panels);
   panelsRef.current = panels;
-  const activeSessionsRef = useRef(activeSessions);
-  activeSessionsRef.current = activeSessions;
-  const sessionsRef = useRef(sessions);
-  sessionsRef.current = sessions;
-  const activeRefreshSequenceRef = useRef(0);
   const transcriptsBySessionRef = useRef(transcriptsBySession);
   transcriptsBySessionRef.current = transcriptsBySession;
   const usageBySessionRef = useRef(usageBySession);
@@ -425,42 +419,17 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const startupRestoreStartedRef = useRef(false);
   const treeRefreshTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  const refreshActiveSessions = useCallback(async (): Promise<SessionInfo[]> => {
-    const sequence = ++activeRefreshSequenceRef.current;
-    try {
-      const list = await window.openshell.activeSessions();
-      if (sequence === activeRefreshSequenceRef.current) {
-        activeSessionsRef.current = list;
-        setActiveSessions(list);
-      }
-      return list;
-    } catch {
-      return [];
-    }
+  const toast = useCallback((text: string, tone: "info" | "error" = "info") => {
+    const id = ++toastId;
+    setToasts((prev) => [...prev.slice(-3), { id, text, tone }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
 
-  const addActiveSession = useCallback((info: SessionInfo): void => {
-    setActiveSessions((current) => {
-      const index = current.findIndex((session) => session.id === info.id);
-      if (index === -1) {
-        const next = [...current, info];
-        activeSessionsRef.current = next;
-        return next;
-      }
-      if (current[index] === info) return current;
-      const next = current.map((session, sessionIndex) => sessionIndex === index ? info : session);
-      activeSessionsRef.current = next;
-      return next;
-    });
-  }, []);
-
-  const removeActiveSession = useCallback((sessionID: string): void => {
-    setActiveSessions((current) => {
-      const next = current.filter((session) => session.id !== sessionID);
-      activeSessionsRef.current = next;
-      return next;
-    });
-  }, []);
+  const {
+    activeSessions, sessions, refreshActiveSessions, addActiveSession,
+    removeActiveSession, loadSessions, activeSessionFor, summaryFor,
+    upsertSummary, renameSummary, removeSummary
+  } = useSessionInventory(toast);
 
   useEffect(() => {
     const timer = setInterval(() => void refreshActiveSessions(), 1000);
@@ -708,12 +677,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const panel = panelFor(workspace);
     return panel ? createMessageQueueTarget(panel.id, panel.workspace.id) : null;
   }, [panelFor]);
-
-  const toast = useCallback((text: string, tone: "info" | "error" = "info") => {
-    const id = ++toastId;
-    setToasts((prev) => [...prev.slice(-3), { id, text, tone }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  }, []);
 
   const { savedWorkspaces, rememberWorkspace, replaceSavedWorkspace, saveWorkspace, removeWorkspace } = useSavedWorkspaces(connected, toast);
   const {
@@ -1085,7 +1048,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
 
   const finishClosePanel = useCallback((sessionID: string, preserveBusy: boolean): void => {
     const closing = panelsRef.current.find((panel) => panel.id === sessionID);
-    const active = activeSessionsRef.current.find((session) => session.id === sessionID);
+    const active = activeSessionFor(sessionID);
     if (!closing && active) {
       removeActiveSession(sessionID);
       setBusyBySession((current) => dropKey(current, sessionID));
@@ -1110,11 +1073,11 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     if (!keepActive) {
       void window.openshell.closeSession(ejected.workspace).catch(() => {});
     }
-  }, [removeActiveSession, ejectPanelFromView]);
+  }, [removeActiveSession, ejectPanelFromView, activeSessionFor]);
 
   const closePanel = useCallback((sessionID: string, preserveBusy = false): void => {
     const closing = panelsRef.current.find((panel) => panel.id === sessionID);
-    const active = activeSessionsRef.current.find((session) => session.id === sessionID);
+    const active = activeSessionFor(sessionID);
     const workspace = closing?.workspace ?? active?.workspace;
     const dirtyTabs = workspace
       ? dirtyTabsFor(workspace.id)
@@ -1138,7 +1101,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       return;
     }
     finishClosePanel(sessionID, preserveBusy);
-  }, [finishClosePanel, toast]);
+  }, [finishClosePanel, toast, activeSessionFor]);
 
   const replacePanels = useCallback((next: SessionInfo): void => {
     for (const panel of [...panelsRef.current]) {
@@ -1158,24 +1121,13 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     }
   }, [toast, panelFor, setRecoveryFor]);
 
-  const sessionsRequestRef = useRef(0);
-  const loadSessions = useCallback(async () => {
-    const request = ++sessionsRequestRef.current;
-    try {
-      const summaries = await window.openshell.sessions();
-      if (request === sessionsRequestRef.current) setSessions(summaries);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : String(err), "error");
-    }
-  }, [toast]);
-
   useEffect(() => {
     if (connected) void loadSessions();
   }, [connected, loadSessions]);
 
   const deleteSession = useCallback(async (sessionID: string): Promise<void> => {
     const panel = panelForSession(sessionID);
-    const summary = sessionsRef.current.find((item) => item.id === sessionID);
+    const summary = summaryFor(sessionID);
     const title = panel?.title ?? summary?.title ?? sessionID;
     if (!window.confirm(`Delete session "${title}"? This permanently removes it from opencode and cannot be undone.`)) return;
     try {
@@ -1186,7 +1138,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     } catch (err) {
       toast(err instanceof Error ? err.message : String(err), "error");
     }
-  }, [panelForSession, closePanel, toast, loadSessions]);
+  }, [panelForSession, closePanel, toast, loadSessions, summaryFor]);
 
   const replacePanel = useCallback((workspace: WorkspaceIdentity, info: SessionInfo): boolean => {
     const index = panelsRef.current.findIndex((panel) => sameWorkspace(panel.workspace, workspace));
@@ -1416,7 +1368,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       const request = ++requestSeqRef.current;
       const activation = silent ? 0 : ++activationSeqRef.current;
       const targetWorkspace = silent ? null : sessionRef.current?.workspace ?? null;
-      const previousDirectory = directoryHint ?? sessionsRef.current.find((session) => session.id === sessionID)?.directory;
+      const previousDirectory = directoryHint ?? summaryFor(sessionID)?.directory;
       if (!silent) {
         replacingSessionIDsRef.current.set(sessionID, (replacingSessionIDsRef.current.get(sessionID) ?? 0) + 1);
       }
@@ -1490,7 +1442,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
       }
     },
-    [attachPanel, replacePanels, replacePanel, replaceSavedWorkspace, focusSession, panelForSession, chatStateFor, reconcileStreaming, setTodosFor, toast, loadModels, loadAgents, loadSessions, loadRecovery, hydrateTranscript, protectedSessionIDs]
+    [attachPanel, replacePanels, replacePanel, replaceSavedWorkspace, focusSession, panelForSession, chatStateFor, reconcileStreaming, setTodosFor, toast, loadModels, loadAgents, loadSessions, loadRecovery, hydrateTranscript, protectedSessionIDs, summaryFor]
   );
 
   const sendPrompt = useCallback(
@@ -2484,24 +2436,16 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
             ...(typeof data.parentID === "string" ? { parentID: data.parentID } : {}),
             ...(typeof data.agent === "string" ? { agent: data.agent } : {})
           };
-          setSessions((current) => {
-            const index = current.findIndex((item) => item.id === summary.id);
-            if (index === -1) return [summary, ...current];
-            return current.map((item, itemIndex) => itemIndex === index ? summary : item);
-          });
+          upsertSummary(summary);
           break;
         }
         case "session.renamed": {
           if (!targetSessionID || typeof data.title !== "string") break;
-          setSessions((current) => current.map((item) =>
-            item.id === targetSessionID
-              ? { ...item, title: data.title, updatedAt: streamEvent.created }
-              : item
-          ));
+          renameSummary(targetSessionID, data.title, streamEvent.created);
           break;
         }
         case "session.deleted": {
-          if (targetSessionID) setSessions((current) => current.filter((item) => item.id !== targetSessionID));
+          if (targetSessionID) removeSummary(targetSessionID);
           break;
         }
         case "session.usage.updated":
@@ -2795,6 +2739,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     cancelAll,
     refreshActiveSessions,
     loadSessions,
+    upsertSummary,
+    renameSummary,
+    removeSummary,
     openPaths,
   ]);
 
