@@ -50,7 +50,8 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 6a | Permanent architecture enforcement and reproducible baseline | complete | 28 adversarial/parser tests; unchanged38,430 baseline; canonical/CI wiring; independentdownward-ratchet review | c0950fa |
 | 2d | Filesystem observation owner | complete | 105 targeted native tests; 1094 staged-checkpoint tests/type/docs/fitness/build; platform with native close/reopen and rename/move; exact moved-method independent review | 8970569 |
 | 3b | Bookmark, panel projection and renderer contract owners | complete | 138 targeted tests; 1103 staged-checkpoint tests/type/docs/fitness/build; independent hydration/dependency review | 865c1aa |
-| 2e | DevTools lifecycle owner | complete | 21 targeted tests; 1111 staged canonical tests/type/docs/fitness/build; independent AST review; native picker/Escape/F12/close-reopen and compiled source denial | commit recorded at next checkpoint |
+| 2e | DevTools lifecycle owner | complete | 21 targeted tests; 1111 staged canonical tests/type/docs/fitness/build; independent AST review; native picker/Escape/F12/close-reopen and compiled source denial | 8e0c108 |
+| 4d | Recursive Explorer presentation owner | complete | 51 targeted tests; 1111 staged canonical tests/type/docs/fitness/build; independent AST review; native menu/open/rename cancellation; native drag unverified | commit recorded at next checkpoint |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
@@ -111,3 +112,5 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - 2026-10-11 — User unlocked the Mac; native fixture resumed. Remaining reviewed owner slices: observation, bookmark/panel projection, DevTools and Explorer presenters. These are ownership extractions, not code reduction or performance gains. Observer native105 tests passed; benchmark differences are inconclusive. Canonical integration gates and checkpoints pending.
 
 - 2026-10-11 — Native disposable fixture confirmed DevTools DOM.enable→Overlay.enable→searchForNode, one picked Explorer span selected in Elements via disable→DOM.getBoxModel, Escape cancellation and bottom docking. Frontend F12 closes; reopening reinstalls polling. Compiled CSS bundle source links remain denied. No user app/profile was changed.
+
+- 2026-10-11 — Explorer native fixture verified row opening, root expand/collapse, file-specific context menu and inline rename cancellation. CUA internal drag attempt did not dispatch a move; no native drag success claimed. Existing51 component tests and unchanged presenter ASTs cover routing equivalence; paired historical fixture validation is pending.

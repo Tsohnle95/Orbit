@@ -805,6 +805,14 @@
       "allowedFrom": [
         "src/main/index.ts"
       ]
+    },
+    {
+      "owner": "Explorer tree presentation",
+      "targetPrefix": "src/renderer/src/components/ExplorerTree.tsx",
+      "allowedFrom": [
+        "src/renderer/src/components/FileSidebar.tsx",
+        "src/renderer/src/components/ExplorerTree.tsx"
+      ]
     }
   ],
   "pureOwners": [

@@ -496,6 +496,13 @@ Key mechanisms:
   skipped. Main still validates each `shell:fs-move` / `shell:fs-delete` call.
   Successful moves remap `tabs`, `activePath`, and `agentFiles` for that
   workspace.
+  `FileSidebar.tsx` owns selection state, drag routing, root composition and
+  sidebar navigation. Its internal `ExplorerTree.tsx` owns recursive directory
+  and file rows, row actions, inline name input and the context-menu portal.
+  Rows receive the sidebar's drag/selection callbacks and consume the existing
+  Store/context-menu facade for editor and filesystem actions. Keep gesture
+  routing in the sidebar and row/menu presentation in the tree owner; privileged
+  operations remain in main behind the controlled bridge.
 - **Single-entry drag-and-drop** — every explorer row is draggable; dropping
   onto a folder row moves the entry into it and dropping onto the empty tree
   area or workspace root moves it to the workspace root. The hovered
