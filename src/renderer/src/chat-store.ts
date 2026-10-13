@@ -15,7 +15,8 @@ export {
   attachRetryToLatestAssistant, completeLatestIncomplete, findTurnStartedAt,
   insertMessage, insertUserMessage, snapshotChatState,
   type ChatDirectoryState, type ChatEventResult, type ChatMaterializationReason,
-  type ChatMessageRecord, type ChatPartRecord, type ChatSessionStatus, type ChatStateSnapshot
+  type ChatMessageRecord, type ChatPartRecord, type ChatSessionStatus, type ChatStateSnapshot,
+  type ChatMessageReadView, type ChatPartReadView, type ChatSnapshotReadView, type ChatDirectoryReadView
 } from "./chat-records";
 export { hydrateChatState, projectAssistantItems, reconcileAssistantProjection } from "./chat-projection";
 

@@ -123,4 +123,18 @@ describe("renderer permission prompts", () => {
       pending: true
     }));
   });
+
+  it("keeps automatic replies in the attributed session transport after row scheduling", async () => {
+    window.localStorage.setItem("approvalMode", "approve");
+    const permissionReply = vi.fn(async () => {});
+    window.openshell = { ...api(async () => []), permissionReply };
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    const panel = store.session!;
+    await act(async () => messageHandler!(permissionEvent(panel.id, "automatic")));
+    expect(permissionReply).toHaveBeenCalledWith(panel.workspace, "automatic", "once", panel.id);
+    expect(store.transcript).toContainEqual(expect.objectContaining({ requestID: "automatic", pending: true }));
+    await act(async () => messageHandler!(permissionEvent("unowned", "foreign")));
+    expect(permissionReply).toHaveBeenCalledTimes(1);
+  });
 });

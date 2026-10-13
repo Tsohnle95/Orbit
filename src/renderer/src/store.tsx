@@ -37,27 +37,16 @@ import type {
   UserAttachment,
   WorkspaceIdentity
 } from "@shared/types";
-import { mergeChatHistory, reconcilePromptHistory, reduceChatStream, type ChatStreamEvent } from "./chat-stream";
+import type { ChatStreamEvent } from "./chat-stream";
 import { compactExplorerSelection, movableExplorerPaths } from "./explorer-selection";
 import {
-  applyChatEvent,
-  attachRetryToLatestAssistant,
-  completeLatestIncomplete,
-  hydrateChatState,
-  insertUserMessage,
-  projectAssistantItems,
-  reconcileAssistantProjection,
-  snapshotChatState,
   buildRateLimitNotice,
-  type ChatDirectoryState,
-  type ChatStateSnapshot,
+  type ChatSnapshotReadView,
   type RateLimitAction
 } from "./chat-store";
 import {
   emptyStreamingStore,
   touchStreamingSession,
-  updateChangedStreamingSessions,
-  updateStreamingState,
   type StreamingStore
 } from "./streaming";
 import { IDLE_ACTIVITY, resolveSessionActivity } from "./session-activity";
@@ -83,6 +72,7 @@ import { useSavedWorkspaces } from "./use-saved-workspaces";
 import { useWorkspaceEditor } from "./use-workspace-editor";
 import { useSessionSelection } from "./use-session-selection";
 import { useSessionInventory } from "./use-session-inventory";
+import { useSessionChatRecords } from "./use-session-chat-records";
 import { projectPanelViews } from "./panel-projection";
 import type { Toast, CtxMenuState, CtxMenuApi, PendingCreate, PanelView, Store } from "./store-contract";
 
@@ -285,7 +275,21 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const [runtimes, setRuntimes] = useState<RuntimeManifest[]>([]);
   const [busyBySession, setBusyBySession] = useState<Record<string, boolean>>({});
   const [todosByWorkspace, setTodosByWorkspace] = useState<Record<string, TodoItem[]>>({});
-  const [transcriptsBySession, setTranscriptsBySession] = useState<Record<string, TranscriptItem[]>>({});
+  const protectedSessionIDs = useCallback(
+    (): Set<string> => new Set(panelsRef.current.map((panel) => panel.id)),
+    []
+  );
+
+  const {
+    transcriptsBySession, rawChatReadMap, transcriptFor, hasTranscript, recordStatusFor,
+    snapshotSession, reduceSessionEvent, completeLatest, attachRetry, projectSession: applyProjection,
+    deriveChangedStreaming, deriveStreaming, prepareReopenedReplay, commitReplayTranscript,
+    mergeMaterializedRecords, hydratePromptRecords, reconcilePromptTranscript, forgetRecords,
+    appendTranscriptItem, appendUniqueTranscriptItem, replaceTranscriptItemAtTail,
+    appendRateLimitNotice,
+    appendPromptUser, promoteDeliveredInput, reduceAuxiliaryEvent,
+    addPermissionFromEvent, resolvePermission, reconcilePermissionRows
+  } = useSessionChatRecords(protectedSessionIDs);
   const [inboxBySession, setInboxBySession] = useState<Record<string, SessionInboxEntry[]>>({});
   const [formsBySession, setFormsBySession] = useState<Record<string, PendingFormRequest[]>>({});
   const [stagedReverts, setStagedReverts] = useState<Record<string, SessionRevertStage | null>>({});
@@ -381,8 +385,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
 
   const panelsRef = useRef(panels);
   panelsRef.current = panels;
-  const transcriptsBySessionRef = useRef(transcriptsBySession);
-  transcriptsBySessionRef.current = transcriptsBySession;
   const usageBySessionRef = useRef(usageBySession);
   usageBySessionRef.current = usageBySession;
   const compactionBaselineBySessionRef = useRef(compactionBaselineBySession);
@@ -454,11 +456,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     []
   );
 
-  const protectedSessionIDs = useCallback(
-    (): Set<string> => new Set(panelsRef.current.map((panel) => panel.id)),
-    []
-  );
-
   const setAgentFilesFor = useCallback((
     workspaceID: string,
     update: Map<string, AgentFileState> | ((prev: Map<string, AgentFileState>) => Map<string, AgentFileState>)
@@ -492,19 +489,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       current[workspaceID] === items ? current : { ...current, [workspaceID]: items });
   }, []);
 
-  const updateSessionTranscript = useCallback(
-    (sessionID: string, update: (items: TranscriptItem[]) => TranscriptItem[]) => {
-      setTranscriptsBySession((current) => {
-        const items = current[sessionID] ?? [];
-        const next = update(items);
-        return next === items
-          ? current
-          : retainSessionRecord(current, sessionID, next, protectedSessionIDs());
-      });
-    },
-    [protectedSessionIDs]
-  );
-
   const setSessionBusy = useCallback((sessionID: string, value: boolean) => {
     setBusyBySession((current) => current[sessionID] === value
       ? current
@@ -534,59 +518,13 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       // confirm the request is gone.
       if (!successfulWorkspaces.has(panel.workspace.id)) continue;
       const requests = fetched.get(panel.id) ?? [];
-      const liveIDs = new Set(requests.map((request) => request.id));
-      updateSessionTranscript(panel.id, (prev) => {
-        let changed = false;
-        let next = prev;
-        for (const request of requests) {
-          if (next.some((item) => item.kind === "permission" && item.requestID === request.id)) continue;
-          changed = true;
-          next = [
-            ...next,
-            {
-              kind: "permission",
-              id: request.id,
-              requestID: request.id,
-              action: request.action,
-              resources: request.resources,
-              pending: true
-            }
-          ];
-        }
-        if (next.some((item) => item.kind === "permission" && item.pending && !liveIDs.has(item.requestID))) {
-          changed = true;
-          next = next.map((item) =>
-            item.kind === "permission" && item.pending && !liveIDs.has(item.requestID)
-              ? { ...item, pending: false }
-              : item
-          );
-        }
-        return changed ? next : prev;
-      });
+      reconcilePermissionRows(panel.id, requests);
     }
-  }, [updateSessionTranscript]);
+  }, [reconcilePermissionRows]);
 
-  const chatStatesRef = useRef(new Map<string, ChatDirectoryState>());
   const materializingRef = useRef(new Set<string>());
   const swapPendingRef = useRef(false);
   const replacingSessionIDsRef = useRef(new Map<string, number>());
-
-  const chatStateFor = useCallback((sessionID: string): ChatDirectoryState => {
-    let state = chatStatesRef.current.get(sessionID);
-    if (!state) {
-      state = { message: {}, part: {}, session_status: {} };
-      chatStatesRef.current.set(sessionID, state);
-    }
-    return state;
-  }, []);
-
-  const applyProjection = useCallback((sessionID: string) => {
-    const state = chatStatesRef.current.get(sessionID);
-    if (!state) return;
-    const projected = projectAssistantItems(state, sessionID);
-    const messages = state.message[sessionID] ?? [];
-    updateSessionTranscript(sessionID, (previous) => reconcileAssistantProjection(previous, projected, messages));
-  }, [updateSessionTranscript]);
 
   const commitStreaming = useCallback((next: StreamingStore) => {
     streamingRef.current = next;
@@ -599,20 +537,20 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     persistMessageQueueState(next);
   }, []);
 
-  const syncStreaming = useCallback((sessionID: string, previous: ChatStateSnapshot) => {
-    const next = updateChangedStreamingSessions(chatStateFor(sessionID), previous, streamingRef.current);
+  const syncStreaming = useCallback((sessionID: string, previous: ChatSnapshotReadView) => {
+    const next = deriveChangedStreaming(sessionID, previous, streamingRef.current);
     if (next) commitStreaming(next);
-  }, [chatStateFor, commitStreaming]);
+  }, [deriveChangedStreaming, commitStreaming]);
 
   const reconcileStreaming = useCallback((sessionID: string) => {
-    const next = updateStreamingState(chatStateFor(sessionID), streamingRef.current);
+    const next = deriveStreaming(sessionID, streamingRef.current);
     if (next) commitStreaming(next);
-  }, [chatStateFor, commitStreaming]);
+  }, [deriveStreaming, commitStreaming]);
 
   useEffect(() => {
     const finalizeTrailingAssistant = (sessionID: string, reason: "settle" | "idle"): void => {
       const wasBusy = Boolean(busyBySessionRef.current[sessionID]);
-      completeLatestIncomplete(chatStateFor(sessionID), sessionID);
+      completeLatest(sessionID);
       applyProjection(sessionID);
       reconcileStreaming(sessionID);
       setSessionBusy(sessionID, false);
@@ -626,7 +564,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const timer = setInterval(() => {
       const now = Date.now();
       for (const panel of panelsRef.current) {
-        const transcript = transcriptsBySessionRef.current[panel.id] ?? [];
+        const transcript = transcriptFor(panel.id);
         const trailing = [...transcript].reverse().find((item) => item.kind === "assistant");
         const isBusy = Boolean(busyBySessionRef.current[panel.id]);
         if (trailing?.kind !== "assistant" || trailing.completed) {
@@ -667,7 +605,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
     }, STREAM_SETTLE_POLL_MS);
     return () => clearInterval(timer);
-  }, [chatStateFor, applyProjection, reconcileStreaming, setSessionBusy]);
+  }, [completeLatest, applyProjection, reconcileStreaming, setSessionBusy, transcriptFor]);
 
   const setFollowUpBehavior = useCallback((behavior: FollowUpBehavior) => {
     commitQueue({ ...messageQueueRef.current, followUpBehavior: behavior });
@@ -773,9 +711,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       ]);
       if (!panelForSession(sessionID)) return;
       const aborted = sessionAbortFlagsRef.current[sessionID]?.acknowledged === false;
-      const draft = chatStateFor(sessionID);
-      hydrateChatState(draft, sessionID, snapshot.transcript);
-      if (aborted) completeLatestIncomplete(draft, sessionID);
+      mergeMaterializedRecords(sessionID, snapshot.transcript, aborted);
       applyProjection(sessionID);
       reconcileStreaming(sessionID);
       setTodosFor(panel.workspace.id, snapshot.todos);
@@ -800,7 +736,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     } finally {
       materializingRef.current.delete(sessionID);
     }
-  }, [panelForSession, chatStateFor, applyProjection, reconcileStreaming, setTodosFor, setSessionBusy, protectedSessionIDs, toast]);
+  }, [panelForSession, mergeMaterializedRecords, applyProjection, reconcileStreaming, setTodosFor, setSessionBusy, protectedSessionIDs, toast]);
 
   const submitForm = useCallback(async (
     workspace: WorkspaceIdentity,
@@ -845,9 +781,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       } catch (err) {
         void refreshInbox(panel.id);
         const failure = formatFailure(err, "ORBIT_INBOX_STEER_FAILED", "Queued prompt could not be sent");
-        updateSessionTranscript(panel.id, (prev) => prev.some((item) => item.id === `queued-steer-error-${messageID}`)
-          ? prev
-          : [...prev, { kind: "status", id: `queued-steer-error-${messageID}`, text: failure, tone: "error" }]);
+        appendUniqueTranscriptItem(panel.id, { kind: "status", id: `queued-steer-error-${messageID}`, text: failure, tone: "error" });
         if (panelFor(workspace)) toast(failure, "error");
       }
       return;
@@ -861,9 +795,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const createdAt = Date.now();
     const selectedAgent = currentAgentByWorkspace[panel.workspace.id];
     const selectedModel = currentModelByWorkspace[panel.workspace.id];
-    updateSessionTranscript(panel.id, (prev) => [
-      ...prev,
-      {
+    appendTranscriptItem(panel.id, {
         kind: "user",
         id: `user-${createdAt}`,
         text: promptText,
@@ -871,8 +803,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         ...(selectedAgent ? { agent: selectedAgent.id } : {}),
         ...(selectedModel ? { model: { id: selectedModel.id, providerID: selectedModel.providerID } } : {}),
         ...(attachments.length > 0 ? { attachments } : {})
-      }
-    ]);
+    });
     try {
       await window.openshell.prompt(workspace, promptText, popped.attachments ?? []);
     } catch (err) {
@@ -882,13 +813,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         content: promptText,
         attachments: popped.attachments
       }));
-      updateSessionTranscript(panel.id, (prev) => [
-        ...prev,
-        { kind: "status", id: `queued-error-${messageID}`, text: failure, tone: "error" }
-      ]);
+      appendTranscriptItem(panel.id, { kind: "status", id: `queued-error-${messageID}`, text: failure, tone: "error" });
       if (panelFor(workspace)) toast(failure, "error");
     }
-  }, [panelFor, popQueuedMessage, updateSessionTranscript, toast, refreshInbox, commitQueue, currentAgentByWorkspace, currentModelByWorkspace]);
+  }, [panelFor, popQueuedMessage, appendTranscriptItem, appendUniqueTranscriptItem, toast, refreshInbox, commitQueue, currentAgentByWorkspace, currentModelByWorkspace]);
 
   const attachPanel = useCallback((info: SessionInfo, saveWorkspace = true): void => {
     if (saveWorkspace) rememberWorkspace(info.directory);
@@ -905,19 +833,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       try {
         const reopened = await window.openshell.openSessionById(sessionID, request);
         if (!panelForSession(sessionID)) return;
-        const merged = mergeChatHistory(reopened.transcript, transcriptsBySessionRef.current[sessionID] ?? []);
         const aborted = sessionAbortFlagsRef.current[sessionID]?.acknowledged === false;
-        chatStatesRef.current.delete(sessionID);
-        const draft = chatStateFor(sessionID);
-        hydrateChatState(draft, sessionID, merged);
-        if (aborted) completeLatestIncomplete(draft, sessionID);
+        const merged = prepareReopenedReplay(sessionID, reopened.transcript, aborted);
         reconcileStreaming(sessionID);
-        setTranscriptsBySession((current) => retainSessionRecord(
-          current,
-          sessionID,
-          merged,
-          protectedSessionIDs()
-        ));
+        commitReplayTranscript(sessionID, merged);
         const running = [...reopened.transcript].reverse().find((item) => item.kind === "assistant");
         setBusyBySession((current) => sessionID in current
           ? current
@@ -941,7 +860,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
       }
     },
-    [toast, panelForSession, chatStateFor, reconcileStreaming, applyProjection, setTodosFor, protectedSessionIDs]
+    [toast, panelForSession, prepareReopenedReplay, commitReplayTranscript, reconcileStreaming, applyProjection, setTodosFor, protectedSessionIDs]
   );
 
   const clearStagedRevert = useCallback(async (workspace: WorkspaceIdentity): Promise<void> => {
@@ -990,8 +909,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     closeCtxMenu();
     setPendingCreate(null);
     setPendingRename(null);
-    if (hydrate && !transcriptsBySessionRef.current[sessionID]) void hydrateTranscript(sessionID);
-  }, [hydrateTranscript, closeCtxMenu]);
+    if (hydrate && !hasTranscript(sessionID)) void hydrateTranscript(sessionID);
+  }, [hydrateTranscript, closeCtxMenu, hasTranscript]);
 
   const {
     tabs, activePath, singleFile, unsavedEditorFiles, unsavedEditorFileCount,
@@ -1061,7 +980,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const keepActive = preserveBusy && Boolean(busyBySessionRef.current[sessionID]);
     if (!keepActive) {
       removeActiveSession(sessionID);
-      chatStatesRef.current.delete(sessionID);
+      forgetRecords(sessionID);
       materializingRef.current.delete(sessionID);
       setCompactionBaselineBySession((current) => {
         if (!(sessionID in current)) return current;
@@ -1073,7 +992,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     if (!keepActive) {
       void window.openshell.closeSession(ejected.workspace).catch(() => {});
     }
-  }, [removeActiveSession, ejectPanelFromView, activeSessionFor]);
+  }, [removeActiveSession, ejectPanelFromView, activeSessionFor, forgetRecords]);
 
   const closePanel = useCallback((sessionID: string, preserveBusy = false): void => {
     const closing = panelsRef.current.find((panel) => panel.id === sessionID);
@@ -1358,7 +1277,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     async (sessionID: string, silent = false, directoryHint?: string): Promise<SessionInfo | null> => {
       const existing = panelForSession(sessionID);
       if (existing) {
-        if (!transcriptsBySessionRef.current[sessionID]) void hydrateTranscript(sessionID);
+        if (!hasTranscript(sessionID)) void hydrateTranscript(sessionID);
         if (!silent) {
           focusSession(sessionID);
           void loadSessions();
@@ -1398,19 +1317,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           replaceSavedWorkspace(previousDirectory, reopened.session.directory);
         }
         void loadRecovery(reopened.session.workspace);
-        const merged = mergeChatHistory(
-          reopened.transcript,
-          transcriptsBySessionRef.current[reopened.session.id] ?? []
-        );
-        chatStatesRef.current.delete(reopened.session.id);
-        hydrateChatState(chatStateFor(reopened.session.id), reopened.session.id, merged);
+        const merged = prepareReopenedReplay(reopened.session.id, reopened.transcript, false);
         reconcileStreaming(reopened.session.id);
-        setTranscriptsBySession((current) => retainSessionRecord(
-          current,
-          reopened.session.id,
-          merged,
-          protectedSessionIDs()
-        ));
+        commitReplayTranscript(reopened.session.id, merged);
         const running = [...reopened.transcript].reverse().find((item) => item.kind === "assistant");
         setBusyBySession((current) => reopened.session.id in current
           ? current
@@ -1442,7 +1351,27 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
       }
     },
-    [attachPanel, replacePanels, replacePanel, replaceSavedWorkspace, focusSession, panelForSession, chatStateFor, reconcileStreaming, setTodosFor, toast, loadModels, loadAgents, loadSessions, loadRecovery, hydrateTranscript, protectedSessionIDs, summaryFor]
+    [
+    attachPanel,
+    replacePanels,
+    replacePanel,
+    replaceSavedWorkspace,
+    focusSession,
+    panelForSession,
+    prepareReopenedReplay,
+    commitReplayTranscript,
+    hasTranscript,
+    reconcileStreaming,
+    setTodosFor,
+    toast,
+    loadModels,
+    loadAgents,
+    loadSessions,
+    loadRecovery,
+    hydrateTranscript,
+    protectedSessionIDs,
+    summaryFor,
+  ]
   );
 
   const sendPrompt = useCallback(
@@ -1468,7 +1397,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         sessionAbortFlagsRef.current = nextAbortFlags;
         setSessionAbortFlags(nextAbortFlags);
       }
-      const transcript = transcriptsBySessionRef.current[panel.id] ?? [];
+      const transcript = transcriptFor(panel.id);
       const trailingAssistant = [...transcript].reverse().find((item) => item.kind === "assistant");
       const trailingAssistantIncomplete = trailingAssistant?.kind === "assistant" && !trailingAssistant.completed;
       const activity = resolveSessionActivity({
@@ -1498,16 +1427,13 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         ...(selectedModel ? { model: { id: selectedModel.id, providerID: selectedModel.providerID } } : {}),
         ...(attachments.length > 0 ? { attachments } : {})
       };
-      updateSessionTranscript(panel.id, (prev) => [...prev, userItem]);
-      insertUserMessage(chatStateFor(panel.id), panel.id, userItem.id, promptText, userItem.model, userItem);
+      appendPromptUser(panel.id, userItem);
       setTodosFor(panel.workspace.id, []);
       setSessionBusy(panel.id, true);
       const applyCanonicalTranscript = (refreshed: Awaited<ReturnType<typeof window.openshell.prompt>>): void => {
-        const current = transcriptsBySessionRef.current[panel.id] ?? [];
-        const merged = reconcilePromptHistory(refreshed.transcript, current, userItem);
-        updateSessionTranscript(panel.id, () => merged);
+        const merged = reconcilePromptTranscript(panel.id, refreshed.transcript, userItem);
         lastStreamActivityRef.current[panel.id] = Date.now();
-        hydrateChatState(chatStateFor(panel.id), panel.id, merged);
+        hydratePromptRecords(panel.id, merged);
         reconcileStreaming(panel.id);
       };
       try {
@@ -1524,9 +1450,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         const failure = normalizeFailure(err, "ORBIT_PROMPT_FAILED", "Prompt failed");
         const failureText = formatFailure(failure);
         const failureID = `prompt-error-${userItem.id}`;
-        updateSessionTranscript(panel.id, (prev) => prev.some((item) => item.id === failureID)
-          ? prev
-          : [...prev, { kind: "status", id: failureID, text: failureText, tone: "error" }]);
+        appendUniqueTranscriptItem(panel.id, { kind: "status", id: failureID, text: failureText, tone: "error" });
         if (panelFor(target)) {
           if (delivery === "queue") {
             const queueTarget = createMessageQueueTarget(panel.id, panel.workspace.id);
@@ -1541,7 +1465,21 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
       }
     },
-    [toast, panelFor, setTodosFor, updateSessionTranscript, setSessionBusy, commitQueue, chatStateFor, reconcileStreaming, currentAgentByWorkspace, currentModelByWorkspace]
+    [
+    toast,
+    panelFor,
+    setTodosFor,
+    appendUniqueTranscriptItem,
+    reconcilePromptTranscript,
+    setSessionBusy,
+    commitQueue,
+    hydratePromptRecords,
+    appendPromptUser,
+    reconcileStreaming,
+    currentAgentByWorkspace,
+    currentModelByWorkspace,
+    transcriptFor,
+  ]
   );
 
   const runCommand = useCallback(async (name: string, args = "", workspace?: WorkspaceIdentity) => {
@@ -1576,9 +1514,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const nextAbortFlags = { ...sessionAbortFlagsRef.current, [panel.id]: abortFlag };
     sessionAbortFlagsRef.current = nextAbortFlags;
     setSessionAbortFlags(nextAbortFlags);
-    const draft = chatStateFor(panel.id);
-    const previous = snapshotChatState(draft);
-    const interrupted = applyChatEvent(draft, panel.id, {
+    const previous = snapshotSession(panel.id);
+    const interrupted = reduceSessionEvent(panel.id, {
       id: `local-interrupt-${abortFlag.timestamp}`,
       type: "session.execution.interrupted",
       created: abortFlag.timestamp,
@@ -1592,7 +1529,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     await window.openshell.interrupt(target).catch((error) => {
       toast(formatFailure(error, "ORBIT_INTERRUPT_FAILED", "The prompt could not be interrupted"), "error");
     });
-  }, [setSessionBusy, panelFor, toast, chatStateFor, applyProjection, syncStreaming]);
+  }, [setSessionBusy, panelFor, toast, snapshotSession, reduceSessionEvent, applyProjection, syncStreaming]);
 
   const refreshProviderUsage = useCallback(async () => {
     const sequence = ++providerUsageSeqRef.current;
@@ -1628,15 +1565,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         toast(err instanceof Error ? err.message : String(err), "error");
         return;
       }
-      updateSessionTranscript(panel.id, (prev) =>
-        prev.map((item) =>
-          item.kind === "permission" && item.requestID === requestID
-            ? { ...item, pending: false, resolvedWith: reply }
-            : item
-        )
-      );
+      resolvePermission(panel.id, requestID, reply);
     },
-    [toast, panelForSession, updateSessionTranscript]
+    [toast, panelForSession, resolvePermission]
   );
 
   const toggleApprovalMode = useCallback(() => {
@@ -2236,19 +2167,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       const targetWorkspace = targetSessionID ? workspaceOfSession(targetSessionID) : null;
       const active = Boolean(targetSessionID && targetSessionID === sessionRef.current?.id);
       if (type === "session.inbox.delivered" && targetSessionID && typeof data.inboxID === "string") {
-        const buffered = (transcriptsBySessionRef.current[targetSessionID] ?? []).find(
-          (item) => item.kind === "pending-input" && item.id === data.inboxID
-        );
-        if (buffered?.kind === "pending-input" && buffered.inputType === "user") {
-          insertUserMessage(
-            chatStateFor(targetSessionID),
-            targetSessionID,
-            data.inboxID,
-            buffered.text,
-            buffered.model,
-            buffered
-          );
-        }
+        promoteDeliveredInput(targetSessionID, data.inboxID);
       }
 
       if (type === "session.inbox.enqueued" && targetSessionID && typeof data.inboxID === "string") {
@@ -2333,7 +2252,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
 
       if (targetSessionID && AUX_CHAT_STREAM_TYPES.has(type)) {
-        updateSessionTranscript(targetSessionID, (prev) => reduceChatStream(prev, streamEvent));
+        reduceAuxiliaryEvent(targetSessionID, streamEvent);
         if (type === "session.compaction.ended") {
           const currentInput = usageBySessionRef.current[targetSessionID]?.tokens.input ?? 0;
           if (currentInput > 0) {
@@ -2377,15 +2296,14 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           if (sessionAbortFlagsRef.current[targetSessionID]?.acknowledged === false && streamEventShowsActiveWork(streamEvent)) {
             break;
           }
-          const draft = chatStateFor(targetSessionID);
-          const previous = snapshotChatState(draft);
-          const result = applyChatEvent(draft, targetSessionID, streamEvent);
+          const previous = snapshotSession(targetSessionID);
+          const result = reduceSessionEvent(targetSessionID, streamEvent);
           if (result === true || (typeof result !== "boolean" && result.changed)) {
             lastStreamActivityRef.current[targetSessionID] = Date.now();
             applyProjection(targetSessionID);
             const abortFlag = sessionAbortFlagsRef.current[targetSessionID];
             const abortPending = Boolean(abortFlag && !abortFlag.acknowledged);
-            const sessionStatus = draft.session_status[targetSessionID];
+            const sessionStatus = recordStatusFor(targetSessionID);
             if (sessionStatus?.type === "idle" || sessionStatus?.type === "error") {
               setSessionBusy(targetSessionID, false);
             } else if (!abortPending && !busyBySessionRef.current[targetSessionID] && streamEventShowsActiveWork(streamEvent)) {
@@ -2397,9 +2315,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           const failure = failureForStreamEvent(type, data);
           if (failure && targetSessionID && result === false) {
             const failureText = formatFailure(failure.error, failure.code, failure.message);
-            updateSessionTranscript(targetSessionID, (prev) => prev.some((item) => item.id === `${streamEvent.id}-failure`)
-              ? prev
-              : [...prev, { kind: "status", id: `${streamEvent.id}-failure`, text: failureText, tone: "error" }]);
+            appendUniqueTranscriptItem(targetSessionID, { kind: "status", id: `${streamEvent.id}-failure`, text: failureText, tone: "error" });
           }
           syncStreaming(targetSessionID, previous);
           if (type === "message.part.delta" || type === "session.text.delta" || type === "session.reasoning.delta" || type === "session.tool.input.delta") {
@@ -2462,9 +2378,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
         case "session.execution.started": {
           if (targetSessionID && sessionAbortFlagsRef.current[targetSessionID]?.acknowledged !== false) {
-            const draft = chatStateFor(targetSessionID);
-            const previous = snapshotChatState(draft);
-            applyChatEvent(draft, targetSessionID, streamEvent);
+            const previous = snapshotSession(targetSessionID);
+            reduceSessionEvent(targetSessionID, streamEvent);
             syncStreaming(targetSessionID, previous);
             // Authoritative proof the turn is alive: reset the settle quiet
             // clock so slow models (long prefill/tool gaps with no deltas)
@@ -2479,9 +2394,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         case "session.execution.interrupted": {
           if (targetSessionID) {
             setSessionBusy(targetSessionID, false);
-            const draft = chatStateFor(targetSessionID);
-            const previous = snapshotChatState(draft);
-            const result = applyChatEvent(draft, targetSessionID, streamEvent);
+            const previous = snapshotSession(targetSessionID);
+            const result = reduceSessionEvent(targetSessionID, streamEvent);
             if (result === true || (typeof result !== "boolean" && result.changed)) applyProjection(targetSessionID);
             syncStreaming(targetSessionID, previous);
             setSessionAbortFlags((current) => current[targetSessionID]
@@ -2496,24 +2410,20 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
               : data.error
                 ? formatFailure(data.error, "ORBIT_EXECUTION_INTERRUPTED", "Execution interrupted")
                 : "Interrupted";
-            updateSessionTranscript(targetSessionID, (prev) => [
-              ...prev.filter((item) => item.id !== `${streamEvent.id}-end`),
-              {
+            replaceTranscriptItemAtTail(targetSessionID, {
                 kind: "status",
                 id: `${streamEvent.id}-end`,
                 text: errorText,
                 tone: type === "session.execution.interrupted" ? "info" : "error"
-              }
-            ]);
+            });
           }
           break;
         }
         case "session.idle": {
           if (targetSessionID) {
             setSessionBusy(targetSessionID, false);
-            const draft = chatStateFor(targetSessionID);
-            const previous = snapshotChatState(draft);
-            const result = applyChatEvent(draft, targetSessionID, streamEvent);
+            const previous = snapshotSession(targetSessionID);
+            const result = reduceSessionEvent(targetSessionID, streamEvent);
             if (result === true || (typeof result !== "boolean" && result.changed)) applyProjection(targetSessionID);
             syncStreaming(targetSessionID, previous);
             setSessionAbortFlags((current) => current[targetSessionID]
@@ -2526,18 +2436,15 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         case "session.error": {
           if (targetSessionID) {
             setSessionBusy(targetSessionID, false);
-            const draft = chatStateFor(targetSessionID);
-            const previous = snapshotChatState(draft);
-            const result = applyChatEvent(draft, targetSessionID, streamEvent);
+            const previous = snapshotSession(targetSessionID);
+            const result = reduceSessionEvent(targetSessionID, streamEvent);
             if (result === true || (typeof result !== "boolean" && result.changed)) applyProjection(targetSessionID);
             syncStreaming(targetSessionID, previous);
             setSessionAbortFlags((current) => current[targetSessionID]
               ? { ...current, [targetSessionID]: { ...current[targetSessionID], acknowledged: true } }
               : current);
             const errorText = formatFailure(data.error, "ORBIT_SESSION_ERROR", "Session failed");
-            updateSessionTranscript(targetSessionID, (prev) => prev.some((item) => item.id === `${streamEvent.id}-error`)
-              ? prev
-              : [...prev, { kind: "status", id: `${streamEvent.id}-error`, text: errorText, tone: "error" }]);
+            appendUniqueTranscriptItem(targetSessionID, { kind: "status", id: `${streamEvent.id}-error`, text: errorText, tone: "error" });
           }
           break;
         }
@@ -2571,9 +2478,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           const abortPending = Boolean(targetSessionID && sessionAbortFlagsRef.current[targetSessionID]?.acknowledged === false);
           const activeStatus = status?.type === "busy" || status?.type === "retry";
           if (targetSessionID && !(abortPending && activeStatus)) {
-            const draft = chatStateFor(targetSessionID);
-            const previous = snapshotChatState(draft);
-            applyChatEvent(draft, targetSessionID, streamEvent);
+            const previous = snapshotSession(targetSessionID);
+            reduceSessionEvent(targetSessionID, streamEvent);
             syncStreaming(targetSessionID, previous);
           }
           if (activeStatus && targetSessionID && !abortPending) {
@@ -2583,7 +2489,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           if ((status?.type === "idle" || status?.type === "error") && targetSessionID) setSessionBusy(targetSessionID, false);
           if (status?.type === "retry" && targetSessionID && !abortPending) {
             setSessionBusy(targetSessionID, true);
-            if (attachRetryToLatestAssistant(chatStateFor(targetSessionID), targetSessionID, {
+            if (attachRetry(targetSessionID, {
               attempt: Number(status.attempt ?? 1),
               message: formatFailure(status.message, "ORBIT_RETRY_SCHEDULED", "Retrying"),
               next: status.next
@@ -2593,17 +2499,13 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
             if (status.action && Number(status.attempt ?? 1) === 1) {
               const notice = buildRateLimitNotice(status.action, targetSessionID);
               if (notice) {
-                updateSessionTranscript(targetSessionID, (prev) => {
-                  if (prev.some((item) => item.kind === "status" && item.id === notice.id)) return prev;
-                  return [...prev, notice];
-                });
+                appendRateLimitNotice(targetSessionID, notice);
               }
             }
           }
           if (targetSessionID && !(abortPending && activeStatus)) {
-            const draft = chatStateFor(targetSessionID);
-            const previous = snapshotChatState(draft);
-            const result = applyChatEvent(draft, targetSessionID, streamEvent);
+            const previous = snapshotSession(targetSessionID);
+            const result = reduceSessionEvent(targetSessionID, streamEvent);
             if (result === true || (typeof result !== "boolean" && result.changed)) applyProjection(targetSessionID);
             syncStreaming(targetSessionID, previous);
           }
@@ -2613,22 +2515,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           const requestID = String(data.id);
           const automatic = approvalModeRef.current === "approve";
           if (!targetSessionID) break;
-          updateSessionTranscript(targetSessionID, (prev) => {
-            if (prev.some((i) => i.kind === "permission" && i.requestID === requestID)) return prev;
-            return [
-              ...prev,
-              {
-                kind: "permission",
-                id: requestID,
-                requestID,
-                action: String(data.action ?? data.permission ?? "unknown"),
-                resources: Array.isArray(data.resources ?? data.patterns)
-                  ? (data.resources ?? data.patterns).map(String)
-                  : [],
-                pending: true
-              }
-            ];
-          });
+          addPermissionFromEvent(targetSessionID, requestID, data);
           const panel = targetSessionID ? panelForSession(targetSessionID) : null;
           if (automatic && panel) {
             void window.openshell.permissionReply(panel.workspace, requestID, "once", panel.id);
@@ -2639,13 +2526,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           const requestID = String(data.requestID ?? data.id);
           const reply = (data.reply as PermissionReply | undefined) ?? "reject";
           if (!targetSessionID) break;
-          updateSessionTranscript(targetSessionID, (prev) =>
-            prev.map((item) =>
-              item.kind === "permission" && item.requestID === requestID
-                ? { ...item, pending: false, resolvedWith: reply }
-                : item
-            )
-          );
+          resolvePermission(targetSessionID, requestID, reply);
           break;
         }
       }
@@ -2719,7 +2600,13 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     loadRecovery,
     reopenSession,
     setSessionBusy,
-    updateSessionTranscript,
+    appendUniqueTranscriptItem,
+    appendRateLimitNotice,
+    replaceTranscriptItemAtTail,
+    reduceAuxiliaryEvent,
+    resolvePermission,
+    addPermissionFromEvent,
+    promoteDeliveredInput,
     panelFor,
     panelForSession,
     workspaceOfSession,
@@ -2730,7 +2617,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     prepareFileUpdate,
     applyFileUpdate,
     setTreeFor,
-    chatStateFor,
+    snapshotSession,
+    reduceSessionEvent,
+    attachRetry,
     applyProjection,
     materializeSession,
     refreshSessionUsage,
@@ -2743,6 +2632,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     renameSummary,
     removeSummary,
     openPaths,
+    recordStatusFor,
   ]);
 
   useEffect(() => {
@@ -2768,7 +2658,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     formsBySession,
     stagedReverts,
     sessionAbortFlags,
-    chatStates: chatStatesRef.current
+    chatStates: rawChatReadMap
   }), [
     panels,
     busyBySession,

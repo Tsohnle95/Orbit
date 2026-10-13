@@ -72,6 +72,20 @@ intact; a failed refresh returns an empty result without clearing known contexts
 
 ## Authoritative chat store (`chat-store.ts`)
 
+`use-session-chat-records.ts` owns renderer transcript records, their read
+snapshots, raw chat-state lifetime and record/projection/replay commands. Its
+only host capability identifies sessions protected from transcript eviction;
+foreign streams remain accepted. Store retains runtime attribution, transport,
+generation guards, materialization IO, interactive inventories and activity
+policy. Reopened replay resets raw records and commits the flat transcript only
+after streaming reconciliation; materialized replay merges into existing raw
+records. Dropping raw records does not drop retained transcript history.
+
+Borrowed raw-state, snapshot and status views expose readonly dictionaries,
+arrays and known nested fields without additional copying or freezing them. Pure readers
+accept those views; the reducer's mutable records and replacement rules remain
+unchanged. Components retain the existing Store/PanelView presentation contract.
+
 `chat-store.ts` remains the public entry point for chat reduction, records,
 projection and hydration. It owns runtime-event dispatch and protocol adapters.
 Its internal `chat-records.ts` owns ordered record mutations, delta overlap,

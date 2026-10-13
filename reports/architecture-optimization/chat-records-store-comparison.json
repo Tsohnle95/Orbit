@@ -1,0 +1,626 @@
+{
+  "phase": "chat record ownership",
+  "baselineRef": "64f78c0",
+  "runner": "scripts/benchmark-renderer-store.mjs",
+  "afterSourceSha256": {
+    "src/renderer/src/store.tsx": "a3314b0d59812e8779564e2768a2b58de9bdea0642faf3ad5e80b893347af1d5",
+    "src/renderer/src/use-session-chat-records.ts": "02edb8d103b04b3c6360976a8c411917ee8c1e4311e8a8399dfcf8d788b79edb",
+    "src/renderer/src/chat-records.ts": "baf7bdc413071e47f277a12dad07d6989be4404ff568e189ce29b9465edd5a20",
+    "src/renderer/src/chat-store.ts": "202f2871f2cdd8eee27d9788b460f35c62b8a54cdcfba21ff0b04a153a599cba",
+    "src/renderer/src/streaming.ts": "e2f3686047594923d7f46f4f8b1b5dd827b2833939599d10cf154e4c8fb588c0",
+    "src/renderer/src/panel-projection.ts": "a44fbfa68942345c1417cefa8761fb3681b365208456d1422336a3efa92ef371",
+    "src/renderer/src/assistant-status.ts": "62a7555b49f92efeb3d0e96ea5b38df3603aa69453d9b3a4eb14386fbf5c3468",
+    "src/renderer/src/messages/synthetic.ts": "ec35d0b80981367a502342fd5b10011275d0965c6856004093d8cb61584a3bdf"
+  },
+  "interpretation": "Pilot1warmup/5samples suggested slower processing; uniform3warmup/9sample paired and reverse-order runs did not reproduce it. Timings are inconclusive; no speedup or meaningful regression established. All runs retain identical content and100 consumer renders. Callback-cohort memo prototype rejected without verified benefit; no production integration.",
+  "runs": {
+    "before-1": {
+      "source": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "head": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "node": "v22.23.2",
+      "bundleSha256": "22a1680204adfdd786108bcd02df761e19ee754c80fce1c6f2590692a5a4d280",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 1,
+        "samples": 5
+      },
+      "openMs": {
+        "min": 0.23854199999993853,
+        "median": 0.2685420000000249,
+        "max": 0.3703329999999596
+      },
+      "streamingMs": {
+        "min": 18.037916999999993,
+        "median": 19.079375000000027,
+        "max": 20.814499999999953
+      },
+      "samples": [
+        {
+          "openMs": 0.3703329999999596,
+          "streamingMs": 20.814499999999953,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2685420000000249,
+          "streamingMs": 19.079375000000027,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.27025000000003274,
+          "streamingMs": 19.299041999999986,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.24112500000001091,
+          "streamingMs": 18.037916999999993,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.23854199999993853,
+          "streamingMs": 18.300749999999994,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    },
+    "after-1": {
+      "source": "working tree",
+      "head": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "node": "v22.23.2",
+      "bundleSha256": "6b0f597f5326efd4cbfd2bf3c46e5333bc0e7ee1f50fcc2a7090f35545d5f988",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 1,
+        "samples": 5
+      },
+      "openMs": {
+        "min": 0.2813340000000153,
+        "median": 0.34941700000001674,
+        "max": 0.39908300000001873
+      },
+      "streamingMs": {
+        "min": 20.72062500000004,
+        "median": 22.523415999999997,
+        "max": 24.47245799999996
+      },
+      "samples": [
+        {
+          "openMs": 0.39908300000001873,
+          "streamingMs": 24.47245799999996,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.34941700000001674,
+          "streamingMs": 22.791499999999985,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.37204200000002174,
+          "streamingMs": 20.72062500000004,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.3050000000000068,
+          "streamingMs": 22.523415999999997,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2813340000000153,
+          "streamingMs": 21.338833000000022,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    },
+    "after-2": {
+      "source": "working tree",
+      "head": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "node": "v22.23.2",
+      "bundleSha256": "6b0f597f5326efd4cbfd2bf3c46e5333bc0e7ee1f50fcc2a7090f35545d5f988",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 1,
+        "samples": 5
+      },
+      "openMs": {
+        "min": 0.2570830000000228,
+        "median": 0.2841250000000173,
+        "max": 0.37512500000002547
+      },
+      "streamingMs": {
+        "min": 19.190125000000023,
+        "median": 20.52895799999999,
+        "max": 22.735250000000008
+      },
+      "samples": [
+        {
+          "openMs": 0.37512500000002547,
+          "streamingMs": 22.735250000000008,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2841250000000173,
+          "streamingMs": 20.52895799999999,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2875420000000304,
+          "streamingMs": 19.640708000000018,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2570830000000228,
+          "streamingMs": 20.80212499999999,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.25987499999996544,
+          "streamingMs": 19.190125000000023,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    },
+    "before-2": {
+      "source": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "head": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "node": "v22.23.2",
+      "bundleSha256": "22a1680204adfdd786108bcd02df761e19ee754c80fce1c6f2590692a5a4d280",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 1,
+        "samples": 5
+      },
+      "openMs": {
+        "min": 0.24212499999998727,
+        "median": 0.25175000000001546,
+        "max": 0.3340409999999565
+      },
+      "streamingMs": {
+        "min": 18.37591699999996,
+        "median": 19.73883400000011,
+        "max": 21.142041000000063
+      },
+      "samples": [
+        {
+          "openMs": 0.3216659999999365,
+          "streamingMs": 21.142041000000063,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.3340409999999565,
+          "streamingMs": 19.73883400000011,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2455410000000029,
+          "streamingMs": 20.30950000000007,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.25175000000001546,
+          "streamingMs": 18.602791000000025,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.24212499999998727,
+          "streamingMs": 18.37591699999996,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    },
+    "before-warm": {
+      "source": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "head": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "node": "v22.23.2",
+      "bundleSha256": "22a1680204adfdd786108bcd02df761e19ee754c80fce1c6f2590692a5a4d280",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.2496249999999236,
+        "median": 0.2766669999999749,
+        "max": 0.5944170000000213
+      },
+      "streamingMs": {
+        "min": 16.885833000000048,
+        "median": 20.18404099999998,
+        "max": 34.513124999999945
+      },
+      "samples": [
+        {
+          "openMs": 0.2766669999999749,
+          "streamingMs": 20.539333000000056,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.3325839999999971,
+          "streamingMs": 18.976834000000053,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2666659999999865,
+          "streamingMs": 23.178249999999935,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.30100000000004457,
+          "streamingMs": 28.722541000000092,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.30704100000002654,
+          "streamingMs": 34.513124999999945,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.5944170000000213,
+          "streamingMs": 17.061292000000094,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.27337499999998727,
+          "streamingMs": 17.66295799999989,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2694589999998698,
+          "streamingMs": 16.885833000000048,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2496249999999236,
+          "streamingMs": 20.18404099999998,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    },
+    "after-warm": {
+      "source": "working tree",
+      "head": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "node": "v22.23.2",
+      "bundleSha256": "6b0f597f5326efd4cbfd2bf3c46e5333bc0e7ee1f50fcc2a7090f35545d5f988",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.24545799999998508,
+        "median": 0.2737919999999576,
+        "max": 0.6258749999999509
+      },
+      "streamingMs": {
+        "min": 16.10450000000003,
+        "median": 18.33254199999999,
+        "max": 20.904457999999977
+      },
+      "samples": [
+        {
+          "openMs": 0.32545899999996664,
+          "streamingMs": 20.262917000000016,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2835420000000113,
+          "streamingMs": 20.095582999999976,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2569159999999897,
+          "streamingMs": 18.42337500000002,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.24545799999998508,
+          "streamingMs": 18.33254199999999,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2589580000000069,
+          "streamingMs": 20.904457999999977,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.6258749999999509,
+          "streamingMs": 18.14741600000002,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2927919999999631,
+          "streamingMs": 16.536707999999976,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2737919999999576,
+          "streamingMs": 16.10450000000003,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.25091599999996106,
+          "streamingMs": 16.17308300000002,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    },
+    "after-warm-repeat": {
+      "source": "working tree",
+      "head": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "node": "v22.23.2",
+      "bundleSha256": "6b0f597f5326efd4cbfd2bf3c46e5333bc0e7ee1f50fcc2a7090f35545d5f988",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.23441700000000765,
+        "median": 0.2572499999999991,
+        "max": 0.5889580000000478
+      },
+      "streamingMs": {
+        "min": 15.66604099999995,
+        "median": 17.72245799999996,
+        "max": 19.965374999999995
+      },
+      "samples": [
+        {
+          "openMs": 0.2572499999999991,
+          "streamingMs": 18.991457999999966,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2983750000000214,
+          "streamingMs": 19.965374999999995,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.26233300000001236,
+          "streamingMs": 18.703125,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2547079999999937,
+          "streamingMs": 17.622040999999967,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.23887500000000728,
+          "streamingMs": 17.72245799999996,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.5889580000000478,
+          "streamingMs": 19.937875000000076,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.3573749999999336,
+          "streamingMs": 17.011250000000018,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.24350000000004002,
+          "streamingMs": 15.66604099999995,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.23441700000000765,
+          "streamingMs": 15.910499999999956,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    },
+    "before-warm-repeat": {
+      "source": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "head": "64f78c0aed5e53577b5126053915a60c6b03691d",
+      "node": "v22.23.2",
+      "bundleSha256": "22a1680204adfdd786108bcd02df761e19ee754c80fce1c6f2590692a5a4d280",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.21983299999999417,
+        "median": 0.25783400000000256,
+        "max": 0.6143329999999878
+      },
+      "streamingMs": {
+        "min": 15.008958000000007,
+        "median": 17.811042000000043,
+        "max": 20.218624999999975
+      },
+      "samples": [
+        {
+          "openMs": 0.2504159999999729,
+          "streamingMs": 19.327708999999913,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.25783400000000256,
+          "streamingMs": 19.180917000000022,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.23995800000000145,
+          "streamingMs": 18.26162499999998,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2595410000000129,
+          "streamingMs": 17.811042000000043,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2920840000000453,
+          "streamingMs": 20.218624999999975,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.6143329999999878,
+          "streamingMs": 16.412624999999935,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2942079999999123,
+          "streamingMs": 15.746624999999995,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.25324999999998,
+          "streamingMs": 15.008958000000007,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.21983299999999417,
+          "streamingMs": 16.054208000000017,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    }
+  }
+}

@@ -144,6 +144,14 @@ unused-export or dependency candidates require caller/entry-point review before
 removal. Baseline and final production scope must remain identical, including
 adapted handwritten code and all newly introduced production modules.
 
+`node scripts/benchmark-renderer-store.mjs [--ref <commit>]` measures the actual
+Store event path and React/jsdom context commits against an isolated mocked
+bridge. It retains full output, records consumer renders, uses three warmups and
+nine samples, and includes source/bundle provenance. Its timings exclude native
+IPC, filesystem/provider latency and Chromium layout/paint. Use paired processes
+and report ranges; a relative difference in a single cold run is insufficient
+evidence of a performance regression or gain.
+
 The platform smoke scripts fail boundedly: the direct PTY and Electron-hosted
 PTY checks have 10-second child watchdogs, the Electron parent kills the full
 child process tree on timeout, and the macOS trust check has a 30-second

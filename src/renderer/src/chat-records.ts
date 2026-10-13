@@ -17,7 +17,7 @@ export interface ChatMessageRecord {
 }
 
 export function findTurnStartedAt(
-  messages: ChatMessageRecord[] | undefined,
+  messages: readonly ChatMessageReadView[] | undefined,
   fallbackMessageID?: string
 ): number | null {
   if (!messages) return null;
@@ -73,6 +73,25 @@ export type ChatEventResult =
 export interface ChatStateSnapshot {
   message: Record<string, ChatMessageRecord[]>;
   session_status: Record<string, ChatSessionStatus>;
+}
+
+export interface ChatMessageReadView extends Readonly<ChatMessageRecord> {
+  readonly time: Readonly<ChatMessageRecord["time"]>;
+  readonly retry?: Readonly<NonNullable<ChatMessageRecord["retry"]>>;
+}
+
+export interface ChatPartReadView extends Readonly<ChatPartRecord> {
+  readonly time?: Readonly<NonNullable<ChatPartRecord["time"]>>;
+  readonly state?: Readonly<Record<string, unknown>>;
+}
+
+export interface ChatSnapshotReadView {
+  readonly message: Readonly<Record<string, readonly ChatMessageReadView[]>>;
+  readonly session_status: Readonly<Record<string, Readonly<ChatSessionStatus>>>;
+}
+
+export interface ChatDirectoryReadView extends ChatSnapshotReadView {
+  readonly part: Readonly<Record<string, readonly ChatPartReadView[]>>;
 }
 
 export function toolPartID(messageID: string, callID: string): string {

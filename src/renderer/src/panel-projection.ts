@@ -9,7 +9,7 @@ import type {
   TodoItem,
   TranscriptItem
 } from "@shared/types";
-import { findTurnStartedAt, type ChatDirectoryState } from "./chat-store";
+import { findTurnStartedAt, type ChatDirectoryReadView } from "./chat-store";
 import { resolveSessionActivity } from "./session-activity";
 import { getActiveAssistantContext, resolveAssistantStatus, type SessionAbortFlag } from "./assistant-status";
 import { createMessageQueueTarget, getQueueForTarget, type MessageQueueState, type QueuedMessage } from "./message-queue";
@@ -32,7 +32,7 @@ export interface PanelProjectionSources {
   formsBySession: Readonly<Record<string, PendingFormRequest[]>>;
   stagedReverts: Readonly<Record<string, SessionRevertStage | null>>;
   sessionAbortFlags: Readonly<Record<string, SessionAbortFlag>>;
-  chatStates: ReadonlyMap<string, ChatDirectoryState>;
+  chatStates: ReadonlyMap<string, ChatDirectoryReadView>;
 }
 
 export function projectPanelViews(panels: readonly SessionInfo[], sources: PanelProjectionSources): Record<string, PanelView> {

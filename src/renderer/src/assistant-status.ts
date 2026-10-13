@@ -1,4 +1,4 @@
-import type { ChatMessageRecord, ChatPartRecord } from "./chat-store";
+import type { ChatMessageReadView, ChatPartReadView } from "./chat-store";
 import type { SessionActivityResult, SessionActivityPhase } from "./session-activity";
 import { isFullySyntheticMessage } from "./messages/synthetic";
 
@@ -54,7 +54,7 @@ export interface SessionAbortFlag {
   acknowledged: boolean;
 }
 
-const EMPTY_PARTS: ChatPartRecord[] = [];
+const EMPTY_PARTS: ChatPartReadView[] = [];
 const STATUS_SIGNATURE_SEPARATOR = "\u0000";
 const EDITING_TOOLS = new Set(["edit", "write", "multiedit", "apply_patch"]);
 const TOOL_STATUS_PHRASES: Record<string, string> = {
@@ -90,7 +90,7 @@ const getToolStatusPhrase = (toolName: string): string => {
   return TOOL_STATUS_PHRASES[toolName] ?? `using ${toolName}`;
 };
 
-function getPartTimeInfo(part: ChatPartRecord): { end?: number } | undefined {
+function getPartTimeInfo(part: ChatPartReadView): { end?: number } | undefined {
   if (part.type === "text" || part.type === "reasoning") {
     const time = part.time as { end?: number } | undefined;
     return time && typeof time.end === "number" ? time : undefined;
@@ -99,14 +99,14 @@ function getPartTimeInfo(part: ChatPartRecord): { end?: number } | undefined {
   return candidate && typeof candidate.end === "number" ? candidate : undefined;
 }
 
-function getToolDisplayName(part: ChatPartRecord): string {
+function getToolDisplayName(part: ChatPartReadView): string {
   if (typeof part.tool === "string") {
     return part.tool;
   }
   return typeof part.name === "string" ? part.name : "tool";
 }
 
-function getLegacyTextContent(part: ChatPartRecord): string | undefined {
+function getLegacyTextContent(part: ChatPartReadView): string | undefined {
   if (typeof part.text === "string") {
     return part.text;
   }
@@ -120,7 +120,7 @@ function getLegacyTextContent(part: ChatPartRecord): string | undefined {
   return undefined;
 }
 
-export function createParsedStatus(parts: ChatPartRecord[], _genericKey: string): ParsedStatusResult {
+export function createParsedStatus(parts: readonly ChatPartReadView[], _genericKey: string): ParsedStatusResult {
   let activePartType: ParsedStatusResult["activePartType"] = undefined;
   let activeToolName: string | undefined = undefined;
 
@@ -202,7 +202,7 @@ export function decodeParsedStatus(signature: string): ParsedStatusResult {
   };
 }
 
-export function getActiveAssistantContext(messages: ChatMessageRecord[]): ActiveAssistantContext {
+export function getActiveAssistantContext(messages: readonly ChatMessageReadView[]): ActiveAssistantContext {
   let assistantId: string | null = null;
   let parentId: string | null = null;
 
@@ -210,7 +210,7 @@ export function getActiveAssistantContext(messages: ChatMessageRecord[]): Active
     const message = messages[index];
     if (message?.role !== "assistant") continue;
 
-    const candidate = message as ChatMessageRecord & { parentID?: unknown };
+    const candidate = message as ChatMessageReadView & { parentID?: unknown };
     assistantId = message.id;
     parentId = typeof candidate.parentID === "string" && candidate.parentID.trim().length > 0
       ? candidate.parentID
@@ -226,7 +226,7 @@ export function getActiveAssistantContext(messages: ChatMessageRecord[]): Active
     const message = messages[index];
     if (message?.role !== "user" || message.id !== parentId) continue;
 
-    const candidate = message as ChatMessageRecord & {
+    const candidate = message as ChatMessageReadView & {
       model?: { providerID?: unknown; modelID?: unknown };
     };
     const providerId = typeof candidate.model?.providerID === "string"
@@ -249,7 +249,7 @@ export function resolveAssistantStatus(input: {
   assistantId: string | null;
   model: ActiveAssistantModel | null;
   activity: SessionActivityResult;
-  parts: ChatPartRecord[];
+  parts: readonly ChatPartReadView[];
   pendingPermissions: number;
   pendingQuestions?: number;
   abortFlag: SessionAbortFlag | null;

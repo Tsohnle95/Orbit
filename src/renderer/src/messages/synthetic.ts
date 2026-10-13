@@ -1,16 +1,16 @@
-import type { ChatPartRecord } from "../chat-store";
+import type { ChatPartReadView, ChatPartRecord } from "../chat-store";
 
 const GITHUB_ISSUE_CONTEXT_PREFIX = "GitHub issue context (JSON)";
 const GITHUB_PR_CONTEXT_PREFIX = "GitHub pull request context (JSON)";
 
-export const isSyntheticPart = (part: ChatPartRecord | undefined): boolean => {
+export const isSyntheticPart = (part: ChatPartReadView | undefined): boolean => {
   if (!part || typeof part !== "object") {
     return false;
   }
   return Boolean((part as { synthetic?: boolean }).synthetic);
 };
 
-export const isFullySyntheticMessage = (parts: ChatPartRecord[] | undefined): boolean => {
+export const isFullySyntheticMessage = (parts: readonly ChatPartReadView[] | undefined): boolean => {
   if (!Array.isArray(parts) || parts.length === 0) {
     return false;
   }

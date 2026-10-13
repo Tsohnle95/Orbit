@@ -1,4 +1,4 @@
-import type { ChatDirectoryState, ChatMessageRecord, ChatStateSnapshot } from "./chat-store";
+import type { ChatDirectoryReadView, ChatMessageReadView, ChatSnapshotReadView } from "./chat-store";
 
 export type StreamPhase = "streaming" | "cooldown" | "completed";
 
@@ -23,7 +23,7 @@ export function emptyStreamingStore(): StreamingStore {
   };
 }
 
-export function findTrailingAssistantMessage(messages: ChatMessageRecord[] | undefined): ChatMessageRecord | null {
+export function findTrailingAssistantMessage(messages: readonly ChatMessageReadView[] | undefined): ChatMessageReadView | null {
   if (!messages) return null;
 
   for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -34,7 +34,7 @@ export function findTrailingAssistantMessage(messages: ChatMessageRecord[] | und
   return null;
 }
 
-export function updateStreamingState(state: ChatDirectoryState, current: StreamingStore, now = Date.now()): StreamingStore | null {
+export function updateStreamingState(state: ChatDirectoryReadView, current: StreamingStore, now = Date.now()): StreamingStore | null {
   const nextStreamingIds = new Map<string, string | null>();
   const nextStreamStates = new Map(current.messageStreamStates);
   let changed = false;
@@ -148,8 +148,8 @@ const collectChangedSessionIds = (
 };
 
 export function updateChangedStreamingSessions(
-  state: ChatDirectoryState,
-  previous: ChatStateSnapshot,
+  state: ChatDirectoryReadView,
+  previous: ChatSnapshotReadView,
   current: StreamingStore,
   now = Date.now()
 ): StreamingStore | null {

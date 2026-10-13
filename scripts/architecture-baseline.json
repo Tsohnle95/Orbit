@@ -693,6 +693,13 @@
       "nesting": 5,
       "origin": "src/renderer/src/store.tsx:StoreBody#1 catalog/selection state and actions",
       "reason": "Owns existing six catalog/selection records and four unchanged async actions. Inclusive146 lines include separately checked nested callbacks; independent composition-only count43 lines. No effect/subscription or competing state. Fixed composition ceiling cannot grow."
+    },
+    "src/renderer/src/use-session-chat-records.ts:useSessionChatRecords#1": {
+      "codeLines": 167,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "origin": "src/renderer/src/store.tsx:StoreBody#1 record/projection/replay/permission state and callbacks",
+      "reason": "Owns existing chat records and transcript state with named commands and readonly borrowed views. Inclusive167 lines include28 separately checked callbacks; independent composition-only count72. No effect/subscription, cache or competing reducer. Fixed reviewed composition ceiling cannot grow."
     }
   },
   "edgeExceptions": [
@@ -841,6 +848,13 @@
     {
       "owner": "session inventory state",
       "targetPrefix": "src/renderer/src/use-session-inventory.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
+      ]
+    },
+    {
+      "owner": "session chat records",
+      "targetPrefix": "src/renderer/src/use-session-chat-records.ts",
       "allowedFrom": [
         "src/renderer/src/store.tsx"
       ]
@@ -1002,6 +1016,19 @@
       "file": "src/renderer/src/use-session-inventory.ts",
       "allowedLocal": [
         "src/shared/types.ts"
+      ],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-session-chat-records.ts",
+      "allowedLocal": [
+        "src/shared/types.ts",
+        "src/shared/retention.ts",
+        "src/renderer/src/chat-store.ts",
+        "src/renderer/src/chat-stream.ts",
+        "src/renderer/src/streaming.ts"
       ],
       "allowedExternal": [
         "react"
