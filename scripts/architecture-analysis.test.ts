@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile, unlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import ts from "typescript";
-import { analyzeRepository, countCodeLines, dependencyCycles, duplicateGroups, functionFingerprint, functionIdentity, functionMetrics, importSpecifiers, ipcAuthorityReferences, sourceCategory } from "./architecture-analysis.mjs";
+import { analyzeRepository, countCodeLines, dependencyCycles, duplicateGroups, functionFingerprint, functionIdentity, functionMetrics, importSpecifiers, ipcAuthorityReferences, ownershipRoutes, sourceCategory } from "./architecture-analysis.mjs";
 
 describe("architecture measurement", () => {
   it("counts physical token-bearing lines without counting comments or changing string semantics", () => {
@@ -92,6 +92,26 @@ export { type A, value } from "./b";`, ts.ScriptTarget.Latest, true);
     expect(importSpecifiers(source)).toEqual([{ specifier: "./a", typeOnly: true }, { specifier: "./b", typeOnly: false }]);
   });
 
+  it("discovers constant template loaders, import options and import-equals dependencies", () => {
+    const source = ts.createSourceFile("imports.ts", 'const a = import(`node:fs`); const b = require(`./private`); const c = import("./child", { with: { type: "json" } }); import runtime = require("./runtime");', ts.ScriptTarget.Latest, true);
+    expect(importSpecifiers(source)).toEqual([
+      { specifier: "node:fs", typeOnly: false }, { specifier: "./private", typeOnly: false },
+      { specifier: "./child", typeOnly: false }, { specifier: "./runtime", typeOnly: false }
+    ]);
+    expect(ipcAuthorityReferences(ts.createSourceFile("src/main/ipc/files.ts", 'const e = require(`electron`);', ts.ScriptTarget.Latest, true))).toMatchObject([{ kind: "ipc-domain-electron-import" }]);
+  });
+
+  it("reports computed loaders instead of silently dropping them", () => {
+    const source = ts.createSourceFile("imports.ts", 'const a = import(name);\nconst b = require(`./${name}`);', ts.ScriptTarget.Latest, true);
+    expect(importSpecifiers(source)).toEqual([{ computed: "import(name)", line: 1 }, { computed: "require(`./${name}`)", line: 2 }]);
+  });
+
+  it("derives named routes from the existing canonical ownership table only", () => {
+    const doc = 'Unrelated `src/main/unowned.ts`\n## Implementation ownership and fitness\n| Responsibility | Entry point and private owner | Dependency boundary |\n| Runtime | `src/main/opencode.ts`; private `src/main/runtimes/` | Do not own renderer state |\n## Other\n| Ignored | `src/main/ignored.ts` | |';
+    expect(ownershipRoutes(doc)).toEqual([{ owner: "Runtime", path: "src/main/opencode.ts" }, { owner: "Runtime", path: "src/main/runtimes/" }]);
+    expect(ownershipRoutes("no canonical table")).toEqual([]);
+  });
+
   it("detects exact function-body clones with renamed declarations and changed comment trivia", () => {
     const fingerprint = (name: string, comment: string) => {
       const source = ts.createSourceFile("clone.ts", `function ${name}(value: number) { ${comment}
@@ -140,6 +160,8 @@ export { type A, value } from "./b";`, ts.ScriptTarget.Latest, true);
     expect(analyze('import { ipcMain as raw } from "electron";', "src/main/service.ts")).toEqual(["raw-ipc"]);
     expect(analyze('const raw = (await import("electron"))["ipcMain"];', "src/main/service.ts")).toEqual(["raw-ipc"]);
     expect(analyze('const electron = require("electron");')).toEqual(["ipc-domain-electron-import"]);
+    expect(analyze('import electron = require("electron");')).toEqual(["ipc-domain-electron-import"]);
+    expect(analyze('const raw = (await import(`electron`))[`ipcMain`];', "src/main/service.ts")).toEqual(["raw-ipc"]);
     expect(analyze('import type { BrowserWindow } from "electron";')).toEqual(["ipc-domain-electron-import"]);
     expect(analyze('import * as electron from "electron";')).toEqual(["ipc-domain-electron-import"]);
   });

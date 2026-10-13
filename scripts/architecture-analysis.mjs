@@ -204,8 +204,13 @@ export function importSpecifiers(source) {
       imports.push({ specifier: node.moduleSpecifier.text, typeOnly });
     } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) {
       imports.push({ specifier: node.argument.literal.text, typeOnly: true });
-    } else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || ts.isIdentifier(node.expression) && node.expression.text === "require") && node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0])) {
-      imports.push({ specifier: node.arguments[0].text, typeOnly: false });
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
+      const argument = node.moduleReference.expression;
+      if (argument && ts.isStringLiteralLike(argument)) imports.push({ specifier: argument.text, typeOnly: node.isTypeOnly });
+    } else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || ts.isIdentifier(node.expression) && node.expression.text === "require")) {
+      const argument = node.arguments[0];
+      if (argument && ts.isStringLiteralLike(argument)) imports.push({ specifier: argument.text, typeOnly: false });
+      else imports.push({ computed: node.getText(source), line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1 });
     }
   });
   return imports;
@@ -214,7 +219,7 @@ export function importSpecifiers(source) {
 export function ipcAuthorityReferences(source) {
   const references = [];
   walk(source, (node) => {
-    const ipcName = ts.isIdentifier(node) && node.text === "ipcMain" || ts.isStringLiteral(node) && node.text === "ipcMain";
+    const ipcName = ts.isIdentifier(node) && node.text === "ipcMain" || ts.isStringLiteralLike(node) && node.text === "ipcMain";
     if (ipcName) references.push({ line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, kind: "raw-ipc" });
     if (!source.fileName.replaceAll("\\", "/").includes("/ipc/")) return;
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "electron") {
@@ -226,11 +231,26 @@ export function ipcAuthorityReferences(source) {
       if (!onlyInvocationType) references.push({ line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, kind: "ipc-domain-electron-import" });
     }
     if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || ts.isIdentifier(node.expression) && node.expression.text === "require") &&
-      node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]) && node.arguments[0].text === "electron") {
+      node.arguments[0] && ts.isStringLiteralLike(node.arguments[0]) && node.arguments[0].text === "electron") {
+      references.push({ line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, kind: "ipc-domain-electron-import" });
+    }
+    if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) &&
+      node.moduleReference.expression && ts.isStringLiteralLike(node.moduleReference.expression) && node.moduleReference.expression.text === "electron") {
       references.push({ line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, kind: "ipc-domain-electron-import" });
     }
   });
   return references;
+}
+
+export function ownershipRoutes(document) {
+  const section = document.split("## Implementation ownership and fitness\n")[1]?.split(/\n## /)[0] ?? "";
+  const routes = [];
+  for (const line of section.split("\n")) {
+    if (!line.startsWith("|")) continue;
+    const [owner, entry] = line.split("|").slice(1).map((cell) => cell.trim());
+    for (const match of entry?.matchAll(/`(src\/[^`]+)`/g) ?? []) routes.push({ owner, path: match[1] });
+  }
+  return routes;
 }
 
 function resolveLocal(specifier, from, options, files, root, host) {
@@ -350,11 +370,13 @@ export async function analyzeRepository(root = repository, { ref, buildSnapshot,
   const duplicateBlocks = [];
   const packageImports = new Set();
   const externalImports = [];
+  const computedImports = [];
   const ipcReferences = [];
   for (const file of primary) {
     const source = scriptExtension.test(file.path) ? program.getSourceFile(file.absolute) ?? sourceFile(file.path, file.content) : null;
     const specifiers = source ? importSpecifiers(source) : [...file.content.matchAll(/@(?:use|forward|import)\s+["']([^"']+)["']/g)].map((match) => ({ specifier: match[1], typeOnly: false }));
     for (const entry of specifiers) {
+      if (entry.computed) { computedImports.push({ file: file.path, ...entry }); continue; }
       const target = resolveLocal(entry.specifier, file.path, options, allSourcePaths, root, host);
       if (target) dependencies.push({ from: file.path, to: target, typeOnly: entry.typeOnly });
       else {
@@ -388,6 +410,8 @@ export async function analyzeRepository(root = repository, { ref, buildSnapshot,
     layer(edge.from) === "main" && ["renderer", "preload"].includes(layer(edge.to)) || layer(edge.from) === "preload" && ["main", "renderer"].includes(layer(edge.to))
   ));
   const packageJson = JSON.parse(ref ? execFileSync("git", ["show", `${ref}:package.json`], { cwd: root, encoding: "utf8" }) : await readFile(path.join(root, "package.json"), "utf8"));
+  const ownershipDocument = ref ? execFileSync("git", ["show", `${ref}:docs/architecture.md`], { cwd: root, encoding: "utf8" })
+    : await readFile(path.join(root, "docs/architecture.md"), "utf8").catch((error) => { if (error.code === "ENOENT") return ""; throw error; });
   return {
     version: 1, commit: execFileSync("git", ["rev-parse", ref ?? "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
     methodology: {
@@ -397,7 +421,7 @@ export async function analyzeRepository(root = repository, { ref, buildSnapshot,
       exclusions: [{ rule: String(testFile), reason: "Tests, specs, fixtures, and explicit large-session-fixture.ts benchmark fixture." }, { prefix: "src/renderer/src/styles/opencode/", reason: "Pinned OpenCode upstream styles, MIT header/license evidence; theme.scss generated verbatim by token resolvers." }],
       thresholds: { oversizedModuleCodeLines: 800, oversizedFunctionCodeLines: 100, excessiveFunctionNesting: 5, excessiveFunctionCyclomatic: 20, duplicateFunctionMinimumLines: 20, duplicateFunctionMinimumTokens: 80, duplicateBlockMinimumLines: 20, duplicateBlockMinimumTokens: 120 },
       functions: "Every function declaration/expression, arrow, method, constructor, getter and setter with body. Length includes nested function source; nesting/complexity exclude nested function bodies. Cyclomatic is 1 plus if/loop/catch/conditional/case and logical &&, ||, ?? nodes.",
-      dependencies: "TypeScript resolution with repository aliases; imports, exports, import types, dynamic imports and require calls; CSS/SCSS @use/@forward/@import plus TS stylesheet imports. typeOnly means explicitly type-only syntax, not inferred runtime erasure. Cycle counts are strongly connected components, not every simple cycle.",
+      dependencies: "TypeScript resolution with repository aliases; imports, exports, import types, import-equals, literal dynamic imports and require calls (including constant templates); computed loaders reported separately for fail-closed enforcement. CSS/SCSS @use/@forward/@import plus TS stylesheet imports. typeOnly means explicitly type-only syntax, not inferred runtime erasure. Cycle counts are strongly connected components, not every simple cycle.",
       duplication: "Exact token sequence with whitespace/comments ignored; function signatures plus bodies and non-function blocks. No identifier renaming or semantic equivalence claims; nested overlapping matches cannot be summed as removable LOC.",
       exports: "TypeScript checker aliases resolved and cross-file identifier references counted across production, tests and scripts. No production consumer is an investigation candidate, not proof of dead code. Entry points, string-based access, worker entry files, public contracts, dormant adapters and transitive reexports require manual review.",
       dependenciesNotImported: "Package dependency with no direct primary-code import is only a candidate; scripts, stylesheet imports, workers, transitive integrations and packaging may require it.",
@@ -412,6 +436,8 @@ export async function analyzeRepository(root = repository, { ref, buildSnapshot,
     complexityHotspots: functions.filter((fn) => fn.cyclomatic > 20 || fn.nesting > 5).sort((a, b) => b.cyclomatic - a.cyclomatic),
     dependencies: dependencies.sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to)),
     externalImports,
+    computedImports,
+    ownershipRoutes: ownershipRoutes(ownershipDocument),
     ipcReferences,
     cycles: { valueImports: dependencyCycles([...primaryPaths], dependencies, false), includingTypeOnly: dependencyCycles([...primaryPaths], dependencies, true) },
     forbiddenEdges,

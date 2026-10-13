@@ -6,11 +6,12 @@ import { architectureViolations, ratchetConfiguration } from "./check-architectu
 const configuration = () => ({
   limits: { module: 800, codeLines: 100, cyclomatic: 20, nesting: 5 }, knownFiles: [], modules: {}, functions: {}, functionExceptions: {},
   edgeExceptions: [], cycleExceptions: [], duplicates: { functions: {}, blocks: {} },
-  privateBoundaries: [{ targetPrefix: "src/main/runtimes/deepseek/", owner: "dormant runtime", allowedFrom: ["src/main/runtimes/deepseek/"] }],
-  pureOwners: [{ file: "src/main/session-replay.ts", allowedLocal: ["src/shared/"], allowedExternal: [] }]
+  privateBoundaries: [], pureOwners: []
 });
 const report = () => ({ production: { files: 0, inventory: [] }, functions: [], dependencies: [], forbiddenEdges: [], externalImports: [], duplication: { functions: [], blocks: [] } });
-const checked = (value: any, config = configuration()) => architectureViolations(value, config).map((entry: any) => entry.rule);
+const checked = (value: any, config = configuration()) => architectureViolations({ ...value,
+  ownershipRoutes: value.ownershipRoutes ?? value.production.inventory.map((file: any) => ({ owner: "Fixture owner", path: file.path }))
+}, config).map((entry: any) => entry.rule);
 
 describe("architecture fitness checks", () => {
   it("fails new oversized modules and functions, nesting and complexity", () => {
@@ -35,6 +36,7 @@ describe("architecture fitness checks", () => {
     config.modules["src/main/old.ts"] = { loc: 900, reason: "Existing debt" };
     const value = report() as any;
     value.production.inventory.push({ path: "src/main/old.ts", loc: 850 });
+    value.ownershipRoutes = [{ owner: "Fixture owner", path: "src/main/old.ts" }];
     const tightened = ratchetConfiguration(value, config);
     expect(tightened.functions).toEqual({});
     expect(tightened.modules["src/main/old.ts"].loc).toBe(850);
@@ -52,13 +54,15 @@ describe("architecture fitness checks", () => {
   });
 
   it("rejects forbidden layers, private implementation imports and privileged renderer dependencies", () => {
+    const config = configuration();
+    config.privateBoundaries.push({ targetPrefix: "src/main/runtimes/deepseek/", owner: "dormant runtime", allowedFrom: ["src/main/runtimes/deepseek/"] });
     const value = report() as any;
     value.production.inventory.push({ path: "src/main/runtimes/deepseek/private.ts", loc: 1 });
     const edge = { from: "src/renderer/src/panel.ts", to: "src/main/runtimes/deepseek/private.ts", typeOnly: false };
     value.dependencies.push(edge); value.forbiddenEdges.push(edge);
     value.externalImports.push({ file: "src/renderer/src/panel.ts", specifier: "node:fs", typeOnly: false },
       { file: "src/main/other.ts", specifier: "@opencode/client", typeOnly: true });
-    expect(checked(value)).toEqual(["layer-direction", "private-owner", "privileged-import", "sdk-owner"]);
+    expect(checked(value, config)).toEqual(["layer-direction", "private-owner", "privileged-import", "sdk-owner"]);
   });
 
   it("allows only the narrow declaration bridge exception", () => {
@@ -84,11 +88,13 @@ describe("architecture fitness checks", () => {
   });
 
   it("rejects dependency leakage from pure replay and generic ownership-free names", () => {
+    const config = configuration();
+    config.pureOwners.push({ file: "src/main/session-replay.ts", allowedLocal: ["src/shared/"], allowedExternal: [] });
     const value = report() as any;
-    value.production.inventory.push({ path: "src/main/helpers.ts", loc: 10 }, { path: "src/main/opencode.ts", loc: 10 });
+    value.production.inventory.push({ path: "src/main/helpers.ts", loc: 10 }, { path: "src/main/opencode.ts", loc: 10 }, { path: "src/main/session-replay.ts", loc: 10 });
     value.dependencies.push({ from: "src/main/session-replay.ts", to: "src/main/opencode.ts", typeOnly: true });
     value.externalImports.push({ file: "src/main/session-replay.ts", specifier: "electron", typeOnly: false });
-    expect(checked(value)).toEqual(["ownership-name", "pure-owner", "pure-owner"]);
+    expect(checked(value, config)).toEqual(["ownership-name", "pure-owner", "pure-owner"]);
   });
 
   it("rejects excluded implementation imports rather than permitting metric-scope leaks", () => {
@@ -145,7 +151,7 @@ describe("architecture fitness checks", () => {
     const config = configuration() as any;
     config.modules["src/main/old.ts"] = { loc: 900 };
     config.functionExceptions["src/main/old.ts:run#1"] = { codeLines: 200 };
-    config.edgeExceptions.push({ from: "a", to: "b", typeOnly: true });
+    config.edgeExceptions.push({ from: "src/main/a.ts", to: "src/main/b.ts", typeOnly: true });
     expect(checked(report(), config)).toEqual(["exception-rationale", "exception-rationale", "exception-rationale"]);
   });
 
@@ -153,10 +159,102 @@ describe("architecture fitness checks", () => {
     const config = configuration() as any;
     config.pureOwners.push({ file: "src/renderer/src/layout/panel-interactions.ts", allowedLocal: [], allowedExternal: ["react"] });
     const value = report() as any;
-    value.production.inventory.push({ path: "src/renderer/src/store.tsx", loc: 10 });
+    value.production.inventory.push({ path: "src/renderer/src/store.tsx", loc: 10 }, { path: "src/renderer/src/layout/panel-interactions.ts", loc: 10 });
     value.dependencies.push({ from: "src/renderer/src/layout/panel-interactions.ts", to: "src/renderer/src/store.tsx", typeOnly: false });
     value.externalImports.push({ file: "src/renderer/src/layout/panel-interactions.ts", specifier: "react", typeOnly: false },
       { file: "src/renderer/src/layout/panel-interactions.ts", specifier: "react-dom", typeOnly: false });
     expect(checked(value, config)).toEqual(["pure-owner", "pure-owner"]);
+  });
+
+  it("fails closed when limits or required manifest sections are invalid", () => {
+    const value = report() as any;
+    value.production.inventory.push({ path: "src/main/new.ts", loc: 10_000 });
+    value.functions.push({ file: "src/main/new.ts", identity: "run#1", codeLines: 1000, cyclomatic: 1000, nesting: 100 });
+    for (const invalid of [{}, { module: "mistyped", codeLines: NaN, cyclomatic: Infinity, nesting: -1 }]) {
+      expect(checked(value, { ...configuration(), limits: invalid } as any)).toContain("configuration-schema");
+    }
+    for (const section of ["modules", "functions", "functionExceptions", "knownFiles", "privateBoundaries", "pureOwners", "duplicates"]) {
+      const config = configuration() as any;
+      delete config[section];
+      expect(checked(value, config)).toContain("configuration-schema");
+    }
+  });
+
+  it("rejects malformed allowance paths, budgets and boundary lists", () => {
+    const config = configuration() as any;
+    config.modules["src/main/../hidden.ts"] = { loc: "900", reason: "invalid" };
+    config.functions["src/main/a.ts:run#1"] = { cyclomatic: "unlimited", origin: 42, reason: "invalid" };
+    config.privateBoundaries.push({ owner: "invalid", targetPrefix: "src/main/private", allowedFrom: ["src/main/public"] });
+    config.pureOwners.push({ file: "src/main/a.ts", prefix: "src/main/", allowedLocal: [], allowedExternal: [] });
+    expect(checked(report(), config).every((rule: string) => rule === "configuration-schema")).toBe(true);
+    expect(checked(report(), config)).toHaveLength(6);
+    expect(() => ratchetConfiguration(report(), config)).toThrow("Cannot ratchet");
+  });
+
+  it("requires new modules to have a named canonical owner before ratcheting", () => {
+    const value = report() as any;
+    value.production.inventory.push({ path: "src/main/unowned/new-service.ts", loc: 10 });
+    value.ownershipRoutes = [];
+    expect(checked(value)).toEqual(["ownership-route"]);
+    expect(() => ratchetConfiguration(value, configuration())).toThrow("Cannot ratchet");
+    value.ownershipRoutes.push({ owner: "Session service", path: "src/main/unowned/new-service.ts" });
+    expect(checked(value)).toEqual([]);
+    expect(ratchetConfiguration(value, configuration()).knownFiles).toEqual(["src/main/unowned/new-service.ts"]);
+  });
+
+  it("resolves directory ownership without granting sibling-prefix access", () => {
+    const value = report() as any;
+    value.production.inventory.push({ path: "src/main/runtime/child.ts", loc: 10 }, { path: "src/main/runtime-other/child.ts", loc: 10 });
+    value.ownershipRoutes = [{ owner: "Runtime", path: "src/main/runtime/" }];
+    expect(checked(value)).toEqual(["ownership-route"]);
+    value.ownershipRoutes[0].owner = "";
+    expect(checked(value)).toEqual(["ownership-route", "ownership-route", "ownership-route"]);
+    value.ownershipRoutes = [{ owner: "Gone", path: "src/main/gone.ts" }];
+    expect(checked(value)).toEqual(["ownership-route", "ownership-route", "ownership-route"]);
+  });
+
+  it("fails nonliteral loaders that hide dependency authority or cycles", () => {
+    const value = report() as any;
+    value.computedImports = [{ file: "src/renderer/src/panel.ts", line: 1, computed: "import(name)" }];
+    expect(checked(value)).toEqual(["computed-import"]);
+    expect(() => ratchetConfiguration(value, configuration())).toThrow("Cannot ratchet");
+  });
+
+  it("rejects mismatched or misspelled owner selectors instead of disabling rules", () => {
+    for (const selector of [{ file: "src/renderer/src/" }, { prefix: "src/renderer/src/selection.ts" }]) {
+      const config = configuration() as any;
+      config.pureOwners.push({ ...selector, allowedLocal: [], allowedExternal: [] });
+      expect(checked(report(), config)).toEqual(["configuration-schema"]);
+    }
+    const config = configuration() as any;
+    config.pureOwners.push({ file: "src/renderer/src/seletion.ts", allowedLocal: [], allowedExternal: [] });
+    config.privateBoundaries.push({ owner: "Gone", targetPrefix: "src/main/gone/", allowedFrom: ["src/main/index.ts"] });
+    const value = report() as any;
+    value.production.inventory.push({ path: "src/renderer/src/selection.ts", loc: 10 });
+    expect(checked(value, config)).toEqual(["owner-target", "owner-target"]);
+    expect(() => ratchetConfiguration(value, config)).toThrow("Cannot ratchet");
+  });
+
+  it("requires normalized production paths in manifest selectors", () => {
+    for (const file of ["src//main/a.ts", "src/main/../a.ts", "src/main/a.ts\n", "src/main\\a.ts", "src/main/a b.ts"]) {
+      const config = configuration() as any;
+      config.knownFiles.push(file);
+      expect(checked(report(), config)).toEqual(["configuration-schema"]);
+    }
+  });
+
+  it("preserves canonical routes for active owners after their files enter the baseline", () => {
+    const config = configuration() as any;
+    config.knownFiles.push("src/main/owner.ts", "src/main/index.ts");
+    config.pureOwners.push({ file: "src/main/owner.ts", allowedLocal: [], allowedExternal: [] });
+    config.privateBoundaries.push({ owner: "Service", targetPrefix: "src/main/owner.ts", allowedFrom: ["src/main/index.ts"] });
+    const value = report() as any;
+    value.production.inventory.push({ path: "src/main/owner.ts", loc: 10 }, { path: "src/main/index.ts", loc: 10 });
+    value.ownershipRoutes = [];
+    expect(checked(value, config)).toEqual(["ownership-route"]);
+    value.ownershipRoutes.push({ owner: "Composition", path: "src/main/index.ts" });
+    expect(checked(value, config)).toEqual(["ownership-route", "ownership-route"]);
+    value.ownershipRoutes.push({ owner: "Service", path: "src/main/owner.ts" });
+    expect(checked(value, config)).toEqual([]);
   });
 });

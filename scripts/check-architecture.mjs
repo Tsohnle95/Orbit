@@ -30,26 +30,98 @@ function matchesExternal(specifier, allowed) {
   return /[:/]$/.test(allowed) ? specifier.startsWith(allowed) : specifier === allowed;
 }
 
+function validPath(value, directoryAllowed = false) {
+  return typeof value === "string" && value.startsWith("src/") && !value.includes("\\") &&
+    !/[\s\u0000-\u001f\u007f]/.test(value) && !value.includes("//") &&
+    !value.split("/").some((part) => part === "." || part === "..") &&
+    (/\.(?:[cm]?[jt]sx?|css|scss)$/.test(value) || directoryAllowed && value.endsWith("/"));
+}
+
+export function configurationViolations(configuration) {
+  const errors = [];
+  const fail = (subject, detail) => errors.push({ rule: "configuration-schema", subject, detail });
+  const object = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+  const text = (value) => typeof value === "string" && Boolean(value.trim());
+  const integer = (value, minimum = 1) => Number.isSafeInteger(value) && value >= minimum;
+  if (!object(configuration)) { fail("manifest", "Expected an object"); return errors; }
+  for (const section of ["limits", "modules", "functions", "functionExceptions", "duplicates"]) {
+    if (!object(configuration[section])) fail(section, "Required object is missing or invalid");
+  }
+  for (const section of ["knownFiles", "edgeExceptions", "cycleExceptions", "privateBoundaries", "pureOwners"]) {
+    if (!Array.isArray(configuration[section])) fail(section, "Required array is missing or invalid");
+  }
+  if (errors.length) return errors;
+  for (const metric of ["module", ...metrics]) if (!integer(configuration.limits[metric])) fail(`limits.${metric}`, "Expected a positive integer");
+  const rationale = (entry, subject) => {
+    if (!object(entry)) { fail(subject, "Expected an allowance object"); return false; }
+    if (!text(entry.reason)) errors.push({ rule: "exception-rationale", subject, detail: "Allowance needs a specific rationale" });
+    if (entry.origin !== undefined && !text(entry.origin)) fail(subject, "Origin must be a nonempty string");
+    return true;
+  };
+  for (const [file, entry] of Object.entries(configuration.modules)) {
+    if (!validPath(file)) fail(file, "Expected a production file path");
+    if (rationale(entry, file) && !integer(entry.loc)) fail(file, "Expected a positive LOC budget");
+  }
+  for (const section of ["functions", "functionExceptions"]) {
+    for (const [identity, entry] of Object.entries(configuration[section])) {
+      const separator = identity.indexOf(":");
+      if (separator < 0 || !validPath(identity.slice(0, separator)) || !text(identity.slice(separator + 1))) fail(identity, "Expected file:symbol identity");
+      if (!rationale(entry, identity)) continue;
+      for (const metric of metrics) if (entry[metric] !== undefined && !integer(entry[metric], metric === "nesting" ? 0 : 1)) fail(identity, `Invalid ${metric} budget`);
+    }
+  }
+  if (new Set(configuration.knownFiles).size !== configuration.knownFiles.length || configuration.knownFiles.some((file) => !validPath(file))) fail("knownFiles", "Expected unique production file paths");
+  for (const entry of configuration.edgeExceptions) {
+    if (rationale(entry, "edgeExceptions") && (!validPath(entry.from) || !validPath(entry.to) || typeof entry.typeOnly !== "boolean")) fail("edgeExceptions", "Invalid edge path or mode");
+  }
+  for (const entry of configuration.cycleExceptions) {
+    if (rationale(entry, "cycleExceptions") && (!["valueImports", "includingTypeOnly"].includes(entry.mode) || !text(entry.key))) fail("cycleExceptions", "Invalid cycle mode or key");
+  }
+  for (const kind of ["functions", "blocks"]) {
+    if (!object(configuration.duplicates[kind])) { fail(`duplicates.${kind}`, "Expected a clone budget map"); continue; }
+    for (const [key, copies] of Object.entries(configuration.duplicates[kind])) if (!text(key) || !integer(copies)) fail(key, "Expected positive clone count");
+  }
+  for (const entry of configuration.privateBoundaries) {
+    if (!object(entry) || !text(entry.owner) || !validPath(entry.targetPrefix, true) || !Array.isArray(entry.allowedFrom) || !entry.allowedFrom.length || entry.allowedFrom.some((file) => !validPath(file, true))) fail("privateBoundaries", "Expected named owner and explicit production paths");
+  }
+  for (const entry of configuration.pureOwners) {
+    if (!object(entry) || Boolean(entry.file) === Boolean(entry.prefix) || (entry.file ? !validPath(entry.file) : !validPath(entry.prefix, true) || !entry.prefix.endsWith("/")) || !Array.isArray(entry.allowedLocal) || entry.allowedLocal.some((file) => !validPath(file, true)) || !Array.isArray(entry.allowedExternal) || entry.allowedExternal.some((name) => !text(name))) fail("pureOwners", "Expected one exact file or directory selector and explicit dependency lists");
+  }
+  return errors;
+}
+
 export function architectureViolations(report, configuration) {
+  const invalidConfiguration = configurationViolations(configuration);
+  if (invalidConfiguration.length) return invalidConfiguration;
   const violations = [];
   const add = (rule, subject, detail) => violations.push({ rule, subject, detail });
-  for (const section of ["modules", "functions", "functionExceptions"]) {
-    for (const [subject, allowance] of Object.entries(configuration[section])) {
-      if (typeof allowance.reason !== "string" || !allowance.reason.trim()) add("exception-rationale", subject, `${section} allowance needs a specific rationale`);
-    }
-  }
-  for (const section of ["edgeExceptions", "cycleExceptions"]) {
-    for (const allowance of configuration[section]) {
-      if (typeof allowance.reason !== "string" || !allowance.reason.trim()) add("exception-rationale", section, "Allowance needs a specific rationale");
-    }
-  }
   const fileSet = new Set(report.production.inventory.map((file) => file.path));
+  const routes = report.ownershipRoutes ?? [];
+  const hasOwner = (file) => routes.some((route) => route.owner?.trim() && (route.path.endsWith("/") ? file.startsWith(route.path) : file === route.path));
+  if (fileSet.size && !routes.length) add("ownership-route", "docs/architecture.md", "Canonical named ownership routes are missing");
+  for (const boundary of configuration.privateBoundaries) {
+    const targets = [...fileSet].filter((file) => matchesPath(file, boundary.targetPrefix));
+    if (!targets.length) add("owner-target", boundary.targetPrefix, "Private owner target does not exist; repair or remove the stale rule");
+    else if (routes.length && targets.some((file) => !hasOwner(file))) add("ownership-route", boundary.targetPrefix, "Private owner needs a canonical responsibility route");
+  }
+  for (const owner of configuration.pureOwners) {
+    const targets = [...fileSet].filter((file) => matchesFile(file, owner));
+    if (!targets.length) add("owner-target", owner.file ?? owner.prefix, "Dependency owner target does not exist; repair or remove the stale rule");
+    else if (routes.length && targets.some((file) => !hasOwner(file))) add("ownership-route", owner.file ?? owner.prefix, "Dependency owner needs a canonical responsibility route");
+  }
+  for (const route of routes) {
+    if (!route.owner?.trim() || !validPath(route.path, true) || ![...fileSet].some((file) => route.path.endsWith("/") ? file.startsWith(route.path) : file === route.path)) add("ownership-route", route.path, "Canonical ownership route must name an existing production owner");
+  }
+  for (const imported of report.computedImports ?? []) add("computed-import", `${imported.file}:${imported.line}`, "Use an explicit literal dependency so authority and cycle checks can inspect it");
   for (const reference of report.ipcReferences ?? []) {
     if (reference.file !== "src/main/index.ts") add("ipc-authority", `${reference.file}:${reference.line}`, reference.kind);
   }
   for (const file of report.production.inventory) {
     const limit = configuration.modules[file.path]?.loc ?? configuration.limits.module;
     if (file.loc > limit) add("module-size", file.path, `${file.loc} code lines exceeds ${limit}`);
+    if (routes.length && !configuration.knownFiles.includes(file.path) && !hasOwner(file.path)) {
+      add("ownership-route", file.path, "New module needs a named owner in the existing canonical architecture table");
+    }
     if (!configuration.knownFiles.includes(file.path) && /(?:^|\/)(?:helpers?|utils?|misc|common)(?:\.[^/]+)?(?:\/|$)/.test(file.path)) {
       add("ownership-name", file.path, "Use the owning feature or responsibility in the filename");
     }

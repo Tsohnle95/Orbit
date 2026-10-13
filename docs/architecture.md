@@ -390,7 +390,7 @@ of application state.
 | Responsibility | Entry point and private owner | Dependency boundary |
 |---|---|---|
 | Electron lifecycle, windows, trusted IPC | `src/main/index.ts`; domain registrations in `src/main/ipc/` | Main composition retains sender validation and raw `ipcMain` authority. Domain registrars receive only the trusted registration interface, and own no runtime/session state. |
-| Runtime/session orchestration and service traffic | `src/main/opencode.ts` | Main remains the only OpenCode SDK owner. Adapter contracts remain under `src/main/runtimes/`; dormant DeepSeek implementation is private to its retained runtime directory. |
+| Runtime/session orchestration and service traffic | `src/main/opencode.ts`; adapter contracts and retained implementations in `src/main/runtimes/` | Main remains the only OpenCode SDK owner. Dormant DeepSeek implementation is private to its retained runtime directory. |
 | History projection | `src/main/session-replay.ts` | Pure normalized replay depends on shared contracts/presentation, not SDK or privileged effects. |
 | Recovery artifacts and transactions | `src/main/recovery-storage.ts` | Captured workspace root/current predicate come from backend orchestration; storage uses Node filesystem operations and workspace security, without owning sessions or events. |
 | Workspace observation | `src/main/workspace-observation.ts`, private to the backend | Owns watch maps, debounce/import suppression, Git baselines and inode/file emissions; accepts session/watch authority predicates. SDK and session identity stay backend-owned; confined mutation choreography belongs to `workspace-mutations.ts`, and artifact storage to `recovery-storage.ts`. |
@@ -398,10 +398,15 @@ of application state.
 | Release update window | `src/main/app-update-controller.ts`, private to main composition | Owns popup lifecycle and update/unsaved gates; receives the existing updater and live window/file readers. Shared popup presentation stays in `app-updater-window.ts`. |
 | Session inventory | `src/renderer/src/use-session-inventory.ts`, private to Store | Owns open-context and recent-history records, request identities and domain writers. Store owns polling/readiness scheduling and session generations; consumers use named readers rather than mutable refs. |
 | Session model and agent selection | `src/renderer/src/use-session-selection.ts`, private to Store | Owns catalogs, selection records and load/switch actions; only focused-session access, generation validation and notification enter. Effects and event subscription remain in Store. |
+| Workspace bookmarks | `src/renderer/src/use-saved-workspaces.ts`, private to Store | Owns bookmark records, hydration revisions and persistence. Store supplies readiness and notification; session activation remains in Store. |
+| Panel state projection | `src/renderer/src/panel-projection.ts`, private to Store | Derives presentation from existing records; owns no mutable state, effects or runtime calls. |
 | Workspace editor | `src/renderer/src/use-workspace-editor.ts`, private to Store | Owns editor records, persistence and actions; receives six typed host capabilities. Store keeps session generations, agent-file records and mutation/tree orchestration. |
 | Window DevTools | `src/main/devtools-controller.ts`, private to main composition | Owns picker, debugger events and frontend polling; receives the application-confined source resolver. Window trust and IPC remain in main. |
 | Explorer presentation | `src/renderer/src/components/ExplorerTree.tsx`, private to FileSidebar | Recursive rows, inputs and menus receive the existing gesture contracts. Sidebar owns selection, drop routing and workspace state. |
-| Renderer state and chat projection | `src/renderer/src/store.tsx`, `src/renderer/src/chat-store.ts`; private `chat-records.ts` and `chat-projection.ts` | The chat facade owns authoritative reducer state; consumers do not import its private record/projection owners. Pure projection depends on renderer stream/record transformations and shared contracts. |
+| Renderer state and chat projection | `src/renderer/src/store.tsx`, `src/renderer/src/chat-store.ts`; private `src/renderer/src/chat-records.ts` and `src/renderer/src/chat-projection.ts` | The chat facade owns authoritative reducer state; consumers do not import its private record/projection owners. Pure projection depends on renderer stream/record transformations and shared contracts. |
+| Transcript presentation models | `src/renderer/src/components/OpenCodeTimeline.tsx`; private `src/renderer/src/components/timeline-model.ts` | Pure turn, tool and delegation transformations depend on existing chat/shared contracts; timeline presenters own markup and disclosure interaction. |
+| Provider credential discovery | `src/main/provider-usage.ts`; private `src/main/provider-credentials.ts` | Credential file discovery belongs to main. Provider-specific authentication, request ordering and quota semantics stay in the usage facade. |
+| Agent prompt styling | `src/renderer/src/styles/_agent-prompt-dock.scss` | Owns composer layout and integration selectors, included through the renderer stylesheet entry point. Pinned upstream styles keep their separate retention policy. |
 | Panel geometry and layout interaction | `src/renderer/src/agent-panels.ts`; App composes private `src/renderer/src/layout/` | Geometry imports only shared session contracts; drag/tray interaction imports only React, not store or backend owners. Layout presenters stay private to App composition. |
 | Controlled cross-process bridge | `src/preload/index.ts` | Preload depends on shared contracts, never main/renderer implementation. Renderer declarations may derive its interface through an explicit type-only exception. |
 | Shared contracts and normalization | `src/shared/` | Shared imports stay within shared; no Node, Electron, renderer, preload, or main implementation dependencies. |
@@ -412,6 +417,10 @@ new owners. Both runtime and type-only imports remain acyclic; shared markdown
 projection types have one owner in `markdown-projection.ts`. Substantial exact-token
 clones, new cycles, process direction violations, private-owner leaks, excluded
 implementation imports, and privileged authority leaks fail validation.
+New modules must resolve to a named file or directory route in this ownership
+table before their paths can enter the ratchet. Computed dependency loaders and
+invalid guard manifests fail closed; literal dependency forms share the same
+authority and cycle checks.
 The cohesive inline-code language table is retained as baseline size debt;
 compressing data literals or moving them outside the measured scope would not
 improve responsibility ownership. See [operations](operations.md#architecture-fitness-and-measurement)

@@ -58,7 +58,8 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 3d | Session catalog and selection state owner | complete | 152 targeted tests; exact4action initializer ASTs; isolated canonical gate; no new effect/subscription | 8a42e53 |
 | 5c | Confirmed SDK type and retained parser consolidation | complete | 61 targeted tests; exactparser bodies/session-reopen JS; no cycles/side effects; 26net production LOC; isolated canonical gate | dd78940 |
 | 4e | Verified duplicate style declarations | complete | 14production LOC; 2012declarationvectors and2090remainingoccurrences identical; specificity proof; isolated canonical gate | 0db849e |
-| 3e | Session inventory state owner | complete | 158targeted and56independent tests; isolated1153-test canonical gate; native recent reopen/open-context list/polling; no new effect | pending commit |
+| 3e | Session inventory state owner | complete | 158 targeted and 56 independent tests; isolated 1153-test canonical gate; native recent reopen/open-context list/polling; no new effect | 3e63792 |
+| 6c | Fail-closed architecture configuration, dependency syntax and canonical new-owner routing | complete | 39 targeted tests; independent adversarial probes; isolated 1164-test canonical gate | pending commit |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
@@ -141,3 +142,7 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - 2026-10-12 — Intermediate downward ratchet committed as1ecbf38 after independent approval and supported1147-test canonical snapshot gate. Session inventory slice owns two records/current readers and refresh identities, retains effect ordering and failure/stale response semantics;158 targeted tests and independent56 tests passed. Net+31LOC reflects ownership interfaces, not reduction. Canonical/native integration pending.
 
 - 2026-10-12 — Inventory supported isolated canonical gate passed1153tests/type/docs/fitness/build. Native disposable staged renderer/preload displayed recent summary, reopened it and displayed the open-context session; fixture IPC logs confirm continuing active-session polling. Catalog/runtime responses remain mocked. Independent exact4initializer/effect-order/config/docs review approved; new owner meets default budgets.
+
+- 2026-10-12 — Independent fitness probes demonstrated that constant-template/import-equals/computed loaders were omitted, invalid numeric limits could disable comparisons, and unknown modules could lack a named canonical owner. Tooling now represents literal forms, rejects computed loaders, validates the manifest before comparison and derives new-owner routes directly from the existing canonical architecture table. No new ownership documentation system or production behavior change. Original cyclomatic definition remains frozen; assignment-operator limitation is explicit.
+
+- 2026-10-12 — Fitness hardening passed the supported isolated 1164-test canonical gate. Independent frozen-source probe verified all 29 canonical routes and rejected invalid limits, malformed/misspelled selectors, removal of active routes or the entire table, and invalid ratchet attempts. Existing runtime-directory navigation moved into its existing ownership entry cell; routing semantics and numeric ceilings are unchanged.

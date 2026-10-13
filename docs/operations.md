@@ -113,6 +113,19 @@ implementation, and substantial new exact token duplication. Duplication
 detection ignores comments, whitespace, and function declaration names; it does
 not claim to detect semantic equivalence or renamed local variables.
 
+The manifest is validated before budgets are applied: malformed numbers, missing
+sections and invalid dependency paths fail verification. Literal dynamic loaders
+(including constant templates and import options) and import-equals participate
+in dependency checks; computed loaders fail because their targets cannot be
+verified. New production modules must match a named file or directory owner in
+the existing [canonical ownership table](architecture.md#implementation-ownership-and-fitness).
+Directory routes end in `/`; sibling prefixes do not inherit ownership. Existing
+known files remain baseline debt, while missing route targets fail verification.
+Active private and dependency-constrained owners retain canonical routes after
+ratcheting; misspelled selectors or removal of the ownership table also fail.
+The documented cyclomatic metric counts logical binary operators; short-circuit
+assignment operators are not included in that frozen measurement.
+
 After a verified extraction, run `npm run architecture:ratchet` and review the
 manifest diff in the same checkpoint. Ratcheting first requires a passing check;
 it only lowers/removes debt allowances and records current production paths.
