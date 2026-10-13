@@ -42,9 +42,10 @@ function errorResult(
   displayName: string,
   code: ProviderUsageError["code"],
   message: string,
-  retryable = false
+  retryable = false,
+  { status = "unauthenticated", snapshot = null }: Partial<Pick<ProviderUsageResult, "status" | "snapshot">> = {}
 ): ProviderUsageResult {
-  return { provider, displayName, status: "unauthenticated", snapshot: null, error: { code, message, retryable } };
+  return { provider, displayName, status, snapshot, error: { code, message, retryable } };
 }
 
 async function fetchJson(
@@ -414,13 +415,10 @@ async function fetchCopilot(entry: OAuthEntry): Promise<ProviderUsageResult> {
 
   if (!entry.access) return errorResult("github-copilot", displayName, "missing_oauth", `${displayName} is not authenticated.`);
   if (!entry.refresh) {
-    return {
-      provider: "github-copilot",
-      displayName,
-      status: "unauthenticated",
-      snapshot: snapshotFromToken(),
-      error: { code: "reauth_required", message: "Copilot usage requires the GitHub token from login. Run: opencode auth login", retryable: false }
-    };
+    return errorResult(
+      "github-copilot", displayName, "reauth_required",
+      "Copilot usage requires the GitHub token from login. Run: opencode auth login", false, { snapshot: snapshotFromToken() }
+    );
   }
 
   const response = await fetchJson("https://api.github.com/copilot_internal/user", {
@@ -432,44 +430,46 @@ async function fetchCopilot(entry: OAuthEntry): Promise<ProviderUsageResult> {
     "X-GitHub-Api-Version": "2026-03-10"
   });
   if (!response) {
-    return {
-      provider: "github-copilot",
-      displayName,
-      status: "unavailable",
-      snapshot: snapshotFromToken(),
-      error: { code: "fetch_failed", message: `${displayName} usage request failed (network)`, retryable: true }
-    };
+    return errorResult(
+      "github-copilot", displayName, "fetch_failed",
+      `${displayName} usage request failed (network)`, true, { status: "unavailable", snapshot: snapshotFromToken() }
+    );
   }
   if (response.status === 401) {
-    return {
-      provider: "github-copilot",
-      displayName,
-      status: "unauthenticated",
-      snapshot: snapshotFromToken(),
-      error: { code: "reauth_required", message: "GitHub rejected the Copilot login token. Run: opencode auth login", retryable: false }
-    };
+    return errorResult(
+      "github-copilot", displayName, "reauth_required",
+      "GitHub rejected the Copilot login token. Run: opencode auth login", false, { snapshot: snapshotFromToken() }
+    );
   }
   if (!response.ok) {
-    return {
-      provider: "github-copilot",
-      displayName,
-      status: "unavailable",
-      snapshot: snapshotFromToken(),
-      error: { code: "fetch_failed", message: `${displayName} usage request failed (${response.status})`, retryable: true }
-    };
+    const snapshot = snapshotFromToken();
+    return errorResult(
+      "github-copilot", displayName, "fetch_failed",
+      `${displayName} usage request failed (${response.status})`, true, { status: "unavailable", snapshot }
+    );
   }
 
   const body = asRecord(response.body);
   if (!body) {
-    return {
-      provider: "github-copilot",
-      displayName,
-      status: "unavailable",
-      snapshot: snapshotFromToken(),
-      error: { code: "fetch_failed", message: `${displayName} usage request failed (empty response)`, retryable: true }
-    };
+    return errorResult(
+      "github-copilot", displayName, "fetch_failed",
+      `${displayName} usage request failed (empty response)`, true, { status: "unavailable", snapshot: snapshotFromToken() }
+    );
   }
 
+  return {
+    provider: "github-copilot",
+    displayName,
+    status: "ok",
+    snapshot: { ...copilotQuota(body, token, planType), updatedAt: Date.now() }
+  };
+}
+
+function copilotQuota(
+  body: Record<string, unknown>,
+  token: CopilotTokenMetadata,
+  planType: string | null
+): Omit<ProviderUsageSnapshot, "updatedAt"> {
   const snapshots = asRecord(body.quota_snapshots) ?? {};
   const premium = asRecord(snapshots.premium_models) ?? asRecord(snapshots.premium_interactions);
   const tokenBasedBilling = body.token_based_billing === true || premium?.token_based_billing === true;
@@ -524,15 +524,9 @@ async function fetchCopilot(entry: OAuthEntry): Promise<ProviderUsageResult> {
       : null;
 
   return {
-    provider: "github-copilot",
-    displayName,
-    status: "ok",
-    snapshot: {
-      windows: primary ? [primary] : [],
-      credits,
-      planType: resolvedPlanType,
-      updatedAt: Date.now()
-    }
+    windows: primary ? [primary] : [],
+    credits,
+    planType: resolvedPlanType
   };
 }
 
