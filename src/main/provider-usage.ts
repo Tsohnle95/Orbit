@@ -18,33 +18,23 @@ function expired(entry: OAuthEntry): boolean {
   return typeof entry.expires === "number" && entry.expires > 0 && Date.now() >= entry.expires;
 }
 
-function jwtClaim(token: string, claim: string): string | null {
+function chatgptAccountId(entry: OAuthEntry): string | null {
+  if (entry.accountId) return entry.accountId;
+  const token = entry.access ?? "";
   const payload = token.split(".")[1];
   if (!payload) return null;
   try {
     const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Record<string, unknown>;
-    const value = decoded[claim];
-    return typeof value === "string" && value ? value : null;
+    const authClaim = decoded["https://api.openai.com/auth"];
+    if (typeof authClaim === "string" && authClaim) return authClaim;
+    const auth = asRecord(authClaim);
+    const nested = auth?.chatgpt_account_id ?? auth?.account_id;
+    if (typeof nested === "string" && nested) return nested;
+    const account = decoded.account_id;
+    return typeof account === "string" && account ? account : null;
   } catch {
     return null;
   }
-}
-
-function chatgptAccountId(entry: OAuthEntry): string | null {
-  if (entry.accountId) return entry.accountId;
-  const authClaim = jwtClaim(entry.access ?? "", "https://api.openai.com/auth");
-  if (authClaim) return authClaim;
-  const payload = entry.access?.split(".")[1];
-  if (payload) {
-    try {
-      const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Record<string, unknown>;
-      const auth = asRecord(decoded["https://api.openai.com/auth"]);
-      const nested = auth?.chatgpt_account_id ?? auth?.account_id;
-      if (typeof nested === "string" && nested) return nested;
-    } catch {
-    }
-  }
-  return jwtClaim(entry.access ?? "", "account_id");
 }
 
 function errorResult(

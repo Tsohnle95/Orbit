@@ -59,7 +59,8 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 5c | Confirmed SDK type and retained parser consolidation | complete | 61 targeted tests; exactparser bodies/session-reopen JS; no cycles/side effects; 26net production LOC; isolated canonical gate | dd78940 |
 | 4e | Verified duplicate style declarations | complete | 14production LOC; 2012declarationvectors and2090remainingoccurrences identical; specificity proof; isolated canonical gate | 0db849e |
 | 3e | Session inventory state owner | complete | 158 targeted and 56 independent tests; isolated 1153-test canonical gate; native recent reopen/open-context list/polling; no new effect | 3e63792 |
-| 6c | Fail-closed architecture configuration, dependency syntax and canonical new-owner routing | complete | 39 targeted tests; independent adversarial probes; isolated 1164-test canonical gate | pending commit |
+| 6c | Fail-closed architecture configuration, dependency syntax and canonical new-owner routing | complete | 39 targeted tests; independent adversarial probes; isolated 1164-test canonical gate | e825227 |
+| 5d | OpenAI account-claim decoding consolidation | complete | 47 focused tests; independent historical 27/current 47 tests; isolated 1186-test canonical gate; 9 net production LOC removed | pending commit |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
@@ -146,3 +147,7 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - 2026-10-12 — Independent fitness probes demonstrated that constant-template/import-equals/computed loaders were omitted, invalid numeric limits could disable comparisons, and unknown modules could lack a named canonical owner. Tooling now represents literal forms, rejects computed loaders, validates the manifest before comparison and derives new-owner routes directly from the existing canonical architecture table. No new ownership documentation system or production behavior change. Original cyclomatic definition remains frozen; assignment-operator limitation is explicit.
 
 - 2026-10-12 — Fitness hardening passed the supported isolated 1164-test canonical gate. Independent frozen-source probe verified all 29 canonical routes and rejected invalid limits, malformed/misspelled selectors, removal of active routes or the entire table, and invalid ratchet attempts. Existing runtime-directory navigation moved into its existing ownership entry cell; routing semantics and numeric ceilings are unchanged.
+
+- 2026-10-12 — Provider account identity now decodes one JWT payload rather than up to three. The account override, direct/nested/root claim precedence, empty and malformed payload behavior, and exact malformed-token TypeError before later provider requests are preserved. Forty-seven focused tests and independent review pass; no concurrency or fallback change and no measured latency claim.
+
+- 2026-10-12 — JWT consolidation isolated canonical gate passed 1186 tests/type/docs/fitness/build. Independent historical public-path suite ran the same 22 identity cases plus original orchestration cases against pristine e825227: all 27 passed, including exact error text and no later HTTP calls. Current focused 47-test suite also passed.

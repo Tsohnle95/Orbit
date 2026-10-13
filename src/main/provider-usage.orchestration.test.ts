@@ -66,7 +66,7 @@ describe("provider refresh ordering and failure semantics", () => {
     });
     const transport = vi.fn(async () => response({}));
     vi.stubGlobal("fetch", transport);
-    await expect(fetchProviderUsage()).rejects.toThrow("split");
+    await expect(fetchProviderUsage()).rejects.toMatchObject({ name: "TypeError", message: "token.split is not a function" });
     expect(transport).not.toHaveBeenCalled();
   });
 
@@ -101,5 +101,54 @@ describe("provider refresh ordering and failure semantics", () => {
     vi.stubGlobal("fetch", transport);
     expect(await fetchProviderUsage()).toEqual([snapshots[2], snapshots[1], snapshots[0]]);
     expect(transport).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("OpenAI account identity characterization", () => {
+  const jwt = (payload: unknown): string => `header.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.signature`;
+  const cases: Array<{ label: string; entry: unknown; account?: string; missing?: boolean; error?: boolean }> = [
+    { label: "null claim body", entry: { access: jwt(null) } },
+    { label: "empty claim body", entry: { access: jwt({}) } },
+    { label: "array claim body", entry: { access: jwt([]) } },
+    { label: "boolean claim body", entry: { access: jwt(true) } },
+    { label: "numeric claim body", entry: { access: jwt(42) } },
+    { label: "string claim body", entry: { access: jwt("text") } },
+    { label: "direct auth claim", entry: { access: jwt({ "https://api.openai.com/auth": "direct" }) }, account: "direct" },
+    { label: "nested ChatGPT ID", entry: { access: jwt({ "https://api.openai.com/auth": { chatgpt_account_id: "nested" } }) }, account: "nested" },
+    { label: "nested account ID", entry: { access: jwt({ "https://api.openai.com/auth": { account_id: "nested2" } }) }, account: "nested2" },
+    { label: "empty nested ID uses root fallback", entry: { access: jwt({ "https://api.openai.com/auth": { chatgpt_account_id: "", account_id: "ignored" }, account_id: "outer" }) }, account: "outer" },
+    { label: "empty direct claim uses root fallback", entry: { access: jwt({ "https://api.openai.com/auth": "", account_id: "outer" }) }, account: "outer" },
+    { label: "array auth claim uses root fallback", entry: { access: jwt({ "https://api.openai.com/auth": [], account_id: "outer" }) }, account: "outer" },
+    { label: "whitespace ID remains unchanged", entry: { access: jwt({ account_id: " " }) }, account: " " },
+    { label: "numeric account ID is ignored", entry: { access: jwt({ account_id: 0 }) } },
+    { label: "absent access", entry: {}, missing: true },
+    { label: "empty access", entry: { access: "" }, missing: true },
+    { label: "opaque access", entry: { access: "opaque" } },
+    { label: "malformed payload", entry: { access: "header.!!!.signature" } },
+    { label: "numeric access", entry: { access: 42 }, error: true },
+    { label: "object access", entry: { access: {} }, error: true },
+    { label: "null access", entry: { access: null }, missing: true },
+    { label: "explicit ID precedes malformed access", entry: { access: 42, accountId: "override" }, account: "override" }
+  ];
+
+  it.each(cases)("preserves $label", async ({ entry, account, missing, error }) => {
+    credentials.mockResolvedValue({ openai: entry as OAuthEntry });
+    const transport = vi.fn(async (_url: string, _options?: RequestInit) => response({}));
+    vi.stubGlobal("fetch", transport);
+    if (error) {
+      await expect(fetchProviderUsage()).rejects.toMatchObject({ name: "TypeError", message: "token.split is not a function" });
+      expect(transport).not.toHaveBeenCalled();
+      return;
+    }
+    const results = await fetchProviderUsage();
+    if (missing) {
+      expect(results[0].error?.code).toBe("missing_oauth");
+      expect(transport).not.toHaveBeenCalled();
+      return;
+    }
+    expect(results[0].status).toBe("ok");
+    expect(transport).toHaveBeenCalledTimes(1);
+    const headers = transport.mock.calls[0][1]!.headers as Record<string, string>;
+    expect(headers["ChatGPT-Account-Id"]).toBe(account);
   });
 });
