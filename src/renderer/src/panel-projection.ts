@@ -13,7 +13,7 @@ import { findTurnStartedAt, type ChatDirectoryReadView } from "./chat-store";
 import { resolveSessionActivity } from "./session-activity";
 import { getActiveAssistantContext, resolveAssistantStatus, type SessionAbortFlag } from "./assistant-status";
 import { createMessageQueueTarget, getQueueForTarget, type MessageQueueState, type QueuedMessage } from "./message-queue";
-import type { StreamingStore } from "./streaming";
+import type { StreamingReadView } from "./streaming";
 import type { PanelView } from "./store-contract";
 
 export interface PanelProjectionSources {
@@ -26,7 +26,7 @@ export interface PanelProjectionSources {
   currentModelByWorkspace: Readonly<Record<string, ModelOption | null>>;
   agentsByWorkspace: Readonly<Record<string, AgentOption[]>>;
   currentAgentByWorkspace: Readonly<Record<string, AgentOption | null>>;
-  streamingStore: StreamingStore;
+  streamingStore: StreamingReadView;
   messageQueue: MessageQueueState;
   inboxBySession: Readonly<Record<string, SessionInboxEntry[]>>;
   formsBySession: Readonly<Record<string, PendingFormRequest[]>>;

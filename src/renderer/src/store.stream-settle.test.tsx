@@ -345,6 +345,17 @@ describe("store stream settle", () => {
     }));
   });
 
+  it.each([false, true])("preserves distinct visible/off-view close abort disposal (detached=%s)", async (detached) => {
+    const sessionID = store.activeSessionID!;
+    window.openshell.interrupt = vi.fn(async () => {});
+    await act(async () => store.stop());
+    expect(store.panelViews[store.session!.workspace.id].assistantStatus?.wasAborted).toBe(true);
+    if (detached) await act(async () => store.openSession("/two"));
+    await act(async () => store.closePanel(sessionID));
+    await act(async () => store.reopenSession(sessionID));
+    expect(store.panelViews[store.session!.workspace.id].assistantStatus?.wasAborted).toBe(!detached);
+  });
+
   it("keeps pushed execution state authoritative after prompt submission without polling history", async () => {
     await act(async () => { vi.advanceTimersByTime(61_500); });
     expect(store.busy).toBe(false);

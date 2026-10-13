@@ -39,18 +39,7 @@ import type {
 } from "@shared/types";
 import type { ChatStreamEvent } from "./chat-stream";
 import { compactExplorerSelection, movableExplorerPaths } from "./explorer-selection";
-import {
-  buildRateLimitNotice,
-  type ChatSnapshotReadView,
-  type RateLimitAction
-} from "./chat-store";
-import {
-  emptyStreamingStore,
-  touchStreamingSession,
-  type StreamingStore
-} from "./streaming";
 import { IDLE_ACTIVITY, resolveSessionActivity } from "./session-activity";
-import type { SessionAbortFlag } from "./assistant-status";
 import {
   addToQueue,
   createMessageQueueTarget,
@@ -73,6 +62,7 @@ import { useWorkspaceEditor } from "./use-workspace-editor";
 import { useSessionSelection } from "./use-session-selection";
 import { useSessionInventory } from "./use-session-inventory";
 import { useSessionChatRecords } from "./use-session-chat-records";
+import { useSessionExecution, useSessionSettlement } from "./use-session-execution";
 import { projectPanelViews } from "./panel-projection";
 import type { Toast, CtxMenuState, CtxMenuApi, PendingCreate, PanelView, Store } from "./store-contract";
 
@@ -141,13 +131,6 @@ function sortEntries(entries: TreeEntry[]): TreeEntry[] {
   });
 }
 
-function dropKey<T>(record: Record<string, T>, key: string): Record<string, T> {
-  if (!(key in record)) return record;
-  const next = { ...record };
-  delete next[key];
-  return next;
-}
-
 function filterEntries(entries: TreeEntry[]): TreeEntry[] {
   return entries.filter((e) => {
     const name = e.path.split("/").pop() ?? e.path;
@@ -193,36 +176,6 @@ function normalizeStreamEvent(msg: BackendMessage): ChatStreamEvent | null {  if
   };
 }
 
-const ACTIVE_CHAT_STREAM_TYPES = new Set([
-  "session.step.started",
-  "session.text.started",
-  "session.text.delta",
-  "session.reasoning.started",
-  "session.reasoning.delta",
-  "session.tool.input.started",
-  "session.tool.input.delta",
-  "session.tool.called",
-  "session.tool.progress",
-  "session.retry.scheduled",
-  "message.part.delta"
-]);
-
-function streamEventShowsActiveWork(event: ChatStreamEvent): boolean {
-  if (ACTIVE_CHAT_STREAM_TYPES.has(event.type)) return true;
-  if (event.type === "message.updated") {
-    const info = (event.data.info ?? event.data) as Record<string, any>;
-    const role = String(info.role ?? info.type ?? "assistant");
-    return role === "assistant" && !info.time?.completed && !info.finish && !info.error;
-  }
-  if (event.type === "message.part.updated") {
-    const part = (event.data.part ?? event.data) as Record<string, any>;
-    const state = part.state as Record<string, any> | undefined;
-    const status = String(state?.status ?? "");
-    return !part.time?.completed && !["completed", "error", "failed", "success", "aborted", "timeout", "cancelled"].includes(status);
-  }
-  return false;
-}
-
 function failureForStreamEvent(type: string, data: Record<string, any>): { error: unknown; code: string; message: string } | null {
   if (type === "session.step.failed") return { error: data.error, code: "ORBIT_STEP_FAILED", message: "Step failed" };
   if (type === "session.execution.failed") return { error: data.error, code: "ORBIT_EXECUTION_FAILED", message: "Execution failed" };
@@ -245,9 +198,6 @@ const EMPTY_AGENT_FILES: Map<string, AgentFileState> = new Map();
 const EMPTY_TREE: Record<string, TreeEntry[]> = {};
 const EMPTY_EXPANDED: Set<string> = new Set();
 const STALE_SESSION_LAYOUT_KEY = "orbit.sessionLayout";
-const STREAM_SETTLE_MS = 60_000;
-const STREAM_SETTLE_IDLE_MS = 2_000;
-const STREAM_SETTLE_POLL_MS = 1_000;
 
 export function StoreProvider({ children }: { children: ReactNode }): ReactNode {
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null);
@@ -273,7 +223,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const [activeSessionID, setActiveSessionID] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [runtimes, setRuntimes] = useState<RuntimeManifest[]>([]);
-  const [busyBySession, setBusyBySession] = useState<Record<string, boolean>>({});
   const [todosByWorkspace, setTodosByWorkspace] = useState<Record<string, TodoItem[]>>({});
   const protectedSessionIDs = useCallback(
     (): Set<string> => new Set(panelsRef.current.map((panel) => panel.id)),
@@ -290,6 +239,19 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     appendPromptUser, promoteDeliveredInput, reduceAuxiliaryEvent,
     addPermissionFromEvent, resolvePermission, reconcilePermissionRows
   } = useSessionChatRecords(protectedSessionIDs);
+  const execution = useSessionExecution({
+    transcriptFor, snapshotSession, reduceSessionEvent, recordStatusFor,
+    projectSession: applyProjection, attachRetry, appendRateLimitNotice, completeLatest,
+    deriveChangedStreaming, deriveStreaming
+  });
+  const {
+    busyBySession, sessionAbortFlags, streamingStore,
+    busyFor, abortFor, streamingMessageFor, markStreamActivity,
+    setSessionBusy, seedReplayBusy, pruneBusyState, dropClosedActivity,
+    beginLocalAbort, acknowledgePromptAbort, syncStreaming, reconcileStreaming,
+    shouldIgnoreRuntimeWork, noteRuntimeReduction, touchDeltaStream,
+    startExecution, finishExecution, applyStatusEvent
+  } = execution;
   const [inboxBySession, setInboxBySession] = useState<Record<string, SessionInboxEntry[]>>({});
   const [formsBySession, setFormsBySession] = useState<Record<string, PendingFormRequest[]>>({});
   const [stagedReverts, setStagedReverts] = useState<Record<string, SessionRevertStage | null>>({});
@@ -315,9 +277,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const [providerUsageLoading, setProviderUsageLoading] = useState(false);
   const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null);
   const [pendingRename, setPendingRename] = useState<{ path: string } | null>(null);
-  const [streamingStore, setStreamingStore] = useState<StreamingStore>(() => emptyStreamingStore());
   const [messageQueue, setMessageQueue] = useState<MessageQueueState>(() => loadMessageQueueState());
-  const [sessionAbortFlags, setSessionAbortFlags] = useState<Record<string, SessionAbortFlag>>({});
 
   const activeWorkspaceID = activeSessionID
     ? (panels.find((panel) => panel.id === activeSessionID)?.workspace.id ?? null)
@@ -360,12 +320,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   }, [refreshRuntimes]);
 
   useEffect(() => {
-    const open = new Set(panels.map((panel) => panel.id));
-    setBusyBySession((current) => {
-      const entries = Object.entries(current).filter(([id]) => open.has(id) || id in transcriptsBySession);
-      return entries.length === Object.keys(current).length ? current : Object.fromEntries(entries);
-    });
-  }, [panels, transcriptsBySession]);
+    pruneBusyState(panels, transcriptsBySession);
+  }, [panels, transcriptsBySession, pruneBusyState]);
 
   useEffect(() => {
     let changed = false;
@@ -393,12 +349,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   inboxBySessionRef.current = inboxBySession;
   const formsBySessionRef = useRef(formsBySession);
   formsBySessionRef.current = formsBySession;
-  const busyBySessionRef = useRef(busyBySession);
-  busyBySessionRef.current = busyBySession;
-  const sessionAbortFlagsRef = useRef(sessionAbortFlags);
-  sessionAbortFlagsRef.current = sessionAbortFlags;
-  const lastStreamActivityRef = useRef<Record<string, number>>({});
-  const streamingRef = useRef<StreamingStore>(streamingStore);
   const messageQueueRef = useRef<MessageQueueState>(messageQueue);
   const agentFilesByWorkspaceRef = useRef(agentFilesByWorkspace);
   agentFilesByWorkspaceRef.current = agentFilesByWorkspace;
@@ -489,12 +439,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       current[workspaceID] === items ? current : { ...current, [workspaceID]: items });
   }, []);
 
-  const setSessionBusy = useCallback((sessionID: string, value: boolean) => {
-    setBusyBySession((current) => current[sessionID] === value
-      ? current
-      : { ...current, [sessionID]: value });
-  }, []);
-
   const reconcilePermissions = useCallback(async (): Promise<void> => {
     const panels = panelsRef.current;
     if (panels.length === 0) return;
@@ -526,86 +470,15 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const swapPendingRef = useRef(false);
   const replacingSessionIDsRef = useRef(new Map<string, number>());
 
-  const commitStreaming = useCallback((next: StreamingStore) => {
-    streamingRef.current = next;
-    setStreamingStore(next);
-  }, []);
-
   const commitQueue = useCallback((next: MessageQueueState) => {
     messageQueueRef.current = next;
     setMessageQueue(next);
     persistMessageQueueState(next);
   }, []);
 
-  const syncStreaming = useCallback((sessionID: string, previous: ChatSnapshotReadView) => {
-    const next = deriveChangedStreaming(sessionID, previous, streamingRef.current);
-    if (next) commitStreaming(next);
-  }, [deriveChangedStreaming, commitStreaming]);
-
-  const reconcileStreaming = useCallback((sessionID: string) => {
-    const next = deriveStreaming(sessionID, streamingRef.current);
-    if (next) commitStreaming(next);
-  }, [deriveStreaming, commitStreaming]);
-
-  useEffect(() => {
-    const finalizeTrailingAssistant = (sessionID: string, reason: "settle" | "idle"): void => {
-      const wasBusy = Boolean(busyBySessionRef.current[sessionID]);
-      completeLatest(sessionID);
-      applyProjection(sessionID);
-      reconcileStreaming(sessionID);
-      setSessionBusy(sessionID, false);
-      if (wasBusy) {
-        const detail = reason === "settle" ? "Turn stalled — recovered" : "Recovered incomplete turn";
-        const id = ++toastId;
-        setToasts((prev) => [...prev.slice(-3), { id, text: detail, tone: "info" }]);
-        setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-      }
-    };
-    const timer = setInterval(() => {
-      const now = Date.now();
-      for (const panel of panelsRef.current) {
-        const transcript = transcriptFor(panel.id);
-        const trailing = [...transcript].reverse().find((item) => item.kind === "assistant");
-        const isBusy = Boolean(busyBySessionRef.current[panel.id]);
-        if (trailing?.kind !== "assistant" || trailing.completed) {
-          if (!isBusy) continue;
-          const lastActivity = lastStreamActivityRef.current[panel.id];
-          if (lastActivity === undefined) {
-            lastStreamActivityRef.current[panel.id] = now;
-            continue;
-          }
-          if (now - lastActivity < STREAM_SETTLE_MS) continue;
-          setSessionBusy(panel.id, false);
-          const id = ++toastId;
-          setToasts((prev) => [...prev.slice(-3), { id, text: "Turn stalled — recovered", tone: "info" }]);
-          setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-          continue;
-        }
-        if (!isBusy) {
-          const lastActivity = lastStreamActivityRef.current[panel.id];
-          if (lastActivity === undefined) {
-            lastStreamActivityRef.current[panel.id] = now;
-            continue;
-          }
-          if (now - lastActivity < STREAM_SETTLE_IDLE_MS) continue;
-          finalizeTrailingAssistant(panel.id, "idle");
-          continue;
-        }
-        if (trailing.retry) {
-          const next = trailing.retry.next;
-          if (typeof next === "number" && next > now && next - now < 60_000) continue;
-        }
-        const lastActivity = lastStreamActivityRef.current[panel.id];
-        if (lastActivity === undefined) {
-          lastStreamActivityRef.current[panel.id] = now;
-          continue;
-        }
-        if (now - lastActivity < STREAM_SETTLE_MS) continue;
-        finalizeTrailingAssistant(panel.id, "settle");
-      }
-    }, STREAM_SETTLE_POLL_MS);
-    return () => clearInterval(timer);
-  }, [completeLatest, applyProjection, reconcileStreaming, setSessionBusy, transcriptFor]);
+  useSessionSettlement(execution, {
+    panelsRef, transcriptFor, completeLatest, projectSession: applyProjection, notify: toast
+  });
 
   const setFollowUpBehavior = useCallback((behavior: FollowUpBehavior) => {
     commitQueue({ ...messageQueueRef.current, followUpBehavior: behavior });
@@ -710,7 +583,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           : Promise.resolve(null)
       ]);
       if (!panelForSession(sessionID)) return;
-      const aborted = sessionAbortFlagsRef.current[sessionID]?.acknowledged === false;
+      const aborted = abortFor(sessionID)?.acknowledged === false;
       mergeMaterializedRecords(sessionID, snapshot.transcript, aborted);
       applyProjection(sessionID);
       reconcileStreaming(sessionID);
@@ -736,7 +609,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     } finally {
       materializingRef.current.delete(sessionID);
     }
-  }, [panelForSession, mergeMaterializedRecords, applyProjection, reconcileStreaming, setTodosFor, setSessionBusy, protectedSessionIDs, toast]);
+  }, [panelForSession, mergeMaterializedRecords, applyProjection, reconcileStreaming, setTodosFor, setSessionBusy, protectedSessionIDs, toast, abortFor]);
 
   const submitForm = useCallback(async (
     workspace: WorkspaceIdentity,
@@ -833,17 +706,12 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       try {
         const reopened = await window.openshell.openSessionById(sessionID, request);
         if (!panelForSession(sessionID)) return;
-        const aborted = sessionAbortFlagsRef.current[sessionID]?.acknowledged === false;
+        const aborted = abortFor(sessionID)?.acknowledged === false;
         const merged = prepareReopenedReplay(sessionID, reopened.transcript, aborted);
         reconcileStreaming(sessionID);
         commitReplayTranscript(sessionID, merged);
         const running = [...reopened.transcript].reverse().find((item) => item.kind === "assistant");
-        setBusyBySession((current) => sessionID in current
-          ? current
-          : {
-              ...current,
-              [sessionID]: !aborted && Boolean(running?.kind === "assistant" && !running.completed)
-            });
+        seedReplayBusy(sessionID, running, aborted);
         if (aborted) applyProjection(sessionID);
         setTodosFor(reopened.session.workspace.id, reopened.todos);
         if (reopened.usage) {
@@ -860,7 +728,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
       }
     },
-    [toast, panelForSession, prepareReopenedReplay, commitReplayTranscript, reconcileStreaming, applyProjection, setTodosFor, protectedSessionIDs]
+    [toast, panelForSession, prepareReopenedReplay, commitReplayTranscript, reconcileStreaming, applyProjection, setTodosFor, protectedSessionIDs, abortFor, seedReplayBusy]
   );
 
   const clearStagedRevert = useCallback(async (workspace: WorkspaceIdentity): Promise<void> => {
@@ -970,14 +838,13 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const active = activeSessionFor(sessionID);
     if (!closing && active) {
       removeActiveSession(sessionID);
-      setBusyBySession((current) => dropKey(current, sessionID));
-      setSessionAbortFlags((current) => dropKey(current, sessionID));
+      dropClosedActivity(sessionID);
       void window.openshell.closeSession(active.workspace).catch(() => {});
       return;
     }
     const ejected = ejectPanelFromView(sessionID);
     if (!ejected) return;
-    const keepActive = preserveBusy && Boolean(busyBySessionRef.current[sessionID]);
+    const keepActive = preserveBusy && Boolean(busyFor(sessionID));
     if (!keepActive) {
       removeActiveSession(sessionID);
       forgetRecords(sessionID);
@@ -992,7 +859,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     if (!keepActive) {
       void window.openshell.closeSession(ejected.workspace).catch(() => {});
     }
-  }, [removeActiveSession, ejectPanelFromView, activeSessionFor, forgetRecords]);
+  }, [removeActiveSession, ejectPanelFromView, activeSessionFor, forgetRecords, dropClosedActivity, busyFor]);
 
   const closePanel = useCallback((sessionID: string, preserveBusy = false): void => {
     const closing = panelsRef.current.find((panel) => panel.id === sessionID);
@@ -1321,12 +1188,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         reconcileStreaming(reopened.session.id);
         commitReplayTranscript(reopened.session.id, merged);
         const running = [...reopened.transcript].reverse().find((item) => item.kind === "assistant");
-        setBusyBySession((current) => reopened.session.id in current
-          ? current
-          : {
-              ...current,
-              [reopened.session.id]: Boolean(running?.kind === "assistant" && !running.completed)
-            });
+        seedReplayBusy(reopened.session.id, running);
         setTodosFor(reopened.session.workspace.id, reopened.todos);
         if (reopened.usage) {
           setUsageBySession((current) => retainSessionRecord(
@@ -1371,6 +1233,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     hydrateTranscript,
     protectedSessionIDs,
     summaryFor,
+    seedReplayBusy,
   ]
   );
 
@@ -1388,21 +1251,13 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         return;
       }
       const promptText = t || "Review the attached files.";
-      const abortFlag = sessionAbortFlagsRef.current[panel.id];
-      if (abortFlag && !abortFlag.acknowledged) {
-        const nextAbortFlags = {
-          ...sessionAbortFlagsRef.current,
-          [panel.id]: { ...abortFlag, acknowledged: true }
-        };
-        sessionAbortFlagsRef.current = nextAbortFlags;
-        setSessionAbortFlags(nextAbortFlags);
-      }
+      acknowledgePromptAbort(panel.id);
       const transcript = transcriptFor(panel.id);
       const trailingAssistant = [...transcript].reverse().find((item) => item.kind === "assistant");
       const trailingAssistantIncomplete = trailingAssistant?.kind === "assistant" && !trailingAssistant.completed;
       const activity = resolveSessionActivity({
         sessionId: panel.id,
-        statusType: trailingAssistantIncomplete && streamingRef.current.streamingMessageIds.get(panel.id)
+        statusType: trailingAssistantIncomplete && streamingMessageFor(panel.id)
           ? (trailingAssistant?.kind === "assistant" && trailingAssistant.retry ? "retry" : "busy")
           : undefined,
         trailingAssistantIncomplete,
@@ -1432,7 +1287,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       setSessionBusy(panel.id, true);
       const applyCanonicalTranscript = (refreshed: Awaited<ReturnType<typeof window.openshell.prompt>>): void => {
         const merged = reconcilePromptTranscript(panel.id, refreshed.transcript, userItem);
-        lastStreamActivityRef.current[panel.id] = Date.now();
+        markStreamActivity(panel.id);
         hydratePromptRecords(panel.id, merged);
         reconcileStreaming(panel.id);
       };
@@ -1479,6 +1334,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     currentAgentByWorkspace,
     currentModelByWorkspace,
     transcriptFor,
+    acknowledgePromptAbort,
+    streamingMessageFor,
+    markStreamActivity,
   ]
   );
 
@@ -1510,10 +1368,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const target = workspace ?? sessionRef.current?.workspace;
     const panel = target ? panelFor(target) : null;
     if (!panel || !target) return;
-    const abortFlag = { timestamp: Date.now(), acknowledged: false };
-    const nextAbortFlags = { ...sessionAbortFlagsRef.current, [panel.id]: abortFlag };
-    sessionAbortFlagsRef.current = nextAbortFlags;
-    setSessionAbortFlags(nextAbortFlags);
+    const abortFlag = beginLocalAbort(panel.id, Date.now());
     const previous = snapshotSession(panel.id);
     const interrupted = reduceSessionEvent(panel.id, {
       id: `local-interrupt-${abortFlag.timestamp}`,
@@ -1529,7 +1384,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     await window.openshell.interrupt(target).catch((error) => {
       toast(formatFailure(error, "ORBIT_INTERRUPT_FAILED", "The prompt could not be interrupted"), "error");
     });
-  }, [setSessionBusy, panelFor, toast, snapshotSession, reduceSessionEvent, applyProjection, syncStreaming]);
+  }, [setSessionBusy, panelFor, toast, snapshotSession, reduceSessionEvent, applyProjection, syncStreaming, beginLocalAbort]);
 
   const refreshProviderUsage = useCallback(async () => {
     const sequence = ++providerUsageSeqRef.current;
@@ -2293,23 +2148,12 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         case "message.part.delta":
         case "message.part.removed": {
           if (!targetSessionID) break;
-          if (sessionAbortFlagsRef.current[targetSessionID]?.acknowledged === false && streamEventShowsActiveWork(streamEvent)) {
+          if (shouldIgnoreRuntimeWork(targetSessionID, streamEvent)) {
             break;
           }
           const previous = snapshotSession(targetSessionID);
           const result = reduceSessionEvent(targetSessionID, streamEvent);
-          if (result === true || (typeof result !== "boolean" && result.changed)) {
-            lastStreamActivityRef.current[targetSessionID] = Date.now();
-            applyProjection(targetSessionID);
-            const abortFlag = sessionAbortFlagsRef.current[targetSessionID];
-            const abortPending = Boolean(abortFlag && !abortFlag.acknowledged);
-            const sessionStatus = recordStatusFor(targetSessionID);
-            if (sessionStatus?.type === "idle" || sessionStatus?.type === "error") {
-              setSessionBusy(targetSessionID, false);
-            } else if (!abortPending && !busyBySessionRef.current[targetSessionID] && streamEventShowsActiveWork(streamEvent)) {
-              setSessionBusy(targetSessionID, true);
-            }
-          }
+          noteRuntimeReduction(targetSessionID, streamEvent, result);
           const materialization = typeof result === "boolean" ? undefined : result.materialization;
           if (materialization) void materializeSession(materialization.sessionID ?? targetSessionID);
           const failure = failureForStreamEvent(type, data);
@@ -2318,10 +2162,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
             appendUniqueTranscriptItem(targetSessionID, { kind: "status", id: `${streamEvent.id}-failure`, text: failureText, tone: "error" });
           }
           syncStreaming(targetSessionID, previous);
-          if (type === "message.part.delta" || type === "session.text.delta" || type === "session.reasoning.delta" || type === "session.tool.input.delta") {
-            const touched = touchStreamingSession(streamingRef.current, targetSessionID);
-            if (touched) commitStreaming(touched);
-          }
+          touchDeltaStream(targetSessionID, type);
           break;
         }
         case "server.connected":
@@ -2377,30 +2218,15 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           break;
         }
         case "session.execution.started": {
-          if (targetSessionID && sessionAbortFlagsRef.current[targetSessionID]?.acknowledged !== false) {
-            const previous = snapshotSession(targetSessionID);
-            reduceSessionEvent(targetSessionID, streamEvent);
-            syncStreaming(targetSessionID, previous);
-            // Authoritative proof the turn is alive: reset the settle quiet
-            // clock so slow models (long prefill/tool gaps with no deltas)
-            // cannot trip the watchdog mid-turn.
-            lastStreamActivityRef.current[targetSessionID] = Date.now();
-            setSessionBusy(targetSessionID, true);
-          }
+          if (targetSessionID) startExecution(targetSessionID, streamEvent);
           break;
         }
         case "session.execution.succeeded":
         case "session.execution.failed":
         case "session.execution.interrupted": {
           if (targetSessionID) {
-            setSessionBusy(targetSessionID, false);
-            const previous = snapshotSession(targetSessionID);
-            const result = reduceSessionEvent(targetSessionID, streamEvent);
-            if (result === true || (typeof result !== "boolean" && result.changed)) applyProjection(targetSessionID);
-            syncStreaming(targetSessionID, previous);
-            setSessionAbortFlags((current) => current[targetSessionID]
-              ? { ...current, [targetSessionID]: { ...current[targetSessionID], acknowledged: true } }
-              : current);
+            finishExecution(targetSessionID, streamEvent);
+
           }
           if (active && targetWorkspace) setTodosFor(targetWorkspace.id, []);
           const ok = type === "session.execution.succeeded";
@@ -2421,28 +2247,15 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
         case "session.idle": {
           if (targetSessionID) {
-            setSessionBusy(targetSessionID, false);
-            const previous = snapshotSession(targetSessionID);
-            const result = reduceSessionEvent(targetSessionID, streamEvent);
-            if (result === true || (typeof result !== "boolean" && result.changed)) applyProjection(targetSessionID);
-            syncStreaming(targetSessionID, previous);
-            setSessionAbortFlags((current) => current[targetSessionID]
-              ? { ...current, [targetSessionID]: { ...current[targetSessionID], acknowledged: true } }
-              : current);
+            finishExecution(targetSessionID, streamEvent);
+
           }
           if (active && targetWorkspace) setTodosFor(targetWorkspace.id, []);
           break;
         }
         case "session.error": {
           if (targetSessionID) {
-            setSessionBusy(targetSessionID, false);
-            const previous = snapshotSession(targetSessionID);
-            const result = reduceSessionEvent(targetSessionID, streamEvent);
-            if (result === true || (typeof result !== "boolean" && result.changed)) applyProjection(targetSessionID);
-            syncStreaming(targetSessionID, previous);
-            setSessionAbortFlags((current) => current[targetSessionID]
-              ? { ...current, [targetSessionID]: { ...current[targetSessionID], acknowledged: true } }
-              : current);
+            finishExecution(targetSessionID, streamEvent);
             const errorText = formatFailure(data.error, "ORBIT_SESSION_ERROR", "Session failed");
             appendUniqueTranscriptItem(targetSessionID, { kind: "status", id: `${streamEvent.id}-error`, text: errorText, tone: "error" });
           }
@@ -2474,41 +2287,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           break;
         }
         case "session.status": {
-          const status = data.status as { type?: string; attempt?: number; message?: string; next?: number; action?: RateLimitAction } | undefined;
-          const abortPending = Boolean(targetSessionID && sessionAbortFlagsRef.current[targetSessionID]?.acknowledged === false);
-          const activeStatus = status?.type === "busy" || status?.type === "retry";
-          if (targetSessionID && !(abortPending && activeStatus)) {
-            const previous = snapshotSession(targetSessionID);
-            reduceSessionEvent(targetSessionID, streamEvent);
-            syncStreaming(targetSessionID, previous);
-          }
-          if (activeStatus && targetSessionID && !abortPending) {
-            lastStreamActivityRef.current[targetSessionID] = Date.now();
-          }
-          if (status?.type === "busy" && targetSessionID && !abortPending) setSessionBusy(targetSessionID, true);
-          if ((status?.type === "idle" || status?.type === "error") && targetSessionID) setSessionBusy(targetSessionID, false);
-          if (status?.type === "retry" && targetSessionID && !abortPending) {
-            setSessionBusy(targetSessionID, true);
-            if (attachRetry(targetSessionID, {
-              attempt: Number(status.attempt ?? 1),
-              message: formatFailure(status.message, "ORBIT_RETRY_SCHEDULED", "Retrying"),
-              next: status.next
-            })) {
-              applyProjection(targetSessionID);
-            }
-            if (status.action && Number(status.attempt ?? 1) === 1) {
-              const notice = buildRateLimitNotice(status.action, targetSessionID);
-              if (notice) {
-                appendRateLimitNotice(targetSessionID, notice);
-              }
-            }
-          }
-          if (targetSessionID && !(abortPending && activeStatus)) {
-            const previous = snapshotSession(targetSessionID);
-            const result = reduceSessionEvent(targetSessionID, streamEvent);
-            if (result === true || (typeof result !== "boolean" && result.changed)) applyProjection(targetSessionID);
-            syncStreaming(targetSessionID, previous);
-          }
+          applyStatusEvent(targetSessionID, streamEvent);
           break;
         }
         case "permission.asked": {
@@ -2599,9 +2378,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     applyAgentSelection,
     loadRecovery,
     reopenSession,
-    setSessionBusy,
     appendUniqueTranscriptItem,
-    appendRateLimitNotice,
     replaceTranscriptItemAtTail,
     reduceAuxiliaryEvent,
     resolvePermission,
@@ -2619,8 +2396,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     setTreeFor,
     snapshotSession,
     reduceSessionEvent,
-    attachRetry,
-    applyProjection,
     materializeSession,
     refreshSessionUsage,
     reconcilePermissions,
@@ -2632,7 +2407,13 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     renameSummary,
     removeSummary,
     openPaths,
-    recordStatusFor,
+    shouldIgnoreRuntimeWork,
+    noteRuntimeReduction,
+    syncStreaming,
+    touchDeltaStream,
+    startExecution,
+    finishExecution,
+    applyStatusEvent,
   ]);
 
   useEffect(() => {

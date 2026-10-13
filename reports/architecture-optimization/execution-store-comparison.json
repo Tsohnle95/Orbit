@@ -1,0 +1,381 @@
+{
+  "phase": "session execution ownership",
+  "baselineRef": "e0a1b70",
+  "runner": "scripts/benchmark-renderer-store.mjs",
+  "command": "PATH=/Users/tdawg/.local/share/orbit-toolchains/node-v22.23.2/bin:$PATH node scripts/benchmark-renderer-store.mjs [--ref e0a1b70]",
+  "afterSourceSha256": {
+    "src/renderer/src/store.tsx": "49f5ab71eca86d505dfcc0006b3055db4f9d2d35d31335be81db4d5247ce89b0",
+    "src/renderer/src/use-session-execution.ts": "459d6d8674a5231d3cb011ff77062dd947177159296b13012ab600214428783c",
+    "src/renderer/src/streaming.ts": "b6a5944639d6e7add43ad2812ad8e36c583653da273ee3207ca6b128738e0a25",
+    "src/renderer/src/panel-projection.ts": "d764efedea59ed31d34835b58cda97d8c6659855b5a5268356dc74443dca43e0"
+  },
+  "order": [
+    "before-1",
+    "after-1",
+    "after-2",
+    "before-2"
+  ],
+  "interpretation": "Inconclusive: paired and reverse-order timings overlap. No confirmed speedup or meaningful regression established. All samples retain identical100 update renders,101 assistants and3276800 tool-output characters. Scope actual Store event processing/React-jsdom; not Chromium paint, provider, filesystem or IPC.",
+  "runs": {
+    "before-1": {
+      "source": "e0a1b70684fc719b578dab9d72b25e48451a09e2",
+      "head": "cb5f433487c3f363383ed985ff59484b58314932",
+      "node": "v22.23.2",
+      "bundleSha256": "b2fab6e6c6e6701348b9f7d213f029fb1b972db149f03475337c6bff376eb819",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.2993340000000444,
+        "median": 0.32854100000008657,
+        "max": 0.7776249999999436
+      },
+      "streamingMs": {
+        "min": 21.482749999999896,
+        "median": 23.92191600000001,
+        "max": 28.32837500000005
+      },
+      "samples": [
+        {
+          "openMs": 0.2993340000000444,
+          "streamingMs": 22.731374999999957,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.32854100000008657,
+          "streamingMs": 23.96345800000006,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.3410000000000082,
+          "streamingMs": 23.92191600000001,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.3048750000000382,
+          "streamingMs": 24.482124999999883,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.363207999999986,
+          "streamingMs": 21.694958999999926,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.7776249999999436,
+          "streamingMs": 23.299041999999872,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.35666700000001583,
+          "streamingMs": 28.32837500000005,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.3229160000000775,
+          "streamingMs": 21.482749999999896,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.3069580000001224,
+          "streamingMs": 27.400458999999955,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    },
+    "after-1": {
+      "source": "working tree",
+      "head": "cb5f433487c3f363383ed985ff59484b58314932",
+      "node": "v22.23.2",
+      "bundleSha256": "b4d2927986803b03078f279d4f8196deccd3d7ee5ccf1ad6582376d92cf9e764",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.24737500000003365,
+        "median": 0.2823750000000018,
+        "max": 1.0018749999999272
+      },
+      "streamingMs": {
+        "min": 17.55275000000006,
+        "median": 20.21479199999999,
+        "max": 22.809541000000024
+      },
+      "samples": [
+        {
+          "openMs": 0.29345800000004374,
+          "streamingMs": 21.326084000000037,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.3107909999999947,
+          "streamingMs": 21.710541000000035,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.27591699999999264,
+          "streamingMs": 20.540750000000003,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.27533299999998917,
+          "streamingMs": 19.782167000000015,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2823750000000018,
+          "streamingMs": 22.809541000000024,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 1.0018749999999272,
+          "streamingMs": 20.21479199999999,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.3031670000000304,
+          "streamingMs": 19.19662500000004,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.24737500000003365,
+          "streamingMs": 17.55275000000006,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2587499999999636,
+          "streamingMs": 18.550125000000094,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    },
+    "after-2": {
+      "source": "working tree",
+      "head": "cb5f433487c3f363383ed985ff59484b58314932",
+      "node": "v22.23.2",
+      "bundleSha256": "b4d2927986803b03078f279d4f8196deccd3d7ee5ccf1ad6582376d92cf9e764",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.2864999999999327,
+        "median": 0.33062500000005457,
+        "max": 0.9418750000000955
+      },
+      "streamingMs": {
+        "min": 19.79287499999998,
+        "median": 23.84891699999997,
+        "max": 29.03937499999995
+      },
+      "samples": [
+        {
+          "openMs": 0.3705410000000029,
+          "streamingMs": 23.84891699999997,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.32304199999998673,
+          "streamingMs": 26.429875000000038,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.33062500000005457,
+          "streamingMs": 26.054500000000075,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.5080420000000458,
+          "streamingMs": 23.709834,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.3494999999999209,
+          "streamingMs": 29.03937499999995,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.9418750000000955,
+          "streamingMs": 26.015334000000053,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.32095800000001873,
+          "streamingMs": 22.616709000000014,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2864999999999327,
+          "streamingMs": 19.79287499999998,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.29849999999999,
+          "streamingMs": 21.43512499999997,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    },
+    "before-2": {
+      "source": "e0a1b70684fc719b578dab9d72b25e48451a09e2",
+      "head": "cb5f433487c3f363383ed985ff59484b58314932",
+      "node": "v22.23.2",
+      "bundleSha256": "b2fab6e6c6e6701348b9f7d213f029fb1b972db149f03475337c6bff376eb819",
+      "scope": "Actual Store event processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "workload": {
+        "assistants": 100,
+        "setupEvents": 600,
+        "toolOutputChars": 32768,
+        "deltas": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.2879169999999931,
+        "median": 0.31529199999999946,
+        "max": 0.8120000000000118
+      },
+      "streamingMs": {
+        "min": 19.702125000000024,
+        "median": 21.169749999999908,
+        "max": 25.082750000000033
+      },
+      "samples": [
+        {
+          "openMs": 0.31295799999998053,
+          "streamingMs": 20.664457999999968,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2888750000000755,
+          "streamingMs": 21.56629099999998,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2879169999999931,
+          "streamingMs": 20.15524999999991,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.2919170000000122,
+          "streamingMs": 21.169749999999908,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.35612500000002,
+          "streamingMs": 25.082750000000033,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.7735830000000306,
+          "streamingMs": 22.828750000000014,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.31529199999999946,
+          "streamingMs": 21.307707999999934,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.8120000000000118,
+          "streamingMs": 19.702125000000024,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        },
+        {
+          "openMs": 0.4019589999999198,
+          "streamingMs": 20.95316600000001,
+          "updateRenders": 100,
+          "assistantCount": 101,
+          "outputChars": 3276800
+        }
+      ]
+    }
+  }
+}

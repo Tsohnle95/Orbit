@@ -181,6 +181,7 @@
     "src/renderer/src/use-sass-watch.ts",
     "src/renderer/src/use-saved-workspaces.ts",
     "src/renderer/src/use-session-chat-records.ts",
+    "src/renderer/src/use-session-execution.ts",
     "src/renderer/src/use-session-inventory.ts",
     "src/renderer/src/use-session-selection.ts",
     "src/renderer/src/use-workspace-editor.ts",
@@ -198,7 +199,7 @@
   ],
   "modules": {
     "src/renderer/src/store.tsx": {
-      "loc": 2678,
+      "loc": 2467,
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     },
     "src/main/opencode.ts": {
@@ -212,7 +213,7 @@
   },
   "functions": {
     "src/renderer/src/store.tsx:StoreBody#1": {
-      "codeLines": 2397,
+      "codeLines": 2233,
       "cyclomatic": 22,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -224,7 +225,7 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage#1": {
-      "codeLines": 505,
+      "codeLines": 430,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -242,8 +243,8 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage/processMessage#1": {
-      "codeLines": 451,
-      "cyclomatic": 238,
+      "codeLines": 376,
+      "cyclomatic": 184,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -411,7 +412,7 @@
     },
     "src/renderer/src/store.tsx:StoreBody/sendPrompt#1": {
       "codeLines": 100,
-      "cyclomatic": 25,
+      "cyclomatic": 23,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -703,6 +704,20 @@
       "nesting": 5,
       "origin": "src/main/provider-usage.ts:fetchCopilot#1 quota normalization at64f78c0 (original complexity36)",
       "reason": "Existing Copilot quota precedence and sanitization moved unchanged into a cohesive60-line pure normalizer. Frozen migrated29-decision ceiling preserves count/reset/plan/credit fallback semantics; no provider IO or generic dispatch. Length/nesting use defaults."
+    },
+    "src/renderer/src/use-session-execution.ts:useSessionExecution#1": {
+      "codeLines": 160,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "origin": "src/renderer/src/store.tsx:StoreBody#1 busy/abort/stream/activity state and callbacks at cb5f433",
+      "reason": "Owns existing busy/abort/stream/activity records and named commands. Inclusive160-line composition has63 own lines and22 separately constrained callbacks; no effects, IO or competing chat records. Fixed reviewed composition ceiling cannot grow."
+    },
+    "src/renderer/src/use-session-execution.ts:useSessionExecution/applyStatusEvent#1": {
+      "codeLines": 100,
+      "cyclomatic": 30,
+      "nesting": 5,
+      "origin": "src/renderer/src/store.tsx:StoreBody/processMessage session.status branch at cb5f433 (original complexity30)",
+      "reason": "Existing38-line status policy retains both reduction/synchronization passes, abort guards and retry notice order. Frozen migrated30-decision ceiling; no inherited parent budget. Length and nesting use defaults."
     }
   },
   "edgeExceptions": [
@@ -858,6 +873,13 @@
     {
       "owner": "session chat records",
       "targetPrefix": "src/renderer/src/use-session-chat-records.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
+      ]
+    },
+    {
+      "owner": "session execution state",
+      "targetPrefix": "src/renderer/src/use-session-execution.ts",
       "allowedFrom": [
         "src/renderer/src/store.tsx"
       ]
@@ -1031,6 +1053,20 @@
         "src/shared/retention.ts",
         "src/renderer/src/chat-store.ts",
         "src/renderer/src/chat-stream.ts",
+        "src/renderer/src/streaming.ts"
+      ],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-session-execution.ts",
+      "allowedLocal": [
+        "src/shared/types.ts",
+        "src/shared/errors.ts",
+        "src/renderer/src/assistant-status.ts",
+        "src/renderer/src/chat-stream.ts",
+        "src/renderer/src/chat-store.ts",
         "src/renderer/src/streaming.ts"
       ],
       "allowedExternal": [

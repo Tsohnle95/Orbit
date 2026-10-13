@@ -31,8 +31,10 @@ describe("panel projection ownership", () => {
   it("distinguishes absent busy state from authoritative idle and uses raw parts", () => {
     const input = sources();
     const stream = { phase: "streaming" as const, startedAt: 20, lastUpdateAt: 21 };
-    input.streamingStore.streamingMessageIds.set(panel.id, assistant.id);
-    input.streamingStore.messageStreamStates.set(assistant.id, stream);
+    const streaming = emptyStreamingStore();
+    streaming.streamingMessageIds.set(panel.id, assistant.id);
+    streaming.messageStreamStates.set(assistant.id, stream);
+    input.streamingStore = streaming;
     const projected = projectPanelViews([panel], input).workspace;
     expect(projected).toMatchObject({
       busy: true, turnStartedAt: 10, activeModel: { providerId: "provider", modelId: "model" },

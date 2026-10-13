@@ -14,6 +14,11 @@ export interface StreamingStore {
   messageStreamStates: Map<string, MessageStreamState>;
 }
 
+export interface StreamingReadView {
+  readonly streamingMessageIds: ReadonlyMap<string, string | null>;
+  readonly messageStreamStates: ReadonlyMap<string, Readonly<MessageStreamState>>;
+}
+
 export const STREAMING_HEARTBEAT_MS = 1000;
 
 export function emptyStreamingStore(): StreamingStore {

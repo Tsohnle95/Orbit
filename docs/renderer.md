@@ -76,8 +76,8 @@ intact; a failed refresh returns an empty result without clearing known contexts
 snapshots, raw chat-state lifetime and record/projection/replay commands. Its
 only host capability identifies sessions protected from transcript eviction;
 foreign streams remain accepted. Store retains runtime attribution, transport,
-generation guards, materialization IO, interactive inventories and activity
-policy. Reopened replay resets raw records and commits the flat transcript only
+generation guards, materialization IO and interactive inventories. Execution
+policy has the owner below. Reopened replay resets raw records and commits the flat transcript only
 after streaming reconciliation; materialized replay merges into existing raw
 records. Dropping raw records does not drop retained transcript history.
 
@@ -141,6 +141,21 @@ and merges the authoritative history. `server.connected` /
 stream reconnects.
 
 ## Streaming lifecycle (`streaming.ts`, `session-activity.ts`, `assistant-status.ts`)
+
+`use-session-execution.ts` owns busy/abort/streaming records, activity clocks and
+runtime execution/status transitions through a narrow structural record-command
+interface. Its borrowed maps are readonly. Stop and new-prompt acknowledgement
+update abort refs immediately; terminal-event acknowledgement updates queued
+state, leaving the ref unchanged until render. Streaming refs change only on
+commits. Replay seeding preserves explicit idle rather than treating it as
+missing status. Root keeps attribution, generation guards, IO, queues/forms and
+todo/usage effects; status handling retains both existing reduction passes.
+
+The same module's `useSessionSettlement` owns the existing polling timer. Store
+invokes it at the original lifecycle point, using stable member dependencies and
+the existing notification callback. Busy pruning consumes captured render values;
+closing an off-view context removes busy/abort records at its existing call site
+without clearing streaming records or activity clocks.
 
 Orbit's synchronized streaming stack tracks which
 message is streaming per session and its lifecycle phase
