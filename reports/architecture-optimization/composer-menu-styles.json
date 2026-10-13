@@ -1,0 +1,81 @@
+{
+  "scope": "Only two local, nonparameterized composer menu mixins; no selector, rule order, markup, imports, declarations or compiled CSS changed.",
+  "sourceCheckpoint": "e0a1b70684fc719b578dab9d72b25e48451a09e2",
+  "source": {
+    "file": "src/renderer/src/styles/_composer.scss",
+    "beforeSHA256": "ac10b5a3e0ea2817971d0bf64c390ca77e26d4be3c5b1321c170a3c1330da5ef",
+    "afterSHA256": "ce69e4fb65d1b1f57e1a67a50fc0140e9ab34c9b4da8ee1bb1247ee799bcec8a",
+    "beforeProductionLOC": 567,
+    "afterProductionLOC": 559,
+    "netProductionLOCReduction": 8,
+    "countingMethod": "scripts/architecture-analysis.mjs countCodeLines; same scope; no formatting/minification savings."
+  },
+  "compiler": {
+    "node": "v22.23.2",
+    "sass": "1.102.0",
+    "postcss": "8.5.26",
+    "entry": "src/renderer/src/styles/main.scss",
+    "options": {
+      "style": "expanded",
+      "sourceMap": false
+    }
+  },
+  "groups": [
+    {
+      "mixin": "menu-heading",
+      "replacementCount": 3,
+      "selectors": [
+        ".composer-menu-title",
+        ".composer-completions-head",
+        ".composer-menu-head"
+      ],
+      "orderedDeclarations": [
+        "font-size: 10px",
+        "font-weight: 700",
+        "letter-spacing: 0.6px",
+        "text-transform: uppercase",
+        "color: var(--text-faint)"
+      ],
+      "netProductionLOCReduction": 5
+    },
+    {
+      "mixin": "menu-surface",
+      "replacementCount": 2,
+      "selectors": [
+        ".composer-menu",
+        ".composer-completions"
+      ],
+      "orderedDeclarations": [
+        "overflow-y: auto",
+        "background: var(--bg-elev)",
+        "border: 1px solid var(--border-strong)",
+        "border-radius: var(--radius-lg)",
+        "box-shadow: var(--shadow-md)",
+        "padding: 6px",
+        "z-index: 60"
+      ],
+      "netProductionLOCReduction": 3
+    }
+  ],
+  "verification": {
+    "beforeCSSBytes": 314722,
+    "afterCSSBytes": 314722,
+    "beforeCSSSHA256": "e0150070def90e6ef064257b960f358ee57e478547e0ced9ec47daa0def8e5a4",
+    "afterCSSSHA256": "e0150070def90e6ef064257b960f358ee57e478547e0ced9ec47daa0def8e5a4",
+    "orderedRules": 1915,
+    "beforeOrderedRuleContextDeclarationVectorSHA256": "eb98c4ec0fc8cac8bba7839a89352e56b8b3cb998eaa99de6d14e1b8f0968a55",
+    "afterOrderedRuleContextDeclarationVectorSHA256": "eb98c4ec0fc8cac8bba7839a89352e56b8b3cb998eaa99de6d14e1b8f0968a55",
+    "cssBytesIdentical": true,
+    "orderedVectorsIdentical": true,
+    "cascadeRationale": "Both mixins emit only the original declarations at the original include positions. Exact compiled CSS byte equality subsumes specificity, context and source order preservation. No selector grouping or moved rules requires a separate cascade exception.",
+    "targetedTests": "43 tests passed across the five AgentPanel workspace/menu/completions/usage/TUI-permission test files; existing jsdom canvas warning in usage test retained. No new GUI behavior claimed."
+  },
+  "reproduction": {
+    "instructions": [
+      "Use the report source revision and installed supported Node 22.23.2 with npm dependencies; run from the Orbit repository root.",
+      "Save reproductionJavascript as /private/tmp/orbit-verify-composer-menu-styles.mjs and run node /private/tmp/orbit-verify-composer-menu-styles.mjs.",
+      "The verifier copies styles to a temporary directory, restores only the composer source from sourceCheckpoint there, then compiles both entries. Other source files must match this report revision. Full CSS and vectors remain temporary and are not committed."
+    ],
+    "reproductionJavascript": "import fs from 'node:fs';\nimport path from 'node:path';\nimport crypto from 'node:crypto';\nimport {execFileSync} from 'node:child_process';\nimport {pathToFileURL} from 'node:url';\nconst root=process.cwd(), styles=path.join(root,'src/renderer/src/styles');\nconst sass=await import(pathToFileURL(path.join(root,'node_modules/sass/sass.node.mjs')));\nconst {default:postcss}=await import(pathToFileURL(path.join(root,'node_modules/postcss/lib/postcss.mjs')));\nconst temporary=fs.mkdtempSync('/private/tmp/orbit-composer-css-');\nfs.cpSync(styles,temporary,{recursive:true});\nfs.writeFileSync(path.join(temporary,'_composer.scss'),execFileSync('git',['show','e0a1b70684fc719b578dab9d72b25e48451a09e2:src/renderer/src/styles/_composer.scss'],{cwd:root}));\nconst before=sass.compile(path.join(temporary,'main.scss'),{style:'expanded'}).css;\nconst after=sass.compile(path.join(styles,'main.scss'),{style:'expanded'}).css;\nconst vector=css=>{const rules=[];postcss.parse(css).walkRules(rule=>{const context=[];for(let p=rule.parent;p&&p.type!=='root';p=p.parent)if(p.type==='atrule')context.unshift([p.name,p.params]);rules.push([rule.selector,context,rule.nodes.filter(n=>n.type==='decl').map(d=>[d.prop,d.value,Boolean(d.important)])]);});return rules;};\nconst hash=s=>crypto.createHash('sha256').update(s).digest('hex');\nconst a=JSON.stringify(vector(before)),b=JSON.stringify(vector(after));\nconsole.log(JSON.stringify({beforeBytes:Buffer.byteLength(before),afterBytes:Buffer.byteLength(after),beforeCSSSHA256:hash(before),afterCSSSHA256:hash(after),orderedRules:vector(before).length,beforeOrderedVectorSHA256:hash(a),afterOrderedVectorSHA256:hash(b),bytesIdentical:before===after,vectorsIdentical:a===b,temporary},null,2));\nif(before!==after||a!==b)process.exitCode=1;\n"
+  }
+}

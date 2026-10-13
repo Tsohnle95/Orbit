@@ -1,3 +1,21 @@
+@mixin menu-heading {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+@mixin menu-surface {
+  overflow-y: auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 6px;
+  z-index: 60;
+}
+
 .composer {
   position: relative;
   flex-shrink: 0;
@@ -380,13 +398,7 @@
   width: 310px;
   max-width: calc(100% - 24px);
   max-height: 340px;
-  overflow-y: auto;
-  background: var(--bg-elev);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  padding: 6px;
-  z-index: 60;
+  @include menu-surface;
 }
 
 .composer-menu.add {
@@ -430,11 +442,7 @@
 }
 
 .composer-menu-title {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: var(--text-faint);
+  @include menu-heading;
   padding: 0 4px;
 }
 
@@ -503,21 +511,11 @@
   width: 360px;
   max-width: calc(100% - 24px);
   max-height: 280px;
-  overflow-y: auto;
-  background: var(--bg-elev);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  padding: 6px;
-  z-index: 60;
+  @include menu-surface;
 }
 
 .composer-completions-head {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: var(--text-faint);
+  @include menu-heading;
   padding: 4px 8px 6px;
 }
 
@@ -550,11 +548,7 @@
   border: none;
   text-align: left;
   font-family: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: var(--text-faint);
+  @include menu-heading;
   padding: 6px 8px 3px;
   cursor: pointer;
 }

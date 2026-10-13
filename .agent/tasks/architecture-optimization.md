@@ -62,7 +62,8 @@ Backend lifecycle, filesystem/replay, renderer state/projection, UI composition,
 | 6c | Fail-closed architecture configuration, dependency syntax and canonical new-owner routing | complete | 39 targeted tests; independent adversarial probes; isolated 1164-test canonical gate | e825227 |
 | 5d | OpenAI account-claim decoding consolidation | complete | 47 focused tests; independent historical 27/current 47 tests; isolated 1186-test canonical gate; 9 net production LOC removed | 64f78c0 |
 | 3f | Authoritative session chat record and transcript owner | complete | 216 focused and127 independent tests; isolated1194-test gate; native stream/replay/close/reopen; warmed Store timing inconclusive; 180 owner LOC | 6125bcf |
-| 5e | Copilot failure DTO consolidation and quota policy extraction | complete | 73 current/53 historical tests; isolated1220-test gate; 7 net production LOC removed; fetchCopilot136→68 | pending commit |
+| 5e | Copilot failure DTO consolidation and quota policy extraction | complete | 73 current/53 historical tests; isolated1220-test gate; 7 net production LOC removed; fetchCopilot136→68 | e0a1b70 |
+| 4f | Local composer menu appearance consolidation | complete | 43 targeted tests; isolated1220-test gate; independent exactCSS314722-byte/1915-rule proof; 8 genuine production LOC removed | pending commit |
 | 6b | Final ownership consistency/ratchet | pending | docs/check + independentreview | — |
 | 7 | Independent cumulative review/final measurements | pending | full check/platform/runtime/live + review | — |
 
@@ -163,3 +164,7 @@ Targeted checks follow extracted behavior and its existing tests. Capture baseli
 - 2026-10-13 — Copilot five duplicate failure DTOs use the existing error helper with narrow named status/snapshot overrides; defaults for other providers remain unchanged. Same-file pure quota policy retains success clock placement and nonOK fallback-before-status-coercion order. Source687→680 (-7); request orchestration136→68/C36→8, quota60/C29 with exact reviewed origin. Independent current73 and historical53 public-path cases pass. Canonical integration pending.
 
 - 2026-10-13 — Copilot supported isolated canonical gate passed1220 tests/type/docs/fitness/build. Independent staged ratchet confirms no raised prior ceiling or weakened dependency rule; Store2678 and its remaining callback ceilings lowered, ordinary55→54, completed known files184→186. Sole quota exception records original64f78c0fetchCopilot36 policy with frozen29/default length/nesting. No latency improvement claimed.
+
+- 2026-10-13 — Fresh native macOS platform gate passed against the verified post-C1/Copilot snapshot: direct/Electron PTY, trusted renderer IPC and navigation/popup denial, untrusted sender rejection, and real watcher close/reopen plus rename/move correlation. Local composer two semantic mixins retain byte-identical CSS and exact ordered rules; source567→559, no runtime or build-output gain. Rejected cross-feature/configurable control mixins with0–3LOC benefit.
+
+- 2026-10-13 — Composer menu appearance checkpoint passed the supported isolated1220-test canonical gate. Independent actual source/report reproduction confirms exact emitted CSS bytes, SHA and all1915 ordered rule/context/declaration vectors. Two local nonparameterized semantic mixins reduce8 handwritten LOC while leaving generated output unchanged.
