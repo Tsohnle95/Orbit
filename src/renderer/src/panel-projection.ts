@@ -5,7 +5,6 @@ import type {
   SessionInboxEntry,
   SessionInfo,
   SessionRevertStage,
-  SessionUsage,
   TodoItem,
   TranscriptItem
 } from "@shared/types";
@@ -14,13 +13,13 @@ import { resolveSessionActivity } from "./session-activity";
 import { getActiveAssistantContext, resolveAssistantStatus, type SessionAbortFlag } from "./assistant-status";
 import { createMessageQueueTarget, getQueueForTarget, type MessageQueueReadView, type QueuedMessage } from "./message-queue";
 import type { StreamingReadView } from "./streaming";
-import type { FormRequestReadView, PanelView } from "./store-contract";
+import type { FormRequestReadView, PanelView, SessionUsageReadView } from "./store-contract";
 
 export interface PanelProjectionSources {
   busyBySession: Readonly<Record<string, boolean>>;
   transcriptsBySession: Readonly<Record<string, TranscriptItem[]>>;
-  todosByWorkspace: Readonly<Record<string, TodoItem[]>>;
-  usageBySession: Readonly<Record<string, SessionUsage>>;
+  todosByWorkspace: Readonly<Record<string, readonly Readonly<TodoItem>[]>>;
+  usageBySession: Readonly<Record<string, SessionUsageReadView>>;
   compactionBaselineBySession: Readonly<Record<string, number>>;
   modelsByWorkspace: Readonly<Record<string, ModelOption[]>>;
   currentModelByWorkspace: Readonly<Record<string, ModelOption | null>>;
@@ -101,7 +100,7 @@ export function projectPanelViews(panels: readonly SessionInfo[], sources: Panel
       session: panel,
       busy: activity.isWorking,
       transcript,
-      todos: todosByWorkspace[panel.workspace.id] ?? [],
+      todos: todosByWorkspace[panel.workspace.id] as TodoItem[] | undefined ?? [],
       sessionUsage: usageBySession[panel.id] ?? null,
       compactionBaseline,
       models: modelsByWorkspace[panel.workspace.id] ?? [],

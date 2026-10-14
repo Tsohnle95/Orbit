@@ -1,0 +1,702 @@
+{
+  "phase": "Session progress state authority",
+  "baselineRef": "a7301bc",
+  "runner": "scripts/benchmark-renderer-store.mjs",
+  "runnerSha256": "1ac2efd35ba27b0ad5dbab7df0f3698eecf3971b0a97a4d68e748f2d2c4ef179",
+  "command": "PATH=/Users/tdawg/.local/share/orbit-toolchains/node-v22.23.2/bin:$PATH node scripts/benchmark-renderer-store.mjs --operation session-progress [--ref a7301bc]",
+  "afterSourceSha256": {
+    "src/renderer/src/store.tsx": "6372f4b2398cb09c7c8a739c50e872d0b1c0d8d0855168dcc68f796b48cbb511",
+    "src/renderer/src/use-session-progress.ts": "1404de9591bc890ef955242426cf1e56299f006f322e3c22c62699521361453c",
+    "src/renderer/src/store-contract.ts": "7d6227a89e749fbfe2d2f1e0056b9b7cde893a242464820b34903700d6561986",
+    "src/renderer/src/panel-projection.ts": "ee2dd1dfb19a58d4cb940724c06691b9043b2158b83c207cdc8e4e87b2481e27"
+  },
+  "order": [
+    "before-1",
+    "after-1",
+    "after-2",
+    "before-2"
+  ],
+  "interpretation": "Timings inconclusive: paired ranges overlap and all three operation directions change in the reverse repeat. Initial higher medians retained, with no confirmed speedup or meaningful regression. All36samples retain201 React/jsdom context consumer commits,100provider reads,20099 final input tokens, one todo and one provider result; per-event usage/todo identity/content, exact provider array authority, loading completion and absent compaction baseline are asserted. Actual Store processing with mocked bridge; excludes provider latency, real IPC, filesystem and Chromium layout/paint. The four comparison runs followed completed gate/compiler tests and preceded native UI checks. Pilot is a functional workload proof, not the performance comparison. Native fixture separately exercises actual renderer/preload usage/todo/compaction/provider projection and browser storage; real provider services unverified.",
+  "runs": {
+    "before-1": {
+      "source": "a7301bcf9bb4198c17933f3b916e832365c235b0",
+      "head": "a7301bcf9bb4198c17933f3b916e832365c235b0",
+      "node": "v22.23.2",
+      "bundleSha256": "238dc94c655250cd86559e810ca31c5abdd09ba700fb8f395cc56c303e1f99b4",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-progress",
+      "workload": {
+        "usageEvents": 100,
+        "todoEvents": 100,
+        "providerRefreshes": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.14466699999979937,
+        "median": 0.205332999999996,
+        "max": 0.3761250000000018
+      },
+      "usageMs": {
+        "min": 5.930333000000019,
+        "median": 9.49841600000002,
+        "max": 10.525040999999987
+      },
+      "todosMs": {
+        "min": 5.390416999999843,
+        "median": 9.230584000000135,
+        "max": 9.774999999999977
+      },
+      "providerMs": {
+        "min": 4.651833000000124,
+        "median": 7.511750000000006,
+        "max": 8.96712500000001
+      },
+      "samples": [
+        {
+          "openMs": 0.2375409999999647,
+          "usageMs": 10.525040999999987,
+          "todosMs": 9.632415999999921,
+          "providerMs": 8.835459000000014,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.22024999999996453,
+          "usageMs": 10.116666999999893,
+          "todosMs": 9.373500000000035,
+          "providerMs": 8.96712500000001,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.20666700000003857,
+          "usageMs": 9.786707999999976,
+          "todosMs": 9.261666999999989,
+          "providerMs": 8.695333000000005,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.205332999999996,
+          "usageMs": 9.49841600000002,
+          "todosMs": 9.774999999999977,
+          "providerMs": 7.456874999999968,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.19387499999993452,
+          "usageMs": 9.935583999999949,
+          "todosMs": 9.102209000000016,
+          "providerMs": 7.511750000000006,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.3761250000000018,
+          "usageMs": 9.299457999999959,
+          "todosMs": 8.889666999999918,
+          "providerMs": 7.101083999999901,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.2009579999999005,
+          "usageMs": 9.414665999999897,
+          "todosMs": 9.230584000000135,
+          "providerMs": 8.33199999999988,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.1889169999999467,
+          "usageMs": 6.858458000000155,
+          "todosMs": 8.254957999999988,
+          "providerMs": 6.58400000000006,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.14466699999979937,
+          "usageMs": 5.930333000000019,
+          "todosMs": 5.390416999999843,
+          "providerMs": 4.651833000000124,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        }
+      ]
+    },
+    "after-1": {
+      "source": "working tree",
+      "head": "a7301bcf9bb4198c17933f3b916e832365c235b0",
+      "node": "v22.23.2",
+      "bundleSha256": "4eca7a84eaad6794492f4ec5d6fd6469cae8db6d07144b8dcfd91a261c94f8e8",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-progress",
+      "workload": {
+        "usageEvents": 100,
+        "todoEvents": 100,
+        "providerRefreshes": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.15895799999998417,
+        "median": 0.22104099999990012,
+        "max": 0.3518340000000535
+      },
+      "usageMs": {
+        "min": 5.993875000000003,
+        "median": 10.513667000000055,
+        "max": 11.40949999999998
+      },
+      "todosMs": {
+        "min": 6.15783399999998,
+        "median": 9.904250000000047,
+        "max": 10.383792000000085
+      },
+      "providerMs": {
+        "min": 5.693083999999999,
+        "median": 9.07929200000001,
+        "max": 10.23679100000004
+      },
+      "samples": [
+        {
+          "openMs": 0.21612500000003365,
+          "usageMs": 10.513667000000055,
+          "todosMs": 9.318374999999946,
+          "providerMs": 9.251125000000002,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.22104099999990012,
+          "usageMs": 11.40949999999998,
+          "todosMs": 10.372082999999975,
+          "providerMs": 10.23679100000004,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.3518340000000535,
+          "usageMs": 11.02875000000006,
+          "todosMs": 10.383792000000085,
+          "providerMs": 10.051624999999945,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.23020800000006147,
+          "usageMs": 10.620750000000044,
+          "todosMs": 10.337167000000022,
+          "providerMs": 8.52258299999994,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.22087499999997817,
+          "usageMs": 10.670832999999902,
+          "todosMs": 9.912708000000066,
+          "providerMs": 9.07929200000001,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.3242079999999987,
+          "usageMs": 10.2394579999999,
+          "todosMs": 9.904250000000047,
+          "providerMs": 7.985832999999957,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.20429200000000947,
+          "usageMs": 8.892542000000049,
+          "todosMs": 9.085291999999981,
+          "providerMs": 9.492665999999986,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.23158300000000054,
+          "usageMs": 8.430124999999975,
+          "todosMs": 9.002374999999915,
+          "providerMs": 6.5101660000000265,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.15895799999998417,
+          "usageMs": 5.993875000000003,
+          "todosMs": 6.15783399999998,
+          "providerMs": 5.693083999999999,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        }
+      ]
+    },
+    "after-2": {
+      "source": "working tree",
+      "head": "a7301bcf9bb4198c17933f3b916e832365c235b0",
+      "node": "v22.23.2",
+      "bundleSha256": "4eca7a84eaad6794492f4ec5d6fd6469cae8db6d07144b8dcfd91a261c94f8e8",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-progress",
+      "workload": {
+        "usageEvents": 100,
+        "todoEvents": 100,
+        "providerRefreshes": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.12083299999994779,
+        "median": 0.20520799999997053,
+        "max": 0.30958399999997255
+      },
+      "usageMs": {
+        "min": 5.510667000000012,
+        "median": 9.127083000000084,
+        "max": 10.540625000000091
+      },
+      "todosMs": {
+        "min": 4.6744169999999485,
+        "median": 8.895209000000023,
+        "max": 9.769000000000005
+      },
+      "providerMs": {
+        "min": 4.888124999999945,
+        "median": 8.279792000000043,
+        "max": 9.28366600000004
+      },
+      "samples": [
+        {
+          "openMs": 0.2140829999999596,
+          "usageMs": 10.540625000000091,
+          "todosMs": 9.572000000000003,
+          "providerMs": 8.834625000000074,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.222582999999986,
+          "usageMs": 9.766999999999939,
+          "todosMs": 9.769000000000005,
+          "providerMs": 9.28366600000004,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.20520799999997053,
+          "usageMs": 9.565915999999902,
+          "todosMs": 9.338333000000034,
+          "providerMs": 8.279792000000043,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.2137920000000122,
+          "usageMs": 9.413125000000036,
+          "todosMs": 8.675042000000076,
+          "providerMs": 7.526333999999906,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.19275000000004638,
+          "usageMs": 9.127083000000084,
+          "todosMs": 8.85895800000003,
+          "providerMs": 8.470500000000015,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.30958399999997255,
+          "usageMs": 8.684374999999932,
+          "todosMs": 8.895209000000023,
+          "providerMs": 7.920833000000016,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.1958750000000009,
+          "usageMs": 8.567667000000029,
+          "todosMs": 8.915208000000007,
+          "providerMs": 8.744625000000042,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.19012500000008004,
+          "usageMs": 8.183291999999938,
+          "todosMs": 6.849084000000062,
+          "providerMs": 6.12458300000003,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.12083299999994779,
+          "usageMs": 5.510667000000012,
+          "todosMs": 4.6744169999999485,
+          "providerMs": 4.888124999999945,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        }
+      ]
+    },
+    "before-2": {
+      "source": "a7301bcf9bb4198c17933f3b916e832365c235b0",
+      "head": "a7301bcf9bb4198c17933f3b916e832365c235b0",
+      "node": "v22.23.2",
+      "bundleSha256": "238dc94c655250cd86559e810ca31c5abdd09ba700fb8f395cc56c303e1f99b4",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-progress",
+      "workload": {
+        "usageEvents": 100,
+        "todoEvents": 100,
+        "providerRefreshes": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.14158399999996618,
+        "median": 0.22175000000015643,
+        "max": 0.32283400000005713
+      },
+      "usageMs": {
+        "min": 8.032874999999876,
+        "median": 9.538125000000036,
+        "max": 10.16612500000008
+      },
+      "todosMs": {
+        "min": 7.830791999999974,
+        "median": 9.801375000000007,
+        "max": 10.406166999999868
+      },
+      "providerMs": {
+        "min": 6.249000000000024,
+        "median": 8.297249999999849,
+        "max": 9.913125000000036
+      },
+      "samples": [
+        {
+          "openMs": 0.22749999999996362,
+          "usageMs": 10.16612500000008,
+          "todosMs": 10.406166999999868,
+          "providerMs": 9.70637499999998,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.23291699999981574,
+          "usageMs": 9.872292000000016,
+          "todosMs": 10.166917000000012,
+          "providerMs": 8.824540999999954,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.21629200000006676,
+          "usageMs": 9.538125000000036,
+          "todosMs": 9.946124999999938,
+          "providerMs": 9.243790999999874,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.22175000000015643,
+          "usageMs": 10.069666999999981,
+          "todosMs": 9.837082999999893,
+          "providerMs": 8.297249999999849,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.23612499999990177,
+          "usageMs": 9.048665999999912,
+          "todosMs": 9.72629199999983,
+          "providerMs": 8.195709000000079,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.32283400000005713,
+          "usageMs": 9.394292000000178,
+          "todosMs": 9.044167000000016,
+          "providerMs": 7.721957999999859,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.20766600000001745,
+          "usageMs": 9.051458000000139,
+          "todosMs": 8.975542000000132,
+          "providerMs": 8.134416000000101,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.19195800000011332,
+          "usageMs": 8.032874999999876,
+          "todosMs": 7.830791999999974,
+          "providerMs": 6.249000000000024,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        },
+        {
+          "openMs": 0.14158399999996618,
+          "usageMs": 10.141916000000037,
+          "todosMs": 9.801375000000007,
+          "providerMs": 9.913125000000036,
+          "updateRenders": 201,
+          "providerReads": 100,
+          "finalInputTokens": 20099,
+          "todoCount": 1,
+          "providerCount": 1
+        }
+      ]
+    }
+  },
+  "pilot": {
+    "source": "a7301bcf9bb4198c17933f3b916e832365c235b0",
+    "head": "a7301bcf9bb4198c17933f3b916e832365c235b0",
+    "node": "v22.23.2",
+    "bundleSha256": "238dc94c655250cd86559e810ca31c5abdd09ba700fb8f395cc56c303e1f99b4",
+    "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+    "operation": "session-progress",
+    "workload": {
+      "usageEvents": 100,
+      "todoEvents": 100,
+      "providerRefreshes": 100,
+      "warmups": 3,
+      "samples": 9
+    },
+    "openMs": {
+      "min": 0.1266249999998763,
+      "median": 0.2065420000000131,
+      "max": 0.9426249999999072
+    },
+    "usageMs": {
+      "min": 5.032333999999992,
+      "median": 9.351791000000048,
+      "max": 10.942458000000101
+    },
+    "todosMs": {
+      "min": 6.072291999999834,
+      "median": 9.730457999999999,
+      "max": 9.80558300000007
+    },
+    "providerMs": {
+      "min": 4.9956670000001395,
+      "median": 8.093583999999964,
+      "max": 9.172707999999943
+    },
+    "samples": [
+      {
+        "openMs": 0.2065420000000131,
+        "usageMs": 10.942458000000101,
+        "todosMs": 9.741374999999948,
+        "providerMs": 9.172707999999943,
+        "updateRenders": 201,
+        "providerReads": 100,
+        "finalInputTokens": 20099,
+        "todoCount": 1,
+        "providerCount": 1
+      },
+      {
+        "openMs": 0.22195899999996982,
+        "usageMs": 10.193167000000017,
+        "todosMs": 9.750749999999925,
+        "providerMs": 8.786375000000021,
+        "updateRenders": 201,
+        "providerReads": 100,
+        "finalInputTokens": 20099,
+        "todoCount": 1,
+        "providerCount": 1
+      },
+      {
+        "openMs": 0.24929199999996854,
+        "usageMs": 10.153500000000008,
+        "todosMs": 9.789334000000053,
+        "providerMs": 8.918874999999957,
+        "updateRenders": 201,
+        "providerReads": 100,
+        "finalInputTokens": 20099,
+        "todoCount": 1,
+        "providerCount": 1
+      },
+      {
+        "openMs": 0.19591700000000856,
+        "usageMs": 9.327832999999941,
+        "todosMs": 9.059208000000012,
+        "providerMs": 7.903000000000134,
+        "updateRenders": 201,
+        "providerReads": 100,
+        "finalInputTokens": 20099,
+        "todoCount": 1,
+        "providerCount": 1
+      },
+      {
+        "openMs": 0.1935840000001008,
+        "usageMs": 10.162417000000005,
+        "todosMs": 9.80558300000007,
+        "providerMs": 8.178707999999915,
+        "updateRenders": 201,
+        "providerReads": 100,
+        "finalInputTokens": 20099,
+        "todoCount": 1,
+        "providerCount": 1
+      },
+      {
+        "openMs": 0.9426249999999072,
+        "usageMs": 9.351791000000048,
+        "todosMs": 9.730457999999999,
+        "providerMs": 7.443209000000024,
+        "updateRenders": 201,
+        "providerReads": 100,
+        "finalInputTokens": 20099,
+        "todoCount": 1,
+        "providerCount": 1
+      },
+      {
+        "openMs": 0.20079199999986486,
+        "usageMs": 9.023457999999891,
+        "todosMs": 9.370374999999967,
+        "providerMs": 8.093583999999964,
+        "updateRenders": 201,
+        "providerReads": 100,
+        "finalInputTokens": 20099,
+        "todoCount": 1,
+        "providerCount": 1
+      },
+      {
+        "openMs": 0.20762500000000728,
+        "usageMs": 7.543541000000005,
+        "todosMs": 7.4877500000000055,
+        "providerMs": 6.182125000000042,
+        "updateRenders": 201,
+        "providerReads": 100,
+        "finalInputTokens": 20099,
+        "todoCount": 1,
+        "providerCount": 1
+      },
+      {
+        "openMs": 0.1266249999998763,
+        "usageMs": 5.032333999999992,
+        "todosMs": 6.072291999999834,
+        "providerMs": 4.9956670000001395,
+        "updateRenders": 201,
+        "providerReads": 100,
+        "finalInputTokens": 20099,
+        "todoCount": 1,
+        "providerCount": 1
+      }
+    ]
+  }
+}

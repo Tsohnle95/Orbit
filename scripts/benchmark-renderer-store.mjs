@@ -22,7 +22,7 @@ for (let index = 0; index < args.length; index += 2) {
   else if (args[index] === "--operation") operation = args[index + 1];
   else throw new Error(`Unknown or repeated option: ${args[index]}`);
 }
-if (!["streaming", "workspace-files", "session-inbox", "session-requests"].includes(operation)) throw new Error(`Unknown operation: ${operation}`);
+if (!["streaming", "workspace-files", "session-inbox", "session-requests", "session-progress"].includes(operation)) throw new Error(`Unknown operation: ${operation}`);
 const supportedNode = readFileSync(path.join(repository, ".node-version"), "utf8").trim();
 if (process.versions.node !== supportedNode) throw new Error(`Use Node ${supportedNode}; active version is ${process.versions.node}`);
 const git = (...gitArgs) => execFileSync("git", gitArgs, { cwd: repository, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }).trim();
@@ -71,6 +71,8 @@ async function sample() {
   let approvalWrites = 0;
   const cancelled = [];
   const formReplies = [], permissionReplies = [];
+  let providerReads = 0;
+  const providerResult = [{ provider: "openai", displayName: "OpenAI", status: "ok", snapshot: null }];
   if (operation === "session-inbox") {
     localStorage.setItem("messageQueue", JSON.stringify({ followUpBehavior: "queue", quarantinedLegacyMessages: {},
       queuedMessages: { [queueKey]: Array.from({ length: 20 }, (_, index) => ({ id: `queued-${index}`, content: `Local ${index}`, createdAt: index + 1 })) } }));
@@ -104,7 +106,7 @@ async function sample() {
     closeSession: async () => {}, readFile: async (_workspace, file) => operation === "workspace-files" ? diskText(file) : "",
     listDir: async () => { directoryReads++; return operation === "workspace-files" ? entries : []; }, listPermissions: empty,
     writeFile: async (...args) => { writes.push(args); },
-    runtimes: empty, projects: empty, providerUsage: async () => null,
+    runtimes: empty, projects: empty, providerUsage: async () => { providerReads++; return operation === "session-progress" ? providerResult : null; },
     savedWorkspaces: async () => ({ initialized: true, workspaces: [] }), saveSavedWorkspaces: async () => {},
     sessionUsage: async () => null, sessionTranscript: async () => ({ transcript: [], todos: [] }),
     inboxList: empty, formsList: empty, recoveryList: empty, reportUnsavedEditorFiles: () => {},
@@ -122,6 +124,33 @@ async function sample() {
     let start = performance.now();
     await React.act(async () => store.addModelPanel("/fixture"));
     const openMs = performance.now() - start;
+    if (operation === "session-progress") {
+      const previousRenders = renders;
+      const emit = (type, data, index) => handler({ kind: "event", type,
+        data: { id: `${type}-${index}`, created: index + 1, data: { sessionID: session.id, ...data } } });
+      start = performance.now();
+      for (let index = 0; index < 100; index++) {
+        await React.act(async () => emit("session.usage.updated", { cost: index / 100,
+          tokens: { input: 20000 + index, output: index, reasoning: 2, cache: { read: 3, write: 4 } } }, index));
+        if (store.sessionUsage?.tokens.input !== 20000 + index || store.sessionUsage.cost !== index / 100) throw new Error("Usage normalization or ownership changed");
+      }
+      const usageMs = performance.now() - start;
+      start = performance.now();
+      for (let index = 0; index < 100; index++) {
+        await React.act(async () => emit("todo.updated", { todos: [{ id: `todo-${index}`, content: `Task ${index}`, status: "pending", priority: "low" }] }, index));
+        if (store.todos.length !== 1 || store.todos[0].id !== `todo-${index}`) throw new Error("Workspace todo projection changed");
+      }
+      const todosMs = performance.now() - start;
+      start = performance.now();
+      for (let index = 0; index < 100; index++) await React.act(async () => store.refreshProviderUsage());
+      const providerMs = performance.now() - start;
+      const view = store.panelViews[session.workspace.id];
+      if (providerReads !== 100 || store.providerUsage !== providerResult || store.providerUsageLoading ||
+        view.sessionUsage.tokens.input !== 20099 || view.todos[0].content !== "Task 99" ||
+        store.panels[0].id !== session.id || JSON.parse(localStorage.getItem("compactionBaseline"))[session.id] !== undefined) throw new Error("Progress final state or persistence changed");
+      return { openMs, usageMs, todosMs, providerMs, updateRenders: renders - previousRenders,
+        providerReads, finalInputTokens: view.sessionUsage.tokens.input, todoCount: view.todos.length, providerCount: store.providerUsage.length };
+    }
     if (operation === "session-requests") {
       const previousRenders = renders;
       const emit = (type, data, id) => handler({ kind: "event", type,
@@ -261,10 +290,12 @@ console.log(JSON.stringify({
   scope: "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
   operation,
   workload: operation === "streaming" ? { assistants: 100, setupEvents: 600, toolOutputChars: 32768, deltas: 100, warmups: 3, samples: 9 }
+    : operation === "session-progress" ? { usageEvents: 100, todoEvents: 100, providerRefreshes: 100, warmups: 3, samples: 9 }
     : operation === "session-requests" ? { formRequests: 100, permissionRequests: 100, approvalToggles: 100, warmups: 3, samples: 9 }
     : operation === "session-inbox" ? { nativeEnqueuesAndPops: 100, followUpChanges: 100, localPops: 20, missingPop: 1, noOpReorder: 1, warmups: 3, samples: 9 }
       : { fileUpdates: 500, editorOpens: 20, editorSaves: 10, rootReads: 100, listingEntries: 1002, cachedToggles: 3, warmups: 3, samples: 9 },
   ...Object.fromEntries((operation === "streaming" ? ["openMs", "streamingMs"]
+    : operation === "session-progress" ? ["openMs", "usageMs", "todosMs", "providerMs"]
     : operation === "session-requests" ? ["openMs", "formsMs", "permissionsMs", "preferenceMs"]
     : operation === "session-inbox" ? ["openMs", "inboxMs", "localQueueMs"]
       : ["openMs", "observationsMs", "editorOpenMs", "editorSaveMs", "directoryMs"]).map((field) => [field, distribution(field)])), samples

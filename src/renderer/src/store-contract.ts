@@ -33,6 +33,18 @@ export type FormFieldReadView = Readonly<Omit<PendingFormField, "options">> & {
 export type FormRequestReadView = Readonly<Omit<PendingFormRequest, "fields">> & {
   readonly fields: readonly FormFieldReadView[];
 };
+export type SessionUsageReadView = Readonly<Omit<SessionUsage, "tokens">> & {
+  readonly tokens: Readonly<Omit<SessionUsage["tokens"], "cache">> & {
+    readonly cache: Readonly<SessionUsage["tokens"]["cache"]>;
+  };
+};
+export type ProviderUsageReadView = Readonly<Omit<ProviderUsageResult, "snapshot" | "error">> & {
+  readonly snapshot: (Readonly<Omit<NonNullable<ProviderUsageResult["snapshot"]>, "windows" | "credits">> & {
+    readonly windows: readonly Readonly<NonNullable<ProviderUsageResult["snapshot"]>["windows"][number]>[];
+    readonly credits: Readonly<NonNullable<NonNullable<ProviderUsageResult["snapshot"]>["credits"]>> | null;
+  }) | null;
+  readonly error?: Readonly<NonNullable<ProviderUsageResult["error"]>> | null;
+};
 export interface Toast {
   id: number;
   text: string;

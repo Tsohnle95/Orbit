@@ -185,6 +185,7 @@
     "src/renderer/src/use-session-execution.ts",
     "src/renderer/src/use-session-inbox.ts",
     "src/renderer/src/use-session-inventory.ts",
+    "src/renderer/src/use-session-progress.ts",
     "src/renderer/src/use-session-requests.ts",
     "src/renderer/src/use-session-selection.ts",
     "src/renderer/src/use-workspace-editor.ts",
@@ -203,7 +204,7 @@
   ],
   "modules": {
     "src/renderer/src/store.tsx": {
-      "loc": 1737,
+      "loc": 1616,
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     },
     "src/main/opencode.ts": {
@@ -217,7 +218,7 @@
   },
   "functions": {
     "src/renderer/src/store.tsx:StoreBody#1": {
-      "codeLines": 1546,
+      "codeLines": 1458,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -229,7 +230,7 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage#1": {
-      "codeLines": 351,
+      "codeLines": 343,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -247,8 +248,8 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage/processMessage#1": {
-      "codeLines": 297,
-      "cyclomatic": 169,
+      "codeLines": 289,
+      "cyclomatic": 167,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -744,6 +745,13 @@
       "nesting": 5,
       "origin": "4f41111 src/renderer/src/store.tsx:StoreBody#1 forms, approval preference and permission commands",
       "reason": "Owns forms and approval preference with named request commands and structural chat permission operations. Inclusive123-line composition has40 own token-bearing lines with nested bodies masked preserving newlines and10 direct independently constrained callbacks including the original storage initializer. No new effects, cleanup or event attribution. Fixed reviewed composition ceiling cannot grow."
+    },
+    "src/renderer/src/use-session-progress.ts:useSessionProgress#1": {
+      "codeLines": 120,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "origin": "a7301bc src/renderer/src/store.tsx:StoreBody#1 todos, session/provider usage and compaction baselines",
+      "reason": "One progress owner with five records and four private refs. Inclusive120-line composition has50 own token-bearing lines with nested bodies masked preserving newlines and11 independently constrained direct callbacks including the existing caught storage initializer. Store retains three effect slots, scheduling and event attribution. Fixed reviewed composition ceiling cannot grow."
     }
   },
   "edgeExceptions": [
@@ -934,6 +942,13 @@
     {
       "owner": "forms and approval request state",
       "targetPrefix": "src/renderer/src/use-session-requests.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
+      ]
+    },
+    {
+      "owner": "session progress state",
+      "targetPrefix": "src/renderer/src/use-session-progress.ts",
       "allowedFrom": [
         "src/renderer/src/store.tsx"
       ]
@@ -1162,6 +1177,18 @@
       "file": "src/renderer/src/use-session-requests.ts",
       "allowedLocal": [
         "src/shared/types.ts",
+        "src/renderer/src/store-contract.ts"
+      ],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-session-progress.ts",
+      "allowedLocal": [
+        "src/shared/types.ts",
+        "src/shared/session-presentation.ts",
+        "src/shared/retention.ts",
         "src/renderer/src/store-contract.ts"
       ],
       "allowedExternal": [

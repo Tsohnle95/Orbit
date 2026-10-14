@@ -282,6 +282,19 @@ globally, and successful replies resolve the captured row after panel closure.
 Forms are borrowed with readonly nested fields and options; the unused render
 mirror ref was removed.
 
+`use-session-progress.ts` owns todos, session usage, compaction baselines and
+provider usage/loading. Store retains activation, replay, materialization,
+event attribution, polling/timers and the three persistence/inference/todo
+fallback effects in their original order with their original dependencies.
+The baseline storage initializer remains after approval initialization; the
+empty todo initializer moves to that owner without IO. Usage and baseline
+refs remain render mirrors, while todo keys and provider refresh sequence update
+immediately. Reopened usage is read inside the receipt updater, followed by
+protected-session retention. Closing a panel removes only its baseline.
+Borrowed progress views include readonly token/cache, todo and provider
+snapshot/window/credit/error metadata; existing public presentation identity
+and payloads remain compatible.
+
 Actions: `openSession` / `selectFolder` (replace the current panels with one fresh
 panel and automatically save its directory as a workspace), `saveWorkspace`
 (bookmark a directory from the native folder picker), `addModelPanel(dir)`

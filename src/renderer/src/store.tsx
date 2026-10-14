@@ -1,4 +1,4 @@
-import { normalizeTodos, sessionUsageValues } from "@shared/session-presentation";
+import { normalizeTodos } from "@shared/session-presentation";
 import {
   createContext,
   useCallback,
@@ -23,7 +23,6 @@ import type {
   RuntimeManifest,
   SessionInfo,
   SessionSummary,
-  SessionUsage,
   TodoItem,
   TranscriptItem,
   TreeEntry,
@@ -34,12 +33,12 @@ import type { ChatStreamEvent } from "./chat-stream";
 import { IDLE_ACTIVITY, resolveSessionActivity } from "./session-activity";
 import { requestReveal } from "./reveal";
 import { sameWorkspace } from "@shared/generation";
-import { retainSessionRecord } from "@shared/retention";
 import { useSavedWorkspaces } from "./use-saved-workspaces";
 import { useExplorerMutations } from "./use-explorer-mutations";
 import { useWorkspaceFiles } from "./use-workspace-files";
 import { useWorkspaceEditor } from "./use-workspace-editor";
 import { useSessionSelection } from "./use-session-selection";
+import { useSessionProgress } from "./use-session-progress";
 import { useSessionRequests } from "./use-session-requests";
 import { useSessionInbox } from "./use-session-inbox";
 import { useSessionInventory } from "./use-session-inventory";
@@ -59,41 +58,6 @@ export function useCtxMenu(): CtxMenuApi {
 }
 
 const Ctx = createContext<Store | null>(null);
-
-function todoToolName(value: string): boolean {
-  return value.toLowerCase().replace(/[^a-z]/g, "") === "todowrite";
-}
-
-function normalizeSessionUsage(value: unknown): SessionUsage | null {
-  if (!value || typeof value !== "object") return null;
-  const data = value as Record<string, unknown>;
-  const tokens = data.tokens as Record<string, unknown> | undefined;
-  if (!tokens || typeof tokens !== "object") return null;
-  const cache = tokens.cache as Record<string, unknown> | undefined;
-  return sessionUsageValues(data.cost, tokens, cache);
-}
-
-function todoSnapshotFromTranscript(items: TranscriptItem[]): { key: string; todos: TodoItem[] } | null {
-  for (let itemIndex = items.length - 1; itemIndex >= 0; itemIndex -= 1) {
-    const item = items[itemIndex];
-    if (item.kind !== "assistant") continue;
-    for (let partIndex = item.parts.length - 1; partIndex >= 0; partIndex -= 1) {
-      const part = item.parts[partIndex];
-      if (part.kind !== "tool" || !todoToolName(part.tool.title)) continue;
-      const metadataTodos = part.tool.metadata?.todos;
-      if (Array.isArray(metadataTodos)) {
-        return { key: `${part.id}:${JSON.stringify(metadataTodos)}`, todos: normalizeTodos(metadataTodos) };
-      }
-      try {
-        const input = JSON.parse(part.tool.input ?? "{}") as { todos?: unknown };
-        return { key: `${part.id}:${part.tool.input ?? ""}`, todos: normalizeTodos(input.todos) };
-      } catch {
-        return { key: `${part.id}:${part.tool.input ?? ""}`, todos: [] };
-      }
-    }
-  }
-  return null;
-}
 
 const AUX_CHAT_STREAM_TYPES = new Set([
   "session.inbox.enqueued",
@@ -176,7 +140,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const [activeSessionID, setActiveSessionID] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [runtimes, setRuntimes] = useState<RuntimeManifest[]>([]);
-  const [todosByWorkspace, setTodosByWorkspace] = useState<Record<string, TodoItem[]>>({});
   const protectedSessionIDs = useCallback(
     (): Set<string> => new Set(panelsRef.current.map((panel) => panel.id)),
     []
@@ -235,17 +198,12 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     { panelFor, panelForSession, readFocusedSession, readPanels, notify: toast },
     { reconcilePermissionRows, resolvePermission }
   );
-  const [usageBySession, setUsageBySession] = useState<Record<string, SessionUsage>>({});
-  const [compactionBaselineBySession, setCompactionBaselineBySession] = useState<Record<string, number>>(() => {
-    try {
-      const raw = window.localStorage.getItem("compactionBaseline");
-      return raw ? (JSON.parse(raw) as Record<string, number>) : {};
-    } catch {
-      return {};
-    }
-  });
-  const [providerUsage, setProviderUsage] = useState<ProviderUsageResult[]>([]);
-  const [providerUsageLoading, setProviderUsageLoading] = useState(false);
+  const {
+    todosByWorkspace, usageBySession, compactionBaselineBySession, providerUsage, providerUsageLoading,
+    setTodosFor, recordUsage, refreshSessionUsage, refreshProviderUsage, normalizeSessionUsage,
+    persistRenderedBaseline, inferRenderedBaselines, inferMaterializedBaseline,
+    snapshotCompactionBaseline, removeClosedBaseline, applyBusyTodoFallback
+  } = useSessionProgress({ panelForSession, protectedSessionIDs, notify: toast });
   const activeWorkspaceID = activeSessionID
     ? (panels.find((panel) => panel.id === activeSessionID)?.workspace.id ?? null)
     : null;
@@ -263,12 +221,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     } catch {}
   }, []);
   useEffect(() => {
-    try {
-      window.localStorage.setItem("compactionBaseline", JSON.stringify(compactionBaselineBySession));
-    } catch {}
+    persistRenderedBaseline(compactionBaselineBySession);
   }, [compactionBaselineBySession]);
   const busy = session ? Boolean(busyBySession[session.id]) : false;
-  const todos = session ? (todosByWorkspace[session.workspace.id] ?? []) : [];
+  const todos = session ? (todosByWorkspace[session.workspace.id] as TodoItem[] | undefined ?? []) : [];
   const transcript = session ? transcriptsBySession[session.id] ?? [] : [];
   const sessionUsage = session ? usageBySession[session.id] ?? null : null;
   const refreshRuntimes = useCallback(async (): Promise<RuntimeManifest[]> => {
@@ -286,32 +242,14 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   }, [panels, transcriptsBySession, pruneBusyState]);
 
   useEffect(() => {
-    let changed = false;
-    const next: Record<string, number> = { ...compactionBaselineBySession };
-    for (const panel of panels) {
-      const transcript = transcriptsBySession[panel.id];
-      const usage = usageBySession[panel.id];
-      if (!transcript || !usage) continue;
-      if (compactionBaselineBySession[panel.id] != null) continue;
-      if (!transcript.some((item) => item.kind === "compaction")) continue;
-      if (usage.tokens.input <= 10000) continue;
-      next[panel.id] = Math.max(0, usage.tokens.input - 10000);
-      changed = true;
-    }
-    if (changed) setCompactionBaselineBySession(next);
+    inferRenderedBaselines(panels, transcriptsBySession, usageBySession, compactionBaselineBySession);
   }, [panels, transcriptsBySession, usageBySession, compactionBaselineBySession]);
 
   const panelsRef = useRef(panels);
   panelsRef.current = panels;
-  const usageBySessionRef = useRef(usageBySession);
-  usageBySessionRef.current = usageBySession;
-  const compactionBaselineBySessionRef = useRef(compactionBaselineBySession);
-  compactionBaselineBySessionRef.current = compactionBaselineBySession;
-  const todoKeysRef = useRef<Record<string, string>>({});
   const sessionRef = useRef<SessionInfo | null>(session);
   sessionRef.current = session;
   const requestSeqRef = useRef(0);
-  const providerUsageSeqRef = useRef(0);
   const activationSeqRef = useRef(0);
   const userActivatedRef = useRef(false);
   const focusSeqRef = useRef(0);
@@ -343,11 +281,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     receiveFileUpdate, receiveRecovery, scheduleFileRefresh
   } = useWorkspaceFiles({ renderSession: session, readFocusedSession, panelFor, readPanels, notify: toast });
 
-  const setTodosFor = useCallback((workspaceID: string, items: TodoItem[]) => {
-    setTodosByWorkspace((current) =>
-      current[workspaceID] === items ? current : { ...current, [workspaceID]: items });
-  }, []);
-
   const materializingRef = useRef(new Set<string>());
   const swapPendingRef = useRef(false);
   const replacingSessionIDsRef = useRef(new Map<string, number>());
@@ -374,18 +307,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     { currentAgentByWorkspace, currentModelByWorkspace }
   );
 
-  const refreshSessionUsage = useCallback(async (sessionID: string): Promise<void> => {
-    if (!panelForSession(sessionID)) return;
-    try {
-      const usage = await (window.openshell.sessionUsage
-        ? window.openshell.sessionUsage(sessionID)
-        : Promise.resolve(null));
-      if (!panelForSession(sessionID) || !usage) return;
-      setUsageBySession((current) => retainSessionRecord(current, sessionID, usage, protectedSessionIDs()));
-    } catch {
-    }
-  }, [panelForSession, protectedSessionIDs]);
-
   const materializeSession = useCallback(async (sessionID: string): Promise<void> => {
     const panel = panelForSession(sessionID);
     if (!panel || materializingRef.current.has(sessionID)) return;
@@ -404,16 +325,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       reconcileStreaming(sessionID);
       setTodosFor(panel.workspace.id, snapshot.todos);
       if (usage) {
-        setUsageBySession((current) => retainSessionRecord(current, sessionID, usage, protectedSessionIDs()));
-        const hasCompaction = snapshot.transcript.some((item) => item.kind === "compaction");
-        const existingBaseline = compactionBaselineBySessionRef.current[sessionID];
-        if (hasCompaction && (existingBaseline == null) && usage.tokens.input > 10000) {
-          const estimatedWindow = 10000;
-          setCompactionBaselineBySession((prev) => ({
-            ...prev,
-            [sessionID]: Math.max(0, usage.tokens.input - estimatedWindow)
-          }));
-        }
+        recordUsage(sessionID, () => usage);
+        inferMaterializedBaseline(sessionID, snapshot.transcript, usage);
       }
       const trailing = [...snapshot.transcript].reverse().find((item) => item.kind === "assistant");
       if (aborted || !trailing || trailing.completed) setSessionBusy(sessionID, false);
@@ -424,7 +337,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     } finally {
       materializingRef.current.delete(sessionID);
     }
-  }, [panelForSession, mergeMaterializedRecords, applyProjection, reconcileStreaming, setTodosFor, setSessionBusy, protectedSessionIDs, toast, abortFor]);
+  }, [panelForSession, mergeMaterializedRecords, applyProjection, reconcileStreaming, setTodosFor, setSessionBusy, recordUsage, inferMaterializedBaseline, toast, abortFor]);
 
   const attachPanel = useCallback((info: SessionInfo, saveWorkspace = true): void => {
     if (saveWorkspace) rememberWorkspace(info.directory);
@@ -450,12 +363,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         if (aborted) applyProjection(sessionID);
         setTodosFor(reopened.session.workspace.id, reopened.todos);
         if (reopened.usage) {
-          setUsageBySession((current) => retainSessionRecord(
-            current,
-            sessionID,
-            reopened.usage!,
-            protectedSessionIDs()
-          ));
+          recordUsage(sessionID, () => reopened.usage!);
         }
       } catch (err) {
         if (panelForSession(sessionID)) {
@@ -463,7 +371,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
       }
     },
-    [toast, panelForSession, prepareReopenedReplay, commitReplayTranscript, reconcileStreaming, applyProjection, setTodosFor, protectedSessionIDs, abortFor, seedReplayBusy]
+    [toast, panelForSession, prepareReopenedReplay, commitReplayTranscript, reconcileStreaming, applyProjection, setTodosFor, recordUsage, abortFor, seedReplayBusy]
   );
 
   const clearStagedRevert = useCallback(async (workspace: WorkspaceIdentity): Promise<void> => {
@@ -580,17 +488,12 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       removeActiveSession(sessionID);
       forgetRecords(sessionID);
       materializingRef.current.delete(sessionID);
-      setCompactionBaselineBySession((current) => {
-        if (!(sessionID in current)) return current;
-        const { [sessionID]: _dropped, ...rest } = current;
-        void _dropped;
-        return rest;
-      });
+      removeClosedBaseline(sessionID);
     }
     if (!keepActive) {
       void window.openshell.closeSession(ejected.workspace).catch(() => {});
     }
-  }, [removeActiveSession, ejectPanelFromView, activeSessionFor, forgetRecords, dropClosedActivity, busyFor]);
+  }, [removeActiveSession, ejectPanelFromView, activeSessionFor, forgetRecords, dropClosedActivity, busyFor, removeClosedBaseline]);
 
   const closePanel = useCallback((sessionID: string, preserveBusy = false): void => {
     const closing = panelsRef.current.find((panel) => panel.id === sessionID);
@@ -901,12 +804,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         seedReplayBusy(reopened.session.id, running);
         setTodosFor(reopened.session.workspace.id, reopened.todos);
         if (reopened.usage) {
-          setUsageBySession((current) => retainSessionRecord(
-            current,
-            reopened.session.id,
-            reopened.usage!,
-            protectedSessionIDs()
-          ));
+          recordUsage(reopened.session.id, () => reopened.usage!);
         }
         void loadModels(reopened.session.workspace);
         void loadAgents(reopened.session.workspace);
@@ -941,7 +839,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     loadSessions,
     loadRecovery,
     hydrateTranscript,
-    protectedSessionIDs,
+    recordUsage,
     summaryFor,
     seedReplayBusy,
   ]
@@ -1092,27 +990,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     });
   }, [setSessionBusy, panelFor, toast, snapshotSession, reduceSessionEvent, applyProjection, syncStreaming, beginLocalAbort]);
 
-  const refreshProviderUsage = useCallback(async () => {
-    const sequence = ++providerUsageSeqRef.current;
-    setProviderUsageLoading(true);
-    try {
-      const next = await window.openshell.providerUsage();
-      if (sequence === providerUsageSeqRef.current) setProviderUsage(next);
-    } catch (err) {
-      if (sequence === providerUsageSeqRef.current) toast(err instanceof Error ? err.message : String(err), "error");
-    } finally {
-      if (sequence === providerUsageSeqRef.current) setProviderUsageLoading(false);
-    }
-  }, [toast]);
-
   useEffect(() => {
-    for (const panel of panels) {
-      if (!busyBySession[panel.id]) continue;
-      const snapshot = todoSnapshotFromTranscript(transcriptsBySession[panel.id] ?? []);
-      if (!snapshot || snapshot.key === todoKeysRef.current[panel.workspace.id]) continue;
-      todoKeysRef.current[panel.workspace.id] = snapshot.key;
-      setTodosFor(panel.workspace.id, snapshot.todos);
-    }
+    applyBusyTodoFallback(panels, busyBySession, transcriptsBySession);
   }, [panels, busyBySession, transcriptsBySession, setTodosFor]);
 
   const attachFileWorkspace = useCallback(
@@ -1334,10 +1213,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       if (targetSessionID && AUX_CHAT_STREAM_TYPES.has(type)) {
         reduceAuxiliaryEvent(targetSessionID, streamEvent);
         if (type === "session.compaction.ended") {
-          const currentInput = usageBySessionRef.current[targetSessionID]?.tokens.input ?? 0;
-          if (currentInput > 0) {
-            setCompactionBaselineBySession((prev) => ({ ...prev, [targetSessionID]: currentInput }));
-          }
+          snapshotCompactionBaseline(targetSessionID);
           void refreshSessionUsage(targetSessionID);
           // Backstop: the usage snapshot may lag the compaction commit on
           // slow/local backends. Re-poll once so the context display cannot
@@ -1434,12 +1310,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         case "session.usage.recorded": {
           const usage = normalizeSessionUsage(data);
           if (!targetSessionID || !usage) break;
-          setUsageBySession((current) => retainSessionRecord(
-            current,
-            targetSessionID,
-            usage,
-            protectedSessionIDs()
-          ));
+          recordUsage(targetSessionID, () => usage);
           break;
         }
         case "session.execution.started": {
@@ -1614,7 +1485,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     panelFor,
     panelForSession,
     workspaceOfSession,
-    protectedSessionIDs,
+    recordUsage,
     setTodosFor,
     receiveRecovery,
     receiveFileUpdate,
@@ -1625,6 +1496,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     reduceSessionEvent,
     materializeSession,
     refreshSessionUsage,
+    snapshotCompactionBaseline,
+    normalizeSessionUsage,
     reconcilePermissions,
     refreshForms,
     readApprovalMode,
@@ -1698,7 +1571,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       todos,
       transcript,
       sessionUsage,
-      providerUsage,
+      providerUsage: providerUsage as ProviderUsageResult[],
       providerUsageLoading,
       tabs,
       unsavedEditorFileCount,
