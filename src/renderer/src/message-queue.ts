@@ -74,6 +74,21 @@ export interface MessageQueueState {
   followUpBehavior: FollowUpBehavior;
 }
 
+export type QueuedPromptFileReadView = Readonly<Omit<PromptFile, "mention">> & {
+  readonly mention?: Readonly<NonNullable<PromptFile["mention"]>>;
+};
+
+export type QueuedMessageReadView = Readonly<Omit<QueuedMessage, "attachments" | "sendConfig">> & {
+  readonly attachments?: readonly QueuedPromptFileReadView[];
+  readonly sendConfig?: Readonly<NonNullable<QueuedMessage["sendConfig"]>>;
+};
+
+export interface MessageQueueReadView {
+  readonly queuedMessages: Readonly<Record<string, readonly QueuedMessageReadView[]>>;
+  readonly quarantinedLegacyMessages: Readonly<Record<string, readonly QueuedMessageReadView[]>>;
+  readonly followUpBehavior: FollowUpBehavior;
+}
+
 export function emptyMessageQueueState(): MessageQueueState {
   return {
     queuedMessages: {},
@@ -177,7 +192,9 @@ export function clearAllQueues(state: MessageQueueState): MessageQueueState {
   return { ...state, queuedMessages: {} };
 }
 
-export function getQueueForTarget(state: MessageQueueState, target: MessageQueueTarget): QueuedMessage[] {
+export function getQueueForTarget(state: MessageQueueState, target: MessageQueueTarget): QueuedMessage[];
+export function getQueueForTarget(state: MessageQueueReadView, target: MessageQueueTarget): readonly QueuedMessageReadView[];
+export function getQueueForTarget(state: MessageQueueState | MessageQueueReadView, target: MessageQueueTarget): QueuedMessage[] | readonly QueuedMessageReadView[] {
   return state.queuedMessages[getMessageQueueKey(target)] ?? [];
 }
 

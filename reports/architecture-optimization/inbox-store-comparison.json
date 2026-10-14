@@ -1,0 +1,552 @@
+{
+  "phase": "Combined server inbox and local queue authority",
+  "baselineRef": "76bd9d7",
+  "runner": "scripts/benchmark-renderer-store.mjs",
+  "runnerSha256": "677fd1c439b017dc03b6acfa91d197cce50b723d86dba204a2201153c557e191",
+  "command": "PATH=/Users/tdawg/.local/share/orbit-toolchains/node-v22.23.2/bin:$PATH node scripts/benchmark-renderer-store.mjs --operation session-inbox [--ref 76bd9d7]",
+  "afterSourceSha256": {
+    "src/renderer/src/store.tsx": "d77bff685617d431bd3e28e24b6fa71ba15b557858d51e0847fd619903006c58",
+    "src/renderer/src/use-session-inbox.ts": "49c18a51b25032a1a85fd6b95dc6df4503ea00eca551eba4c2d181ce98fe6333",
+    "src/renderer/src/message-queue.ts": "1c80252036af3788bb6f767df78a66bcff5f0fac6cda71100b9c49c7404ab8de",
+    "src/renderer/src/panel-projection.ts": "0fcdd2daabe576cc9115d555ef6aa5d0da41241de18549acb1960f6726675475"
+  },
+  "order": [
+    "before-1",
+    "after-1",
+    "after-2",
+    "before-2"
+  ],
+  "interpretation": "Timings inconclusive: paired ranges overlap and local queue direction changes in reverse repeat. No confirmed speedup or meaningful regression. All36samples retain420context consumer commits,122queue persistence attempts,100cancellation calls with exact workspace identity and IDs, native/local pop content and empty persisted target with final queue preference. Actual Store/React-jsdom coordination and localStorage JSON workload; bridge mocked, native provider/IPC/filesystem/Chromium layout/paint excluded. Native app fixture separately exercises preload dispatch, failure fallback, cold-restart browser storage restoration and composer edits. Pilot retained for workload functional proof, not performance comparison. All four comparison runs occurred after full gate/tests/compiler completed; native test app interactions were ongoing, so timings include ambient GUI activity.",
+  "runs": {
+    "before-1": {
+      "source": "76bd9d70654898250cbdc697c8230c54f538ad3e",
+      "head": "76bd9d70654898250cbdc697c8230c54f538ad3e",
+      "node": "v22.23.2",
+      "bundleSha256": "95e98988d917b147d7e012166922d9f7d0a9eef2d572b1430b842ee8f566ff0a",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-inbox",
+      "workload": {
+        "nativeEnqueuesAndPops": 100,
+        "followUpChanges": 100,
+        "localPops": 20,
+        "missingPop": 1,
+        "noOpReorder": 1,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.08933400000000802,
+        "median": 0.17566699999997581,
+        "max": 0.49854199999992943
+      },
+      "inboxMs": {
+        "min": 17.806125000000065,
+        "median": 24.34375,
+        "max": 37.12358399999994
+      },
+      "localQueueMs": {
+        "min": 5.170540999999957,
+        "median": 6.0537910000000466,
+        "max": 10.474333999999999
+      },
+      "samples": [
+        {
+          "openMs": 0.49854199999992943,
+          "inboxMs": 37.12358399999994,
+          "localQueueMs": 10.474333999999999,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.1875,
+          "inboxMs": 36.67845799999998,
+          "localQueueMs": 9.62804200000005,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.22266700000000128,
+          "inboxMs": 35.902624999999944,
+          "localQueueMs": 10.18662500000005,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.17566699999997581,
+          "inboxMs": 36.391624999999976,
+          "localQueueMs": 7.182583000000022,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.13591700000006313,
+          "inboxMs": 24.34375,
+          "localQueueMs": 6.0537910000000466,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.1987500000000182,
+          "inboxMs": 18.614291999999978,
+          "localQueueMs": 5.7342499999999745,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.10879200000022138,
+          "inboxMs": 18.434875000000147,
+          "localQueueMs": 5.611749999999802,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.09795899999994617,
+          "inboxMs": 17.806125000000065,
+          "localQueueMs": 5.477124999999887,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.08933400000000802,
+          "inboxMs": 17.991874999999936,
+          "localQueueMs": 5.170540999999957,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        }
+      ]
+    },
+    "after-1": {
+      "source": "working tree",
+      "head": "76bd9d70654898250cbdc697c8230c54f538ad3e",
+      "node": "v22.23.2",
+      "bundleSha256": "52ef47d298f52277d9271b1b4043b98c15cc765950c4b4164f34e823e46b2687",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-inbox",
+      "workload": {
+        "nativeEnqueuesAndPops": 100,
+        "followUpChanges": 100,
+        "localPops": 20,
+        "missingPop": 1,
+        "noOpReorder": 1,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.09091699999999037,
+        "median": 0.17358300000000781,
+        "max": 0.23233399999998028
+      },
+      "inboxMs": {
+        "min": 17.965582999999924,
+        "median": 22.882165999999984,
+        "max": 39.430499999999995
+      },
+      "localQueueMs": {
+        "min": 5.162083000000052,
+        "median": 5.7409999999999854,
+        "max": 11.58104099999997
+      },
+      "samples": [
+        {
+          "openMs": 0.22283300000003692,
+          "inboxMs": 39.430499999999995,
+          "localQueueMs": 11.58104099999997,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.19075000000003683,
+          "inboxMs": 35.520332999999994,
+          "localQueueMs": 10.046082999999953,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.23233399999998028,
+          "inboxMs": 33.31654100000003,
+          "localQueueMs": 9.252874999999904,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.17358300000000781,
+          "inboxMs": 33.014625000000024,
+          "localQueueMs": 6.222416000000067,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.12291700000002947,
+          "inboxMs": 22.882165999999984,
+          "localQueueMs": 5.7409999999999854,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.20137499999998454,
+          "inboxMs": 17.965582999999924,
+          "localQueueMs": 5.162083000000052,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.10524999999995543,
+          "inboxMs": 18.55870799999991,
+          "localQueueMs": 5.467583999999988,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.10066599999993286,
+          "inboxMs": 18.08845800000006,
+          "localQueueMs": 5.301458000000025,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.09091699999999037,
+          "inboxMs": 21.178707999999915,
+          "localQueueMs": 5.192834000000062,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        }
+      ]
+    },
+    "after-2": {
+      "source": "working tree",
+      "head": "76bd9d70654898250cbdc697c8230c54f538ad3e",
+      "node": "v22.23.2",
+      "bundleSha256": "52ef47d298f52277d9271b1b4043b98c15cc765950c4b4164f34e823e46b2687",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-inbox",
+      "workload": {
+        "nativeEnqueuesAndPops": 100,
+        "followUpChanges": 100,
+        "localPops": 20,
+        "missingPop": 1,
+        "noOpReorder": 1,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.0907919999999649,
+        "median": 0.175707999999986,
+        "max": 0.26691600000003746
+      },
+      "inboxMs": {
+        "min": 17.39412500000003,
+        "median": 23.585749999999962,
+        "max": 37.30058300000002
+      },
+      "localQueueMs": {
+        "min": 5.313625000000002,
+        "median": 6.00645899999995,
+        "max": 10.394458000000043
+      },
+      "samples": [
+        {
+          "openMs": 0.18820900000002894,
+          "inboxMs": 37.235874999999965,
+          "localQueueMs": 10.394458000000043,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.20112499999999045,
+          "inboxMs": 37.30058300000002,
+          "localQueueMs": 9.93366599999996,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.24783299999995734,
+          "inboxMs": 33.44941700000004,
+          "localQueueMs": 9.523040999999921,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.175707999999986,
+          "inboxMs": 33.741207999999915,
+          "localQueueMs": 6.341834000000063,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.13933400000007623,
+          "inboxMs": 23.585749999999962,
+          "localQueueMs": 6.00645899999995,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.26691600000003746,
+          "inboxMs": 18.409415999999965,
+          "localQueueMs": 5.668583000000012,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.11520800000005238,
+          "inboxMs": 17.597125000000005,
+          "localQueueMs": 5.4832079999999905,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.10274999999990087,
+          "inboxMs": 17.39412500000003,
+          "localQueueMs": 5.313625000000002,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.0907919999999649,
+          "inboxMs": 18.041291,
+          "localQueueMs": 5.328832999999918,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        }
+      ]
+    },
+    "before-2": {
+      "source": "76bd9d70654898250cbdc697c8230c54f538ad3e",
+      "head": "76bd9d70654898250cbdc697c8230c54f538ad3e",
+      "node": "v22.23.2",
+      "bundleSha256": "95e98988d917b147d7e012166922d9f7d0a9eef2d572b1430b842ee8f566ff0a",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-inbox",
+      "workload": {
+        "nativeEnqueuesAndPops": 100,
+        "followUpChanges": 100,
+        "localPops": 20,
+        "missingPop": 1,
+        "noOpReorder": 1,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.0917500000000473,
+        "median": 0.17133400000000165,
+        "max": 0.22766599999999926
+      },
+      "inboxMs": {
+        "min": 17.553750000000036,
+        "median": 23.873000000000047,
+        "max": 37.832250000000045
+      },
+      "localQueueMs": {
+        "min": 5.12541699999997,
+        "median": 5.918000000000006,
+        "max": 10.760875000000055
+      },
+      "samples": [
+        {
+          "openMs": 0.18799999999998818,
+          "inboxMs": 37.832250000000045,
+          "localQueueMs": 10.410040999999978,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.18508300000007694,
+          "inboxMs": 35.30312500000002,
+          "localQueueMs": 10.760875000000055,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.22766599999999926,
+          "inboxMs": 33.29658400000005,
+          "localQueueMs": 9.551832999999988,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.17133400000000165,
+          "inboxMs": 34.223749999999995,
+          "localQueueMs": 6.165915999999925,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.1207920000000513,
+          "inboxMs": 23.873000000000047,
+          "localQueueMs": 5.918000000000006,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.20895899999993617,
+          "inboxMs": 18.341499999999996,
+          "localQueueMs": 5.6427079999999705,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.10524999999995543,
+          "inboxMs": 17.992000000000075,
+          "localQueueMs": 5.12541699999997,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.11649999999997362,
+          "inboxMs": 17.553750000000036,
+          "localQueueMs": 5.325624999999945,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        },
+        {
+          "openMs": 0.0917500000000473,
+          "inboxMs": 17.634625000000028,
+          "localQueueMs": 5.429291000000035,
+          "updateRenders": 420,
+          "queueWrites": 122,
+          "cancellationCount": 100
+        }
+      ]
+    }
+  },
+  "pilot": {
+    "source": "76bd9d70654898250cbdc697c8230c54f538ad3e",
+    "head": "76bd9d70654898250cbdc697c8230c54f538ad3e",
+    "node": "v22.23.2",
+    "bundleSha256": "95e98988d917b147d7e012166922d9f7d0a9eef2d572b1430b842ee8f566ff0a",
+    "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+    "operation": "session-inbox",
+    "workload": {
+      "nativeEnqueuesAndPops": 100,
+      "followUpChanges": 100,
+      "localPops": 20,
+      "missingPop": 1,
+      "noOpReorder": 1,
+      "warmups": 3,
+      "samples": 9
+    },
+    "openMs": {
+      "min": 0.09716699999989942,
+      "median": 0.20070800000007694,
+      "max": 0.7531249999999545
+    },
+    "inboxMs": {
+      "min": 19.995374999999967,
+      "median": 30.015750000000025,
+      "max": 44.78950000000009
+    },
+    "localQueueMs": {
+      "min": 5.771374999999807,
+      "median": 6.271417000000156,
+      "max": 16.214833999999996
+    },
+    "samples": [
+      {
+        "openMs": 0.24049999999999727,
+        "inboxMs": 44.78950000000009,
+        "localQueueMs": 16.214833999999996,
+        "updateRenders": 420,
+        "queueWrites": 122,
+        "cancellationCount": 100
+      },
+      {
+        "openMs": 0.2549579999999878,
+        "inboxMs": 41.27687500000002,
+        "localQueueMs": 13.965249999999969,
+        "updateRenders": 420,
+        "queueWrites": 122,
+        "cancellationCount": 100
+      },
+      {
+        "openMs": 0.7531249999999545,
+        "inboxMs": 30.385791999999924,
+        "localQueueMs": 7.297166000000061,
+        "updateRenders": 420,
+        "queueWrites": 122,
+        "cancellationCount": 100
+      },
+      {
+        "openMs": 0.20070800000007694,
+        "inboxMs": 38.64249999999993,
+        "localQueueMs": 7.256917000000158,
+        "updateRenders": 420,
+        "queueWrites": 122,
+        "cancellationCount": 100
+      },
+      {
+        "openMs": 0.16670799999997143,
+        "inboxMs": 30.015750000000025,
+        "localQueueMs": 6.271417000000156,
+        "updateRenders": 420,
+        "queueWrites": 122,
+        "cancellationCount": 100
+      },
+      {
+        "openMs": 0.26633300000003146,
+        "inboxMs": 20.51037499999984,
+        "localQueueMs": 6.223375000000033,
+        "updateRenders": 420,
+        "queueWrites": 122,
+        "cancellationCount": 100
+      },
+      {
+        "openMs": 0.11908300000004601,
+        "inboxMs": 22.146458000000166,
+        "localQueueMs": 5.771374999999807,
+        "updateRenders": 420,
+        "queueWrites": 122,
+        "cancellationCount": 100
+      },
+      {
+        "openMs": 0.09716699999989942,
+        "inboxMs": 19.995374999999967,
+        "localQueueMs": 5.955124999999953,
+        "updateRenders": 420,
+        "queueWrites": 122,
+        "cancellationCount": 100
+      },
+      {
+        "openMs": 0.10466599999995196,
+        "inboxMs": 20.33166600000004,
+        "localQueueMs": 6.246457999999848,
+        "updateRenders": 420,
+        "queueWrites": 122,
+        "cancellationCount": 100
+      }
+    ]
+  }
+}

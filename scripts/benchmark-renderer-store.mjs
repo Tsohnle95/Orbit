@@ -22,7 +22,7 @@ for (let index = 0; index < args.length; index += 2) {
   else if (args[index] === "--operation") operation = args[index + 1];
   else throw new Error(`Unknown or repeated option: ${args[index]}`);
 }
-if (!["streaming", "workspace-files"].includes(operation)) throw new Error(`Unknown operation: ${operation}`);
+if (!["streaming", "workspace-files", "session-inbox"].includes(operation)) throw new Error(`Unknown operation: ${operation}`);
 const supportedNode = readFileSync(path.join(repository, ".node-version"), "utf8").trim();
 if (process.versions.node !== supportedNode) throw new Error(`Use Node ${supportedNode}; active version is ${process.versions.node}`);
 const git = (...gitArgs) => execFileSync("git", gitArgs, { cwd: repository, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }).trim();
@@ -66,6 +66,18 @@ async function sample() {
   for (const name of ["window", "document", "HTMLElement", "localStorage"]) globalThis[name] = dom.window[name];
   let handler, store, renders = 0;
   const session = { id: "session", directory: "/fixture", workspace: { id: "11111111-1111-4111-8111-111111111111", generation: 1 } };
+  const queueKey = `${session.workspace.id}\n${session.id}`;
+  let queueWrites = 0;
+  const cancelled = [];
+  if (operation === "session-inbox") {
+    localStorage.setItem("messageQueue", JSON.stringify({ followUpBehavior: "queue", quarantinedLegacyMessages: {},
+      queuedMessages: { [queueKey]: Array.from({ length: 20 }, (_, index) => ({ id: `queued-${index}`, content: `Local ${index}`, createdAt: index + 1 })) } }));
+    const setItem = dom.window.Storage.prototype.setItem;
+    dom.window.Storage.prototype.setItem = function (key, value) {
+      if (key === "messageQueue") queueWrites++;
+      return setItem.call(this, key, value);
+    };
+  }
   const activeSessions = [session];
   const empty = async () => [];
   let directoryReads = 0;
@@ -77,7 +89,7 @@ async function sample() {
   window.openshell = {
     platform: "darwin", onMessage: (callback) => { handler = callback; return () => { handler = null; }; },
     health: async () => true, takePendingPaths: empty, state: async () => null,
-    activeSessions: operation === "workspace-files" ? async () => activeSessions : empty,
+    activeSessions: operation !== "streaming" ? async () => activeSessions : empty,
     models: empty, modelDefault: async () => null, sessionSelection: async () => null, agents: empty, sessions: empty,
     openSession: async () => session, openSessionById: async () => ({ session, transcript: [], todos: [] }),
     closeSession: async () => {}, readFile: async (_workspace, file) => operation === "workspace-files" ? diskText(file) : "",
@@ -87,7 +99,8 @@ async function sample() {
     savedWorkspaces: async () => ({ initialized: true, workspaces: [] }), saveSavedWorkspaces: async () => {},
     sessionUsage: async () => null, sessionTranscript: async () => ({ transcript: [], todos: [] }),
     inboxList: empty, formsList: empty, recoveryList: empty, reportUnsavedEditorFiles: () => {},
-    ...(operation === "workspace-files" ? { recoveryRecords: empty } : {})
+    ...(operation !== "streaming" ? { recoveryRecords: empty } : {}),
+    ...(operation === "session-inbox" ? { inboxCancel: async (...args) => { cancelled.push(args); } } : {})
   };
   function Probe() { store = useStore(); renders++; return null; }
   const root = createRoot(document.querySelector("#root"));
@@ -96,6 +109,39 @@ async function sample() {
     let start = performance.now();
     await React.act(async () => store.addModelPanel("/fixture"));
     const openMs = performance.now() - start;
+    if (operation === "session-inbox") {
+      const previousRenders = renders;
+      start = performance.now();
+      for (let index = 0; index < 100; index++) {
+        const inboxID = `native-${index}`;
+        const emit = (type, data) => handler({ kind: "event", type,
+          data: { id: `${type}-${index}`, created: index + 1, data: { sessionID: session.id, inboxID, ...data } } });
+        await React.act(async () => emit("session.inbox.enqueued", {
+          delivery: "queue", item: { type: "user", payload: { text: `Native ${index}`, files: [] } }
+        }));
+        let popped;
+        await React.act(async () => { popped = store.popQueuedMessage(session.workspace, inboxID); });
+        if (popped?.id !== inboxID || popped.content !== `Native ${index}`) throw new Error("Native inbox pop changed");
+        await React.act(async () => emit("session.inbox.cancelled", {}));
+      }
+      const inboxMs = performance.now() - start;
+      start = performance.now();
+      for (let index = 0; index < 100; index++) await React.act(async () => store.setFollowUpBehavior(index % 2 ? "queue" : "steer"));
+      for (let index = 0; index < 20; index++) {
+        let popped;
+        await React.act(async () => { popped = store.popQueuedMessage(session.workspace, `queued-${index}`); });
+        if (popped?.content !== `Local ${index}`) throw new Error("Local queue pop changed");
+      }
+      await React.act(async () => {
+        if (store.popQueuedMessage(session.workspace, "queued-missing") !== null) throw new Error("Missing local pop changed");
+        store.reorderQueuedMessage(session.workspace, "queued-missing", "queued-also-missing");
+      });
+      const localQueueMs = performance.now() - start;
+      const persisted = JSON.parse(localStorage.getItem("messageQueue"));
+      if (queueWrites !== 122 || persisted.followUpBehavior !== "queue" || (persisted.queuedMessages[queueKey] ?? []).length) throw new Error("Queue persistence changed");
+      if (cancelled.length !== 100 || cancelled.some((args, index) => args[0] !== session.workspace || args[1] !== `native-${index}`)) throw new Error("Inbox cancellation contract changed");
+      return { openMs, inboxMs, localQueueMs, updateRenders: renders - previousRenders, queueWrites, cancellationCount: cancelled.length };
+    }
     if (operation === "workspace-files") {
       const previousRenders = renders;
       start = performance.now();
@@ -169,7 +215,9 @@ console.log(JSON.stringify({
   scope: "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
   operation,
   workload: operation === "streaming" ? { assistants: 100, setupEvents: 600, toolOutputChars: 32768, deltas: 100, warmups: 3, samples: 9 }
-    : { fileUpdates: 500, editorOpens: 20, editorSaves: 10, rootReads: 100, listingEntries: 1002, cachedToggles: 3, warmups: 3, samples: 9 },
+    : operation === "session-inbox" ? { nativeEnqueuesAndPops: 100, followUpChanges: 100, localPops: 20, missingPop: 1, noOpReorder: 1, warmups: 3, samples: 9 }
+      : { fileUpdates: 500, editorOpens: 20, editorSaves: 10, rootReads: 100, listingEntries: 1002, cachedToggles: 3, warmups: 3, samples: 9 },
   ...Object.fromEntries((operation === "streaming" ? ["openMs", "streamingMs"]
-    : ["openMs", "observationsMs", "editorOpenMs", "editorSaveMs", "directoryMs"]).map((field) => [field, distribution(field)])), samples
+    : operation === "session-inbox" ? ["openMs", "inboxMs", "localQueueMs"]
+      : ["openMs", "observationsMs", "editorOpenMs", "editorSaveMs", "directoryMs"]).map((field) => [field, distribution(field)])), samples
 }, null, 2));

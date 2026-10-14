@@ -12,7 +12,7 @@ import type {
 import { findTurnStartedAt, type ChatDirectoryReadView } from "./chat-store";
 import { resolveSessionActivity } from "./session-activity";
 import { getActiveAssistantContext, resolveAssistantStatus, type SessionAbortFlag } from "./assistant-status";
-import { createMessageQueueTarget, getQueueForTarget, type MessageQueueState, type QueuedMessage } from "./message-queue";
+import { createMessageQueueTarget, getQueueForTarget, type MessageQueueReadView, type QueuedMessage } from "./message-queue";
 import type { StreamingReadView } from "./streaming";
 import type { PanelView } from "./store-contract";
 
@@ -27,8 +27,8 @@ export interface PanelProjectionSources {
   agentsByWorkspace: Readonly<Record<string, AgentOption[]>>;
   currentAgentByWorkspace: Readonly<Record<string, AgentOption | null>>;
   streamingStore: StreamingReadView;
-  messageQueue: MessageQueueState;
-  inboxBySession: Readonly<Record<string, SessionInboxEntry[]>>;
+  messageQueue: MessageQueueReadView;
+  inboxBySession: Readonly<Record<string, readonly Readonly<SessionInboxEntry>[]>>;
   formsBySession: Readonly<Record<string, PendingFormRequest[]>>;
   stagedReverts: Readonly<Record<string, SessionRevertStage | null>>;
   sessionAbortFlags: Readonly<Record<string, SessionAbortFlag>>;
@@ -93,7 +93,7 @@ export function projectPanelViews(panels: readonly SessionInfo[], sources: Panel
         createdAt: entry.createdAt,
         attachmentCount: entry.attachmentCount
       })),
-      ...localQueue
+      ...(localQueue as readonly QueuedMessage[])
     ];
     const pendingForms = formsBySession[panel.id] ?? [];
     const compactionBaseline = compactionBaselineBySession[panel.id] ?? null;

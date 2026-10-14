@@ -238,7 +238,7 @@ and `PanelView.streaming` carry these to components; the agent header shows
 the live status beside a green working indicator and the composer's stop
 button title uses the same status text.
 
-## Message queue (`message-queue.ts`, `messages/`)
+## Message queue (`use-session-inbox.ts`, `message-queue.ts`, `messages/`)
 
 Queued follow-ups are native: sending a prompt while the session is working
 submits it immediately through `session.prompt` with `delivery` set from
@@ -246,7 +246,7 @@ submits it immediately through `session.prompt` with `delivery` set from
 inbox; `steer` delivers it into the running turn without interrupting). The
 server owns ordering, delivery, and crash safety, and reports the lifecycle
 through `session.inbox.enqueued/delivered/cancelled/delivery.changed`. The
-store tracks user-type entries per session (`inboxBySession`), hydrated via
+Inbox owner tracks user-type entries per session (`inboxBySession`), hydrated via
 `shell:inbox-list` on attach, and merges them with a small persisted local
 queue that only catches submissions that failed outright (max 20 messages,
 50 targets; pre-v3 persisted queues migrate into a quarantine map).
@@ -257,6 +257,15 @@ drag-reordering only exists between adjacent local fallback entries because
 server inbox order is FIFO by submission. The former client-side auto-send
 loop — idle-transition dispatch, abort window, retry backoff — was retired:
 the server performs all of that by holding and delivering inbox entries.
+
+The Inbox owner holds both the local queue and server-entry record, exposes named
+commands and deep readonly borrowed views, and owns no effects. Local commits
+write the immediate queue ref before state and persistence; server entries use
+a last-render ref. Store retains envelope attribution, normal prompt lifecycle,
+and delivered-input promotion before Inbox removal and auxiliary reduction.
+The queue and saved-workspace lazy storage reads are independent and caught;
+extraction reverses their incidental read order while both finish before hydration
+effects, without changing keys, defaults, or writes.
 
 Actions: `openSession` / `selectFolder` (replace the current panels with one fresh
 panel and automatically save its directory as a workspace), `saveWorkspace`

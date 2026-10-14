@@ -25,7 +25,6 @@ import type {
   PromptFile,
   ProviderUsageResult,
   RuntimeManifest,
-  SessionInboxEntry,
   SessionInfo,
   SessionSummary,
   SessionUsage,
@@ -37,20 +36,6 @@ import type {
 } from "@shared/types";
 import type { ChatStreamEvent } from "./chat-stream";
 import { IDLE_ACTIVITY, resolveSessionActivity } from "./session-activity";
-import {
-  addToQueue,
-  createMessageQueueTarget,
-  getMessageQueueKey,
-  loadMessageQueueState,
-  persistMessageQueueState,
-  removeFromQueue,
-  reorderQueue,
-  popToInput,
-  type FollowUpBehavior,
-  type MessageQueueState,
-  type MessageQueueTarget,
-  type QueuedMessage
-} from "./message-queue";
 import { requestReveal } from "./reveal";
 import { sameWorkspace } from "@shared/generation";
 import { retainSessionRecord } from "@shared/retention";
@@ -59,6 +44,7 @@ import { useExplorerMutations } from "./use-explorer-mutations";
 import { useWorkspaceFiles } from "./use-workspace-files";
 import { useWorkspaceEditor } from "./use-workspace-editor";
 import { useSessionSelection } from "./use-session-selection";
+import { useSessionInbox } from "./use-session-inbox";
 import { useSessionInventory } from "./use-session-inventory";
 import { useSessionChatRecords } from "./use-session-chat-records";
 import { useSessionExecution, useSessionSettlement } from "./use-session-execution";
@@ -222,7 +208,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     shouldIgnoreRuntimeWork, noteRuntimeReduction, touchDeltaStream,
     startExecution, finishExecution, applyStatusEvent
   } = execution;
-  const [inboxBySession, setInboxBySession] = useState<Record<string, SessionInboxEntry[]>>({});
   const [formsBySession, setFormsBySession] = useState<Record<string, PendingFormRequest[]>>({});
   const [stagedReverts, setStagedReverts] = useState<Record<string, SessionRevertStage | null>>({});
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -240,8 +225,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   });
   const [providerUsage, setProviderUsage] = useState<ProviderUsageResult[]>([]);
   const [providerUsageLoading, setProviderUsageLoading] = useState(false);
-  const [messageQueue, setMessageQueue] = useState<MessageQueueState>(() => loadMessageQueueState());
-
   const activeWorkspaceID = activeSessionID
     ? (panels.find((panel) => panel.id === activeSessionID)?.workspace.id ?? null)
     : null;
@@ -303,11 +286,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   usageBySessionRef.current = usageBySession;
   const compactionBaselineBySessionRef = useRef(compactionBaselineBySession);
   compactionBaselineBySessionRef.current = compactionBaselineBySession;
-  const inboxBySessionRef = useRef(inboxBySession);
-  inboxBySessionRef.current = inboxBySession;
   const formsBySessionRef = useRef(formsBySession);
   formsBySessionRef.current = formsBySession;
-  const messageQueueRef = useRef<MessageQueueState>(messageQueue);
   const todoKeysRef = useRef<Record<string, string>>({});
   const approvalModeRef = useRef<ApprovalMode>(approvalMode);
   approvalModeRef.current = approvalMode;
@@ -402,24 +382,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const swapPendingRef = useRef(false);
   const replacingSessionIDsRef = useRef(new Map<string, number>());
 
-  const commitQueue = useCallback((next: MessageQueueState) => {
-    messageQueueRef.current = next;
-    setMessageQueue(next);
-    persistMessageQueueState(next);
-  }, []);
-
   useSessionSettlement(execution, {
     panelsRef, transcriptFor, completeLatest, projectSession: applyProjection, notify: toast
   });
-
-  const setFollowUpBehavior = useCallback((behavior: FollowUpBehavior) => {
-    commitQueue({ ...messageQueueRef.current, followUpBehavior: behavior });
-  }, [commitQueue]);
-
-  const queueTargetFor = useCallback((workspace: WorkspaceIdentity): MessageQueueTarget | null => {
-    const panel = panelFor(workspace);
-    return panel ? createMessageQueueTarget(panel.id, panel.workspace.id) : null;
-  }, [panelFor]);
 
   const { savedWorkspaces, rememberWorkspace, replaceSavedWorkspace, saveWorkspace, removeWorkspace } = useSavedWorkspaces(connected, toast);
   const {
@@ -429,18 +394,15 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     applyModelSelection, applyAgentSelection
   } = useSessionSelection({ sessionRef, panelFor, notify: toast });
 
-  const refreshInbox = useCallback(async (sessionID: string): Promise<void> => {
-    const panel = panelsRef.current.find((candidate) => candidate.id === sessionID);
-    if (!panel) return;
-    try {
-      const entries = await window.openshell.inboxList(panel.workspace);
-      setInboxBySession((current) => ({ ...current, [sessionID]: entries }));
-    } catch (error) {
-      if (panelForSession(sessionID)) {
-        toast(formatFailure(error, "ORBIT_INBOX_REFRESH_FAILED", "Queued prompts could not be refreshed"), "error");
-      }
-    }
-  }, [panelForSession, toast]);
+  const {
+    messageQueue, inboxBySession, refreshInbox, setFollowUpBehavior,
+    removeQueuedMessage, popQueuedMessage, reorderQueuedMessage, sendQueuedNow,
+    readFollowUpBehavior, enqueueFailedPrompt, reconcileDeliveredPrompt, receiveEnqueuedInbox, removeTerminalInbox
+  } = useSessionInbox(
+    { panelFor, panelForSession, notify: toast },
+    { appendTranscriptItem, appendUniqueTranscriptItem },
+    { currentAgentByWorkspace, currentModelByWorkspace }
+  );
 
   const refreshForms = useCallback(async (sessionID: string): Promise<void> => {
     const panel = panelsRef.current.find((candidate) => candidate.id === sessionID);
@@ -450,46 +412,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       setFormsBySession((current) => ({ ...current, [sessionID]: forms }));
     } catch {}
   }, []);
-
-  const removeQueuedMessage = useCallback((workspace: WorkspaceIdentity, messageID: string) => {
-    const target = queueTargetFor(workspace);
-    if (!target) return;
-    if (!messageID.startsWith("queued-")) {
-      setInboxBySession((current) => ({
-        ...current,
-        [target.sessionID]: (current[target.sessionID] ?? []).filter((entry) => entry.id !== messageID)
-      }));
-      window.openshell.inboxCancel(workspace, messageID).catch(() => {});
-      return;
-    }
-    commitQueue(removeFromQueue(messageQueueRef.current, target, messageID));
-  }, [queueTargetFor, commitQueue]);
-
-  const popQueuedMessage = useCallback((workspace: WorkspaceIdentity, messageID: string): QueuedMessage | null => {
-    const target = queueTargetFor(workspace);
-    if (!target) return null;
-    if (!messageID.startsWith("queued-")) {
-      const entry = (inboxBySessionRef.current[target.sessionID] ?? []).find(
-        (candidate) => candidate.id === messageID
-      );
-      if (!entry) return null;
-      setInboxBySession((current) => ({
-        ...current,
-        [target.sessionID]: (current[target.sessionID] ?? []).filter((item) => item.id !== messageID)
-      }));
-      window.openshell.inboxCancel(workspace, messageID).catch(() => {});
-      return { id: entry.id, content: entry.text, createdAt: entry.createdAt };
-    }
-    const popped = popToInput(messageQueueRef.current, target, messageID);
-    commitQueue(popped.state);
-    return popped.message;
-  }, [queueTargetFor, commitQueue]);
-
-  const reorderQueuedMessage = useCallback((workspace: WorkspaceIdentity, fromID: string, toID: string) => {
-    const target = queueTargetFor(workspace);
-    if (!target) return;
-    commitQueue(reorderQueue(messageQueueRef.current, target, fromID, toID));
-  }, [queueTargetFor, commitQueue]);
 
   const refreshSessionUsage = useCallback(async (sessionID: string): Promise<void> => {
     if (!panelForSession(sessionID)) return;
@@ -572,56 +494,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     }));
     window.openshell.formCancel(workspace, formID, formSessionID).catch(() => {});
   }, [panelFor]);
-
-  const sendQueuedNow = useCallback(async (workspace: WorkspaceIdentity, messageID: string): Promise<void> => {
-    const panel = panelFor(workspace);
-    if (!panel) return;
-    if (!messageID.startsWith("queued-")) {
-      setInboxBySession((current) => ({
-        ...current,
-        [panel.id]: (current[panel.id] ?? []).filter((entry) => entry.id !== messageID)
-      }));
-      try {
-        await window.openshell.inboxSteer(workspace, messageID);
-      } catch (err) {
-        void refreshInbox(panel.id);
-        const failure = formatFailure(err, "ORBIT_INBOX_STEER_FAILED", "Queued prompt could not be sent");
-        appendUniqueTranscriptItem(panel.id, { kind: "status", id: `queued-steer-error-${messageID}`, text: failure, tone: "error" });
-        if (panelFor(workspace)) toast(failure, "error");
-      }
-      return;
-    }
-    const popped = popQueuedMessage(workspace, messageID);
-    if (!popped) return;
-    const promptText = popped.content || "Review the attached files.";
-    const attachments: UserAttachment[] = (popped.attachments ?? []).map((file) => ({
-      name: file.path.split(/[\\/]/).pop() ?? file.path
-    }));
-    const createdAt = Date.now();
-    const selectedAgent = currentAgentByWorkspace[panel.workspace.id];
-    const selectedModel = currentModelByWorkspace[panel.workspace.id];
-    appendTranscriptItem(panel.id, {
-        kind: "user",
-        id: `user-${createdAt}`,
-        text: promptText,
-        createdAt,
-        ...(selectedAgent ? { agent: selectedAgent.id } : {}),
-        ...(selectedModel ? { model: { id: selectedModel.id, providerID: selectedModel.providerID } } : {}),
-        ...(attachments.length > 0 ? { attachments } : {})
-    });
-    try {
-      await window.openshell.prompt(workspace, promptText, popped.attachments ?? []);
-    } catch (err) {
-      const failure = formatFailure(err, "ORBIT_PROMPT_FAILED", "Queued prompt failed");
-      const queueTarget = createMessageQueueTarget(panel.id, panel.workspace.id);
-      if (queueTarget) commitQueue(addToQueue(messageQueueRef.current, queueTarget, {
-        content: promptText,
-        attachments: popped.attachments
-      }));
-      appendTranscriptItem(panel.id, { kind: "status", id: `queued-error-${messageID}`, text: failure, tone: "error" });
-      if (panelFor(workspace)) toast(failure, "error");
-    }
-  }, [panelFor, popQueuedMessage, appendTranscriptItem, appendUniqueTranscriptItem, toast, refreshInbox, commitQueue, currentAgentByWorkspace, currentModelByWorkspace]);
 
   const attachPanel = useCallback((info: SessionInfo, saveWorkspace = true): void => {
     if (saveWorkspace) rememberWorkspace(info.directory);
@@ -1171,7 +1043,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         pendingPermissions: transcript.filter((item) => item.kind === "permission" && item.pending).length
       });
       const delivery: PromptDelivery | undefined = activity.isWorking
-        ? messageQueueRef.current.followUpBehavior
+        ? readFollowUpBehavior()
         : undefined;
       if (delivery === "queue") toast(`Queued: ${promptText}`);
       const attachments: UserAttachment[] = files.map((file) => ({
@@ -1202,11 +1074,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         const refreshed = await window.openshell.prompt(target, promptText, files, delivery);
         if (panelFor(target)) {
           applyCanonicalTranscript(refreshed);
-          setInboxBySession((current) => {
-            const list = current[panel.id];
-            if (!list?.some((entry) => entry.text === promptText && entry.delivery !== "queue")) return current;
-            return { ...current, [panel.id]: list.filter((entry) => entry.text !== promptText || entry.delivery === "queue") };
-          });
+          reconcileDeliveredPrompt(panel.id, promptText);
         }
       } catch (err) {
         const failure = normalizeFailure(err, "ORBIT_PROMPT_FAILED", "Prompt failed");
@@ -1215,9 +1083,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         appendUniqueTranscriptItem(panel.id, { kind: "status", id: failureID, text: failureText, tone: "error" });
         if (panelFor(target)) {
           if (delivery === "queue") {
-            const queueTarget = createMessageQueueTarget(panel.id, panel.workspace.id);
-            if (queueTarget) {
-              commitQueue(addToQueue(messageQueueRef.current, queueTarget, { content: promptText, attachments: files }));
+            if (enqueueFailedPrompt(panel, { content: promptText, attachments: files })) {
               toast(`${failureText}; queued locally: ${promptText}`, "error");
               return;
             }
@@ -1234,7 +1100,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     appendUniqueTranscriptItem,
     reconcilePromptTranscript,
     setSessionBusy,
-    commitQueue,
+    enqueueFailedPrompt,
+    readFollowUpBehavior,
+    reconcileDeliveredPrompt,
     hydratePromptRecords,
     appendPromptUser,
     reconcileStreaming,
@@ -1524,42 +1392,14 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
 
       if (type === "session.inbox.enqueued" && targetSessionID && typeof data.inboxID === "string") {
-        const item = data.item as Record<string, any> | undefined;
-        if (item?.type === "user") {
-          const payload = item.payload as Record<string, any> | undefined;
-          const files = Array.isArray(payload?.files) ? payload.files : [];
-          const delivery = data.delivery === "queue"
-            ? "queue"
-            : data.delivery === "steer"
-              ? "steer"
-              : typeof item.delivery === "string" && (item.delivery === "queue" || item.delivery === "steer")
-                ? item.delivery
-                : undefined;
-          setInboxBySession((current) => ({
-            ...current,
-            [targetSessionID]: [
-              ...(current[targetSessionID] ?? []).filter((entry) => entry.id !== data.inboxID),
-              {
-                id: data.inboxID,
-                text: String(payload?.text ?? ""),
-                attachmentCount: files.length,
-                createdAt: Date.now(),
-                ...(delivery ? { delivery } : {})
-              }
-            ]
-          }));
-        }
+        receiveEnqueuedInbox(targetSessionID, data);
       }
       if (
         (type === "session.inbox.cancelled" || type === "session.inbox.delivered") &&
         targetSessionID &&
         typeof data.inboxID === "string"
       ) {
-        setInboxBySession((current) => {
-          const list = current[targetSessionID];
-          if (!list?.some((entry) => entry.id === data.inboxID)) return current;
-          return { ...current, [targetSessionID]: list.filter((entry) => entry.id !== data.inboxID) };
-        });
+        removeTerminalInbox(targetSessionID, data);
       }
 
       switch (type) {
@@ -1882,6 +1722,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     resolvePermission,
     addPermissionFromEvent,
     promoteDeliveredInput,
+    receiveEnqueuedInbox,
+    removeTerminalInbox,
     panelFor,
     panelForSession,
     workspaceOfSession,

@@ -183,6 +183,7 @@
     "src/renderer/src/use-saved-workspaces.ts",
     "src/renderer/src/use-session-chat-records.ts",
     "src/renderer/src/use-session-execution.ts",
+    "src/renderer/src/use-session-inbox.ts",
     "src/renderer/src/use-session-inventory.ts",
     "src/renderer/src/use-session-selection.ts",
     "src/renderer/src/use-workspace-editor.ts",
@@ -201,7 +202,7 @@
   ],
   "modules": {
     "src/renderer/src/store.tsx": {
-      "loc": 1988,
+      "loc": 1838,
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     },
     "src/main/opencode.ts": {
@@ -215,7 +216,7 @@
   },
   "functions": {
     "src/renderer/src/store.tsx:StoreBody#1": {
-      "codeLines": 1780,
+      "codeLines": 1644,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -227,7 +228,7 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage#1": {
-      "codeLines": 398,
+      "codeLines": 370,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -245,8 +246,8 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage/processMessage#1": {
-      "codeLines": 344,
-      "cyclomatic": 176,
+      "codeLines": 316,
+      "cyclomatic": 169,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -728,6 +729,13 @@
       "nesting": 5,
       "origin": "aa8acb4 src/renderer/src/store.tsx:StoreBody#1 Explorer intent and disk mutation workflows",
       "reason": "Owns existing create/rename intents and twelve unchanged disk workflows through named file/editor capabilities. Inclusive228-line composition has56 own lines and12 separately constrained callbacks; no new effects, cleanup or generation authority. Fixed reviewed composition ceiling cannot grow."
+    },
+    "src/renderer/src/use-session-inbox.ts:useSessionInbox#1": {
+      "codeLines": 174,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "origin": "76bd9d7 src/renderer/src/store.tsx:StoreBody#1 local queue and server inbox records/commands",
+      "reason": "Owns local queue authority, immediate persistence and server inbox render mirrors with named commands. Inclusive174-line composition has46 own token-bearing lines with nested bodies masked preserving newlines, and15 direct independently constrained callbacks including the storage initializer. No new effects, cleanup or prompt lifecycle. Fixed reviewed composition ceiling cannot grow."
     }
   },
   "edgeExceptions": [
@@ -904,6 +912,13 @@
     {
       "owner": "Explorer disk mutation workflows",
       "targetPrefix": "src/renderer/src/use-explorer-mutations.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
+      ]
+    },
+    {
+      "owner": "session inbox and local queue authority",
+      "targetPrefix": "src/renderer/src/use-session-inbox.ts",
       "allowedFrom": [
         "src/renderer/src/store.tsx"
       ]
@@ -1112,6 +1127,17 @@
         "src/shared/types.ts",
         "src/renderer/src/store-contract.ts",
         "src/renderer/src/explorer-selection.ts"
+      ],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-session-inbox.ts",
+      "allowedLocal": [
+        "src/shared/types.ts",
+        "src/shared/errors.ts",
+        "src/renderer/src/message-queue.ts"
       ],
       "allowedExternal": [
         "react"
