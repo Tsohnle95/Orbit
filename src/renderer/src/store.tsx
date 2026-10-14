@@ -252,7 +252,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const requestSeqRef = useRef(0);
   const activationSeqRef = useRef(0);
   const userActivatedRef = useRef(false);
-  const focusSeqRef = useRef(0);
   const startupRestoreStartedRef = useRef(false);
 
   const {
@@ -414,7 +413,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     const panel = panelsRef.current.find((candidate) => candidate.id === sessionID);
     if (!panel) return;
     userActivatedRef.current = true;
-    focusSeqRef.current += 1;
     sessionRef.current = panel;
     setActiveSessionID(sessionID);
     closeCtxMenu();
@@ -566,26 +564,33 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     ];
     setPanels(panelsRef.current);
     userActivatedRef.current = true;
-    focusSeqRef.current += 1;
     sessionRef.current = info;
     setActiveSessionID(info.id);
     addActiveSession(info);
     return true;
   }, [addActiveSession, ejectPanelFromView, rememberWorkspace]);
 
+  const launchSessionContent = useCallback((info: SessionInfo): void => {
+    void hydrateTranscript(info.id);
+    void refreshInbox(info.id);
+    void refreshForms(info.id);
+    void loadRecovery(info.workspace);
+  }, [hydrateTranscript, refreshInbox, refreshForms, loadRecovery]);
+
+  const launchSessionCatalog = useCallback((info: SessionInfo): void => {
+    void loadModels(info.workspace);
+    void loadAgents(info.workspace);
+    void loadSessions();
+  }, [loadModels, loadAgents, loadSessions]);
+
   const swapPanelTo = useCallback((workspace: WorkspaceIdentity, info: SessionInfo): void => {
     if (!replacePanel(workspace, info)) {
       void window.openshell.closeSession(info.workspace).catch(() => {});
       return;
     }
-    void hydrateTranscript(info.id);
-    void refreshInbox(info.id);
-    void refreshForms(info.id);
-    void loadRecovery(info.workspace);
-    void loadModels(info.workspace);
-    void loadAgents(info.workspace);
-    void loadSessions();
-  }, [replacePanel, loadRecovery, loadModels, loadAgents, loadSessions, hydrateTranscript]);
+    launchSessionContent(info);
+    launchSessionCatalog(info);
+  }, [replacePanel, launchSessionContent, launchSessionCatalog]);
 
   const openSession = useCallback(
     async (dir: string): Promise<SessionInfo | null> => {
@@ -600,24 +605,18 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         if (dir !== info.directory) replaceSavedWorkspace(dir, info.directory);
         userActivatedRef.current = true;
         replacePanels(info);
-        focusSeqRef.current += 1;
         sessionRef.current = info;
         setActiveSessionID(info.id);
-        void hydrateTranscript(info.id);
-    void refreshInbox(info.id);
-    void refreshForms(info.id);
-        void loadRecovery(info.workspace);
+        launchSessionContent(info);
         toast(`Opened ${info.directory}`);
-        void loadModels(info.workspace);
-        void loadAgents(info.workspace);
-        void loadSessions();
+        launchSessionCatalog(info);
         return info;
       } catch (err) {
         toast(err instanceof Error ? err.message : String(err), "error");
         return null;
       }
     },
-    [replacePanels, replaceSavedWorkspace, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]
+    [replacePanels, replaceSavedWorkspace, toast, launchSessionContent, launchSessionCatalog]
   );
 
   const addModelPanel = useCallback(
@@ -633,21 +632,15 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         hideNestedWorkspace(dir);
         attachPanel(info);
         userActivatedRef.current = true;
-        focusSeqRef.current += 1;
         sessionRef.current = info;
         setActiveSessionID(info.id);
-        void hydrateTranscript(info.id);
-    void refreshInbox(info.id);
-    void refreshForms(info.id);
-        void loadRecovery(info.workspace);
-        void loadModels(info.workspace);
-        void loadAgents(info.workspace);
-        void loadSessions();
+        launchSessionContent(info);
+        launchSessionCatalog(info);
       } catch (err) {
         toast(err instanceof Error ? err.message : String(err), "error");
       }
     },
-    [hideNestedWorkspace, attachPanel, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]
+    [hideNestedWorkspace, attachPanel, toast, launchSessionContent, launchSessionCatalog]
   );
 
   const openWorkspacePanel = useCallback(async (dir: string): Promise<void> => {
@@ -673,22 +666,16 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
       attachPanel(info);
       userActivatedRef.current = true;
-      focusSeqRef.current += 1;
       sessionRef.current = info;
       setActiveSessionID(info.id);
-      void hydrateTranscript(info.id);
-    void refreshInbox(info.id);
-    void refreshForms(info.id);
-      void loadRecovery(info.workspace);
-      void loadModels(info.workspace);
-      void loadAgents(info.workspace);
-      void loadSessions();
+      launchSessionContent(info);
+      launchSessionCatalog(info);
       return info;
     } catch (err) {
       toast(err instanceof Error ? err.message : String(err), "error");
       return null;
     }
-  }, [attachPanel, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]);
+  }, [attachPanel, toast, launchSessionContent, launchSessionCatalog]);
 
   const swapPanelWorkspace = useCallback(
     async (workspace: WorkspaceIdentity, pick: (request: number) => Promise<SessionInfo | null>) => {
@@ -736,22 +723,16 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
         userActivatedRef.current = true;
         replacePanels(info);
-        focusSeqRef.current += 1;
         sessionRef.current = info;
         setActiveSessionID(info.id);
-        void hydrateTranscript(info.id);
-    void refreshInbox(info.id);
-    void refreshForms(info.id);
-        void loadRecovery(info.workspace);
+        launchSessionContent(info);
         toast(`Opened ${info.directory}`);
-        void loadModels(info.workspace);
-        void loadAgents(info.workspace);
-        void loadSessions();
+        launchSessionCatalog(info);
       }
     } catch (err) {
       toast(err instanceof Error ? err.message : String(err), "error");
     }
-  }, [replacePanels, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]);
+  }, [replacePanels, toast, launchSessionContent, launchSessionCatalog]);
 
   const reopenSession = useCallback(
     async (sessionID: string, silent = false, directoryHint?: string): Promise<SessionInfo | null> => {
@@ -789,7 +770,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         } else {
           replacePanels(reopened.session);
           userActivatedRef.current = true;
-          focusSeqRef.current += 1;
           sessionRef.current = reopened.session;
           setActiveSessionID(reopened.session.id);
         }
@@ -1002,7 +982,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
       userActivatedRef.current = true;
       replacePanels(result.session);
-      focusSeqRef.current += 1;
       sessionRef.current = result.session;
       setActiveSessionID(result.session.id);
       setSingleFileFor(result.session.workspace.id, result.path);

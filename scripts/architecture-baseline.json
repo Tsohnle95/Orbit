@@ -204,7 +204,7 @@
   ],
   "modules": {
     "src/renderer/src/store.tsx": {
-      "loc": 1616,
+      "loc": 1593,
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     },
     "src/main/opencode.ts": {
@@ -218,7 +218,7 @@
   },
   "functions": {
     "src/renderer/src/store.tsx:StoreBody#1": {
-      "codeLines": 1458,
+      "codeLines": 1435,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
