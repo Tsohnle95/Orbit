@@ -1,4 +1,4 @@
-import { existsSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +26,7 @@ if (existsSync(dst) && statSync(plist).mtimeMs > statSync(path.join(src, "Conten
 }
 
 rmSync(dst, { recursive: true, force: true });
+mkdirSync(path.dirname(dst), { recursive: true });
 console.log("copying Electron.app -> dev/Orbit.app …");
 execFileSync("cp", ["-R", src, dst]);
 

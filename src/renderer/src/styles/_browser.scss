@@ -1,0 +1,170 @@
+// Browser tabs: the strip controls that open them, and the pane that hosts the
+// <webview> guest with its own navigation row.
+
+.browser-stack {
+  display: none;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.browser-stack.active { display: flex; }
+
+// The editor keeps its mount (Monaco re-lays itself out) while a browser tab is
+// showing.
+.editor-stack {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-stack.concealed { display: none; }
+
+.browser-pane {
+  display: none;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.browser-pane.active { display: flex; }
+
+.browser-bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.browser-nav {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.browser-nav:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
+
+.browser-nav:disabled { opacity: 0.35; cursor: default; }
+
+.browser-nav .os-icon { width: 15px; height: 15px; }
+
+.browser-address {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  margin: 0 4px;
+}
+
+.browser-address input {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+}
+
+.browser-address input::placeholder { color: var(--text-faint); }
+
+.browser-address input:focus { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+.browser-frame-host {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  background: var(--editor-surface);
+}
+
+.browser-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--editor-surface);
+}
+
+// A new tab has no guest at all; the placeholder, the loading veil and the error
+// state all cover the frame area while the (lazily created) guest loads.
+.browser-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  background: var(--editor-surface);
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.browser-placeholder p { max-width: 34ch; }
+
+.browser-placeholder .os-icon { width: 26px; height: 26px; color: var(--text-faint); }
+
+// Strip controls: a browser chip matches a file tab, the add control matches the
+// strip's other icon buttons.
+.tab.browser { flex: 0 0 auto; min-width: 120px; max-width: 220px; }
+
+.tab-add {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.tab-add:hover { background: var(--bg-hover); color: var(--text); }
+
+.tab-add .os-icon { width: 15px; height: 15px; }
+
+.tab-browser-loading {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-top-color: var(--accent);
+  animation: spin 700ms linear infinite;
+}
+
+.browser-placeholder.loading { color: var(--text-faint); }
+
+.browser-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-top-color: var(--accent);
+  animation: spin 700ms linear infinite;
+}

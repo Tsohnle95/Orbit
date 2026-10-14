@@ -1,8 +1,9 @@
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Tab } from "@shared/types";
+import type { SessionInfo, Tab } from "@shared/types";
 import { ThemeProvider } from "../theme";
+import { BrowserTabsProvider, useBrowserTabActions } from "../browser-tabs-context";
 import { EditorPane } from "./EditorPane";
 
 const firstTab: Tab = {
@@ -51,8 +52,14 @@ function dispatchTabDrag(element: Element, type: "dragstart" | "dragover" | "dro
 
 const store = {
   tabs: [firstTab, secondTab],
-  activePath: firstTab.path,
-  session: { directory: "/workspace", workspace: { id: "workspace-1", generation: 1 } },
+  activePath: firstTab.path as string | null,
+  browserTabs: [],
+  activeBrowserTabID: null,
+  openBrowserTab: vi.fn(() => "browser-1"),
+  closeBrowserTab: vi.fn(),
+  activateBrowserTab: vi.fn(),
+  updateBrowserTab: vi.fn(),
+  session: { directory: "/workspace", workspace: { id: "workspace-1", generation: 1 } } as Pick<SessionInfo, "directory" | "workspace"> | null,
   openPaths: vi.fn(),
   setActive: vi.fn(),
   closeTab: vi.fn(),
@@ -78,11 +85,12 @@ vi.mock("@monaco-editor/react", () => ({
       getValue: () => defaultValue,
       getOptions: () => ({ tabSize: 4, insertSpaces: true })
     };
-    onMount?.({
+    useEffect(() => { onMount?.({
       getPosition: () => ({ lineNumber: 8, column: 13 }),
       getModel: () => model,
-      onDidChangeCursorPosition: () => ({ dispose: () => {} })
-    });
+      onDidChangeCursorPosition: () => ({ dispose: () => {} }),
+      onDidScrollChange: () => ({ dispose: () => {} })
+    }); }, [path]);
     return <div data-testid="editor" data-path={path} data-language={language} />;
   },
   DiffEditor: () => <div data-testid="diff-editor" />
@@ -91,12 +99,17 @@ vi.mock("@monaco-editor/react", () => ({
 describe("EditorPane split groups", () => {
   let container: HTMLDivElement;
   let root: Root;
+  let freshBrowserSlot: HTMLDivElement | null;
 
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
+    freshBrowserSlot = null;
+    store.session = { directory: "/workspace", workspace: { id: "workspace-1", generation: 1 } };
     store.tabs = [firstTab, secondTab, thirdTab];
     store.activePath = firstTab.path;
     store.setActive.mockClear();
+    store.setActive.mockImplementation((path: string) => { store.activePath = path; });
     store.saveTab.mockClear();
     capturedEditorOptions.mockClear();
     container = document.createElement("div");
@@ -107,11 +120,39 @@ describe("EditorPane split groups", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    freshBrowserSlot?.remove();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
+  it("hosts closable browser chips before any workspace is opened", () => {
+    store.session = null;
+    store.tabs = [];
+    store.activePath = null;
+    let browserActions!: ReturnType<typeof useBrowserTabActions>;
+    function BrowserActionsProbe(): null {
+      browserActions = useBrowserTabActions();
+      return null;
+    }
+    const slot = document.createElement("div");
+    freshBrowserSlot = slot;
+    document.body.append(slot);
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider>
+      <BrowserActionsProbe /><EditorPane tabsSlot={slot} />
+    </BrowserTabsProvider></ThemeProvider>));
+    act(() => { browserActions.openBrowserTab(); });
+    expect(slot.querySelector('[role="tab"].browser')).not.toBeNull();
+    expect(slot.querySelector<HTMLButtonElement>('[aria-label="Close New tab"]')).not.toBeNull();
+    expect(container.querySelector(".editor-stack")?.classList).toContain("concealed");
+    expect(container.querySelector(".editor-empty")?.textContent).toContain("No workspace open.");
+    act(() => slot.querySelector<HTMLButtonElement>('[aria-label="Close New tab"]')!.click());
+    expect(slot.querySelector('[role="tab"].browser')).toBeNull();
+    expect(container.querySelector(".editor-stack")?.classList).not.toContain("concealed");
+    expect(container.querySelector(".editor-empty")?.textContent).toContain("No workspace open.");
+  });
+
   it("opens two side-by-side editor groups and closes the secondary group", () => {
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
 
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
 
@@ -127,6 +168,8 @@ describe("EditorPane split groups", () => {
     expect([...groups[1].querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.title)).toEqual([
       secondTab.path
     ]);
+    expect(groups[0].querySelector(".editor-breadcrumb-actions .editor-group-action")).not.toBeNull();
+    expect(groups[1].querySelector('.editor-breadcrumb-actions [aria-label="Close secondary editor group"]')).not.toBeNull();
 
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Close secondary editor group"]')!.click());
     expect(container.querySelectorAll(".editor-group")).toHaveLength(1);
@@ -135,7 +178,7 @@ describe("EditorPane split groups", () => {
   });
 
   it("resizes split editor columns and rows by dragging their dividers", () => {
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
     const grid = container.querySelector<HTMLElement>(".editor-groups")!;
     vi.spyOn(grid, "getBoundingClientRect").mockReturnValue({ left: 0, top: 0, width: 800, height: 600 } as DOMRect);
@@ -153,8 +196,38 @@ describe("EditorPane split groups", () => {
     expect(grid.style.gridTemplateRows).toBe("70% minmax(0, 1fr)");
   });
 
+  it("resizes from keyboard with clamped accessible values", () => {
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane /></BrowserTabsProvider></ThemeProvider>));
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
+    const separator = container.querySelector<HTMLElement>('[aria-label="Resize editor columns"]')!;
+    expect(separator.tabIndex).toBe(0);
+    act(() => separator.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })));
+    expect(separator.getAttribute("aria-valuenow")).toBe("55");
+    for (let step = 0; step < 30; step++) {
+      act(() => separator.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true })));
+    }
+    expect(separator.getAttribute("aria-valuenow")).toBe(separator.getAttribute("aria-valuemin"));
+    expect(Number(separator.getAttribute("aria-valuenow"))).toBeGreaterThan(0);
+  });
+
+  it("releases resize listeners on restart and unmount", () => {
+    const remove = vi.spyOn(window, "removeEventListener");
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane /></BrowserTabsProvider></ThemeProvider>));
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
+    const separator = container.querySelector<HTMLElement>('[aria-label="Resize editor columns"]')!;
+    act(() => separator.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })));
+    remove.mockClear();
+    act(() => separator.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })));
+    expect(remove).toHaveBeenCalledWith("mousemove", expect.any(Function));
+    expect(remove).toHaveBeenCalledWith("mouseup", expect.any(Function));
+    remove.mockClear();
+    act(() => root.render(<></>));
+    expect(remove).toHaveBeenCalledWith("mousemove", expect.any(Function));
+    expect(remove).toHaveBeenCalledWith("mouseup", expect.any(Function));
+  });
+
   it("can create four editor groups and disables splitting at the limit", () => {
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
 
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor group 2 right"]')!.click());
@@ -164,21 +237,39 @@ describe("EditorPane split groups", () => {
     expect(container.querySelector<HTMLButtonElement>('[aria-label="Split editor group 4 right"]')?.disabled).toBe(true);
   });
 
+  it("keeps a split panel's file tabs in the hosted strip instead of inside the panel", () => {
+    const slot = document.createElement("div");
+    container.append(slot);
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane tabsSlot={slot} /></BrowserTabsProvider></ThemeProvider>));
+    expect([...slot.querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.title))
+      .toEqual([firstTab.path, secondTab.path, thirdTab.path]);
+    expect(container.querySelector(".editor-group .tabbar")).toBeNull();
+
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
+    expect([...slot.querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => tab.title))
+      .toEqual([firstTab.path, thirdTab.path, secondTab.path]);
+    expect(slot.querySelector(".tab-group-divider")).not.toBeNull();
+    expect(container.querySelector(".editor-group .tabbar")).toBeNull();
+
+    act(() => slot.querySelector<HTMLElement>(`[role="tab"][title="${secondTab.path}"]`)!.click());
+    expect(store.setActive).toHaveBeenLastCalledWith(secondTab.path);
+  });
+
   it("restores each workspace's editor group layout after switching away and back", () => {
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
     expect(container.querySelectorAll(".editor-group")).toHaveLength(2);
 
     store.session = { directory: "/other", workspace: { id: "workspace-2", generation: 1 } };
     store.tabs = [fourthTab];
     store.activePath = fourthTab.path;
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
     expect(container.querySelectorAll(".editor-group")).toHaveLength(1);
 
     store.session = { directory: "/workspace", workspace: { id: "workspace-1", generation: 1 } };
     store.tabs = [firstTab, secondTab, thirdTab];
     store.activePath = secondTab.path;
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
 
     expect(container.querySelectorAll(".editor-group")).toHaveLength(2);
     expect(container.querySelector(".editor-group-secondary [data-testid=editor]")?.getAttribute("data-path"))
@@ -188,7 +279,7 @@ describe("EditorPane split groups", () => {
   it("offers an explicit save action for a dirty file", () => {
     store.tabs = [{ ...firstTab, content: "unfinished", dirty: true, revision: 1 }];
     store.activePath = firstTab.path;
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
 
     const save = container.querySelector<HTMLButtonElement>(`[aria-label="Save ${firstTab.name}"]`)!;
     expect(save).toBeTruthy();
@@ -196,31 +287,23 @@ describe("EditorPane split groups", () => {
     expect(store.saveTab).toHaveBeenCalledWith(firstTab.path);
   });
 
-  it("reports cursor details from the focused Monaco editor", () => {
-    const onStatusChange = vi.fn();
-    act(() => root.render(<ThemeProvider><EditorPane onStatusChange={onStatusChange} /></ThemeProvider>));
-    expect(onStatusChange).toHaveBeenLastCalledWith({
-      path: firstTab.path,
-      lineNumber: 8,
-      column: 13,
-      tabSize: 4,
-      insertSpaces: true
+  it("reports cursor details from the focused Monaco editor", async () => {
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>(".status-menu-button")!.click();
     });
+    expect(container.querySelector('[data-testid="cursor-position"]')?.textContent).toBe("Ln 8, Col 13");
+    expect(container.querySelector('[data-testid="indentation-status"]')?.textContent).toBe("Spaces: 4");
 
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
-    expect(onStatusChange).toHaveBeenLastCalledWith({
-      path: secondTab.path,
-      lineNumber: 8,
-      column: 13,
-      tabSize: 4,
-      insertSpaces: true
-    });
+    act(() => container.querySelector<HTMLButtonElement>('.editor-group-focused .status-menu-button')!.click());
+    expect(container.querySelector('.editor-group-focused [data-testid="cursor-position"]')?.textContent).toBe("Ln 8, Col 13");
   });
 
   it("turns on automatic trigger suggestions for JavaScript editors", () => {
     store.tabs = [jsTab];
     store.activePath = jsTab.path;
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
 
     expect(container.querySelector("[data-testid='editor']")?.getAttribute("data-language")).toBe("javascript");
     const options = capturedEditorOptions.mock.calls.at(-1)?.[0] as {
@@ -243,7 +326,7 @@ describe("EditorPane split groups", () => {
   });
 
   it("routes new files and save shortcuts to the group focused from its editor surface", () => {
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
 
     act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "s", metaKey: true, bubbles: true })));
@@ -267,7 +350,7 @@ describe("EditorPane split groups", () => {
 
     store.tabs = [...store.tabs, fourthTab];
     store.activePath = fourthTab.path;
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
 
     paths = [...container.querySelectorAll<HTMLElement>("[data-testid=editor]")].map((editor) => editor.dataset.path);
     expect(paths).toEqual([firstTab.path, fourthTab.path]);
@@ -285,14 +368,15 @@ describe("EditorPane split groups", () => {
   it("routes a newly opened file into an initially empty secondary group", () => {
     store.tabs = [firstTab];
     store.activePath = firstTab.path;
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
 
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
     expect(container.querySelector(".editor-group-secondary .editor-group-empty")).toBeTruthy();
+    expect(container.querySelector('.editor-group-secondary [aria-label="Split editor group 2 right"]')).not.toBeNull();
 
     store.tabs = [firstTab, secondTab];
     store.activePath = secondTab.path;
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
 
     const groups = [...container.querySelectorAll<HTMLElement>(".editor-group")];
     expect(groups[0].querySelector("[data-testid=editor]")?.getAttribute("data-path")).toBe(firstTab.path);
@@ -302,8 +386,11 @@ describe("EditorPane split groups", () => {
   });
 
   it("moves a tab between split editor groups when dragged across them", () => {
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
     act(() => container.querySelector<HTMLButtonElement>('[aria-label="Split editor right"]')!.click());
+
+    // The mock store has no subscription; publish the focus changed by the split.
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane /></BrowserTabsProvider></ThemeProvider>));
 
     const transfer = createTabTransfer();
     const primaryTab = container.querySelector<HTMLElement>(`.editor-group-primary [role="tab"][title="${firstTab.path}"]`)!;

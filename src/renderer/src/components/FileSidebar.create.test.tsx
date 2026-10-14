@@ -53,9 +53,9 @@ describe("FileSidebar file creation", () => {
     vi.unstubAllGlobals();
   });
 
-  it("offers file and folder creation on the workspace root row", () => {
+  it("offers file and folder creation on the workspace header", () => {
     act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
-    const actions = container.querySelector<HTMLElement>(".tree-row.workspace-root .tree-row-actions")!;
+    const actions = container.querySelector<HTMLElement>(".section-trigger.explorer-trigger .tree-row-actions")!;
     expect(actions).toBeTruthy();
     const byTitle = (title: string): HTMLButtonElement =>
       [...actions.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.title === title)!;

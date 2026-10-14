@@ -72,7 +72,7 @@ re-open information already established in the current task context.
 | File watching/diff/baseline issue | `docs/architecture.md` diff section | `src/main/opencode.ts`, renderer store/editor state | Baseline/watch/diff tests or validation named by the architecture docs |
 | Renderer state/component behavior | relevant `docs/renderer.md` section | owning store/action/component + nearby tests/SCSS | Owning store/component tests plus direct UI validation when acceptance is visual or interactive |
 | Event contract mismatch | `docs/events.md` | stream pipeline, event normalization/reducer, fixtures | Event/normalization/reducer tests and relevant fixtures |
-| Workspace Sass watching/CSS output | `docs/sass.md` | `src/main/sass-*`, `use-sass-watch.ts`, `StatusBar.tsx`, `TerminalTray.tsx` | Sass filesystem, worker and mirror UI checks named by the Sass guide |
+| Workspace Sass watching/CSS output | `docs/sass.md` | `src/main/sass-*`, `use-sass-watch.ts`, `EditorStatusMenu.tsx`, `TerminalTray.tsx` | Sass filesystem, worker and mirror UI checks named by the Sass guide |
 | Terminal/TUI issue | terminal sections in `docs/main.md` and `docs/renderer.md` | `terminal.ts`, `TerminalTray.tsx`, `AgentTui.tsx` | Terminal/PTY tests and relevant runtime smoke validation |
 | Build/start/package/debug issue | `docs/operations.md` | scripts/config and the failing subsystem | Relevant targeted check, then `npm run check`; use platform/runtime smoke where required |
 | Cross-process flow is unclear | `docs/walkthrough.md` | follow the named connection points, then open canonical module docs | Tests/validation named along the traced producer → boundary → consumer path |

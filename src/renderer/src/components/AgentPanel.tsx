@@ -4,16 +4,17 @@ import { OpenCodeTimeline, PermissionPrompt } from "./OpenCodeTimeline";
 import { FormPrompt } from "./FormPrompt";
 import { OpenCodeTodoDock } from "./OpenCodeTodoDock";
 import type { SessionInfo, TranscriptItem } from "@shared/types";
-import { IconArrowLeft, IconClose, IconFolderOpen, IconMoreVertical } from "./icons";
+import { IconArrowLeft, IconMoreVertical } from "./icons";
 import { AgentTui } from "./AgentTui";
-import { OrbitMark } from "./OrbitMark";
 import { MAX_AGENT_PANELS } from "../agent-panels";
 import { Composer } from "./Composer";
 import { TurnTimer, useAgentUsage } from "./AgentUsage";
+import { NeptuneSprite } from "./NeptuneSprite";
 import { useAgentScroll } from "./agent-scroll";
 import { useMenuDismiss } from "./use-menu-dismiss";
 
 type PanelMode = "gui" | "tui";
+
 
 function panelModeStorageKey(sessionID: string): string {
   return `orbit.agent-panel-mode.${sessionID}`;
@@ -73,11 +74,9 @@ export function AgentPanel({
     providerUsage,
     providerUsageLoading,
     refreshProviderUsage,
-    selectPanelDirectory,
     commitStagedRevert,
     clearStagedRevert,
-    runtimes,
-    selectFolder
+    runtimes
   } = useStore();
   const activeSession = session === undefined ? storeSession : session;
   const view = usePanel(activeSession?.workspace);
@@ -213,69 +212,8 @@ export function AgentPanel({
             <IconArrowLeft />
           </button>
         )}
-        {!activeSession?.parentID && <span className="agent-orb" aria-hidden="true"><OrbitMark size={16} /></span>}
-        <div className="agent-identity">
-          <div className="agent-identity-line">
-            {onClose ? (
-              <button
-                className={`agent-status-dot agent-close ${busy || assistantStatus?.isWorking ? "working" : "idle"}`}
-                title="Close model panel"
-                aria-label="Close model panel"
-                onClick={() => onClose()}
-              >
-                <IconClose />
-              </button>
-            ) : (
-              <span
-                className={`agent-status-dot ${busy || assistantStatus?.isWorking ? "working" : "idle"}`}
-                title={assistantStatus?.statusText ?? (busy ? "Working" : "Idle")}
-                aria-label={assistantStatus?.statusText ?? (busy ? "Working" : "Idle")}
-              />
-            )}
-            {activeSession?.parentID ? (
-              <span className="agent-title">
-                {activeSession.title ?? sessions.find((item) => item.id === activeSession.id)?.title ?? activeSession.agent ?? activeSession.directory?.split("/").filter(Boolean).pop() ?? (parent ? `${parent.title} subagent` : "Subagent session")}
-                {activeSession.agent && activeSession.agent !== activeSession.title && (
-                  <span className="agent-subagent">@{activeSession.agent}</span>
-                )}
-              </span>
-            ) : (
-              <span className="agent-title">Agent</span>
-            )}
-          </div>
-          {!activeSession?.parentID && (activeSession?.directory ? (
-              <button
-                className="agent-workspace"
-                title={`Change workspace — currently ${activeSession.directory}`}
-                aria-label="Change workspace"
-                onClick={() => void selectPanelDirectory(activeSession.workspace)}
-              >
-                <IconFolderOpen />
-                <span>{activeSession.directory.split("/").filter(Boolean).pop()}</span>
-              </button>
-            ) : (
-              <button
-                className="agent-workspace"
-                title="Open a workspace"
-                aria-label="Open a workspace"
-                onClick={() => void selectFolder()}
-              >
-                <IconFolderOpen />
-                <span>Add workspace</span>
-              </button>
-            ))}
-          {(busy || assistantStatus?.isWorking) && assistantStatus?.statusText && (
-            <span className="agent-status-text">{assistantStatus.statusText}</span>
-          )}
-          {activeSession?.parentID && !(busy || assistantStatus?.isWorking) && (
-            <span className="agent-status-text">
-              Delegated agent{activeSession.agent ? ` · @${activeSession.agent}` : ""} · idle
-            </span>
-          )}
-        </div>
         <TurnTimer startedAt={turnStartedAt} />
         <div className="agent-header-actions">
-          {usageButton}
           {modeMenuOpen && (
             <div className="agent-mode-menu" role="menu" aria-label="Agent panel options">
               <button
@@ -323,6 +261,21 @@ export function AgentPanel({
                   ))}
                 </>
               )}
+              {onClose && (
+                <>
+                  <div className="agent-mode-menu-divider" />
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      setModeMenuOpen(false);
+                      onClose();
+                    }}
+                  >
+                    <span>Close panel</span>
+                    <small>{agentModeActive ? "Remove this model panel" : "Hide the agent panel"}</small>
+                  </button>
+                </>
+              )}
             </div>
           )}
           <button
@@ -336,7 +289,6 @@ export function AgentPanel({
           </button>
         </div>
       </div>
-      {usagePopup}
 
       {panelMode === "tui" && activeSession ? (
         <AgentTui workspace={activeSession.workspace} onExit={handleTuiExit} onError={handleTuiError} />
@@ -344,8 +296,9 @@ export function AgentPanel({
         <>
           <div className="agent-scroll" ref={scrollRef} onScroll={onScroll}>
             {tuiNotice && <div className="agent-tui-notice">{tuiNotice}</div>}
-            {transcript.length === 0 && (
+             {!transcript.some((item) => item.kind === "user" || item.kind === "assistant") && (
               <div className="agent-empty">
+                <NeptuneSprite className="agent-empty-art" />
                 <p>Tell the agent what to work on.</p>
                 <p className="agent-empty-sub">
                   It will stream its progress here, and every file it touches will show up under{" "}
@@ -374,7 +327,7 @@ export function AgentPanel({
               </div>
             )}
             <OpenCodeTodoDock todos={todos} />
-            <Composer session={activeSession} />
+            <Composer session={activeSession} controls={usageButton} overlay={usagePopup} />
           </div>
         </>
       )}

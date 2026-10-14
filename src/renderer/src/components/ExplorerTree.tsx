@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { TreeEntry } from "@shared/types";
 import { useCtxMenu, useStore } from "../store";
-import { EllipsisIcon, FileIcon, FilePlusIcon, FolderPlusIcon, PencilIcon, TrashIcon } from "./FileIcons";
+import { EllipsisIcon, FilePlusIcon, FolderPlusIcon, PencilIcon, TrashIcon, TreeFileGlyph } from "./FileIcons";
 
 export interface DragHandlers {
   dragPaths: string[] | null;
@@ -98,6 +98,7 @@ export function DirNode({
     expanded,
     tree,
     toggleDir,
+    prefetchDir,
     agentFiles,
     pendingRename,
     pendingCreate,
@@ -128,13 +129,16 @@ export function DirNode({
         data-entry-path={entry.path}
         draggable
         onClick={(e) => selection.onClick(e, entry.path, () => void toggleDir(entry.path))}
+        onMouseEnter={() => prefetchDir(entry.path)}
         onContextMenu={(e) => selection.onContextMenu(e, entry)}
         onDragStart={(e) => drag.onDragStart(e, entry.path)}
         onDragEnd={drag.onDragEnd}
         onDragOver={(e) => drag.onDirDragOver(e, entry.path)}
         onDrop={(e) => drag.onDirDrop(e, entry.path)}
       >
-        <FileIcon name={entry.path.split("/").pop() ?? ""} isDir open={isOpen} />
+        <span className={`tree-chevron ${isOpen ? "open" : ""}`} aria-hidden="true">
+          <i className="codicon codicon-chevron-right" />
+        </span>
         <span className="tree-name">{entry.path.split("/").pop()}</span>
         {hasChanges && <span className="tree-badge" />}
         <RowActions entry={entry} allowFile allowDir />
@@ -202,7 +206,7 @@ export function FileNode({
       onDragEnd={drag.onDragEnd}
       title={entry.path}
     >
-      <FileIcon name={name} isDir={false} />
+      <TreeFileGlyph name={name} />
       <span className="tree-name">{name}</span>
       {unsaved && <span className="tree-unsaved-dot" title="Unsaved changes" aria-label="Unsaved changes" />}
       {changed && <span className="tree-badge changed" />}
@@ -232,7 +236,7 @@ export function TreeNameInput({
 
   return (
     <div className="tree-row tree-input-row">
-      <FileIcon name={value || initial} isDir={isDir} />
+      {isDir ? <span className="tree-chevron empty" aria-hidden="true" /> : <TreeFileGlyph name={value || initial} />}
       <input
         ref={inputRef}
         className="tree-input"

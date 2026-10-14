@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { TREE_BUILTIN_GLYPHS, treeGlyphName, treeIconColor } from "./file-glyphs";
 
 const STROKE = { stroke: "currentColor", fill: "none", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 const FINE = { stroke: "currentColor", fill: "none", strokeWidth: 1.3, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -90,6 +91,23 @@ export function FolderIcon({ open }: { open?: boolean }): ReactNode {
         <path d="M2.2 4.4c0-.9.7-1.6 1.6-1.6h2.4c.47 0 .92.21 1.22.58l.88 1.02h4.28c.9 0 1.6.72 1.6 1.6v5.6c0 .88-.7 1.6-1.6 1.6H3.8c-.9 0-1.6-.72-1.6-1.6V4.4z" {...STROKE} />
       )}
     </svg>
+  );
+}
+
+export function TreeFileGlyph({ name }: { name: string }): ReactNode {
+  const glyphName = treeGlyphName(name);
+  const glyph = TREE_BUILTIN_GLYPHS[glyphName] ?? TREE_BUILTIN_GLYPHS.default;
+  return (
+    <svg
+      className="si-icon tree-file-icon"
+      viewBox="0 0 16 16"
+      width="16"
+      height="16"
+      aria-hidden="true"
+      focusable="false"
+      style={{ color: treeIconColor(glyphName) }}
+      dangerouslySetInnerHTML={{ __html: glyph }}
+    />
   );
 }
 

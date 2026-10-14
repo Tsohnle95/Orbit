@@ -38,8 +38,8 @@ Appearance/theme/settings/Monaco; App/rail/titlebar; file tree/session list/agen
 |---|---|---|---|---|
 | 0 | Branch delta inventory and independent plan review | complete | baseline1326-test canonical; three bounded discovery reviews | — |
 | 1 | Independent appearance/shell and syntax palettes | complete | 20 targeted/type; isolated canonical; native settings palette/shell independence; independent approval | c0b6af7 |
-| 2 | Main browser isolation and navigation foundation | complete | 13 targeted; isolated1338-test canonical; full macOS platform incl realElectron guest smoke; independentreview | checkpoint pending |
-| 3 | Chrome/session/tree/agent/editor/browser presentation and owner integration | pending | owner/guest/layout tests, platform/native UI, canonical | — |
+| 2 | Main browser isolation and navigation foundation | complete | 13 targeted; isolated1338-test canonical; full macOS platform incl realElectron guest smoke; independentreview | e7665c3 |
+| 3 | Chrome/session/tree/agent/editor/browser presentation and owner integration | complete | 1382-test canonical, native+platform, source/owner review | checkpoint pending |
 | 4 | Cumulative review, feature parity, docs/guardrails cleanup | pending | full canonical/platform + independent review | — |
 
 ## Validation plan
@@ -70,3 +70,5 @@ Node22.23.2. Keep source comparison frozen at ee8d298 and initial main 0cf9652. 
 - 2026-10-14 — Phase1 exact isolated snapshot uses physical bundled dependencies (symlinked Vite worker paths rejected outside snapshot root, no source failure). Supported canonical gate and native disposable UI passed; saved theme IDs retained. Current main browser/renderer feature work excluded from this snapshot and commit.
 
 - 2026-10-14 — Browser foundation native smoke passed outside shell sandbox (sandbox Electron SIGABRT). Devices use installed denial handler without physical prompt; actual guest identity checked against IPC predicate, no injected guest bridge. Popup OS opening mocked. Main normal profile unchanged. Exact createWindow+2 composition ceiling independently justified; no other prior budget changes in phase2.
+
+- 2026-10-14 — Final gate exposed existing validation-fixture defects: live-launcher payload test checked CWD build-failure marker rather than packaged appDir (a real ignored launcher flag appeared during integration), and App.layout omitted saved-workspaces IPC causing a four-second toast after jsdom teardown. Corrected the test target and completed that mock only; no launcher/timer production behavior change, no root marker deletion. Disposable QA empty-history setup temporarily omitted sibling fixture declarations; restored mock records and restarted. These are verification provenance, not app regressions.

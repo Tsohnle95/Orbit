@@ -7,7 +7,6 @@ let currentSession: SessionInfo;
 let panelTranscript: TranscriptItem[];
 let panelQueuedMessages: { id: string; content: string; createdAt: number }[];
 let resizeCallback: ResizeObserverCallback | undefined;
-const selectPanelDirectoryMock = vi.fn(async () => {});
 const reopenSessionMock = vi.fn(async () => {});
 
 vi.mock("@xterm/xterm", () => ({
@@ -46,8 +45,7 @@ vi.mock("../store", () => ({
     reopenSession: reopenSessionMock,
     providerUsage: [],
     providerUsageLoading: false,
-    refreshProviderUsage: vi.fn(),
-    selectPanelDirectory: selectPanelDirectoryMock
+    refreshProviderUsage: vi.fn()
   }),
   usePanel: () => ({
     session: currentSession,
@@ -101,7 +99,6 @@ describe("composer workspace continuations", () => {
       observe() {}
       disconnect() {}
     });
-    selectPanelDirectoryMock.mockClear();
     reopenSessionMock.mockClear();
     container = document.createElement("div");
     document.body.append(container);
@@ -130,31 +127,28 @@ describe("composer workspace continuations", () => {
     expect(idle?.title).toBe("Type a prompt first");
   });
 
-  it("changes the panel's workspace from the header folder control", async () => {
-    await act(async () => root.render(<AgentPanel />));
-    const folder = container.querySelector<HTMLButtonElement>('button[aria-label="Change workspace"]')!;
-    expect(folder).not.toBeNull();
-    await act(async () => folder.click());
-
-    expect(selectPanelDirectoryMock).toHaveBeenCalledWith(currentSession.workspace);
-  });
-
-  it("shows active status beside the workspace name", async () => {
-    currentSession = { ...session("working", 1), id: "working" };
+  it("draws the pixel sprite only while the panel has no conversation", async () => {
+    panelTranscript = [];
     await act(async () => root.render(<AgentPanel />));
 
-    expect(container.querySelector(".agent-status-dot.working")).not.toBeNull();
-    expect(container.querySelector(".agent-status-text")?.textContent).toBe("running command");
+    const sprite = container.querySelector(".agent-empty-art");
+    expect(sprite).not.toBeNull();
+    expect(sprite!.querySelectorAll("rect").length).toBeGreaterThan(100);
+
+    panelTranscript = [{ kind: "user", id: "user-1", text: "Inspect" }];
+    await act(async () => root.render(<AgentPanel />));
+    expect(container.querySelector(".agent-empty-art")).toBeNull();
   });
 
-  it("uses the status indicator itself as the panel close control", async () => {
+  it("closes the panel from its options menu", async () => {
     const close = vi.fn();
     await act(async () => root.render(<AgentPanel onClose={close} />));
 
-    const indicator = container.querySelector<HTMLButtonElement>(".agent-status-dot")!;
-    expect(container.querySelectorAll(".agent-status-dot")).toHaveLength(1);
-    expect(indicator.classList.contains("agent-close")).toBe(true);
-    await act(async () => indicator.click());
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Agent panel options"]')!.click());
+    const item = [...container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+      .find((entry) => entry.textContent?.includes("Close panel"));
+    expect(item).not.toBeUndefined();
+    await act(async () => item!.click());
     expect(close).toHaveBeenCalledOnce();
   });
 

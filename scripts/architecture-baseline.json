@@ -13,6 +13,8 @@
     "src/main/app-updater-window.ts",
     "src/main/app-updater.ts",
     "src/main/backend-event-loop.ts",
+    "src/main/browser-guards.ts",
+    "src/main/browser-policy.ts",
     "src/main/devtools-controller.ts",
     "src/main/exec-path.ts",
     "src/main/file-baseline.ts",
@@ -66,6 +68,8 @@
     "src/renderer/src/appearances.ts",
     "src/renderer/src/assistant-status.ts",
     "src/renderer/src/binary.ts",
+    "src/renderer/src/browser-store-provider.tsx",
+    "src/renderer/src/browser-tabs-context.tsx",
     "src/renderer/src/chat-projection.ts",
     "src/renderer/src/chat-records.ts",
     "src/renderer/src/chat-store.ts",
@@ -73,9 +77,13 @@
     "src/renderer/src/components/AgentPanel.tsx",
     "src/renderer/src/components/AgentTui.tsx",
     "src/renderer/src/components/AgentUsage.tsx",
+    "src/renderer/src/components/AppearanceSettings.tsx",
+    "src/renderer/src/components/BrowserPane.tsx",
     "src/renderer/src/components/Composer.tsx",
     "src/renderer/src/components/ComposerModelMenu.tsx",
     "src/renderer/src/components/EditorPane.tsx",
+    "src/renderer/src/components/EditorStatusMenu.tsx",
+    "src/renderer/src/components/EditorTabs.tsx",
     "src/renderer/src/components/ErrorBoundary.tsx",
     "src/renderer/src/components/ExplorerTree.tsx",
     "src/renderer/src/components/ExternalLink.tsx",
@@ -83,6 +91,7 @@
     "src/renderer/src/components/FileSidebar.tsx",
     "src/renderer/src/components/FormPrompt.tsx",
     "src/renderer/src/components/MobileSetup.tsx",
+    "src/renderer/src/components/NeptuneSprite.tsx",
     "src/renderer/src/components/OpenCodeFile.tsx",
     "src/renderer/src/components/OpenCodeFileIcon.tsx",
     "src/renderer/src/components/OpenCodeIcon.tsx",
@@ -99,20 +108,23 @@
     "src/renderer/src/components/SessionsPane.tsx",
     "src/renderer/src/components/SettingsPage.tsx",
     "src/renderer/src/components/SettingsSidebar.tsx",
-    "src/renderer/src/components/StatusBar.tsx",
     "src/renderer/src/components/TerminalTray.tsx",
     "src/renderer/src/components/TextShimmer.tsx",
     "src/renderer/src/components/TimelineProse.tsx",
+    "src/renderer/src/components/Titlebar.tsx",
     "src/renderer/src/components/ToolCountSummary.tsx",
     "src/renderer/src/components/ToolStatusTitle.tsx",
     "src/renderer/src/components/Welcome.tsx",
     "src/renderer/src/components/agent-scroll.ts",
     "src/renderer/src/components/composer-completions.ts",
+    "src/renderer/src/components/editor-groups.ts",
     "src/renderer/src/components/editor-status.ts",
+    "src/renderer/src/components/file-glyphs.ts",
     "src/renderer/src/components/icons.tsx",
     "src/renderer/src/components/timeline-model.ts",
     "src/renderer/src/components/use-menu-dismiss.ts",
     "src/renderer/src/drop.ts",
+    "src/renderer/src/editor-activity.ts",
     "src/renderer/src/editor-close-guard.ts",
     "src/renderer/src/editor-language-input.ts",
     "src/renderer/src/editor-navigation.ts",
@@ -122,7 +134,9 @@
     "src/renderer/src/explorer-selection.ts",
     "src/renderer/src/global.d.ts",
     "src/renderer/src/layout/PanelColumn.tsx",
+    "src/renderer/src/layout/RailBrowserButton.tsx",
     "src/renderer/src/layout/panel-interactions.ts",
+    "src/renderer/src/layout/rail.ts",
     "src/renderer/src/main.tsx",
     "src/renderer/src/markdown-projection.ts",
     "src/renderer/src/markdown-stream.ts",
@@ -160,7 +174,9 @@
     "src/renderer/src/streaming.ts",
     "src/renderer/src/styles/_agent-prompt-dock.scss",
     "src/renderer/src/styles/_agent.scss",
+    "src/renderer/src/styles/_browser.scss",
     "src/renderer/src/styles/_buttons.scss",
+    "src/renderer/src/styles/_codex.scss",
     "src/renderer/src/styles/_composer.scss",
     "src/renderer/src/styles/_editor.scss",
     "src/renderer/src/styles/_error-boundary.scss",
@@ -171,13 +187,15 @@
     "src/renderer/src/styles/_sessions.scss",
     "src/renderer/src/styles/_settings.scss",
     "src/renderer/src/styles/_sidebar.scss",
-    "src/renderer/src/styles/_statusbar.scss",
+    "src/renderer/src/styles/_status-menu.scss",
     "src/renderer/src/styles/_terminal.scss",
     "src/renderer/src/styles/_toasts.scss",
     "src/renderer/src/styles/_welcome.scss",
     "src/renderer/src/styles/main.scss",
     "src/renderer/src/terminal-state.ts",
     "src/renderer/src/theme.tsx",
+    "src/renderer/src/use-browser-guest.ts",
+    "src/renderer/src/use-browser-tabs.ts",
     "src/renderer/src/use-explorer-mutations.ts",
     "src/renderer/src/use-sass-watch.ts",
     "src/renderer/src/use-saved-workspaces.ts",
@@ -205,8 +223,8 @@
   ],
   "modules": {
     "src/renderer/src/store.tsx": {
-      "loc": 1172,
-      "reason": "Reviewed application context facade and runtime event/IO coordinator. Session, chat, execution, file/editor, explorer, inbox, request, progress, selection and inventory authority live in private cohesive owners. Remaining materialization/hydration, prompt and attributed event sequencing share protected cross-domain ordering; moving them into a god EventsHub would hide coupling. Exact existing ceiling ratchets downward and cannot grow."
+      "loc": 1173,
+      "reason": "Reviewed application context facade and runtime event/IO coordinator. Session, chat, execution, file/editor, explorer, inbox, request, progress, selection and inventory authority live in private cohesive owners. Remaining materialization/hydration, prompt and attributed event sequencing share protected cross-domain ordering; moving them into a god EventsHub would hide coupling. Exact existing ceiling ratchets downward and cannot grow. Redesign feature adds one prefetch facade member; state and workflow stay in WorkspaceFiles. Reviewed1173 ceiling."
     },
     "src/main/opencode.ts": {
       "loc": 1910,
@@ -219,14 +237,14 @@
   },
   "functions": {
     "src/renderer/src/store.tsx:StoreBody#1": {
-      "codeLines": 1015,
+      "codeLines": 1016,
       "cyclomatic": 20,
       "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+      "reason": "Reviewed redesign adds exactly one WorkspaceFiles prefetch facade member; no new state, effects or orchestration. Prior ceiling1015; complexity/nesting unchanged."
     },
     "src/renderer/src/App.tsx:Layout#1": {
-      "codeLines": 687,
-      "cyclomatic": 63,
+      "codeLines": 682,
+      "cyclomatic": 46,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -237,13 +255,13 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/components/AgentPanel.tsx:AgentPanel#1": {
-      "codeLines": 327,
-      "cyclomatic": 56,
+      "codeLines": 279,
+      "cyclomatic": 31,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/components/FileSidebar.tsx:FileSidebar#1": {
-      "codeLines": 578,
+      "codeLines": 550,
       "cyclomatic": 37,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -267,13 +285,13 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/components/SessionsPane.tsx:SessionsPane#1": {
-      "codeLines": 346,
+      "codeLines": 333,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/components/SettingsPage.tsx:SettingsPage#1": {
-      "codeLines": 338,
+      "codeLines": 303,
       "cyclomatic": 50,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -297,7 +315,7 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/components/EditorPane.tsx:EditorPane#1": {
-      "codeLines": 222,
+      "codeLines": 221,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -309,7 +327,7 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/components/EditorPane.tsx:EditorWithSave#1": {
-      "codeLines": 188,
+      "codeLines": 165,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -323,12 +341,6 @@
     "src/renderer/src/chat-stream.ts:reduceChatStream#1": {
       "codeLines": 161,
       "cyclomatic": 52,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/renderer/src/components/StatusBar.tsx:StatusBar#1": {
-      "codeLines": 141,
-      "cyclomatic": 50,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -363,16 +375,10 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/store.tsx:StoreBody/value#1": {
-      "codeLines": 106,
+      "codeLines": 107,
       "cyclomatic": 20,
       "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/renderer/src/components/EditorPane.tsx:EditorGroup#1": {
-      "codeLines": 105,
-      "cyclomatic": 20,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+      "reason": "Reviewed redesign adds exactly one WorkspaceFiles prefetch facade member; no new state, effects or orchestration. Prior ceiling106; complexity/nesting unchanged."
     },
     "src/renderer/src/opencode-markdown/markdown-worker.ts:getWorker#1": {
       "codeLines": 105,
@@ -389,12 +395,6 @@
     "src/renderer/src/App.tsx:Layout/useLayoutEffect callback:current#1": {
       "codeLines": 103,
       "cyclomatic": 34,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/renderer/src/theme.tsx:applyAppearance#1": {
-      "codeLines": 101,
-      "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -658,18 +658,18 @@
       "reason": "Moved release progress-window workflow byte-equivalent after receiver qualification; preserves timer, close gate, dynamic main/unsaved reads and failure cleanup. Original128-line ceiling; cannot grow."
     },
     "src/renderer/src/use-workspace-editor.ts:useWorkspaceEditor#1": {
-      "codeLines": 502,
+      "codeLines": 518,
       "cyclomatic": 20,
       "nesting": 5,
       "origin": "src/renderer/src/store.tsx:StoreBody#1 editor state/persistence/action slices",
-      "reason": "Cohesive editor hook owns records, refs and persistence. Inclusive502 lines count31 separately guarded nested callbacks; independently measured composition-only body is96 token-code lines. No subscriptions/effects or session authority. Exact composition ceiling cannot grow."
+      "reason": "Redesign adds a narrow optional successful foreground-file activation notification and captured/live generation checks; browser state remains external. Prior502 inclusive lines; independent review approved exact+16 feature lines. Existing persistence/state ownership retained."
     },
     "src/renderer/src/use-workspace-editor.ts:useWorkspaceEditor/openFile#1": {
       "codeLines": 100,
-      "cyclomatic": 24,
+      "cyclomatic": 26,
       "nesting": 5,
       "origin": "src/renderer/src/store.tsx:StoreBody/openFile#1",
-      "reason": "Moved unchanged generation-confined read/open action; retains binary, size, snapshot and stale-read guards. Original complexity25; cannot grow."
+      "reason": "Existing editor open policy retains content/binary/size validation, dirty-tab reuse and stale-result checks. Redesign adds current-target validation and captured foreground identity (C24→26), independently reviewed to prevent background/stale reads from exiting browser mode. Existing length/nesting ceilings unchanged."
     },
     "src/main/workspace-mutations.ts:WorkspaceMutations/writeFile#1": {
       "codeLines": 105,
@@ -714,11 +714,11 @@
       "reason": "Existing38-line status policy retains both reduction/synchronization passes, abort guards and retry notice order. Frozen migrated30-decision ceiling; no inherited parent budget. Length and nesting use defaults."
     },
     "src/renderer/src/use-workspace-files.ts:useWorkspaceFiles#1": {
-      "codeLines": 304,
+      "codeLines": 322,
       "cyclomatic": 20,
       "nesting": 5,
       "origin": "src/renderer/src/store.tsx:StoreBody#1 file/tree/visibility/recovery state and commands at198b358",
-      "reason": "Owns five existing workspace records, private render refs/timers and named directory/observation/visibility/recovery commands. Inclusive304-line composition has88 own lines and29 separately constrained callbacks; no new effects/subscription/cleanup. Fixed reviewed composition ceiling cannot grow."
+      "reason": "Redesign adds best-effort directory hover prefetch with generation/path deduplication, cache preservation and unmount/closed guards. Prior304 inclusive lines; independent review approved exact+18 feature lines. No new Store authority."
     },
     "src/renderer/src/use-explorer-mutations.ts:useExplorerMutations#1": {
       "codeLines": 228,
@@ -967,6 +967,86 @@
       "targetPrefix": "src/renderer/src/use-session-lifecycle.ts",
       "allowedFrom": [
         "src/renderer/src/store.tsx"
+      ]
+    },
+    {
+      "owner": "browser guest lifecycle",
+      "targetPrefix": "src/renderer/src/use-browser-guest.ts",
+      "allowedFrom": [
+        "src/renderer/src/components/BrowserPane.tsx"
+      ]
+    },
+    {
+      "owner": "browser store integration",
+      "targetPrefix": "src/renderer/src/browser-store-provider.tsx",
+      "allowedFrom": [
+        "src/renderer/src/App.tsx"
+      ]
+    },
+    {
+      "owner": "browser state authority",
+      "targetPrefix": "src/renderer/src/use-browser-tabs.ts",
+      "allowedFrom": [
+        "src/renderer/src/browser-tabs-context.tsx",
+        "src/renderer/src/use-browser-guest.ts",
+        "src/renderer/src/components/BrowserPane.tsx",
+        "src/renderer/src/components/EditorTabs.tsx"
+      ]
+    },
+    {
+      "owner": "editor activity",
+      "targetPrefix": "src/renderer/src/editor-activity.ts",
+      "allowedFrom": [
+        "src/renderer/src/components/EditorPane.tsx"
+      ]
+    },
+    {
+      "owner": "editor strip",
+      "targetPrefix": "src/renderer/src/components/EditorTabs.tsx",
+      "allowedFrom": [
+        "src/renderer/src/components/EditorPane.tsx"
+      ]
+    },
+    {
+      "owner": "editor status presentation",
+      "targetPrefix": "src/renderer/src/components/EditorStatusMenu.tsx",
+      "allowedFrom": [
+        "src/renderer/src/components/EditorPane.tsx"
+      ]
+    },
+    {
+      "owner": "tree glyph mapping",
+      "targetPrefix": "src/renderer/src/components/file-glyphs.ts",
+      "allowedFrom": [
+        "src/renderer/src/components/FileIcons.tsx"
+      ]
+    },
+    {
+      "owner": "agent empty sprite",
+      "targetPrefix": "src/renderer/src/components/NeptuneSprite.tsx",
+      "allowedFrom": [
+        "src/renderer/src/components/AgentPanel.tsx"
+      ]
+    },
+    {
+      "owner": "window titlebar",
+      "targetPrefix": "src/renderer/src/components/Titlebar.tsx",
+      "allowedFrom": [
+        "src/renderer/src/App.tsx"
+      ]
+    },
+    {
+      "owner": "browser guard authority",
+      "targetPrefix": "src/main/browser-guards.ts",
+      "allowedFrom": [
+        "src/main/index.ts"
+      ]
+    },
+    {
+      "owner": "browser attachment policy",
+      "targetPrefix": "src/main/browser-policy.ts",
+      "allowedFrom": [
+        "src/main/browser-guards.ts"
       ]
     }
   ],
@@ -1222,6 +1302,38 @@
         "src/renderer/src/editor-persistence.ts",
         "src/renderer/src/store-contract.ts"
       ],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-browser-tabs.ts",
+      "allowedLocal": [],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/browser-tabs-context.tsx",
+      "allowedLocal": [
+        "src/renderer/src/use-browser-tabs.ts"
+      ],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-browser-guest.ts",
+      "allowedLocal": [
+        "src/renderer/src/use-browser-tabs.ts"
+      ],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/components/file-glyphs.ts",
+      "allowedLocal": [],
       "allowedExternal": [
         "react"
       ]

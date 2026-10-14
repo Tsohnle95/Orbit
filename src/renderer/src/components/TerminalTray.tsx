@@ -12,7 +12,7 @@ import { PendingTerminalOutput, removeTerminal, terminalDirectoryCommand, termin
 import { requestReveal } from "../reveal";
 import type { ValidationReport } from "../validation-report";
 
-const TERMINAL_FONT_FAMILY = "'SF Mono', Menlo, Consolas, monospace";
+const TERMINAL_FONT_FAMILY = "ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace";
 const TERMINAL_FONT_SIZE = 12;
 const TERMINAL_LINE_HEIGHT = 1.25;
 

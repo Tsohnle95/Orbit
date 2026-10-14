@@ -119,15 +119,10 @@ describe("FileSidebar tabs and sessions pane", () => {
     await act(async () => new Promise((resolve) => setTimeout(resolve, ms)));
   }
 
-  function sideTab(title: string): HTMLButtonElement {
-    return [...container.querySelectorAll<HTMLButtonElement>(".side-tab")].find(
-      (tab) => tab.textContent === title
-    )!;
-  }
-
   function section(title: string): HTMLElement {
     return [...container.querySelectorAll<HTMLElement>(".sessions-section")].find((item) =>
-      item.querySelector(".section-toggle")?.textContent?.includes(title)
+      item.querySelector(".section-toggle")?.textContent?.includes(title) ||
+      item.querySelector(".sessions-static-label")?.textContent?.includes(title)
     )!;
   }
 
@@ -147,11 +142,9 @@ describe("FileSidebar tabs and sessions pane", () => {
 
     expect(store.loadSessions).toHaveBeenCalled();
     expect([...container.querySelectorAll(".sessions-section .section-toggle")].map((toggle) => toggle.textContent)).toEqual([
-      "Open now",
-      "Workspaces",
-      "History"
+      "Projects",
+      "Recents"
     ]);
-    expect([...container.querySelectorAll(".sessions-section .section-toggle")].map((toggle) => toggle.getAttribute("aria-expanded"))).toEqual(["false", "false", "false"]);
   });
 
   it("keeps the redundant file-sidebar folder control removed with multiple panels open", async () => {
@@ -182,7 +175,7 @@ describe("FileSidebar tabs and sessions pane", () => {
     await render();
     await settle();
 
-    await act(async () => section("Workspaces").querySelector<HTMLButtonElement>(".section-toggle")!.click());
+    await act(async () => section("Projects").querySelector<HTMLButtonElement>(".section-toggle")!.click());
     const workspace = container.querySelector<HTMLElement>(".sessions-project-head")!;
     await act(async () => workspace.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: 30, clientY: 40 })));
     await act(async () => container.querySelector<HTMLButtonElement>(".sessions-context-item")!.click());
@@ -190,34 +183,45 @@ describe("FileSidebar tabs and sessions pane", () => {
     expect(store.removeWorkspace).toHaveBeenCalledWith("/workspace");
   });
 
-  it("swaps to the files pane with its changes and explorer sections and back", async () => {
+  it("renders the rail-selected pane and no tab strip", async () => {
     await render();
     await settle();
 
-    await act(async () => sideTab("Files").click());
+    // The session/files switch now lives on the activity rail; the sidebar
+    // renders whichever pane the rail selects.
+    expect(container.querySelector(".side-tabs")).toBeNull();
+
+    await act(async () =>
+      root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} tab="files" />)
+    );
+    await settle();
     expect(container.querySelector(".sessions-pane")).toBeNull();
     const labels = [...container.querySelectorAll(".section-toggle")].map((el) => el.textContent ?? "");
     expect(labels.length).toBe(2);
     expect(labels[0]?.startsWith("CHANGES")).toBe(true);
-    expect(labels[1]).toBe("EXPLORER");
+    expect(labels[1]).toBe("workspace");
 
-    await act(async () => sideTab("Sessions").click());
+    await act(async () =>
+      root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} tab="sessions" />)
+    );
+    await settle();
     expect(container.querySelector(".sessions-pane")).not.toBeNull();
   });
 
-  it("pins a history session and persists the quiet pinned state", async () => {
+  it("pins a session and persists the quiet pinned state", async () => {
     store.sessions = [summary("s1", "/workspace", "First", 2000), summary("s2", "/other", "Second", 1000)];
     await render();
     await settle();
 
-    const history = section("History");
-    await act(async () => history.querySelector<HTMLButtonElement>(".section-toggle")!.click());
-    const pin = history.querySelectorAll<HTMLButtonElement>(".sessions-row-pin")[0];
+    const recents = section("Recents");
+    const pin = recents.querySelectorAll<HTMLButtonElement>(".sessions-row-pin")[0];
     await act(async () => pin.click());
 
     expect(JSON.parse(window.localStorage.getItem("openshell.pinnedSessions") ?? "[]")).toEqual(["s1"]);
-    expect(history.textContent).toContain("First");
-    expect(history.querySelector(".sessions-row-pin")?.classList.contains("pinned")).toBe(true);
+    const pinned = section("Pinned");
+    expect(pinned.textContent).toContain("First");
+    expect(pinned.querySelector(".sessions-row-pin")?.classList.contains("pinned")).toBe(true);
+    expect(section("Recents").textContent).not.toContain("First");
   });
 
   it("opens saved workspaces and expands their session history separately", async () => {
@@ -225,8 +229,8 @@ describe("FileSidebar tabs and sessions pane", () => {
     await render();
     await settle();
 
-    await act(async () => section("Workspaces").querySelector<HTMLButtonElement>(".section-toggle")!.click());
-    const workspaces = section("Workspaces");
+    await act(async () => section("Projects").querySelector<HTMLButtonElement>(".section-toggle")!.click());
+    const workspaces = section("Projects");
     const project = workspaces.querySelector<HTMLButtonElement>(".sessions-project-open")!;
     expect(project.textContent).toContain("Workspace");
     await act(async () => project.click());
@@ -244,15 +248,14 @@ describe("FileSidebar tabs and sessions pane", () => {
     await settle();
 
     const sections = [...container.querySelectorAll<HTMLElement>(".sessions-section")];
-    expect(sections).toHaveLength(3);
+    expect(sections).toHaveLength(2);
     await act(async () => sections[0].querySelector<HTMLButtonElement>(".section-toggle")!.click());
-    await act(async () => sections[1].querySelector<HTMLButtonElement>(".section-toggle")!.click());
-    await act(async () => sections[2].querySelector<HTMLButtonElement>(".section-toggle")!.click());
-    expect(sections.map((section) => section.querySelectorAll(":scope > .sessions-section-list").length)).toEqual([1, 1, 1]);
-    expect(sections[1].textContent).toContain("Workspaces");
+    expect(sections.map((section) => section.querySelectorAll(":scope > .sessions-section-list").length)).toEqual([1, 1]);
+    expect(sections[0].textContent).toContain("Projects");
+    expect(sections[1].textContent).toContain("Recents");
   });
 
-  it("focuses running sessions from Open now and reopens closed ones from History", async () => {
+  it("focuses running sessions from Recents and reopens closed ones", async () => {
     store.sessions = [
       summary("running", "/workspace", "Running row"),
       summary("closed", "/other", "Closed row")
@@ -262,22 +265,14 @@ describe("FileSidebar tabs and sessions pane", () => {
     await render();
     await settle();
 
-    // Open now auto-opens when it has entries; the toggle only collapses.
-    const openNowToggle = section("Open now").querySelector<HTMLButtonElement>(".section-toggle")!;
-    if (openNowToggle.getAttribute("aria-expanded") !== "true") {
-      await act(async () => openNowToggle.click());
-    }
-    const openNow = section("Open now");
-    const runningRow = openNow.querySelector<HTMLElement>(".sessions-row")!;
-    expect(runningRow.querySelector(".agent-dot")?.classList.contains("busy")).toBe(true);
+    const recents = section("Recents");
+    const runningRow = recents.querySelector<HTMLElement>(".sessions-row")!;
 
     await act(async () => runningRow.click());
     expect(store.focusSession).toHaveBeenCalledWith("running");
 
-    const history = section("History");
-    await act(async () => history.querySelector<HTMLButtonElement>(".section-toggle")!.click());
-    const closedRow = history.querySelector<HTMLElement>(".sessions-row")!;
-    expect(history.textContent).not.toContain("Running row");
+    const closedRow = [...recents.querySelectorAll<HTMLElement>(".sessions-row")]
+      .find((row) => row.textContent?.includes("Closed row"))!;
     await act(async () => closedRow.click());
     expect(store.reopenSession).toHaveBeenCalledWith("closed", false, "/other");
   });
@@ -289,14 +284,9 @@ describe("FileSidebar tabs and sessions pane", () => {
     await render();
     await settle();
 
-    // Open now auto-opens when it has entries; the toggle only collapses.
-    const backgroundToggle = section("Open now").querySelector<HTMLButtonElement>(".section-toggle")!;
-    if (backgroundToggle.getAttribute("aria-expanded") !== "true") {
-      await act(async () => backgroundToggle.click());
-    }
-    const openNow = section("Open now");
-    expect(openNow.textContent).toContain("Background agent");
-    const row = openNow.querySelector<HTMLElement>(".sessions-row")!;
+    const recents = section("Recents");
+    expect(recents.textContent).toContain("Background agent");
+    const row = recents.querySelector<HTMLElement>(".sessions-row")!;
     await act(async () => row.click());
     expect(store.reopenSession).toHaveBeenCalledWith("background", false, "/background");
 
@@ -310,8 +300,8 @@ describe("FileSidebar tabs and sessions pane", () => {
     await render();
     await settle();
 
-    await act(async () => section("Workspaces").querySelector<HTMLButtonElement>(".section-toggle")!.click());
-    const workspaces = section("Workspaces");
+    await act(async () => section("Projects").querySelector<HTMLButtonElement>(".section-toggle")!.click());
+    const workspaces = section("Projects");
     const projectToggles = workspaces.querySelectorAll<HTMLButtonElement>(".sessions-project-disclosure");
     expect(projectToggles).toHaveLength(2);
 

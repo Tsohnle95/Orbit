@@ -104,12 +104,13 @@ describe("agent panel usage tracker", () => {
     vi.restoreAllMocks();
   });
 
-  it("places the usage toggle in the agent header", async () => {
+  it("places the usage toggle on the composer's control row, in the control-pill style", async () => {
     await act(async () => root.render(<AgentPanel />));
 
     const usageToggle = toggle(container);
-    expect(usageToggle.closest(".agent-header-actions")).not.toBeNull();
-    expect(usageToggle.closest(".composer-actions")).toBeNull();
+    expect(usageToggle.closest(".composer-chips")).not.toBeNull();
+    expect(usageToggle.closest(".agent-header")).toBeNull();
+    expect(usageToggle.classList.contains("composer-selector")).toBe(true);
     expect(container.querySelector('button[title="Add attachments"]')).toBeNull();
   });
 

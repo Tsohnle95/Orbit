@@ -139,9 +139,9 @@ describe("FileSidebar drag-and-drop moves", () => {
     expect(row(container, "alpha")).toBeTruthy();
   });
 
-  it("creates a root file or folder from the workspace root hover actions", () => {
+  it("creates a root file or folder from the workspace header hover actions", () => {
     act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
-    const actions = container.querySelector<HTMLElement>(".tree-row.workspace-root .tree-row-actions")!;
+    const actions = container.querySelector<HTMLElement>(".section-trigger.explorer-trigger .tree-row-actions")!;
     const byTitle = (title: string): HTMLButtonElement =>
       [...actions.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.title === title)!;
     act(() => byTitle("New File").click());

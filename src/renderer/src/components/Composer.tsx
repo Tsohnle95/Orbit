@@ -19,7 +19,7 @@ function isImagePath(path: string): boolean {
   return IMAGE_EXTENSIONS.has(name.slice(dot + 1).toLowerCase());
 }
 
-export function Composer({ session }: { session?: SessionInfo | null }): ReactNode {
+export function Composer({ session, controls, overlay }: { session?: SessionInfo | null; controls?: ReactNode; overlay?: ReactNode }): ReactNode {
   const store = useStore();
   const {
     switchModel,
@@ -55,9 +55,7 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
   const canSend = input.trim().length > 0 || files.length > 0;
   const variantLabel = currentModel?.variant
     ? formatVariant(currentModel.variant)
-    : currentModel?.variants && currentModel.variants.length > 0
-      ? "Auto"
-      : "";
+    : (currentModel?.variants?.length ?? 0) > 0 ? "Auto" : "";
 
   useMenuDismiss(Boolean(menu), composerRef, useCallback(() => setMenu(null), []));
 
@@ -271,6 +269,7 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
             {busy ? <IconStop /> : <IconArrowUp />}
           </button>
         </div>
+        {overlay}
         <div className="composer-chips">
           {supportsAttachments && (
             <>
@@ -340,6 +339,7 @@ export function Composer({ session }: { session?: SessionInfo | null }): ReactNo
               <IconChevronDown />
             </button>
           )}
+          {controls}
         </div>
       </div>
 

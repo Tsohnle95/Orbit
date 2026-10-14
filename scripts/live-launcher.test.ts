@@ -133,7 +133,7 @@ describe("live launcher payload", () => {
       expect(packageJson.main).toBe("live-launcher.cjs");
       expect(packageJson.version).toBe(JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8")).version);
       expect(existsSync(path.join(appDir, "live-launcher.cjs"))).toBe(true);
-      expect(existsSync(MARKER_FILE)).toBe(false);
+      expect(existsSync(path.join(appDir, MARKER_FILE))).toBe(false);
     } finally {
       rmSync(fixture, { recursive: true, force: true });
       rmSync(bundle, { recursive: true, force: true });

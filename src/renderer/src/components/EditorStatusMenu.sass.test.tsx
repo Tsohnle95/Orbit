@@ -1,8 +1,8 @@
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BackendMessage, SessionInfo, SassWatchState, WorkspaceIdentity } from "@shared/types";
-import { StatusBar } from "./StatusBar";
+import { EditorStatusMenu } from "./EditorStatusMenu";
 
 const first: SessionInfo = { id: "first", directory: "/one", workspace: { id: "11111111-1111-4111-8111-111111111111", generation: 1 } };
 const second: SessionInfo = { id: "second", directory: "/two", workspace: { id: "22222222-2222-4222-8222-222222222222", generation: 2 } };
@@ -31,10 +31,18 @@ describe("footer Sass control", () => {
     } as unknown as typeof window.openshell;
     container = document.createElement("div"); document.body.append(container); root = createRoot(container);
   });
+
+  const renderMenu = async (node: ReactNode = <EditorStatusMenu />): Promise<void> => {
+    await act(async () => root.render(node));
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>(".status-menu-button")!.click();
+    });
+  };
+
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
 
   it("shows off, starting, on and error and toggles the selected immutable workspace", async () => {
-    await act(async () => root.render(<StatusBar />));
+    await renderMenu();
     expect(button().textContent).toBe("Watch Sass");
     expect(button().getAttribute("aria-pressed")).toBe("false");
     await act(async () => button().click());
@@ -51,9 +59,9 @@ describe("footer Sass control", () => {
   });
 
   it("shows each selected workspace's state and ignores a previous workspace's late events", async () => {
-    await act(async () => root.render(<StatusBar />));
+    await renderMenu();
     act(() => emit(snapshot(first, "on", 3)));
-    await act(async () => { selected = second; root.render(<StatusBar />); });
+    await act(async () => { selected = second; root.render(<EditorStatusMenu />); });
     expect(button().textContent).toBe("Watch Sass");
     act(() => emit({ ...snapshot(first, "error", 99), error: "old workspace error" }));
     expect(button().textContent).toBe("Watch Sass");

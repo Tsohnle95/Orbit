@@ -5,6 +5,7 @@ import type { AgentFileState, SessionInfo, Tab } from "@shared/types";
 import { FileSidebar } from "./FileSidebar";
 import { EditorPane } from "./EditorPane";
 import { ThemeProvider } from "../theme";
+import { BrowserTabsProvider } from "../browser-tabs-context";
 
 const unknownFile: AgentFileState = { baseline: { kind: "unknown" }, content: "after", deleted: false };
 const tab: Tab = {
@@ -41,6 +42,12 @@ const store = {
   cancelPending: vi.fn(),
   tabs: [tab],
   activePath: tab.path,
+  browserTabs: [],
+  activeBrowserTabID: null,
+  openBrowserTab: vi.fn(() => "browser-1"),
+  closeBrowserTab: vi.fn(),
+  activateBrowserTab: vi.fn(),
+  updateBrowserTab: vi.fn(),
   setActive: vi.fn(),
   closeTab: vi.fn(),
   setTabMode: vi.fn(),
@@ -84,6 +91,7 @@ describe("unknown baseline presentation", () => {
 
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1200);
     store.tabs = [tab];
     store.activePath = tab.path;
     container = document.createElement("div");
@@ -95,6 +103,7 @@ describe("unknown baseline presentation", () => {
     act(() => root.unmount());
     container.remove();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("labels a Changes row as observed when pre-change content is unavailable", () => {
@@ -106,7 +115,7 @@ describe("unknown baseline presentation", () => {
   });
 
   it("shows Diff unavailable and does not mount a diff editor", () => {
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
 
     const unavailable = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Diff unavailable"));
     expect(unavailable).toBeTruthy();
@@ -126,9 +135,9 @@ describe("unknown baseline presentation", () => {
     store.tabs = [knownTab];
     store.activePath = knownTab.path;
 
-    act(() => root.render(<ThemeProvider><EditorPane /></ThemeProvider>));
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
 
     expect(container.querySelector("[data-testid=diff-editor]")?.getAttribute("data-overview-ruler")).toBe("false");
-    expect(container.querySelector("[data-testid=diff-editor]")?.getAttribute("data-scrollbar-width")).toBe("3");
+    expect(container.querySelector("[data-testid=diff-editor]")?.getAttribute("data-scrollbar-width")).toBe("14");
   });
 });

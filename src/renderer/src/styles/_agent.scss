@@ -22,7 +22,7 @@
   align-items: center;
   gap: 7px;
   min-width: 0;
-  padding: 12px 10px 10px 12px;
+  padding: 5px 8px 5px 12px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -821,7 +821,29 @@
   margin-right: auto;
 }
 
-.agent-empty { color: var(--text-dim); font-size: 13px; }
+.agent-empty {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 0;
+  padding: 12px 18px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+// Pixel sprite drawn for the empty panel (see NeptuneSprite): little squares,
+// sized against the panel width so it stays crisp at the minimum panel size.
+.agent-empty-art {
+  width: clamp(160px, 60cqw, 240px);
+  height: auto;
+  margin: 0 auto 18px;
+  shape-rendering: crispEdges;
+  image-rendering: pixelated;
+}
 
 .agent-empty-sub { color: var(--text-faint); font-size: 12px; }
 

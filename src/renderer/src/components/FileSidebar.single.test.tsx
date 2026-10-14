@@ -199,7 +199,7 @@ describe("FileSidebar single-file mode and external drops", () => {
   it("imports an external folder dropped directly on the collapsed root", async () => {
     store.expanded = new Set(["alpha"]);
     act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
-    const workspace = row(container, "workspace")!;
+    const workspace = container.querySelector<HTMLElement>(".section-trigger.explorer-trigger")!;
     act(() => {
       container.querySelector(".tree-drop-space")!.dispatchEvent(dropEvent(["/outside/advanced-web-concepts"], "dragover"));
       workspace.dispatchEvent(dropEvent(["/outside/advanced-web-concepts"], "dragover"));
@@ -221,7 +221,7 @@ describe("FileSidebar single-file mode and external drops", () => {
     const space = container.querySelector<HTMLElement>(".tree-drop-space")!;
     act(() => space.dispatchEvent(dropEvent(["/outside/notes.txt"], "dragover")));
     const group = space.closest(".tree-workspace")!;
-    expect(group.querySelector(".workspace-root .tree-name")?.textContent).toBe("workspace");
+    expect(container.querySelector(".explorer-root-name")?.textContent).toBe("workspace");
     expect(group.nextElementSibling?.querySelector(".tree-name")?.textContent).toBe("other");
     expect(group.nextElementSibling?.classList.contains("drop-target")).toBe(false);
     expect(space.textContent).toBe("Add to workspace");

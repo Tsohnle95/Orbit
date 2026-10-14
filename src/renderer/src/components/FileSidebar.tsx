@@ -78,7 +78,6 @@ export function FileSidebar({
   onDrag,
   initialTab = "files",
   tab,
-  onTabChange,
   onOpenTerminal
 }: {
   collapsed: boolean;
@@ -86,7 +85,6 @@ export function FileSidebar({
   onDrag: (e: React.MouseEvent) => void;
   initialTab?: SidebarTab;
   tab?: SidebarTab;
-  onTabChange?: (tab: SidebarTab) => void;
   onOpenTerminal?: (directory: string) => void;
 }): ReactNode {
   void onCollapse;
@@ -130,13 +128,8 @@ export function FileSidebar({
     document.addEventListener("pointerdown", onDown, true);
     return () => document.removeEventListener("pointerdown", onDown, true);
   }, [changesMenu]);
-  const [explorerOpen, setExplorerOpen] = useState(true);
-  const [fallbackTab, setFallbackTab] = useState<SidebarTab>(initialTab);
+  const [fallbackTab] = useState<SidebarTab>(initialTab);
   const activeTab = tab ?? fallbackTab;
-  const switchTab = (next: SidebarTab): void => {
-    if (!tab) setFallbackTab(next);
-    onTabChange?.(next);
-  };
   const [changesH, changesDrag] = useChangesDrag(200);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const selectionAnchor = useRef<string | null>(null);
@@ -148,10 +141,10 @@ export function FileSidebar({
   const [blankMoveDrop, setBlankMoveDrop] = useState(false);
   const root = tree[""] ?? [];
   const orderedPanels = panels.length > 0 ? panels : session ? [session] : [];
-  const blankDropImports = Boolean(session && !singleFile && expanded.has(""));
-  const blankDropLabel = blankDropImports
-    ? `Add to ${session!.directory.split("/").filter(Boolean).pop() ?? "workspace"}`
-    : "Open as new workspace";
+  const rootName = session?.directory.split("/").filter(Boolean).pop() ?? "workspace";
+  const rootOpen = expanded.has("");
+  const blankDropImports = Boolean(session && !singleFile && rootOpen);
+  const blankDropLabel = blankDropImports ? `Add to ${rootName}` : "Open as new workspace";
   const loadedSessionKey = useRef<string | null>(null);
   const selectedPathSet = new Set(selectedPaths);
 
@@ -454,25 +447,6 @@ export function FileSidebar({
 
   return (
     <div className="sidebar files-sidebar">
-      <div className="side-tabs" role="tablist" aria-label="Sidebar panels">
-        <button
-          className={`side-tab ${activeTab === "files" ? "active" : ""}`}
-          role="tab"
-          aria-selected={activeTab === "files"}
-          onClick={() => switchTab("files")}
-        >
-          Files
-        </button>
-        <button
-          className={`side-tab ${activeTab === "sessions" ? "active" : ""}`}
-          role="tab"
-          aria-selected={activeTab === "sessions"}
-          onClick={() => switchTab("sessions")}
-        >
-          Sessions
-        </button>
-      </div>
-
       {activeTab === "sessions" ? (
         <SessionsPane />
       ) : (
@@ -567,24 +541,42 @@ export function FileSidebar({
         document.body
       )}
 
-       <div className={`section-trigger with-actions ${explorerOpen ? "open" : ""}`}>
-        <button
-          className={`section-toggle ${explorerOpen ? "open" : ""}`}
-          aria-expanded={explorerOpen}
-          onClick={() => setExplorerOpen((o) => !o)}
+       <div
+         className={`section-trigger with-actions explorer-trigger ${rootOpen ? "open" : ""} ${dropDir === "" ? "drop-target" : ""}`}
+         data-explorer-root=""
+         title={session?.directory}
+         onDragOver={(e) => drag.onDirDragOver(e, "")}
+         onDrop={(e) => drag.onDirDrop(e, "")}
+         onDragLeave={(e) => {
+           if (drag.isExternalDrop(e)) setDropDir(null);
+         }}
+         onContextMenu={(e) => {
+           e.preventDefault();
+           e.stopPropagation();
+           openCtxMenu(e.clientX, e.clientY, { path: "", type: "directory" });
+         }}
+       >
+         <button
+           className="section-chevron-button explorer-chevron"
+           aria-label="Toggle workspace files"
+           aria-expanded={rootOpen}
+           onClick={() => {
+             if (session) void toggleDir("");
+           }}
          >
-           <span>EXPLORER</span>
+           <i className={`codicon codicon-chevron-right ${rootOpen ? "open" : ""}`} aria-hidden="true" />
          </button>
          <button
-           className="section-chevron-button"
-           aria-label="Toggle Explorer"
-           aria-expanded={explorerOpen}
-           onClick={() => setExplorerOpen((o) => !o)}
+           className={`section-toggle ${rootOpen ? "open" : ""}`}
+           aria-expanded={rootOpen}
+           onClick={() => {
+             if (session) void toggleDir("");
+           }}
          >
-           <ChevronIcon open={explorerOpen} />
+           <span className="explorer-root-name">{rootName}</span>
          </button>
+         {session && <RowActions entry={{ path: "", type: "directory" }} allowFile allowDir />}
        </div>
-      {explorerOpen && (
         <div className="sidebar-section explorer">
           <div
              ref={treeRef}
@@ -616,33 +608,13 @@ export function FileSidebar({
                 }}
                 title={panel.directory}
               >
-                <FileIcon name={panel.directory} isDir />
+                <span className="tree-chevron empty" aria-hidden="true" />
                 <span className="tree-name">{panel.directory.split("/").filter(Boolean).pop() ?? "workspace"}</span>
               </div>
             ) : (
-              <div key={panel.id} className={`tree-workspace ${expanded.has("") ? "expanded" : ""}`}>
-                {(!session || (root.length === 0 && !expanded.has(""))) && <div className="tree-empty">Loading…</div>}
-                <div
-                    className={`tree-row dir workspace-root ${index > 0 ? "workspace-root-secondary" : ""} ${expanded.has("") ? "open" : ""} ${dropDir === "" ? "drop-target" : ""}`}
-                  data-explorer-root=""
-                  onClick={() => void toggleDir("")}
-                  onDragOver={(e) => drag.onDirDragOver(e, "")}
-                  onDrop={(e) => drag.onDirDrop(e, "")}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openCtxMenu(e.clientX, e.clientY, { path: "", type: "directory" });
-                  }}
-                  onDragLeave={(e) => {
-                    if (drag.isExternalDrop(e)) setDropDir(null);
-                  }}
-                  title={panel.directory}
-                >
-                  <FileIcon name={panel.directory} isDir open={expanded.has("")} />
-                  <span className="tree-name">{panel.directory.split("/").filter(Boolean).pop() ?? "workspace"}</span>
-                  <RowActions entry={{ path: "", type: "directory" }} allowFile allowDir />
-                </div>
-                {expanded.has("") && root.filter((child) => !hiddenPaths.has(child.path)).map((child) =>
+              <div key={panel.id} className={`tree-workspace ${rootOpen ? "expanded" : ""}`}>
+                {(!session || (root.length === 0 && !rootOpen)) && <div className="tree-empty">Loading…</div>}
+                {rootOpen && root.filter((child) => !hiddenPaths.has(child.path)).map((child) =>
                   child.type === "directory" ? (
                     <DirNode key={child.path} entry={child} depth={0} drag={drag} hiddenPaths={hiddenPaths} selection={selection} />
                   ) : (
@@ -663,7 +635,6 @@ export function FileSidebar({
             {!blankDropImports && dropSpace}
           </div>
         </div>
-      )}
         </>
       )}
       <ExplorerMenu onOpenTerminal={onOpenTerminal} selectedPaths={selectedPaths} onDeleteSelection={deleteSelection} />

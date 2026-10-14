@@ -1,8 +1,8 @@
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Tab } from "@shared/types";
-import { StatusBar } from "./StatusBar";
+import { EditorStatusMenu } from "./EditorStatusMenu";
 import { applyW3cMarkers, clearW3cMarkers } from "../w3c-validation";
 import type { EditorStatus } from "./editor-status";
 
@@ -47,7 +47,7 @@ vi.mock("../monaco", () => ({
   }
 }));
 
-describe("StatusBar validation", () => {
+describe("editor status menu validation", () => {
   let container: HTMLDivElement;
   let root: Root;
 
@@ -63,6 +63,14 @@ describe("StatusBar validation", () => {
     root = createRoot(container);
   });
 
+  const renderMenu = async (node: ReactNode = <EditorStatusMenu />): Promise<void> => {
+    await act(async () => root.render(node));
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>(".status-menu-button")!.click();
+    });
+  };
+
+
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
@@ -70,10 +78,22 @@ describe("StatusBar validation", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps the validation control visible and explains when the active file is unsupported", () => {
+  it("validates the local split-group tab rather than the globally focused file", async () => {
+    const validate = vi.fn(async () => []);
+    vi.stubGlobal("openshell", { validateW3c: validate });
+    store.tabs = [tsTab, htmlTab];
+    store.activePath = tsTab.path;
+    await renderMenu(<EditorStatusMenu tab={htmlTab} editorStatus={{ path: tsTab.path, lineNumber: 9, column: 7, tabSize: 4, insertSpaces: false }} />);
+    expect(container.querySelector(".status-menu-path")?.textContent).toBe(htmlTab.path);
+    expect(container.querySelector('[data-testid="cursor-position"]')?.textContent).toContain("Ln 1");
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!.click());
+    expect(validate).toHaveBeenCalledWith(htmlTab.path, htmlTab.content);
+  });
+
+  it("keeps the validation control visible and explains when the active file is unsupported", async () => {
     store.tabs = [];
     store.activePath = null;
-    act(() => root.render(<StatusBar />));
+    await renderMenu();
     const noFile = container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!;
     expect(noFile).not.toBeNull();
     expect(noFile.disabled).toBe(true);
@@ -81,7 +101,7 @@ describe("StatusBar validation", () => {
 
     store.tabs = [tsTab];
     store.activePath = tsTab.path;
-    act(() => root.render(<StatusBar />));
+    await act(async () => root.render(<EditorStatusMenu />));
     expect(container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')?.disabled).toBe(true);
   });
 
@@ -93,10 +113,10 @@ describe("StatusBar validation", () => {
     ];
     window.openshell = { validateW3c: vi.fn(async () => diagnostics) } as unknown as typeof window.openshell;
 
-    act(() => root.render(<StatusBar />));
+    await renderMenu();
     const button = container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!;
     expect(button.disabled).toBe(false);
-    expect(button.closest(".statusbar-left")).not.toBeNull();
+    expect(button.closest(".status-menu-popover")).not.toBeNull();
 
     await act(async () => {
       button.click();
@@ -116,7 +136,7 @@ describe("StatusBar validation", () => {
     store.tabs = [cssTab];
     store.activePath = cssTab.path;
 
-    act(() => root.render(<StatusBar />));
+    await renderMenu();
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!.click();
       await Promise.resolve();
@@ -149,7 +169,7 @@ describe("StatusBar validation", () => {
     store.tabs = [scssTab];
     store.activePath = scssTab.path;
 
-    act(() => root.render(<StatusBar />));
+    await renderMenu();
     const button = container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!;
     expect(button.disabled).toBe(false);
     await act(async () => {
@@ -160,10 +180,10 @@ describe("StatusBar validation", () => {
     expect(scssState.getEditor).toHaveBeenCalledWith(scssTab.path);
     expect(applyW3cMarkers).not.toHaveBeenCalled();
     expect(container.querySelector('[data-testid="validate-result"]')?.textContent).toBe("1 error");
-    expect(button.textContent).toBe("Hide errors");
+    expect(button.textContent).toContain("Hide errors");
     act(() => button.click());
     expect(scssState.updateOptions).toHaveBeenCalledWith({ renderValidationDecorations: "off" });
-    expect(button.textContent).toBe("Show errors");
+    expect(button.textContent).toContain("Show errors");
     act(() => button.click());
     expect(scssState.updateOptions).toHaveBeenCalledWith({ renderValidationDecorations: "on" });
   });
@@ -174,7 +194,7 @@ describe("StatusBar validation", () => {
     ];
     const onValidationComplete = vi.fn();
     window.openshell = { validateW3c: vi.fn(async () => diagnostics) } as unknown as typeof window.openshell;
-    act(() => root.render(<StatusBar onValidationComplete={onValidationComplete} />));
+    await renderMenu(<EditorStatusMenu onValidationComplete={onValidationComplete} />);
 
     const button = container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!;
     await act(async () => {
@@ -182,21 +202,21 @@ describe("StatusBar validation", () => {
       await Promise.resolve();
     });
     expect(onValidationComplete).toHaveBeenCalledWith({ path: "index.html", diagnostics });
-    expect(button.textContent).toBe("Hide errors");
+    expect(button.textContent).toContain("Hide errors");
 
     act(() => button.click());
     expect(clearW3cMarkers).toHaveBeenCalledWith("index.html");
-    expect(button.textContent).toBe("Show errors");
+    expect(button.textContent).toContain("Show errors");
 
     act(() => button.click());
     expect(applyW3cMarkers).toHaveBeenLastCalledWith("index.html", diagnostics);
-    expect(button.textContent).toBe("Hide errors");
+    expect(button.textContent).toContain("Hide errors");
   });
 
   it("reports a clean file and resets the result when the content changes", async () => {
     window.openshell = { validateW3c: vi.fn(async () => []) } as unknown as typeof window.openshell;
 
-    act(() => root.render(<StatusBar />));
+    await renderMenu();
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!.click();
       await Promise.resolve();
@@ -204,14 +224,14 @@ describe("StatusBar validation", () => {
     expect(container.querySelector('[data-testid="validate-result"]')?.textContent).toBe("No problems");
 
     store.tabs = [{ ...htmlTab, content: "<p>changed" }];
-    act(() => root.render(<StatusBar />));
+    await renderMenu();
     expect(container.querySelector('[data-testid="validate-result"]')).toBeNull();
   });
 
   it("shows a failure state when the validator rejects", async () => {
     window.openshell = { validateW3c: vi.fn(async () => { throw new Error("network down"); }) } as unknown as typeof window.openshell;
 
-    act(() => root.render(<StatusBar />));
+    await renderMenu();
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[data-testid="validate-btn"]')!.click();
       await Promise.resolve();
@@ -220,7 +240,7 @@ describe("StatusBar validation", () => {
     expect(container.querySelector('[data-testid="validate-result"]')?.textContent).toBe("Validation failed");
   });
 
-  it("shows cursor, indentation, and encoding details for the active editor", () => {
+  it("shows cursor, indentation, and encoding details for the active editor", async () => {
     const status: EditorStatus = {
       path: htmlTab.path,
       lineNumber: 123,
@@ -228,15 +248,15 @@ describe("StatusBar validation", () => {
       tabSize: 4,
       insertSpaces: true
     };
-    act(() => root.render(<StatusBar editorStatus={status} />));
+    await renderMenu(<EditorStatusMenu editorStatus={status} />);
 
     expect(container.querySelector('[data-testid="cursor-position"]')?.textContent).toBe("Ln 123, Col 61");
     expect(container.querySelector('[data-testid="indentation-status"]')?.textContent).toBe("Spaces: 4");
     expect(container.querySelector('[data-testid="encoding-status"]')?.textContent).toBe("UTF-8");
-    expect(container.querySelector('[data-testid="cursor-position"]')?.closest(".statusbar-right")).not.toBeNull();
+    expect(container.querySelector('[data-testid="cursor-position"]')?.closest(".status-menu-meta")).not.toBeNull();
   });
 
-  it("does not display cursor details from another file", () => {
+  it("does not display cursor details from another file", async () => {
     const status: EditorStatus = {
       path: "other.ts",
       lineNumber: 99,
@@ -244,7 +264,7 @@ describe("StatusBar validation", () => {
       tabSize: 8,
       insertSpaces: false
     };
-    act(() => root.render(<StatusBar editorStatus={status} />));
+    await renderMenu(<EditorStatusMenu editorStatus={status} />);
 
     expect(container.querySelector('[data-testid="cursor-position"]')?.textContent).toBe("Ln 1, Col 1");
     expect(container.querySelector('[data-testid="indentation-status"]')?.textContent).toBe("Spaces: 2");

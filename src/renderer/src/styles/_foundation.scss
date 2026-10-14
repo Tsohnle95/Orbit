@@ -73,6 +73,21 @@
   --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.07), 0 10px 24px rgba(0, 0, 0, 0.09);
 
   --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* File-tree icon palette (light values) for the extracted per-language glyphs. */
+  --trees-icon-gray: #84848a;
+  --trees-icon-red: #d52c36;
+  --trees-icon-vermilion: #ff8c5b;
+  --trees-icon-orange: #d47628;
+  --trees-icon-yellow: #d5a910;
+  --trees-icon-green: #199f43;
+  --trees-icon-teal: #17a5af;
+  --trees-icon-cyan: #1ca1c7;
+  --trees-icon-blue: #1a85d4;
+  --trees-icon-indigo: #693acf;
+  --trees-icon-purple: #a631be;
+  --trees-icon-pink: #d32a61;
+  --trees-icon-mauve: #594c5b;
 }
 
 :root[data-theme="paper"] {
@@ -250,7 +265,7 @@ html, body, #root {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", "Helvetica", "Apple Color Emoji", "Arial", sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;

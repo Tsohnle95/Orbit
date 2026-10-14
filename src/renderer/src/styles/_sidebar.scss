@@ -198,66 +198,6 @@
   background: var(--accent);
 }
 
-.side-tabs {
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  padding: 0 14px;
-  margin-top: -2px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.side-tab {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  border: none;
-  background: none;
-  color: var(--text-faint);
-  font-family: inherit;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 9px 13px 10px;
-  cursor: pointer;
-  transition: color 100ms var(--ease);
-}
-
-.side-tab:first-child { padding-left: 2px; }
-
-.side-tab:hover { color: var(--text-dim); }
-
-.side-tab.active { color: var(--text); }
-
-.side-tab + .side-tab::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 1px;
-  height: 11px;
-  background: var(--border-strong);
-}
-
-.side-tab::after {
-  content: "";
-  position: absolute;
-  bottom: -1px;
-  height: 2px;
-  border-radius: var(--radius-full);
-  background: transparent;
-  transition: background 120ms var(--ease);
-}
-
-.side-tab:first-child::after { left: 2px; right: 13px; }
-
-.side-tab + .side-tab::after { left: 13px; right: 13px; }
-
-.side-tab.active::after { background: var(--accent); }
-
 .activity-btn {
   position: relative;
   display: flex;
@@ -371,6 +311,58 @@
 }
 
 .section-chevron-button .si-chevron.open { transform: rotate(180deg); }
+
+/* Merged workspace header: the section title doubles as the root folder row. */
+.section-trigger.explorer-trigger {
+  gap: 2px;
+}
+
+.section-trigger.explorer-trigger .section-chevron-button {
+  flex: 0 0 22px;
+  margin-left: -4px;
+}
+
+.section-trigger.explorer-trigger .section-chevron-button .codicon {
+  font-size: 14px;
+  transition: transform 120ms var(--ease);
+}
+
+.section-trigger.explorer-trigger .section-chevron-button .codicon.open {
+  transform: rotate(90deg);
+}
+
+.section-trigger.explorer-trigger .section-toggle {
+  width: auto;
+  flex: 0 1 auto;
+  gap: 0;
+  padding: 5px 4px;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.section-trigger.explorer-trigger .explorer-root-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-trigger.explorer-trigger .tree-row-actions {
+  margin-left: auto;
+}
+
+.section-trigger.explorer-trigger:hover .tree-row-actions,
+.section-trigger.explorer-trigger:focus-within .tree-row-actions {
+  display: inline-flex;
+}
+
+.section-trigger.explorer-trigger.drop-target {
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  border-radius: var(--radius-sm);
+}
 
 .section-toggle {
   display: flex;
@@ -594,10 +586,48 @@
   letter-spacing: -0.01em;
 }
 
+.tree-chevron {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-left: -4px;
+  color: var(--text-faint);
+  transition: transform 120ms var(--ease);
+}
+
+.tree-chevron.open {
+  transform: rotate(90deg);
+}
+
+.tree-chevron .codicon {
+  font-size: 14px;
+}
+
+.tree-chevron.empty {
+  visibility: hidden;
+}
+
+.tree-file-icon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin-left: -4px;
+}
+
 .tree-children {
   margin-left: 14px;
   border-left: 1px solid var(--border);
   padding-left: 0;
+  animation: tree-children-in 90ms var(--ease);
+}
+
+@keyframes tree-children-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
 }
 
 .tree-meta {

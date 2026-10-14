@@ -10,7 +10,7 @@
 
 .main-row {
   display: grid;
-  grid-template-columns: 3.4em var(--pane-columns);
+  grid-template-columns: var(--rail-w, 3.4em) var(--pane-columns);
   grid-auto-rows: minmax(0, 1fr);
   flex: 1;
   min-width: 0;
@@ -21,7 +21,7 @@
 }
 
 .main-row.sidebar-closed {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: var(--rail-w, 3.4em) minmax(0, 1fr);
 }
 
 .main-row.sidebar-closed > .sidebar-slot,
@@ -38,7 +38,7 @@
 }
 
 .main-row.sidebar-closed > .workspace-host {
-  grid-column: 1;
+  grid-column: 2;
 }
 
 .workspace-host > .workspace-area {
@@ -138,9 +138,16 @@
 
 .activity-tool.active { box-shadow: inset 0 0 0 1px var(--border-strong); }
 .activity-tool .os-icon { width: 17px; height: 17px; }
+
+.activity-tool .codicon { font-size: 18px; line-height: 1; }
 .activity-tool:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.activity-spacer {
+  flex: 1 1 auto;
+  min-height: 10px;
 }
 
 .agent-col {
@@ -194,22 +201,36 @@
 
 .darwin .titlebar { padding-left: 80px; }
 
-.titlebar-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-weight: 650;
-  font-size: 12.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
-.titlebar-title .orbit-mark { flex-shrink: 0; }
-
 .titlebar-leading-actions {
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  -webkit-app-region: drag;
+}
+
+.titlebar-tabs-slot {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  align-self: stretch;
+  min-width: 0;
+  -webkit-app-region: drag;
+}
+
+/* The tab strip rides in the titlebar: its chrome-only surface is part of the
+   window drag region, while every interactive element inside it stays
+   clickable (a control left in the drag region would move the window instead of
+   activating). */
+.titlebar-tabs-slot .tabbar,
+.titlebar-tabs-slot .tab-list {
+  -webkit-app-region: drag;
+}
+
+.titlebar-tabs-slot button,
+.titlebar-tabs-slot input,
+.titlebar-tabs-slot [role="tab"],
+.titlebar-tabs-slot .tab-overflow {
   -webkit-app-region: no-drag;
 }
 
@@ -223,6 +244,8 @@
 
 .titlebar-leading-actions .icon-btn,
 .titlebar-actions .icon-btn { padding-inline: 4px; }
+
+.titlebar .icon-btn .lucide-icon { width: 18px; height: 18px; }
 
 .titlebar-leading-actions .icon-btn.on,
 .titlebar-actions .icon-btn.on {

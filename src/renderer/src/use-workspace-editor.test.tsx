@@ -34,10 +34,11 @@ describe("workspace editor authority", () => {
   const agentFilesRef = { current: {} as Record<string, Map<string, AgentFileState>> };
   const readAgentFile = (workspace: SessionInfo["workspace"], path: string) => agentFilesRef.current[workspace.id]?.get(path);
   const notify = vi.fn();
+  const onFileActivate = vi.fn();
   const focusSession = vi.fn((id: string) => { sessionRef.current = panelsRef.current.find((panel) => panel.id === id) ?? null; });
   const panelFor = (workspace: SessionInfo["workspace"]) => panelsRef.current.find((panel) => panel.workspace.id === workspace.id && panel.workspace.generation === workspace.generation) ?? null;
   function Probe() {
-    editor = useWorkspaceEditor({ readFocusedSession: () => sessionRef.current, readPanels: () => panelsRef.current, panelFor, focusSession, readAgentFile, notify });
+    editor = useWorkspaceEditor({ readFocusedSession: () => sessionRef.current, readPanels: () => panelsRef.current, panelFor, focusSession, readAgentFile, notify, onFileActivate });
     return null;
   }
   const render = async () => act(async () => root.render(<Probe />));
@@ -47,6 +48,7 @@ describe("workspace editor authority", () => {
     panelsRef.current = [first, second];
     agentFilesRef.current = {};
     notify.mockReset();
+    onFileActivate.mockReset();
     focusSession.mockClear();
     container = document.createElement("div");
     document.body.append(container);
@@ -63,6 +65,60 @@ describe("workspace editor authority", () => {
     await act(async () => root.unmount());
     container.remove();
     vi.unstubAllGlobals();
+  });
+
+  it("activates successful foreground files without changing existing dirty buffers", async () => {
+    await act(async () => editor.openFile("file"));
+    expect(onFileActivate).toHaveBeenCalledOnce();
+    act(() => editor.editContent("file", "dirty"));
+    onFileActivate.mockClear();
+    await act(async () => editor.openFile("file"));
+    expect(onFileActivate).toHaveBeenCalledOnce();
+    expect(editor.tabs[0]).toMatchObject({ content: "dirty", dirty: true });
+    onFileActivate.mockClear();
+    act(() => editor.setActive("missing"));
+    expect(onFileActivate).not.toHaveBeenCalled();
+    act(() => editor.setActive("file"));
+    expect(onFileActivate).toHaveBeenCalledOnce();
+  });
+
+  it("does not activate failed, binary, background or stale file reads", async () => {
+    window.openshell.readFile = async () => null;
+    await act(async () => editor.openFile("missing"));
+    window.openshell.readFile = async () => "binary\u0000";
+    await act(async () => editor.openFile("binary"));
+    window.openshell.readFile = async () => "background";
+    await act(async () => editor.openFile("background", {}, second.workspace));
+    const read = deferred<string>();
+    window.openshell.readFile = async () => read.promise;
+    const opening = editor.openFile("late");
+    sessionRef.current = second;
+    await render();
+    await act(async () => { read.resolve("late"); await opening; });
+    expect(onFileActivate).not.toHaveBeenCalled();
+  });
+
+  it("activates relative and standalone external files, and rejects closed external responses", async () => {
+    window.openshell.openExternal = async () => ({ kind: "relative", rel: "relative", content: "saved" });
+    await act(async () => editor.openExternalPath("/first/relative"));
+    expect(onFileActivate).toHaveBeenCalledOnce();
+    window.openshell.openExternal = async () => ({ kind: "standalone", path: "/outside/file", content: "outside" });
+    await act(async () => editor.openExternalPath("/outside/file"));
+    await act(async () => editor.openExternalPath("/outside/file"));
+    expect(onFileActivate).toHaveBeenCalledTimes(3);
+    onFileActivate.mockClear();
+    const pending = deferred<Awaited<ReturnType<OpenShellApi["openExternal"]>>>();
+    window.openshell.openExternal = async () => pending.promise;
+    const opening = editor.openExternalPath("/outside/late");
+    panelsRef.current = [second];
+    sessionRef.current = second;
+    await render();
+    await act(async () => {
+      pending.resolve({ kind: "standalone", path: "/outside/late", content: "late" });
+      expect(await opening).toBeNull();
+    });
+    expect(onFileActivate).not.toHaveBeenCalled();
+    expect(editor.unsavedEditorFiles).toEqual([]);
   });
 
   it("rejects a captured read after its workspace generation is replaced", async () => {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useStore } from "../store";
 import type { SessionSummary } from "@shared/types";
 import { ChevronIcon, PlusIcon } from "./FileIcons";
-import { IconClose, IconFolder, IconHistory, IconStarFilled } from "./icons";
+import { IconClose, IconFolder, IconSearch, IconSquarePen, IconStarFilled } from "./icons";
 
 const PINNED_KEY = "openshell.pinnedSessions";
 
@@ -34,7 +34,6 @@ function SessionRow({
   running,
   focused,
   pinned,
-  busy,
   onOpen,
   onClose,
   onTogglePin,
@@ -44,7 +43,6 @@ function SessionRow({
   running: boolean;
   focused: boolean;
   pinned: boolean;
-  busy: boolean;
   onOpen: () => void;
   onClose?: () => void;
   onTogglePin: () => void;
@@ -61,11 +59,6 @@ function SessionRow({
         onDelete(e);
       } : undefined}
     >
-      {running ? (
-        <span className={`agent-dot live ${busy ? "busy" : ""}`} />
-      ) : (
-        <IconHistory className="sessions-row-icon" />
-      )}
       <span className="sessions-row-main">
         <span className="sessions-row-title">{summary.title}</span>
       </span>
@@ -97,10 +90,110 @@ function SessionRow({
   );
 }
 
+function matchesQuery(summary: SessionSummary, needle: string): boolean {
+  return !needle || summary.title.toLowerCase().includes(needle);
+}
+
+function RecentsSection({
+  open,
+  onToggle,
+  sessions,
+  openNowIDs,
+  activeSessionID,
+  onOpenRow,
+  onCloseRow,
+  onTogglePin,
+  onDeleteRow
+}: {
+  open: boolean;
+  onToggle: () => void;
+  sessions: SessionSummary[];
+  openNowIDs: Set<string>;
+  activeSessionID: string | null;
+  onOpenRow: (summary: SessionSummary) => void;
+  onCloseRow: (id: string) => void;
+  onTogglePin: (id: string) => void;
+  onDeleteRow: (summary: SessionSummary, x: number, y: number) => void;
+}): ReactNode {
+  return (
+    <section className="sessions-section grow">
+      <div className="section-trigger sessions-recents-trigger" onClick={onToggle}>
+        <button className={`section-toggle ${open ? "open" : ""}`} aria-expanded={open}>
+          <span>Recents</span>
+        </button>
+        <span className="section-chevron sessions-workspaces-chevron">
+          <ChevronIcon open={open} />
+        </span>
+      </div>
+      {open && (
+        <div className="sessions-section-list">
+          {sessions.length === 0 ? (
+            <div className="sessions-empty">No sessions yet.</div>
+          ) : (
+            sessions.map((summary) => (
+              <SessionRow
+                key={summary.id}
+                summary={summary}
+                running={openNowIDs.has(summary.id)}
+                focused={summary.id === activeSessionID}
+                pinned={false}
+                onOpen={() => onOpenRow(summary)}
+                onClose={openNowIDs.has(summary.id) ? () => onCloseRow(summary.id) : undefined}
+                onTogglePin={() => onTogglePin(summary.id)}
+                onDelete={(e) => onDeleteRow(summary, e.clientX, e.clientY)}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SessionsHeader({
+  title,
+  searchOpen,
+  query,
+  onToggleSearch,
+  onQueryChange
+}: {
+  title: string;
+  searchOpen: boolean;
+  query: string;
+  onToggleSearch: () => void;
+  onQueryChange: (value: string) => void;
+}): ReactNode {
+  return (
+    <>
+      <div className="sessions-header">
+        <span className="sessions-header-title">{title}</span>
+        <i className="codicon codicon-chevron-down sessions-header-chevron" aria-hidden="true" />
+        <button
+          className={`sessions-header-action ${searchOpen ? "open" : ""}`}
+          aria-label={searchOpen ? "Close session filter" : "Filter sessions"}
+          aria-pressed={searchOpen}
+          onClick={onToggleSearch}
+        >
+          <IconSearch />
+        </button>
+      </div>
+      {searchOpen && (
+        <input
+          className="sessions-search"
+          autoFocus
+          spellCheck={false}
+          placeholder="Filter sessions…"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+        />
+      )}
+    </>
+  );
+}
+
 export function SessionsPane(): ReactNode {
   const {
     panels,
-    panelViews,
     activeSessionID,
     focusSession,
     closePanel,
@@ -114,11 +207,13 @@ export function SessionsPane(): ReactNode {
     removeWorkspace,
     activeSessions,
     loadSessions,
+    session,
   } = useStore();
   const [pinnedIDs, setPinnedIDs] = useState<string[]>(readPinned);
-  const [openNowOpen, setOpenNowOpen] = useState(false);
   const [workspacesOpen, setWorkspacesOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [recentsOpen, setRecentsOpen] = useState(true);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => new Set());
   const [workspaceMenu, setWorkspaceMenu] = useState<WorkspaceMenuState | null>(null);
   const [sessionMenu, setSessionMenu] = useState<SessionMenuState | null>(null);
@@ -183,17 +278,21 @@ export function SessionsPane(): ReactNode {
     const seen = new Set(sessions.map((s) => s.id));
     return [...byID.values(), ...openSummaries.filter((p) => !seen.has(p.id))];
   }, [sessions, openSummaries, byID]);
-  const recents = useMemo(() => [...known].sort((a, b) => b.updatedAt - a.updatedAt), [known]);
   const openNowIDs = useMemo(() => new Set(openSummaries.map((summary) => summary.id)), [openSummaries]);
-  const history = useMemo(
-    () => recents.filter((summary) => !openNowIDs.has(summary.id)),
-    [recents, openNowIDs]
+  const needle = query.trim().toLowerCase();
+  const recents = useMemo(
+    () =>
+      [...known].sort(
+        (a, b) =>
+          (openNowIDs.has(b.id) ? 1 : 0) - (openNowIDs.has(a.id) ? 1 : 0) || b.updatedAt - a.updatedAt
+      ),
+    [known, openNowIDs]
   );
-
-  // Keep Open now visible whenever it has entries to show.
-  useEffect(() => {
-    if (openSummaries.length > 0) setOpenNowOpen(true);
-  }, [openSummaries.length]);
+  const pinnedList = recents.filter((summary) => pinnedIDs.includes(summary.id) && matchesQuery(summary, needle));
+  const unpinnedRecents = recents.filter((summary) => !pinnedIDs.includes(summary.id) && matchesQuery(summary, needle));
+  const workspaceName = session
+    ? session.directory.split(/[\\/]/).filter(Boolean).pop() ?? "Orbit"
+    : "Orbit";
 
   const togglePin = (id: string): void => {
     setPinnedIDs((current) => {
@@ -228,74 +327,67 @@ export function SessionsPane(): ReactNode {
 
   return (
     <div className="sessions-pane">
+      <SessionsHeader
+        title={workspaceName}
+        searchOpen={searchOpen}
+        query={query}
+        onToggleSearch={() => {
+          setSearchOpen((open) => !open);
+          if (searchOpen) setQuery("");
+        }}
+        onQueryChange={setQuery}
+      />
       <div className="sessions-actions">
         <button className="sessions-new" onClick={newSession} title="Choose a folder for a new session">
-          <PlusIcon />
+          <IconSquarePen />
           New Session
         </button>
       </div>
 
-      <section className="sessions-section">
-        <div className="section-trigger">
-          <button
-            className={`section-toggle ${openNowOpen ? "open" : ""}`}
-            aria-expanded={openNowOpen}
-            onClick={() => setOpenNowOpen((open) => !open)}
-          >
-            <span>Open now</span>
-            <span className="section-chevron">
-              <ChevronIcon open={openNowOpen} />
-            </span>
-          </button>
-        </div>
-        {openNowOpen && (
+      {pinnedList.length > 0 && (
+        <section className="sessions-section">
+          <div className="sessions-static-label">Pinned</div>
           <div className="sessions-section-list">
-          {openSummaries.length === 0 ? (
-            <div className="sessions-empty">No open sessions.</div>
-          ) : (
-            openSummaries.map((summary) => {
-              const panel = runningPanels.get(summary.id);
-              return (
-                <SessionRow
-                  key={summary.id}
-                  summary={summary}
-                  running
-                  focused={summary.id === activeSessionID}
-                  pinned={pinnedIDs.includes(summary.id)}
-                  busy={Boolean(panel && panelViews[panel.workspace.id]?.busy)}
-                  onOpen={() => openRow(summary)}
-                  onClose={() => closePanel(summary.id)}
-                  onTogglePin={() => togglePin(summary.id)}
-                  onDelete={(e) => askDeleteRow(summary, e.clientX, e.clientY)}
-                />
-              );
-            })
-          )}
+            {pinnedList.map((summary) => (
+              <SessionRow
+                key={summary.id}
+                summary={summary}
+                running={openNowIDs.has(summary.id)}
+                focused={summary.id === activeSessionID}
+                pinned
+                onOpen={() => openRow(summary)}
+                onClose={openNowIDs.has(summary.id) ? () => closePanel(summary.id) : undefined}
+                onTogglePin={() => togglePin(summary.id)}
+                onDelete={(e) => askDeleteRow(summary, e.clientX, e.clientY)}
+              />
+            ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <section className="sessions-section">
-        <div className="section-trigger sessions-workspaces-trigger">
+        <div className="section-trigger sessions-workspaces-trigger" onClick={() => setWorkspacesOpen((open) => !open)}>
           <button
             className={`section-toggle ${workspacesOpen ? "open" : ""}`}
             aria-expanded={workspacesOpen}
-            onClick={() => setWorkspacesOpen((open) => !open)}
           >
-            <span>Workspaces</span>
+            <span>Projects</span>
           </button>
+          <span className="section-chevron sessions-workspaces-chevron">
+            <ChevronIcon open={workspacesOpen} />
+          </span>
           <button
             className="sessions-workspace-add"
             type="button"
             title="Save a workspace in Orbit"
             aria-label="Save a workspace in Orbit"
-            onClick={() => void saveWorkspace()}
+            onClick={(event) => {
+              event.stopPropagation();
+              void saveWorkspace();
+            }}
           >
             <PlusIcon />
           </button>
-          <span className="section-chevron sessions-workspaces-chevron">
-            <ChevronIcon open={workspacesOpen} />
-          </span>
         </div>
         {workspacesOpen && (
           <div className="sessions-section-list sessions-project-list">
@@ -315,6 +407,7 @@ export function SessionsPane(): ReactNode {
                 >
                   <div
                     className={`sessions-project-head ${expanded ? "open" : ""}`}
+                    onClick={() => toggleProject(workspace.directory)}
                     onContextMenu={(event) => {
                       event.preventDefault();
                       setWorkspaceMenu({
@@ -328,7 +421,10 @@ export function SessionsPane(): ReactNode {
                       className="sessions-project-open"
                       type="button"
                       aria-label={`Open workspace ${workspaceDisplayName}`}
-                      onClick={() => void openSession(workspace.directory)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void openSession(workspace.directory);
+                      }}
                       title={workspace.directory}
                     >
                       <IconFolder className="sessions-row-icon" />
@@ -341,7 +437,10 @@ export function SessionsPane(): ReactNode {
                       aria-label={`${expanded ? "Collapse" : "Expand"} ${workspaceDisplayName} sessions`}
                       aria-expanded={expanded}
                       title={`${expanded ? "Collapse" : "Expand"} session history`}
-                      onClick={() => toggleProject(workspace.directory)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleProject(workspace.directory);
+                      }}
                     >
                       <span className="section-chevron"><ChevronIcon open={expanded} /></span>
                     </button>
@@ -350,23 +449,19 @@ export function SessionsPane(): ReactNode {
                     <div className="sessions-project-sessions">
                       {workspaceSessions.length === 0 ? (
                         <div className="sessions-empty">No sessions yet.</div>
-                      ) : workspaceSessions.map((s) => {
-                        const panel = runningPanels.get(s.id);
-                        return (
-                          <SessionRow
-                            key={s.id}
-                            summary={s}
-                            running={openNowIDs.has(s.id)}
-                            focused={s.id === activeSessionID}
-                            pinned={pinnedIDs.includes(s.id)}
-                            busy={Boolean(panel && panelViews[panel.workspace.id]?.busy)}
-                            onOpen={() => openRow(s)}
-                            onClose={openNowIDs.has(s.id) ? () => closePanel(s.id) : undefined}
-                            onTogglePin={() => togglePin(s.id)}
-                            onDelete={(e) => askDeleteRow(s, e.clientX, e.clientY)}
-                          />
-                        );
-                      })}
+                      ) : workspaceSessions.map((s) => (
+                        <SessionRow
+                          key={s.id}
+                          summary={s}
+                          running={openNowIDs.has(s.id)}
+                          focused={s.id === activeSessionID}
+                          pinned={pinnedIDs.includes(s.id)}
+                          onOpen={() => openRow(s)}
+                          onClose={openNowIDs.has(s.id) ? () => closePanel(s.id) : undefined}
+                          onTogglePin={() => togglePin(s.id)}
+                          onDelete={(e) => askDeleteRow(s, e.clientX, e.clientY)}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
@@ -377,43 +472,17 @@ export function SessionsPane(): ReactNode {
         )}
       </section>
 
-      <section className="sessions-section grow">
-        <div className="section-trigger">
-          <button
-            className={`section-toggle ${historyOpen ? "open" : ""}`}
-            aria-expanded={historyOpen}
-            onClick={() => setHistoryOpen((open) => !open)}
-          >
-            <span>History</span>
-            <span className="section-chevron">
-              <ChevronIcon open={historyOpen} />
-            </span>
-          </button>
-        </div>
-        {historyOpen && (
-          <div className="sessions-section-list">
-          {history.length === 0 ? (
-            <div className="sessions-empty">No closed sessions yet.</div>
-          ) : (
-            history.map((summary) => {
-              return (
-                <SessionRow
-                  key={summary.id}
-                  summary={summary}
-                  running={false}
-                  focused={false}
-                  pinned={pinnedIDs.includes(summary.id)}
-                  busy={false}
-                  onOpen={() => openRow(summary)}
-                  onTogglePin={() => togglePin(summary.id)}
-                  onDelete={(e) => askDeleteRow(summary, e.clientX, e.clientY)}
-                />
-              );
-            })
-          )}
-          </div>
-        )}
-      </section>
+      <RecentsSection
+        open={recentsOpen}
+        onToggle={() => setRecentsOpen((open) => !open)}
+        sessions={unpinnedRecents}
+        openNowIDs={openNowIDs}
+        activeSessionID={activeSessionID}
+        onOpenRow={openRow}
+        onCloseRow={closePanel}
+        onTogglePin={togglePin}
+        onDeleteRow={askDeleteRow}
+      />
       {workspaceMenu && (
         <div
           ref={workspaceMenuRef}
@@ -440,6 +509,16 @@ export function SessionsPane(): ReactNode {
           style={{ left: Math.max(4, Math.min(sessionMenu.x, window.innerWidth - 190)), top: Math.max(4, Math.min(sessionMenu.y, window.innerHeight - 70)) }}
           onContextMenu={(event) => event.preventDefault()}
         >
+          <button
+            type="button"
+            className="sessions-context-item"
+            onClick={() => {
+              togglePin(sessionMenu.id);
+              setSessionMenu(null);
+            }}
+          >
+            {pinnedIDs.includes(sessionMenu.id) ? "Unpin from Pinned" : "Pin chat"}
+          </button>
           <button
             type="button"
             className="sessions-context-item sessions-context-danger"

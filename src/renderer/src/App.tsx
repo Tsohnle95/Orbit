@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { StoreProvider, useStore } from "./store";
-import { IconAdd, IconChevronDown, IconFolder, IconGear, IconRobot, IconSidebarLeft, IconSidebarRight, IconTerminal } from "./components/icons";
+import { useStore } from "./store";
+import { IconChevronDown } from "./components/icons";
 import type { SessionInfo } from "@shared/types";
 import type { ValidationReport } from "./validation-report";
 import { Welcome } from "./components/Welcome";
@@ -9,16 +9,18 @@ import { EditorPane } from "./components/EditorPane";
 import { AgentPanel } from "./components/AgentPanel";
 import { TerminalTray } from "./components/TerminalTray";
 import { RecoveryNotice } from "./components/RecoveryNotice";
-import { OrbitMark } from "./components/OrbitMark";
+import { Titlebar } from "./components/Titlebar";
 import { SettingsPage } from "./components/SettingsPage";
 import { SettingsSidebar, type SettingsSection } from "./components/SettingsSidebar";
-import { StatusBar } from "./components/StatusBar";
-import type { EditorStatus } from "./components/editor-status";
 import { protectEditorUnload } from "./editor-close-guard";
 import { ThemeProvider } from "./theme";
 import { agentPanelGrid, panelSlotFor, distributePanelSlots, MAX_AGENT_PANELS, AGENT_DEFAULT_W, AGENT_MIN_W, EDITOR_MIN_VISIBLE_W, type PanelSlot } from "./agent-panels";
 import { PanelColumn } from "./layout/PanelColumn";
-import { useDragResize, useTrayHeight } from "./layout/panel-interactions";
+import { railToolClass, railToolTitle, sidebarViewVisible, sidebarViews } from "./layout/rail";
+import { useDragResize, useTitlebarTabsOffset, useTrayHeight } from "./layout/panel-interactions";
+import { RailBrowserButton } from "./layout/RailBrowserButton";
+import { BrowserTabsProvider, useBrowserTabActions } from "./browser-tabs-context";
+import { BrowserStoreProvider } from "./browser-store-provider";
 
 const SIDE_MIN_W = 230;
 const SIDE_MAX_W = 520;
@@ -52,6 +54,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     reopenSession,
     selectAddPanel
   } = useStore();
+  const { openBrowserTab } = useBrowserTabActions();
   const agentPanels = useMemo(() => {
     const agentPanels = allPanels.filter((panel) => !workspaceOnlyPanelIDs.has(panel.id));
     const active = allPanels.find((panel) => panel.id === activeSessionID);
@@ -64,6 +67,9 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const [pendingModelPanels, setPendingModelPanels] = useState(0);
   const trayAreaRef = useRef<HTMLDivElement>(null);
   const workspaceAreaRef = useRef<HTMLDivElement>(null);
+  const workspaceHostRef = useRef<HTMLDivElement>(null);
+  const titlebarLeadingRef = useRef<HTMLSpanElement>(null);
+  const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null);
   const { height: trayH, open: trayOpen, snapped: traySnapped, dragging: trayDragging, toggle: toggleTray, show: showTray, close: closeTray, expand: expandTray, onDrag: trayDrag } = useTrayHeight(
     (height) => {
       trayAreaRef.current?.style.setProperty("--tray-height", `${height}px`);
@@ -74,7 +80,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const [sideTab, setSideTab] = useState<SidebarTab>("files");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("appearance");
-  const [editorStatus, setEditorStatus] = useState<EditorStatus | null>(null);
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [terminalPanel, setTerminalPanel] = useState<"terminal" | "problems" | "sass">("terminal");
   const [agentModeActive, setAgentModeActive] = useState(false);
@@ -87,6 +92,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const emptyAgentRef = useRef<HTMLDivElement>(null);
   const prevSidebarRef = useRef<{ open: boolean; width: number } | null>(null);
   const inAgentMode = agentModeActive;
+  const { sessions: sessionsView, files: filesView } = sidebarViews(settingsOpen, sideOpen, sideTab);
 
   const codingPanel = useMemo(
     () => allPanels.find((panel) => panel.id === activeSessionID) ?? agentPanels[0] ?? null,
@@ -142,6 +148,8 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     observer.observe(area);
     return () => observer.disconnect();
   }, [settingsOpen]);
+
+  useTitlebarTabsOffset(titlebarLeadingRef, workspaceHostRef, [sideOpen, sideW, settingsOpen, winW]);
 
   useEffect(() => {
     const onResize = (): void => setWinW(window.innerWidth);
@@ -518,6 +526,18 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   };
 
   const activateSidebarTab = (tab: SidebarTab): void => {
+    if (inAgentMode) {
+      toggleAgentMode();
+      setSettingsOpen(false);
+      setSideTab(tab);
+      setSidebarOpen(true);
+      return;
+    }
+    // Clicking the already-active rail view collapses the sidebar (the titlebar toggle moved to the rail).
+    if (sidebarViewVisible(settingsOpen, sideOpen, sideTab, tab)) {
+      setSidebarOpen(false);
+      return;
+    }
     setSettingsOpen(false);
     setSideTab(tab);
     setSidebarOpen(true);
@@ -545,109 +565,95 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
     });
   };
 
+  const toggleSidebarFromTitlebar = (): void => {
+    if (inAgentMode) {
+      toggleAgentMode();
+      setSideOpen(true);
+      return;
+    }
+    setSidebarOpen(!sideOpen);
+  };
+
+  const toggleAgentPanel = (): void => {
+    if (anchorId) setSlotOpen(anchorId, !anchorOpen);
+    else setEmptyAgentOpen(!anchorOpen);
+  };
+
   return (
     <div className={`app ${inAgentMode ? "agent-mode" : ""}`}>
-      <div className="titlebar">
-        <span className="titlebar-leading-actions">
-          <button
-            className={`icon-btn ${!inAgentMode && sideOpen ? "on" : ""}`}
-            data-panel-action="toggle-sidebar"
-            title={!inAgentMode && sideOpen ? "Hide left panel" : "Show left panel"}
-            aria-label={!inAgentMode && sideOpen ? "Hide left panel" : "Show left panel"}
-            aria-pressed={!inAgentMode && sideOpen}
-            onClick={() => {
-              if (inAgentMode) {
-                toggleAgentMode();
-                setSideOpen(true);
-              } else {
-                setSidebarOpen(!sideOpen);
-              }
-            }}
-          >
-            <IconSidebarLeft />
-          </button>
-        </span>
-        <span className="titlebar-title"><OrbitMark size={16} />Orbit</span>
-        <span className="titlebar-actions">
-          {inAgentMode && (
-            <button
-              className="icon-btn"
-              data-panel-action="add-model-panel"
-              title={panels.length + pendingModelPanels >= MAX_AGENT_PANELS ? `Model panel limit reached (${MAX_AGENT_PANELS})` : "Add model panel (choose a folder for the new panel)"}
-              aria-label="Add model panel"
-              disabled={panels.length + pendingModelPanels >= MAX_AGENT_PANELS}
-              onClick={addModelPanel}
-            >
-              <IconAdd />
-            </button>
-          )}
-          <button
-            className={`icon-btn ${inAgentMode ? "on" : ""}`}
-            data-panel-action="toggle-model-mode"
-            aria-label={inAgentMode ? "Exit Agent Mode" : "Enter Agent Mode"}
-            aria-pressed={inAgentMode}
-            title={inAgentMode
-              ? "Exit Agent Mode — restore the previous panel layout"
-              : "Agent Mode — collapse the sidebar and split models across the workspace"}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              toggleAgentMode();
-            }}
-          >
-            <IconRobot />
-          </button>
-          <button
-            className={`icon-btn ${trayOpen ? "on" : ""}`}
-            title={!session
-              ? "No workspace open"
-              : trayOpen
-                ? (traySnapped ? "Expand terminal (⌥O)" : "Hide terminal (⌥O)")
-                : "Show terminal (⌥O)"}
-            onClick={toggleTray}
-          >
-            <IconTerminal />
-          </button>
-          <button
-            className={`icon-btn ${settingsOpen ? "on" : ""}`}
-            title={settingsOpen ? "Close settings" : "Settings"}
-            aria-label="Settings"
-            aria-pressed={settingsOpen}
-            onClick={() => settingsOpen ? setSettingsOpen(false) : openSettings()}
-          >
-            <IconGear />
-          </button>
-          <button
-            className={`icon-btn ${anchorOpen ? "on" : ""}`}
-            data-panel-action="toggle-agent-panel"
-            title={anchorOpen ? "Hide agent panel" : "Show agent panel"}
-            aria-label={anchorOpen ? "Hide agent panel" : "Show agent panel"}
-            aria-pressed={anchorOpen}
-            onClick={() => anchorId ? setSlotOpen(anchorId, !anchorOpen) : setEmptyAgentOpen(!anchorOpen)}
-          >
-            <IconSidebarRight />
-          </button>
-        </span>
-      </div>
+      <Titlebar
+        sidebarOpen={!inAgentMode && sideOpen}
+        agentMode={inAgentMode}
+        agentPanelOpen={anchorOpen}
+        onToggleSidebar={toggleSidebarFromTitlebar}
+        onToggleAgentMode={toggleAgentMode}
+        onToggleAgentPanel={toggleAgentPanel}
+        leadingRef={titlebarLeadingRef}
+        tabsSlotRef={setTabsSlot}
+      />
 
       <div
         ref={mainRowRef}
         className={sideOpen ? "main-row" : "main-row sidebar-closed"}
         style={{ "--pane-columns": cols } as CSSProperties}
       >
-        {sideOpen && (
-          <nav className="activity-rail" aria-label="Workspace views">
+        <nav className="activity-rail" aria-label="Workspace views">
+          <button
+            className={railToolClass(sessionsView)}
+            data-panel-action="show-sessions" aria-label="Sessions"
+            aria-pressed={sessionsView}
+            title={railToolTitle(sessionsView, "Sessions")}
+            onClick={() => activateSidebarTab("sessions")}
+          >
+            <i className="codicon codicon-comment-discussion" aria-hidden="true" />
+          </button>
+          <button
+            className={railToolClass(filesView)}
+            data-panel-action="show-files"
+            aria-label="Files"
+            aria-pressed={filesView}
+            title={railToolTitle(filesView, "Files")}
+            onClick={() => activateSidebarTab("files")}
+          >
+            <i className="codicon codicon-files" aria-hidden="true" />
+          </button>
+          <button
+            className={`activity-tool ${trayOpen ? "active" : ""}`}
+            title={!session
+              ? "No workspace open"
+              : trayOpen
+                ? (traySnapped ? "Expand terminal (⌥O)" : "Hide terminal (⌥O)")
+                : "Show terminal (⌥O)"}
+            aria-label="Terminal"
+            onClick={toggleTray}
+          >
+            <i className="codicon codicon-terminal" aria-hidden="true" />
+          </button>
+          <RailBrowserButton onOpen={() => openBrowserTab()} />
+          {inAgentMode && (
             <button
-              className={`activity-tool ${!settingsOpen && sideTab === "files" ? "active" : ""}`}
-              aria-label="Files"
-              aria-pressed={!settingsOpen && sideTab === "files"}
-              title="Files"
-              onClick={() => activateSidebarTab("files")}
+              className="activity-tool"
+              data-panel-action="add-model-panel"
+              title={panels.length + pendingModelPanels >= MAX_AGENT_PANELS ? `Model panel limit reached (${MAX_AGENT_PANELS})` : "Add model panel (choose a folder for the new panel)"}
+              aria-label="Add model panel"
+              disabled={panels.length + pendingModelPanels >= MAX_AGENT_PANELS}
+              onClick={addModelPanel}
             >
-              <IconFolder />
+              <i className="codicon codicon-add" aria-hidden="true" />
             </button>
-          </nav>
-        )}
+          )}
+          <span className="activity-spacer" aria-hidden />
+          <button
+            className={`activity-tool ${settingsOpen ? "active" : ""}`}
+            data-panel-action="toggle-settings"
+            title={settingsOpen ? "Close settings" : "Settings"}
+            aria-label="Settings"
+            aria-pressed={settingsOpen}
+            onClick={() => settingsOpen ? setSettingsOpen(false) : openSettings()}
+          >
+            <i className="codicon codicon-settings-gear" aria-hidden="true" />
+          </button>
+        </nav>
         <div className={`sidebar-slot ${sideOpen ? "" : "collapsed"}`}>
           {settingsOpen ? <SettingsSidebar
             section={settingsSection}
@@ -661,14 +667,10 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
               showTray();
             }}
             tab={sideTab}
-            onTabChange={(tab) => {
-              setSideTab(tab);
-              setSettingsOpen(false);
-            }}
           />}
         </div>
         <div className={`divider ${sideOpen ? "" : "collapsed"}`} onMouseDown={sideDrag} style={{ pointerEvents: sideOpen ? undefined : "none" }} />
-        <div className="workspace-host">
+        <div className="workspace-host" ref={workspaceHostRef}>
           <div
           ref={workspaceAreaRef}
           className={`workspace-area ${settingsOpen ? "settings-suspended" : ""} ${ordered.some((panel) => slotShown(panel) > 0) || (panels.length === 0 && emptyAgentOpen) ? "agent-open" : ""} ${editorCovered ? "editor-covered" : ""} ${trayDragging ? "tray-dragging" : ""}`}
@@ -680,7 +682,14 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             } as CSSProperties
           }
         >
-          <EditorPane onStatusChange={setEditorStatus} />
+          <EditorPane
+            tabsSlot={tabsSlot}
+            onValidationComplete={(report) => {
+              setValidationReport(report);
+              setTerminalPanel("problems");
+              showTray();
+            }}
+          />
           {ordered.map((panel, index) => {
             const s = slotFor(panel);
             const anchorId = panels[0]?.workspace.id ?? null;
@@ -758,14 +767,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
         </div>
       </div>
 
-      {!settingsOpen && <StatusBar
-        editorStatus={editorStatus}
-        onValidationComplete={(report) => {
-          setValidationReport(report);
-          setTerminalPanel("problems");
-          showTray();
-        }}
-      />}
       <Toasts />
       <RecoveryNotice />
     </div>
@@ -795,9 +796,11 @@ export default function App(): ReactNode {
 
   return (
     <ThemeProvider>
-      <StoreProvider>
-        <Root />
-      </StoreProvider>
+      <BrowserTabsProvider>
+        <BrowserStoreProvider>
+          <Root />
+        </BrowserStoreProvider>
+      </BrowserTabsProvider>
     </ThemeProvider>
   );
 }

@@ -53,21 +53,41 @@
 
 .tab-list::-webkit-scrollbar { display: none; }
 
-.editor-group-actions {
-  display: flex;
+/* Split groups share the titlebar strip; a hairline separates their tabs. */
+.tab-group-divider {
   flex: 0 0 auto;
-  align-items: center;
-  margin-left: 4px;
+  align-self: center;
+  width: 1px;
+  height: 16px;
+  margin: 0 5px;
+  background: var(--border);
 }
 
+/* The tab strip lives in the titlebar; the slot owns its geometry there. */
+.titlebar-tabs-slot .tabbar {
+  flex: 1 1 auto;
+  height: 100%;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.titlebar-tabs-slot .tab-list {
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Editor-group controls (split / close) sit with the breadcrumb's status menu
+   at the right end of the row, matching its control size. */
 .editor-group-action {
   display: grid;
   place-items: center;
-  width: 27px;
-  height: 27px;
+  width: 26px;
+  height: 24px;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   background: transparent;
   color: var(--text-faint);
   cursor: pointer;
@@ -212,8 +232,10 @@
 
 .tab-name {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 6px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -241,7 +263,13 @@
   flex-shrink: 0;
 }
 
-.tab-actions { display: flex; align-items: center; gap: 2px; }
+/* The close control sits at the tab's trailing edge, not against the file name. */
+.tab-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
 
 .tab-diff-badge {
   font-size: 12px;
@@ -268,6 +296,75 @@
 
 .tab-close:hover { color: var(--text); background: var(--bg-active); border-radius: var(--radius-sm); }
 
+.tab-overflow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.tab-overflow-button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.tab-overflow-button:hover,
+.tab-overflow-button.open {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.tab-overflow-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  max-width: 300px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-lg);
+}
+
+.tab-overflow-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tab-overflow-item:hover { background: var(--bg-hover); }
+
+.tab-overflow-item.active { background: var(--bg-inset); }
+
+.tab-overflow-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .editor-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 
 body > #orbit-monaco-overflow {
@@ -292,40 +389,80 @@ body > #orbit-monaco-overflow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex: 0 0 30px;
+  flex: 0 0 52px;
   gap: 12px;
-  padding: 0 16px;
-  font-size: 10px;
+  padding: 8px 10px 14px;
+  font-size: 13px;
   color: var(--text-dim);
   background: transparent;
 }
 
 .editor-breadcrumb-path {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 2px;
   min-width: 0;
+  height: 30px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
   overflow: hidden;
   white-space: nowrap;
 }
 
-.breadcrumb-workspace {
-  flex: 0 0 auto;
-  color: var(--text-dim);
-  font-weight: 600;
+/* Floating editor scrollbar: the thumb is a rounded pill inset from the pane
+   edge (the inset comes from the editor's scrollbar/slider size options), and
+   it is only revealed while the editor is actually being scrolled. */
+.monaco-editor .scrollbar > .slider {
+  border-radius: 999px;
+}
+
+.editor-wrap .monaco-editor .scrollbar {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms var(--ease);
+}
+
+.editor-wrap.scrolling .monaco-editor .scrollbar {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .breadcrumb-segment {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 2px;
   min-width: 0;
-  color: var(--text-dim);
+  color: inherit;
 }
 
-.breadcrumb-segment .os-icon { flex: 0 0 auto; width: 11px; height: 11px; color: var(--text-faint); }
-.breadcrumb-segment > span { overflow: hidden; text-overflow: ellipsis; }
-.breadcrumb-segment > span[aria-current="page"] { color: var(--text); }
+.breadcrumb-segment .os-icon {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  color: var(--text-faint);
+}
+
+.breadcrumb-ancestor,
+.breadcrumb-current {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.breadcrumb-ancestor:hover {
+  background: var(--bg-hover);
+}
+
+.breadcrumb-current {
+  color: var(--text);
+  font-weight: 600;
+}
 
 .editor-breadcrumb-actions {
   display: flex;
@@ -333,6 +470,7 @@ body > #orbit-monaco-overflow {
   justify-content: flex-end;
   flex: 0 0 auto;
   gap: 4px;
+  margin-left: auto;
 }
 
 .editor-breadcrumb-actions .editor-dirty,
@@ -375,7 +513,6 @@ body > #orbit-monaco-overflow {
 
 @container (max-width: 480px) {
   .editor-breadcrumbs { gap: 5px; padding: 0 8px; }
-  .breadcrumb-workspace { display: none; }
   .editor-breadcrumb-actions { gap: 2px; }
   .editor-breadcrumb-actions .editor-dirty,
   .editor-breadcrumb-actions .editor-stale { display: none; }

@@ -85,7 +85,7 @@ Exposed state:
 | `activePath` | `string \| null` | active tab path for the focused workspace |
 | `singleFile` | `string \| null` | the active workspace's single-file path (set when a file was opened as the workspace via `selectFile`/`openFileWorkspace`); non-null makes the sidebar render true single-file mode (file name, one file row, no folder tree) |
 | `agentFiles` | `Map<path, AgentFileState>` | `{baseline, content, deleted}` for observed files still differing from their effective baseline; drives Changes and known/unknown diff state; per workspace |
-| `tree` | `Record<relPath, TreeEntry[]>` | lazy-loaded explorer cache; per workspace |
+| `tree` | `Record<relPath, TreeEntry[]>` | lazy-loaded explorer cache warmed by hover prefetch; per workspace |
 | `expanded` | `Set<relPath>` | open tree directories; per workspace |
 | `toasts` | `Toast[]` | transient notifications |
 | `recoveryRecords` | `RecoveryRecord[]` | durable workspace artifacts for the focused workspace; unacknowledged records remain actionable across restart |
@@ -672,16 +672,21 @@ express a cross-component invariant or non-obvious state contract.
 
 | Component | File | Responsibility |
 |---|---|---|
-| `App` | `App.tsx` | Prism workspace shell, profile-independent panel layout, panel geometry and focus routing; Settings overlays the mounted workspace so editor group state survives, the activity rail and Files/Sessions sidebar share one open state, and Agent Mode hides both |
+| `App` | `App.tsx` | Workspace shell and activity rail; panel geometry and focus routing; the rail hosts Sessions/Files views, Terminal, and the add-model action (Agent Mode only) with Settings pinned at the bottom and stays visible in Agent Mode; Settings overlays the mounted workspace so editor group state survives |
+| `Titlebar` | `Titlebar.tsx` | Left-panel toggle beside the traffic lights, a slot the focused editor group's tab strip portals into, and the titlebar actions (Agent Mode and the right-panel toggle in the corner); the leading block is sized so the strip starts exactly where the left app panel ends, and never narrower than its controls so a collapsed panel cannot clip the toggle; empty strip surface is part of the window drag region while tabs and controls set `no-drag`; both panel toggles are the same mirrored panel glyph pair (dashed while its panel is hidden) and flip with panel state without accent highlighting |
 | `Welcome` | `Welcome.tsx` | Landing view, recent sessions/workspaces, initial folder/file open |
-| `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation (defaults to Files when a workspace opens), Changes, Explorer, filesystem actions, open-workspace root removal, terminal context actions |
+| `FileSidebar` | `FileSidebar.tsx` | Sessions/Files navigation rendered for the rail-selected view (Files when a workspace opens), Changes, Explorer, filesystem actions, open-workspace root removal, terminal context actions |
 | `SettingsSidebar` | `SettingsSidebar.tsx` | Settings navigation |
 | `SettingsPage` | `SettingsPage.tsx` | The independent Codex/Classic interface chooser and all appearance palettes, including Codex, Codex Dark, Kitty Glass and Original Dark, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and About with a direct GitHub update action, separate status check, and clickable unsaved-file list |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
-| `SessionsPane` | `SessionsPane.tsx` | Open-now inventory, saved workspaces, history, session open/close navigation |
-| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff tabs with a workspace-relative breadcrumb row and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and up to four groups with independent tab membership, selection, and drag transfer; new tabs route to the focused group |
-| `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status; Shift+Tab cycles agents, Shift+P cycles favorite models, and Ctrl+Tab cycles response strength without intercepting typed Shift+S |
-| `Composer` | `Composer.tsx` | Authoritative local prompt draft, attachments, keyboard dispatch and agent controls; completion and model-menu behavior have the owners below |
+| `SessionsPane` | `SessionsPane.tsx` | Pinned/Projects/Recents inventory, saved workspaces, session open/close navigation |
+| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff views with a Codex-style breadcrumb trail (text segments, chevron separators, ghost ancestors, current file emphasized) and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and up to four groups with independent tab membership, selection, and drag transfer; every group's file tabs share the titlebar strip (group blocks in panel order, separated by a hairline) so a split panel never grows a second strip inside itself, and selecting a tab there focuses its group; each group's split/close controls sit at the right end of its breadcrumb row beside the editor status menu (empty groups keep that row so they can still be split); new tabs route to the focused group ; browser tabs share that strip (chips after the file tabs, with the `+` control that opens one, leading when nothing is open) and while one is showing the editor keeps its mount behind a concealed wrapper |
+| `BrowserPane` | `BrowserPane.tsx`, `use-browser-guest.ts`, `use-browser-tabs.ts` | Browser tab surface: a navigation row (back / forward / reload-or-stop, "Search or enter a URL" field that turns bare hosts into `https:` and everything else into a search) over a `<webview>` guest in the `orbit-browser` partition. Guests are created lazily — a new tab is pure state with no guest at all — so opening one costs nothing, and a loading veil covers the frame until the page stops loading; `use-browser-guest` folds guest events into the browser slice |
+| `BrowserTabsProvider` | `browser-tabs-context.tsx`, `browser-store-provider.tsx` | Browser tab state lives outside the app store, split into a *state* context (tab list + active tab, consumed by the strip and panes) and a stable *actions* context (consumed by the rail, the editor and the store). That split is a responsiveness contract, not a detail: when the slices lived in the app store, opening or closing a tab re-rendered every store consumer (measured 644ms with nine editors open; 2ms after the split)
+| `EditorTabs` | `EditorTabs.tsx`, `editor-groups.ts` | Tab strip for the editor groups: tabs share the strip width (90px floor, 240px ceiling) and overflow past the floor moves into an "all open tabs" menu button; each tab resolves its owning group (drag source and selection target) through the strip's group lookup; owns the tab drag MIME and the editor-group identity helpers |
+| `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status; its header keeps only the panel options menu (session/mode/close) plus the back control for delegated sessions and the turn timer, and the empty panel shows the `NeptuneSprite` pixel art until the first user/assistant turn; Shift+Tab cycles agents, Shift+P cycles favorite models, and Ctrl+Tab cycles response strength without intercepting typed Shift+S |
+| `Composer` | `Composer.tsx` | Authoritative local prompt draft, attachments, keyboard dispatch and agent controls; takes `controls` (extra control-row slot, used for the session usage ring) and `overlay` (popover anchored to the input); completion and model-menu behavior have the owners below; in the agent panel the control row collapses to icons at the panel's minimum width (mode keeps its glyph, reasoning keeps a chevron, the variant chip hides) |
+| `NeptuneSprite` | `NeptuneSprite.tsx` | Decorative 8-bit pixel sprite for the empty agent panel: fixed palette of little squares, one rect per pixel, sized against the panel via `cqw` so it stays crisp at the minimum panel width |
 | `AgentTui` | `AgentTui.tsx` | xterm view for the active runtime's PTY-backed TUI |
 | `OpenCodeTimeline` | `OpenCodeTimeline.tsx` | Runtime-neutral chronological rendering of assistant text/tools/delegation with hidden reasoning |
 | `OpenCodeTodoDock` | `OpenCodeTodoDock.tsx` | Structured todo/checklist state near the composer |
@@ -781,6 +786,16 @@ Agent TUI input uses the same terminal message stream and ownership checks, but
 starts the active runtime command through `agentTuiStart` in the panel's
 workspace directory. OpenCode uses `opencode --session <session-id>`; the
 dormant DeepSeek runtime is not available to panels.
+Appearance and interface are separate axes. The selected *appearance* only
+supplies colours (and the scheme); the selected *interface* (`orbit.ui`,
+`data-shell`) decides the chrome: `codex` is the new flat shell — icon rail, tab
+strip in the top bar, docked agent panel, browser tabs — and `classic` is the
+original card chrome. Every appearance works in both interfaces, and
+`_codex.scss` is scoped to `[data-shell="codex"]` rather than to the Codex
+palettes. `applyAppearance` layers the shell's tokens (flat workspace, composer
+border, send colours, dark file-tree glyphs) over the palette and removes any
+token the new combination no longer sets, so switching palettes or interfaces
+cannot leave stale inline variables behind.
 The selected appearance supplies the color palette for both embedded xterm
 surfaces. Prism uses alpha-backed violet panels; Kitty Glass restores the
 transparent glass surfaces and terminal backgrounds of the earlier app, and
@@ -820,6 +835,11 @@ released at that collapsed position.
   (`#RRGGBB` or `#RRGGBBAA`), never `rgba()`.
 - Monaco's editor context menu is rendered outside its themed editor node, so
   `ThemeProvider` publishes its menu foreground/background colors on `:root`.
+- Token rules come from each profile's syntax slots: comments (plain),
+  keywords/operators, strings, numbers/constants/predefined, types/variables/functions,
+  attributes, tags/meta, and JSON `string.key`/`string.value` scopes. The Codex
+  profiles add optional `syntaxVariable`/`syntaxAttribute` slots; other profiles
+  fall back to their function/number slots.
 - Editor line wrapping is always enabled; there is no settings or toolbar toggle.
 - `languageForPath()` — extension → Monaco language map (fallback
   `plaintext`).
@@ -861,18 +881,19 @@ released at that collapsed position.
   provider's noise checks (unknown tags, unresolved CSS values, unknown
   `.class` fragments) so Enter/Tab only expands genuine abbreviations.
 
-## Status bar and W3C editor validation
+## Editor status menu and W3C validation
 
 - The status bar's right side reports the focused Monaco editor's line and
   column, indentation width, and UTF-8 encoding. Cursor updates from an
   unfocused split group do not replace the focused editor's status.
 
-- The W3C checkers never run automatically. The **Validate** control stays at
-  the bottom-left of `StatusBar`; it is disabled with an explanation unless an
+- The W3C checkers never run automatically. The **Validate** control lives in
+  the editor's status menu (the "⋯" button at the right end of the breadcrumb
+  row); it is disabled with an explanation unless an
   HTML, CSS, or SCSS tab is active. HTML and CSS use W3C; SCSS uses diagnostics
   from Monaco's Sass language service because the W3C CSS Validator cannot
   parse preprocessor syntax.
-- For HTML and CSS, `StatusBar` sends the active tab's content through
+- For HTML and CSS, `EditorStatusMenu` sends the active tab's content through
   `window.openshell.validateW3c` and applies returned diagnostics as `w3c`-owner
   Monaco markers. For SCSS, it reads Sass diagnostics from Monaco's marker
   service. Both paths show error and warning counts (or a failure state) beside
@@ -922,7 +943,24 @@ attaches it to the visible panel set and focuses it.
 
 `use-sass-watch.ts` projects the currently selected immutable workspace's local
 Sass state; previous-workspace events and stale revisions cannot replace it.
-`StatusBar` exposes the bottom-right Watch Sass toggle and `TerminalTray` adds
+`EditorStatusMenu` exposes the Watch Sass toggle and `TerminalTray` adds
 Sass Output alongside Terminal and Problems. The watcher compiles only disk
 contents after explicit saves; its state does not affect editor persistence.
 See [Sass configuration and lifecycle](sass.md).
+
+### Integrated browser and editor ownership
+
+Browser state/actions contexts are separate from the application Store. A stable
+`onFileActivate` capability enters the Editor owner through `BrowserStoreProvider`;
+successful foreground file activation exits browser mode, while background,
+failed and stale requests do not. Guests are created lazily, including tabs
+opened with an initial URL; main-frame failures survive stop-loading and
+subframe failures do not replace the page error. Browser and file tabs share
+an accessible overflow menu, including at narrow widths. Inactive guests and
+editors remain mounted until closed. Split-group status menus receive their
+own tab identity; validation never borrows another group's focused file.
+
+Directory hover prefetch belongs to WorkspaceFiles, not Store. It deduplicates
+workspace/generation/path requests, retains current cache results, never expands
+a directory and ignores closed, stale or unmounted responses. Normal expansion
+remains the owner of visible loading/error behavior.

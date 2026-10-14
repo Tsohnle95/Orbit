@@ -185,6 +185,7 @@ export interface Store {
   overwriteTab: (path: string) => Promise<void>;
   mergeTab: (path: string) => void;
   toggleDir: (path: string) => Promise<void>;
+  prefetchDir: (path: string) => void;
   ensureRootOpen: () => Promise<void>;
   revealInFileManager: (path: string) => Promise<void>;
   replyPermission: (requestID: string, reply: PermissionReply, sessionID?: string) => Promise<void>;

@@ -115,7 +115,7 @@ let toastId = 0;
 
 const STALE_SESSION_LAYOUT_KEY = "orbit.sessionLayout";
 
-export function StoreProvider({ children }: { children: ReactNode }): ReactNode {
+export function StoreProvider({ children, onFileActivate }: { children: ReactNode; onFileActivate?: () => void }): ReactNode {
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null);
   const openCtxMenu = useCallback((x: number, y: number, target: TreeEntry | null, workspaceSessionID?: string) => {
     setCtxMenu({ x, y, target, workspaceSessionID });
@@ -125,7 +125,7 @@ export function StoreProvider({ children }: { children: ReactNode }): ReactNode 
     () => ({ ctxMenu, openCtxMenu, closeCtxMenu }),
     [ctxMenu, openCtxMenu, closeCtxMenu]
   );
-  const body = useMemo(() => <StoreBody closeCtxMenu={closeCtxMenu}>{children}</StoreBody>, [children, closeCtxMenu]);
+  const body = useMemo(() => <StoreBody closeCtxMenu={closeCtxMenu} onFileActivate={onFileActivate}>{children}</StoreBody>, [children, closeCtxMenu, onFileActivate]);
   return (
     <CtxMenuContext.Provider value={ctxMenuApi}>
       {body}
@@ -133,7 +133,7 @@ export function StoreProvider({ children }: { children: ReactNode }): ReactNode 
   );
 }
 
-const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children: ReactNode; closeCtxMenu: () => void }): ReactNode {
+const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActivate }: { children: ReactNode; closeCtxMenu: () => void; onFileActivate?: () => void }): ReactNode {
   const lifecycle = useSessionLifecycleAuthority();
   const { panels, workspaceOnlyPanelIDs, activeSessionID, session,
     protectedSessionIDs, panelFor, panelForSession, readFocusedSession, readPanels,
@@ -235,7 +235,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
 
   const {
     agentFiles, tree, expanded, hiddenPaths, recoveryRecords,
-    readAgentFile, isHiddenPath, toggleDir, ensureRootOpen, refreshTree, unhidePath,
+    readAgentFile, isHiddenPath, toggleDir, prefetchDir, ensureRootOpen, refreshTree, unhidePath,
     dismissChange, dismissChanges, loadRecovery, openRecovery, acknowledgeRecovery,
     resetVisibility, hidePath, restoreDetachedPath, hideNestedWorkspace, restoreNestedWorkspaceVisibility,
     expandParent, recordCreatedEntry, renameObservedPrefix, moveObservedPrefix, moveObservedPaths,
@@ -373,7 +373,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     setSingleFileFor, addCreatedFile, removePathTabs, removePathsTabs,
     renameTabs, movePathTabs, movePathsTabs, prepareFileUpdate, applyFileUpdate,
     cancelPrefix, cancelAll
-  } = useWorkspaceEditor({ readFocusedSession, readPanels, panelFor, focusSession: focusEditorSession, readAgentFile, notify: toast });
+  } = useWorkspaceEditor({ readFocusedSession, readPanels, panelFor, focusSession: focusEditorSession, readAgentFile, notify: toast, onFileActivate });
 
   const {
     pendingCreate, pendingRename, startCreate, startRename, cancelPending, commitName,
@@ -1169,6 +1169,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       overwriteTab,
       mergeTab,
       toggleDir,
+      prefetchDir,
       ensureRootOpen,
       revealInFileManager,
       replyPermission,
@@ -1201,7 +1202,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       focusSession, closePanel, openSession, addModelPanel, openWorkspacePanel, selectAddPanel, selectFolder, selectFile, openFileWorkspace, openExternalPath, importPaths, dropIntoExplorer, selectPanelDirectory, changePanelDirectory, reopenSession, loadSessions, sendPrompt, runCommand, stop, refreshProviderUsage, loadModels, switchModel,
       loadAgents, switchAgent, toggleApprovalMode,
       openFile, closeTab, setActive, setTabMode, revealInFileManager,
-      editContent, saveTab, saveAllEditorFiles, reloadTab, overwriteTab, mergeTab, toggleDir, ensureRootOpen, replyPermission,
+      editContent, saveTab, saveAllEditorFiles, reloadTab, overwriteTab, mergeTab, toggleDir, prefetchDir, ensureRootOpen, replyPermission,
       startCreate, startRename, cancelPending, commitName, deleteEntry, deleteEntries, removeFromWorkspace, moveEntry, moveEntries, openRecovery, acknowledgeRecovery,
       removeQueuedMessage, popQueuedMessage, sendQueuedNow, reorderQueuedMessage,
       submitForm, dismissForm,

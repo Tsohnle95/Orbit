@@ -90,7 +90,7 @@ export function AgentTui({
     const id = `term-${crypto.randomUUID()}`;
     const metrics = tuiMetricsForWidth(host.clientWidth);
     const terminal = new Terminal({
-      fontFamily: theme === "kitty" ? "'FiraCode Nerd Font', 'SF Mono', Menlo, Consolas, monospace" : "'SF Mono', Menlo, Consolas, monospace",
+      fontFamily: theme === "kitty" ? "'FiraCode Nerd Font', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace" : "ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace",
       fontSize: metrics.fontSize,
       lineHeight: metrics.lineHeight,
       cursorBlink: true,
@@ -158,7 +158,7 @@ export function AgentTui({
     if (theme !== "kitty") ansiStateRef.current.pending = "";
     terminal.options.theme = terminalThemeForAppearance(theme);
     terminal.options.fontWeight = theme === "kitty" ? 500 : 400;
-    terminal.options.fontFamily = theme === "kitty" ? "'FiraCode Nerd Font', 'SF Mono', Menlo, Consolas, monospace" : "'SF Mono', Menlo, Consolas, monospace";
+    terminal.options.fontFamily = theme === "kitty" ? "'FiraCode Nerd Font', ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace" : "ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace";
   }, [theme]);
 
   return <div className="agent-tui"><div className="agent-tui-host" ref={hostRef} /></div>;

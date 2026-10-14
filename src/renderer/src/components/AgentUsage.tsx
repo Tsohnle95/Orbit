@@ -183,7 +183,7 @@ export function useAgentUsage({ sessionUsage, compactionBaseline, currentModel, 
   const glyphTone = contextLimit ? contextTone(contextPercent) : null;
   const usageButton = (
     <button
-      className={`icon-btn agent-usage-toggle ${usageOpen ? "open" : ""} ${glyphTone ?? "neutral"}`}
+      className={`composer-selector icon-btn agent-usage-toggle ${usageOpen ? "open" : ""} ${glyphTone ?? "neutral"}`}
       title="Session and provider usage"
       aria-label={contextLimit ? `Context usage ${Math.round(contextPercent)} percent` : "Session and provider usage"}
       aria-expanded={usageOpen}

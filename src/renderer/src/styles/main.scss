@@ -2,6 +2,7 @@
 @use "layout";
 @use "sessions";
 @use "sidebar";
+@use "browser";
 @use "editor";
 @use "agent";
 @use "composer";
@@ -10,7 +11,7 @@
 @use "welcome";
 @use "settings";
 @use "terminal";
-@use "statusbar";
+@use "status-menu";
 @use "toasts";
 @use "error-boundary";
 @use "scrollbars";

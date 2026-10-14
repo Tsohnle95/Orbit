@@ -70,6 +70,69 @@ describe("workspace file authority", () => {
     vi.unstubAllGlobals();
   });
 
+  it("prefetches once without expansion and applies the shared filter and ordering", async () => {
+    const pending = deferred<TreeEntry[]>();
+    const list = vi.fn(() => pending.promise);
+    window.openshell.listDir = list;
+    act(() => { files.prefetchDir("src"); files.prefetchDir("src"); });
+    expect(list).toHaveBeenCalledOnce();
+    expect(files.expanded.size).toBe(0);
+    await act(async () => pending.resolve([
+      { path: "src/z.ts", type: "file" }, { path: "src/node_modules", type: "directory" },
+      { path: "src/a", type: "directory" }, { path: "src/.DS_Store", type: "file" }
+    ]));
+    expect(files.tree.src.map((entry) => entry.path)).toEqual(["src/a", "src/z.ts"]);
+    act(() => files.prefetchDir("src"));
+    expect(list).toHaveBeenCalledOnce();
+  });
+
+  it("does not replace a concurrent listing and retries silent failures", async () => {
+    const pending = deferred<TreeEntry[]>();
+    window.openshell.listDir = vi.fn(() => pending.promise);
+    act(() => files.prefetchDir("src"));
+    act(() => files.recordCreatedEntry(first.workspace, "src", "src/current", "file"));
+    await act(async () => pending.resolve([{ path: "src/old", type: "file" }]));
+    expect(files.tree.src.map((entry) => entry.path)).toEqual(["src/current"]);
+    const list = vi.fn(async () => { throw new Error("offline"); });
+    window.openshell.listDir = list;
+    await act(async () => files.prefetchDir("other"));
+    await act(async () => files.prefetchDir("other"));
+    expect(list).toHaveBeenCalledTimes(2);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates by generation and discards closed or replaced responses", async () => {
+    const old = deferred<TreeEntry[]>();
+    const fresh = deferred<TreeEntry[]>();
+    const list = vi.fn().mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise);
+    window.openshell.listDir = list;
+    act(() => files.prefetchDir("src"));
+    const replacement = { ...first, workspace: { ...first.workspace, generation: 99 } };
+    panels = [replacement, second];
+    session = replacement;
+    await render();
+    act(() => files.prefetchDir("src"));
+    expect(list).toHaveBeenCalledTimes(2);
+    await act(async () => old.resolve([{ path: "src/old", type: "file" }]));
+    expect(files.tree.src).toBeUndefined();
+    panels = [second];
+    await act(async () => fresh.resolve([{ path: "src/fresh", type: "file" }]));
+    expect(files.tree.src).toBeUndefined();
+  });
+
+  it("ignores responses and captured prefetch actions after unmount", async () => {
+    const pending = deferred<TreeEntry[]>();
+    const list = vi.fn(() => pending.promise);
+    window.openshell.listDir = list;
+    const prefetch = files.prefetchDir;
+    act(() => prefetch("src"));
+    await act(async () => root.unmount());
+    await act(async () => pending.resolve([{ path: "src/late", type: "file" }]));
+    prefetch("other");
+    expect(list).toHaveBeenCalledOnce();
+    expect(files.tree.src).toBeUndefined();
+  });
+
   it("preserves empty projection identities and queries lazily", async () => {
     expect(files.expanded).toBe(files.hiddenPaths);
     const { agentFiles, tree, expanded, recoveryRecords } = files;

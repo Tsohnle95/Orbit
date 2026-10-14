@@ -13,6 +13,7 @@ interface EditorHost {
   panelFor: (workspace: WorkspaceIdentity) => SessionReadView | null;
   focusSession: (sessionID: string) => void;
   readAgentFile: (workspace: WorkspaceIdentity, path: string) => ObservedFileView | undefined;
+  onFileActivate?: () => void;
   notify: (text: string, tone?: "info" | "error") => void;
 }
 
@@ -29,7 +30,7 @@ function dropKey<T>(record: Record<string, T>, key: string): Record<string, T> {
 }
 
 export function useWorkspaceEditor(host: EditorHost) {
-  const { readFocusedSession, readPanels, panelFor, focusSession, readAgentFile, notify: toast } = host;
+  const { readFocusedSession, readPanels, panelFor, focusSession, readAgentFile, onFileActivate, notify: toast } = host;
   const session = readFocusedSession();
   const panels = readPanels();
   const [tabsByWorkspace, setTabsByWorkspace] = useState<Record<string, Tab[]>>({});
@@ -90,10 +91,18 @@ export function useWorkspaceEditor(host: EditorHost) {
   const singleFile = session ? singleFileByWorkspace[session.workspace.id] ?? null : null;
   const readRenderedActivePath = useCallback((workspace: WorkspaceIdentity): string | null =>
     activePathByWorkspace[workspace.id] ?? null, [activePathByWorkspace]);
+  const activateForegroundFile = useCallback((workspace: WorkspaceIdentity, foreground: boolean): void => {
+    const focused = readFocusedSession()?.workspace;
+    if (foreground && panelFor(workspace) && focused?.id === workspace.id && focused.generation === workspace.generation) {
+      onFileActivate?.();
+    }
+  }, [readFocusedSession, panelFor, onFileActivate]);
   const openFile = useCallback(
     async (path: string, opts?: { mode?: "edit" | "diff" }, workspace?: WorkspaceIdentity) => {
       const target = workspace ?? readFocusedSession()?.workspace;
-      if (!target) return;
+      if (!target || !panelFor(target)) return;
+      const focused = readFocusedSession()?.workspace;
+      const foreground = focused?.id === target.id && focused.generation === target.generation;
       const currentTabs = target ? (tabsByWorkspaceRef.current[target.id] ?? []) : [];
       const existing = currentTabs.find((t) => t.path === path);
       if (existing) {
@@ -102,6 +111,7 @@ export function useWorkspaceEditor(host: EditorHost) {
         if (opts?.mode && existing.mode !== opts.mode) {
           setTabsFor(target.id, (prev) => prev.map((t) => (t.path === path ? { ...t, mode: opts.mode! } : t)));
         }
+        activateForegroundFile(target, foreground);
         return;
       }
       try {
@@ -138,11 +148,12 @@ export function useWorkspaceEditor(host: EditorHost) {
         };
         setTabsFor(target.id, (prev) => [...prev, tab]);
         setActivePathFor(target.id, path);
+        activateForegroundFile(target, foreground);
       } catch (err) {
         if (target && panelFor(target)) toast(err instanceof Error ? err.message : String(err), "error");
       }
     },
-    [toast, panelFor, setTabsFor, setActivePathFor, readAgentFile]
+    [toast, panelFor, setTabsFor, setActivePathFor, readAgentFile, readFocusedSession, activateForegroundFile]
   );
   const openExternalPath = useCallback(
     async (absolutePath: string, workspace?: WorkspaceIdentity): Promise<string | null> => {
@@ -151,8 +162,10 @@ export function useWorkspaceEditor(host: EditorHost) {
       const panel = panelFor(target);
       if (!panel) return null;
       if (!readFocusedSession() || readFocusedSession()!.id !== panel.id) focusSession(panel.id);
+      const foreground = readFocusedSession()?.workspace.id === target.id && readFocusedSession()?.workspace.generation === target.generation;
       try {
         const result = await window.openshell.openExternal(target, absolutePath);
+        if (!panelFor(target)) return null;
         if (result.kind === "relative") {
           await openFile(result.rel, {}, target);
           return result.rel;
@@ -160,6 +173,7 @@ export function useWorkspaceEditor(host: EditorHost) {
         const path = result.path;
         if ((tabsByWorkspaceRef.current[target.id] ?? []).some((t) => t.path === path)) {
           setActivePathFor(target.id, path);
+          activateForegroundFile(target, foreground);
           return path;
         }
         if (result.content === null) {
@@ -192,18 +206,21 @@ export function useWorkspaceEditor(host: EditorHost) {
         };
         setTabsFor(target.id, (prev) => [...prev, tab]);
         setActivePathFor(target.id, path);
+        activateForegroundFile(target, foreground);
         return path;
       } catch (err) {
         if (panelFor(target)) toast(err instanceof Error ? err.message : String(err), "error");
         return null;
       }
     },
-    [openFile, toast, panelFor, focusSession, setTabsFor, setActivePathFor]
+    [openFile, toast, panelFor, focusSession, setTabsFor, setActivePathFor, readFocusedSession, readPanels, activateForegroundFile]
   );
   const setActive = useCallback((path: string) => {
     const target = readFocusedSession()?.workspace;
-    if (target) setActivePathFor(target.id, path);
-  }, [setActivePathFor]);
+    if (!target || !panelFor(target) || !tabsByWorkspaceRef.current[target.id]?.some((tab) => tab.path === path)) return;
+    setActivePathFor(target.id, path);
+    activateForegroundFile(target, true);
+  }, [setActivePathFor, readFocusedSession, panelFor, activateForegroundFile]);
 
   const setTabMode = useCallback((path: string, mode: "edit" | "diff") => {
     const target = readFocusedSession()?.workspace;

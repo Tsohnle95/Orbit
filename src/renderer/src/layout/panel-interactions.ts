@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 export function useDragResize(
   width: number,
@@ -150,3 +150,43 @@ export function useTrayHeight(onPreview?: (height: number) => void): {
   return { height, open, snapped, dragging, toggle, show, close, expand, onDrag };
 }
 
+
+// Sizes the titlebar's leading block so the tab strip slot begins exactly at
+// the workspace host's left edge — i.e. just right of the left app panel.
+// The host can start to the left of the leading controls (collapsed panel);
+// the controls then keep their own width and the strip starts after them.
+export function titlebarLeadingWidth(aligned: number, controls: number): number {
+  return Math.max(Math.round(controls), Math.round(aligned));
+}
+
+export function useTitlebarTabsOffset(
+  leadingRef: React.RefObject<HTMLElement | null>,
+  hostRef: React.RefObject<HTMLElement | null>,
+  dependencies: React.DependencyList
+): void {
+  useLayoutEffect(() => {
+    const leading = leadingRef.current;
+    const host = hostRef.current;
+    if (!leading || !host) return;
+    const measure = (): void => {
+      const gap = parseFloat(getComputedStyle(leading.parentElement ?? leading).columnGap || "0") || 0;
+      const bounds = leading.getBoundingClientRect();
+      const aligned = host.getBoundingClientRect().left - bounds.left - gap;
+      const controls = Array.from(leading.children)
+        .reduce((right, child) => Math.max(right, child.getBoundingClientRect().right - bounds.left), 0);
+      leading.style.width = `${titlebarLeadingWidth(aligned, controls)}px`;
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(measure);
+      observer.observe(host);
+      observer.observe(document.documentElement);
+    }
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer?.disconnect();
+    };
+  }, dependencies);
+}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import Editor, { DiffEditor } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { languageForPath } from "../monaco";
@@ -8,17 +9,23 @@ import { wireHtmlAttributeQuotes } from "../editor-language-input";
 import { clearW3cMarkers } from "../w3c-validation";
 import { useStore } from "../store";
 import { OrbitMark } from "./OrbitMark";
-import { FileIcon } from "./FileIcons";
 import { useTheme } from "../theme";
 import { registerEditor, unregisterEditor } from "../reveal";
 import { droppedFilePaths, isExternalFileDrag } from "../drop";
-import type { Tab } from "@shared/types";
+import type { SessionInfo, Tab } from "@shared/types";
 import type { EditorStatus } from "./editor-status";
 import { IconChevronRight, IconClose } from "./icons";
+import { EDITOR_GROUP_IDS, isEditorGroupID, type EditorGroupID } from "./editor-groups";
+import { EDITOR_TAB_MIME, readEditorTabTransfer, TabBar } from "./EditorTabs";
+import { EditorStatusMenu } from "./EditorStatusMenu";
+import { BrowserStack } from "./BrowserPane";
+import { useBrowserTabActions, useBrowserTabState } from "../browser-tabs-context";
+import { useScrollReveal, useStatusReporter } from "../editor-activity";
+import type { ValidationReport } from "../validation-report";
 
 const EDITOR_OPTIONS = {
   fontSize: 13,
-  fontFamily: "'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace",
+  fontFamily: "ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace",
   minimap: { enabled: false },
   automaticLayout: true,
   fixedOverflowWidgets: true,
@@ -45,12 +52,16 @@ const EDITOR_OPTIONS = {
   cursorBlinking: "smooth" as const,
   padding: { top: 10, bottom: 10 },
   renderWhitespace: "none" as const,
-  scrollbar: { verticalScrollbarSize: 3, horizontalScrollbarSize: 3 },
+  scrollbar: { verticalScrollbarSize: 14, verticalSliderSize: 6, horizontalScrollbarSize: 14, horizontalSliderSize: 6, useShadows: false },
+  // The overview ruler draws its own border + marks over the scrollbar gutter;
+  // the reference editor has neither, and the only divider should be the agent
+  // panel's own border.
+  overviewRulerBorder: false,
+  overviewRulerLanes: 0,
   lineNumbersMinChars: 3,
   lineDecorationsWidth: 0,
   wordWrap: "on" as const
 };
-const ignoreEditorStatus = (): void => {};
 
 function overflowWidgetsHost(): HTMLElement {
   let host = document.getElementById("orbit-monaco-overflow");
@@ -72,88 +83,81 @@ function SplitRightIcon(): ReactNode {
   );
 }
 
-function TabBar({
-  group,
-  tabs,
-  activePath,
-  ariaLabel,
-  onSelect,
-  onClose,
-  onMoveTab,
-  actions
-}: {
-  group: EditorGroupID;
-  tabs: Tab[];
-  activePath: string | null;
-  ariaLabel: string;
-  onSelect: (path: string) => void;
-  onClose: (path: string) => void;
-  onMoveTab: (path: string, destination: EditorGroupID, source: EditorGroupID) => void;
-  actions: ReactNode;
-}): ReactNode {
-  const { setTabMode } = useStore();
-
-  return (
-    <div className="tabbar">
-      <div className="tab-list" role="tablist" aria-label={ariaLabel}>
-      {tabs.map((tab) => {
-        const active = tab.path === activePath;
-        const hasDiff =
-          tab.baseline?.kind === "known" && !tab.deleted && tab.baseline.content !== tab.content;
-        return (
-          <div
-            key={tab.path}
-            role="tab"
-            aria-selected={active}
-            className={"tab" + (active ? " active" : "")}
-            draggable
-            onDragStart={(event) => {
-              event.dataTransfer.effectAllowed = "move";
-              event.dataTransfer.setData(EDITOR_TAB_MIME, JSON.stringify({ path: tab.path, source: group }));
-            }}
-            onClick={() => onSelect(tab.path)}
-            title={tab.path}
-          >
-            <span className="tab-file-icon"><FileIcon name={tab.name} isDir={false} /></span>
-            <span className="tab-name">
-              {tab.dirty && <span className="tab-dirty" />}
-              {tab.name}
-            </span>
-            <span className="tab-actions">
-              {hasDiff && (
-                <span
-                  className="tab-diff-badge"
-                  title="Toggle diff view"
-                  aria-label={`Toggle diff for ${tab.name}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setTabMode(tab.path, active && tab.mode === "diff" ? "edit" : "diff");
-                  }}
-                >
-                  ⇄
-                </span>
-              )}
-              <button
-                type="button"
-                className="tab-close"
-                aria-label={`Close ${tab.name}`}
-                title={`Close ${tab.name}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose(tab.path);
-                }}
-              >×</button>
-            </span>
-          </div>
-        );
-      })}
-      </div>
-      <div className="editor-group-actions">{actions}</div>
-    </div>
-  );
+function beginGroupResize(
+  grid: HTMLDivElement | null,
+  axis: "x" | "y",
+  setSplit: (percent: number) => void
+): () => void {
+  if (!grid) return () => {};
+  const move = (next: MouseEvent): void => {
+    const bounds = grid.getBoundingClientRect();
+    const extent = axis === "x" ? bounds.width : bounds.height;
+    if (extent <= 0) return;
+    const offset = axis === "x" ? next.clientX - bounds.left : next.clientY - bounds.top;
+    setSplit(clampGroupSplit(offset / extent * 100, extent));
+  };
+  const finish = (): void => {
+    window.removeEventListener("mousemove", move);
+    window.removeEventListener("mouseup", finish);
+  };
+  window.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", finish);
+  return finish;
 }
 
-function BreadcrumbBar({ tab, directory }: { tab: Tab; directory: string | undefined }): ReactNode {
+function useGroupResize(workspaceID: string | null, groupCount: number) {
+  const groupGridRef = useRef<HTMLDivElement | null>(null);
+  const stopResizeRef = useRef<() => void>(() => {});
+  useEffect(() => () => stopResizeRef.current(), [workspaceID, groupCount]);
+  const startResize = (axis: "x" | "y", update: (value: number) => void): void => {
+    stopResizeRef.current();
+    stopResizeRef.current = beginGroupResize(groupGridRef.current, axis, update);
+  };
+  return { groupGridRef, startResize };
+}
+
+function clampGroupSplit(percent: number, extent: number): number {
+  const minimum = extent > 0 ? Math.min(160 / extent * 100, 100 / 3) : 100 / 3;
+  return Math.max(minimum, Math.min(100 - minimum, percent));
+}
+
+function GroupResizeHandle({ axis, value, grid, onChange, onStart, height }: {
+  axis: "x" | "y";
+  value: number;
+  grid: HTMLDivElement | null;
+  onChange: (value: number) => void;
+  onStart: () => void;
+  height?: string;
+}): ReactNode {
+  const extent = axis === "x" ? grid?.clientWidth ?? 0 : grid?.clientHeight ?? 0;
+  return <div className={`editor-group-resize editor-group-resize-${axis}`} role="separator"
+    tabIndex={0} aria-label={axis === "x" ? "Resize editor columns" : "Resize editor rows"}
+    aria-orientation={axis === "x" ? "vertical" : "horizontal"}
+    aria-valuemin={clampGroupSplit(0, extent)} aria-valuemax={clampGroupSplit(100, extent)} aria-valuenow={value}
+    onMouseDown={(event) => { event.preventDefault(); event.stopPropagation(); onStart(); }}
+    onKeyDown={(event) => {
+      const decrease = axis === "x" ? "ArrowLeft" : "ArrowUp";
+      const increase = axis === "x" ? "ArrowRight" : "ArrowDown";
+      if (event.key !== decrease && event.key !== increase) return;
+      event.preventDefault();
+      onChange(clampGroupSplit(value + (event.key === decrease ? -5 : 5), extent));
+    }}
+    style={axis === "x" ? { left: `${value}%`, height } : { top: `${value}%` }} />;
+}
+
+function BreadcrumbBar({
+  tab,
+  directory,
+  editorStatus,
+  onValidationComplete,
+  actions
+}: {
+  tab: Tab;
+  directory: string | undefined;
+  editorStatus: EditorStatus | null;
+  onValidationComplete?: (report: ValidationReport) => void;
+  actions?: ReactNode;
+}): ReactNode {
   const { setTabMode, saveTab } = useStore();
   const root = directory?.split(/[\\/]/).filter(Boolean).at(-1) ?? "workspace";
   const segments = tab.path.replace(/\\/g, "/").split("/").filter(Boolean);
@@ -164,11 +168,15 @@ function BreadcrumbBar({ tab, directory }: { tab: Tab; directory: string | undef
   return (
     <div className="editor-breadcrumbs">
       <nav className="editor-breadcrumb-path" aria-label="File path">
-        <span className="breadcrumb-workspace">{root}</span>
-        {segments.map((segment, index) => (
+        {[root, ...segments].map((segment, index, all) => (
           <span className="breadcrumb-segment" key={`${index}:${segment}`}>
-            <IconChevronRight />
-            <span aria-current={index === segments.length - 1 ? "page" : undefined}>{segment}</span>
+            {index > 0 && <IconChevronRight />}
+            <span
+              className={index === all.length - 1 ? "breadcrumb-current" : "breadcrumb-ancestor"}
+              aria-current={index === all.length - 1 ? "page" : undefined}
+            >
+              {segment}
+            </span>
           </span>
         ))}
       </nav>
@@ -192,6 +200,8 @@ function BreadcrumbBar({ tab, directory }: { tab: Tab; directory: string | undef
           </>
         )}
         {diffUnknown && <button className="toolbar-btn" disabled title="Pre-change content was not observed">Diff unavailable</button>}
+        {actions}
+        <EditorStatusMenu tab={tab} editorStatus={editorStatus} onValidationComplete={onValidationComplete} />
       </div>
     </div>
   );
@@ -233,36 +243,14 @@ function EditorWithSave({
   const options = useMemo(() => ({ ...EDITOR_OPTIONS, overflowWidgetsDomNode: overflowWidgetsHost() }), []);
 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
-  const cursorListenerRef = useRef<{ dispose: () => void } | null>(null);
   const navigationListenerRef = useRef<{ dispose: () => void } | null>(null);
   const htmlQuoteListenerRef = useRef<{ dispose: () => void } | null>(null);
-  const focusedRef = useRef(focused);
-  focusedRef.current = focused;
   const tabContent = tab.content;
   const tabPath = tab.path;
   const tabContentRef = useRef(tabContent);
   tabContentRef.current = tabContent;
-
-  const publishStatus = useCallback((ed: editor.IStandaloneCodeEditor | null = editorRef.current): void => {
-    if (!focusedRef.current || !ed) return;
-    const position = ed.getPosition();
-    const model = ed.getModel();
-    if (!position || !model) return;
-    const modelOptions = model.getOptions();
-    onStatusChange({
-      path: tabPath,
-      lineNumber: position.lineNumber,
-      column: position.column,
-      tabSize: modelOptions.tabSize,
-      insertSpaces: modelOptions.insertSpaces
-    });
-  }, [onStatusChange, tabPath]);
-
-  const watchCursor = useCallback((ed: editor.IStandaloneCodeEditor): void => {
-    cursorListenerRef.current?.dispose();
-    cursorListenerRef.current = ed.onDidChangeCursorPosition(() => publishStatus(ed));
-    publishStatus(ed);
-  }, [publishStatus]);
+  const watchCursor = useStatusReporter(tabPath, focused, onStatusChange);
+  const { scrolling, watch: watchScroll } = useScrollReveal();
 
   const handleChange = useCallback((value: string | undefined): void => {
     if (value !== undefined) editContent(tabPath, value);
@@ -285,11 +273,8 @@ function EditorWithSave({
       }], () => null);
     }
     watchCursor(ed);
-  }, [tabPath, watchCursor]);
-
-  useEffect(() => {
-    if (focused) publishStatus();
-  }, [focused, publishStatus]);
+    watchScroll(ed);
+  }, [tabPath, watchCursor, watchScroll]);
 
   useEffect(() => {
     if (mode === "edit") return;
@@ -327,8 +312,6 @@ function EditorWithSave({
   }, [tab.content, tab.path, w3cFile]);
 
   useEffect(() => () => {
-    cursorListenerRef.current?.dispose();
-    cursorListenerRef.current = null;
     navigationListenerRef.current?.dispose();
     navigationListenerRef.current = null;
     htmlQuoteListenerRef.current?.dispose();
@@ -337,7 +320,7 @@ function EditorWithSave({
   }, [tabPath]);
 
   return (
-    <div className="editor-wrap">
+    <div className={`editor-wrap${scrolling ? " scrolling" : ""}`}>
       {tab.deleted && (
         <div className="deleted-banner">
           This file was deleted from disk while you were viewing it.
@@ -376,6 +359,7 @@ function EditorWithSave({
             navigationListenerRef.current?.dispose();
             navigationListenerRef.current = wireEditorNavigationKeys(modifiedEditor);
             watchCursor(modifiedEditor);
+            watchScroll(modifiedEditor);
           }}
           options={{
             ...options,
@@ -402,15 +386,6 @@ function EditorWithSave({
   );
 }
 
-type EditorGroupID = "primary" | "secondary" | "tertiary" | "quaternary";
-const EDITOR_GROUP_IDS: EditorGroupID[] = ["primary", "secondary", "tertiary", "quaternary"];
-const EDITOR_TAB_MIME = "application/x-orbit-editor-tab";
-
-interface EditorTabTransfer {
-  path: string;
-  source: EditorGroupID;
-}
-
 interface EditorGroupState {
   id: EditorGroupID;
   paths: string[];
@@ -424,20 +399,6 @@ interface EditorLayoutState {
   splitY: number;
 }
 
-function isEditorGroupID(value: unknown): value is EditorGroupID {
-  return EDITOR_GROUP_IDS.includes(value as EditorGroupID);
-}
-
-function readEditorTabTransfer(transfer: DataTransfer): EditorTabTransfer | null {
-  try {
-    const value = JSON.parse(transfer.getData(EDITOR_TAB_MIME)) as Partial<EditorTabTransfer>;
-    if (typeof value.path !== "string" || !isEditorGroupID(value.source)) return null;
-    return { path: value.path, source: value.source };
-  } catch {
-    return null;
-  }
-}
-
 function sameGroupLayout(left: EditorGroupState[], right: EditorGroupState[]): boolean {
   return left.length === right.length && left.every((group, index) => {
     const other = right[index];
@@ -446,10 +407,86 @@ function sameGroupLayout(left: EditorGroupState[], right: EditorGroupState[]): b
   });
 }
 
+function groupOwningPath(groups: EditorGroupState[], path: string): EditorGroupID {
+  return groups.find((group) => group.paths.includes(path))?.id ?? "primary";
+}
+
+// Every group's tabs share the titlebar strip, so a split panel's files stay
+// with the rest of the tabs instead of growing a second strip inside the panel.
+function stripTabsFor(groups: EditorGroupState[], tabs: Tab[]): Tab[] {
+  const owned = new Set<string>();
+  const ordered: Tab[] = [];
+  for (const group of groups) {
+    for (const tab of tabs) {
+      if (owned.has(tab.path) || !group.paths.includes(tab.path)) continue;
+      owned.add(tab.path);
+      ordered.push(tab);
+    }
+  }
+  // A tab can exist for a moment before group membership catches up with it.
+  return [...ordered, ...tabs.filter((tab) => !owned.has(tab.path))];
+}
+
 function editorGroupTitle(id: EditorGroupID, index: number): string {
   if (id === "primary") return "Primary editor";
   if (id === "secondary") return "Secondary editor";
   return `Editor group ${index + 1}`;
+}
+
+function sameEditorStatus(left: EditorStatus | null, right: EditorStatus): boolean {
+  return left !== null && left.path === right.path && left.lineNumber === right.lineNumber &&
+    left.column === right.column && left.tabSize === right.tabSize && left.insertSpaces === right.insertSpaces;
+}
+
+function EditorGroupActions({
+  id,
+  index,
+  groupCount,
+  onSplit,
+  onCloseGroup
+}: {
+  id: EditorGroupID;
+  index: number;
+  groupCount: number;
+  onSplit: (id: EditorGroupID) => void;
+  onCloseGroup: (id: EditorGroupID) => void;
+}): ReactNode {
+  const splitLabel = id === "primary" ? "Split editor right" : `Split editor group ${index + 1} right`;
+  const closeLabel = id === "secondary" ? "Close secondary editor group" : `Close editor group ${index + 1}`;
+  return (
+    <>
+      <button
+        type="button"
+        className="editor-group-action"
+        aria-label={splitLabel}
+        title={groupCount >= EDITOR_GROUP_IDS.length ? "Orbit supports up to four editor groups" : splitLabel}
+        disabled={groupCount >= EDITOR_GROUP_IDS.length}
+        onClick={() => onSplit(id)}
+      ><SplitRightIcon /></button>
+      {index > 0 && <button
+        type="button"
+        className="editor-group-action"
+        aria-label={closeLabel}
+        title={closeLabel}
+        onClick={() => onCloseGroup(id)}
+      ><IconClose /></button>}
+    </>
+  );
+}
+
+function EmptyEditorGroup({ actions }: { actions: ReactNode }): ReactNode {
+  return (
+    <>
+      <div className="editor-breadcrumbs editor-breadcrumbs-bare">
+        <div className="editor-breadcrumb-actions">{actions}</div>
+      </div>
+      <div className="editor-group-empty">
+        <OrbitMark size={30} />
+        <strong>Empty editor group</strong>
+        <span>Open a file from the Explorer to show it here.</span>
+      </div>
+    </>
+  );
 }
 
 function EditorGroup({
@@ -460,13 +497,16 @@ function EditorGroup({
   activePath,
   directory,
   focused,
+  editorStatus,
   onStatusChange,
+  onValidationComplete,
   onSelect,
   onCloseTab,
   onMoveTab,
   onActivate,
   onSplit,
-  onCloseGroup
+  onCloseGroup,
+  hostedStrip
 }: {
   id: EditorGroupID;
   index: number;
@@ -475,7 +515,10 @@ function EditorGroup({
   activePath: string | null;
   directory: string | undefined;
   focused: boolean;
+  editorStatus: EditorStatus | null;
+  hostedStrip: boolean;
   onStatusChange: (status: EditorStatus) => void;
+  onValidationComplete?: (report: ValidationReport) => void;
   onSelect: (path: string) => void;
   onCloseTab: (path: string) => void;
   onMoveTab: (path: string, destination: EditorGroupID, source: EditorGroupID) => void;
@@ -486,25 +529,15 @@ function EditorGroup({
   const [tabDragOver, setTabDragOver] = useState(false);
   const activeTab = tabs.find((tab) => tab.path === activePath);
   const title = editorGroupTitle(id, index);
-  const splitLabel = id === "primary" ? "Split editor right" : `Split editor group ${index + 1} right`;
-  const closeLabel = id === "secondary" ? "Close secondary editor group" : `Close editor group ${index + 1}`;
-  const actions = <>
-    <button
-      type="button"
-      className="editor-group-action"
-      aria-label={splitLabel}
-      title={groupCount >= EDITOR_GROUP_IDS.length ? "Orbit supports up to four editor groups" : splitLabel}
-      disabled={groupCount >= EDITOR_GROUP_IDS.length}
-      onClick={() => onSplit(id)}
-    ><SplitRightIcon /></button>
-    {index > 0 && <button
-      type="button"
-      className="editor-group-action"
-      aria-label={closeLabel}
-      title={closeLabel}
-      onClick={() => onCloseGroup(id)}
-    ><IconClose /></button>}
-  </>;
+  const actions = (
+    <EditorGroupActions
+      id={id}
+      index={index}
+      groupCount={groupCount}
+      onSplit={onSplit}
+      onCloseGroup={onCloseGroup}
+    />
+  );
   const onTabDragOver = (event: React.DragEvent): void => {
     if (!Array.from(event.dataTransfer.types).includes(EDITOR_TAB_MIME)) return;
     event.preventDefault();
@@ -521,6 +554,18 @@ function EditorGroup({
     onMoveTab(transfer.path, id, transfer.source);
   };
 
+  const tabBar = (
+    <TabBar
+      tabs={tabs}
+      activePath={activePath}
+      ariaLabel={title + " tabs"}
+      groupFor={() => id}
+      onSelect={onSelect}
+      onClose={onCloseTab}
+      onMoveTab={onMoveTab}
+    />
+  );
+
   return (
     <section
       className={`editor-group editor-group-${id}${focused ? " editor-group-focused" : ""}${tabDragOver ? " editor-group-drop-target" : ""}`}
@@ -535,34 +580,37 @@ function EditorGroup({
       }}
       onDrop={onTabDrop}
     >
-      <TabBar
-        group={id}
-        tabs={tabs}
-        activePath={activePath}
-        ariaLabel={title + " tabs"}
-        onSelect={onSelect}
-        onClose={onCloseTab}
-        onMoveTab={onMoveTab}
-        actions={actions}
-      />
-      {activeTab
-        ? <>
-            <BreadcrumbBar tab={activeTab} directory={directory} />
-            <EditorWithSave key={id + ":" + activeTab.path} tab={activeTab} focused={focused} onStatusChange={onStatusChange} />
-          </>
-        : <div className="editor-group-empty">
-            <OrbitMark size={30} />
-            <strong>Empty editor group</strong>
-            <span>Open a file from the Explorer to show it here.</span>
-          </div>}
+      {hostedStrip ? null : tabBar}
+      {activeTab ? <>
+        <BreadcrumbBar tab={activeTab} directory={directory} editorStatus={editorStatus} onValidationComplete={onValidationComplete} actions={actions} />
+        <EditorWithSave key={id + ":" + activeTab.path} tab={activeTab} focused={focused} onStatusChange={onStatusChange} />
+      </> : <EmptyEditorGroup actions={actions} />}
     </section>
   );
 }
 
-export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusChange?: (status: EditorStatus) => void }): ReactNode {
+function EditorEmptyState({ session }: { session: SessionInfo | null | undefined }): ReactNode {
+  return (
+    <div className="editor-empty">
+      <div className="editor-empty-icon"><OrbitMark size={40} /></div>
+      {session ? <p>Select a file from the explorer to view or edit it.</p> : <>
+        <p>No workspace open.</p>
+        <p className="editor-empty-sub">Open a workspace from the explorer to get started.</p>
+      </>}
+    </div>
+  );
+}
+
+export function EditorPane({ onValidationComplete, tabsSlot = null }: { onValidationComplete?: (report: ValidationReport) => void; tabsSlot?: HTMLDivElement | null }): ReactNode {
   const { tabs, activePath, openPaths, session, setActive, closeTab } = useStore();
+  const { browserTabs, activeBrowserTabID } = useBrowserTabState();
+  const { openBrowserTab, closeBrowserTab, activateBrowserTab, updateBrowserTab } = useBrowserTabActions();
   const workspaceID = session?.workspace.id ?? null;
   const [externalDrag, setExternalDrag] = useState(false);
+  const [editorStatus, setEditorStatus] = useState<EditorStatus | null>(null);
+  const reportEditorStatus = (status: EditorStatus): void => {
+    setEditorStatus((current) => sameEditorStatus(current, status) ? current : status);
+  };
   const [groups, setGroups] = useState<EditorGroupState[]>(() => [{
     id: "primary",
     paths: tabs.map((tab) => tab.path),
@@ -571,7 +619,7 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
   const [activeGroup, setActiveGroup] = useState<EditorGroupID>("primary");
   const [splitX, setSplitX] = useState(50);
   const [splitY, setSplitY] = useState(50);
-  const groupGridRef = useRef<HTMLDivElement | null>(null);
+  const { groupGridRef, startResize } = useGroupResize(workspaceID, groups.length);
   const activeGroupRef = useRef<EditorGroupID>("primary");
   const [groupWorkspaceID, setGroupWorkspaceID] = useState(workspaceID);
   const layoutsByWorkspaceRef = useRef(new Map<string, EditorLayoutState>());
@@ -636,6 +684,9 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
   const selectPath = (groupID: EditorGroupID, path: string): void => {
     setGroups((current) => current.map((group) => group.id === groupID ? { ...group, activePath: path } : group));
     focusGroup(groupID);
+    // Selecting a file tab leaves browser mode even when that file was already
+    // the active one.
+    activateBrowserTab(null);
     if (path !== activePath) setActive(path);
   };
 
@@ -720,28 +771,19 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setExternalDrag(false);
   };
 
-  const startGroupResize = (axis: "x" | "y") => (event: React.MouseEvent): void => {
-    event.preventDefault();
-    event.stopPropagation();
-    const grid = groupGridRef.current;
-    if (!grid) return;
-    const move = (next: MouseEvent): void => {
-      const bounds = grid.getBoundingClientRect();
-      const extent = axis === "x" ? bounds.width : bounds.height;
-      if (extent <= 0) return;
-      const offset = axis === "x" ? next.clientX - bounds.left : next.clientY - bounds.top;
-      const minimum = Math.min(160, extent / 3);
-      const percent = Math.max(minimum, Math.min(extent - minimum, offset)) / extent * 100;
-      if (axis === "x") setSplitX(percent);
-      else setSplitY(percent);
-    };
-    const finish = (): void => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", finish);
-    };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", finish);
-  };
+  const stripTabs = useMemo(() => stripTabsFor(groups, tabs), [groups, tabs]);
+  const browserActive = activeBrowserTabID !== null;
+  const stripTabBar = (
+    <TabBar
+      tabs={stripTabs} activePath={browserActive ? null : activePath} ariaLabel="Open editor tabs"
+      groupFor={(path) => groupOwningPath(groups, path)}
+      onSelect={(path) => selectPath(groupOwningPath(groups, path), path)}
+      onClose={closeTab} onMoveTab={moveTabToGroup}
+      browsers={browserTabs} activeBrowserTabID={activeBrowserTabID}
+      onSelectBrowser={activateBrowserTab} onCloseBrowser={closeBrowserTab}
+      onNewBrowser={() => openBrowserTab()}
+    />
+  );
 
   return (
     <div
@@ -751,14 +793,11 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
       onDragEnterCapture={onDragOver}
       onDragLeaveCapture={onDragLeave}
     >
+      {tabsSlot && createPortal(stripTabBar, tabsSlot)}
+      <BrowserStack tabs={browserTabs} activeID={activeBrowserTabID} onState={updateBrowserTab} />
+      <div className={`editor-stack${browserActive ? " concealed" : ""}`}>
       {tabs.length === 0 && groups.length === 1 ? (
-        <div className="editor-empty">
-          <div className="editor-empty-icon"><OrbitMark size={40} /></div>
-          {session ? <p>Select a file from the explorer to view or edit it.</p> : <>
-            <p>No workspace open.</p>
-            <p className="editor-empty-sub">Open a workspace from the explorer to get started.</p>
-          </>}
-        </div>
+        <EditorEmptyState session={session} />
       ) : (
         <div
           ref={groupGridRef}
@@ -778,7 +817,10 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
             activePath={group.activePath}
             directory={session?.directory}
             focused={activeGroup === group.id}
-            onStatusChange={onStatusChange}
+            hostedStrip={tabsSlot !== null}
+            onStatusChange={reportEditorStatus}
+            editorStatus={editorStatus}
+            onValidationComplete={onValidationComplete}
             onSelect={(path) => selectPath(group.id, path)}
             onCloseTab={closeTab}
             onMoveTab={moveTabToGroup}
@@ -786,10 +828,11 @@ export function EditorPane({ onStatusChange = ignoreEditorStatus }: { onStatusCh
             onSplit={splitGroupAfter}
             onCloseGroup={closeGroup}
           />)}
-          {groups.length > 1 && <div className="editor-group-resize editor-group-resize-x" role="separator" aria-label="Resize editor columns" aria-orientation="vertical" onMouseDown={startGroupResize("x")} style={{ left: `${splitX}%`, height: groups.length === 3 ? `${splitY}%` : undefined }} />}
-          {groups.length > 2 && <div className="editor-group-resize editor-group-resize-y" role="separator" aria-label="Resize editor rows" aria-orientation="horizontal" onMouseDown={startGroupResize("y")} style={{ top: `${splitY}%` }} />}
+          {groups.length > 1 && <GroupResizeHandle axis="x" value={splitX} grid={groupGridRef.current} onChange={setSplitX} onStart={() => startResize("x", setSplitX)} height={groups.length === 3 ? `${splitY}%` : undefined} />}
+          {groups.length > 2 && <GroupResizeHandle axis="y" value={splitY} grid={groupGridRef.current} onChange={setSplitY} onStart={() => startResize("y", setSplitY)} />}
         </div>
       )}
+      </div>
     </div>
   );
 }

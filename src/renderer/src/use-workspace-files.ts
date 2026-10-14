@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentFileState, FileUpdate, RecoveryRecord, SessionInfo, TreeEntry, WorkspaceIdentity } from "@shared/types";
 
 type ObservedFileView = Readonly<Omit<AgentFileState, "baseline">> & {
@@ -43,6 +43,12 @@ export function useWorkspaceFiles(host: WorkspaceFilesHost) {
   const expandedByWorkspaceRef = useRef(expandedByWorkspace);
   expandedByWorkspaceRef.current = expandedByWorkspace;
   const treeRefreshTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const prefetchingRef = useRef(new Set<string>());
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; prefetchingRef.current.clear(); };
+  }, []);
   const agentFiles = session ? agentFilesByWorkspace[session.workspace.id] ?? EMPTY_AGENT_FILES : EMPTY_AGENT_FILES;
   const tree = session ? treeByWorkspace[session.workspace.id] ?? EMPTY_TREE : EMPTY_TREE;
   const expanded = session ? expandedByWorkspace[session.workspace.id] ?? EMPTY_EXPANDED : EMPTY_EXPANDED;
@@ -267,6 +273,19 @@ export function useWorkspaceFiles(host: WorkspaceFilesHost) {
     [treeByWorkspace, toast, readFocusedSession, setExpandedFor, applyDirectoryListing]
   );
 
+  const prefetchDir = useCallback((path: string): void => {
+    const target = readFocusedSession()?.workspace;
+    if (!mountedRef.current || !target || !panelFor(target) || treeByWorkspace[target.id]?.[path]) return;
+    const key = JSON.stringify([target.id, target.generation, path]);
+    if (prefetchingRef.current.has(key)) return;
+    prefetchingRef.current.add(key);
+    void window.openshell.listDir(target, path).then((entries) => {
+      if (!mountedRef.current || !panelFor(target)) return;
+      setTreeFor(target.id, (prev) => !mountedRef.current || !panelFor(target) || prev[path]
+        ? prev : { ...prev, [path]: orderedEntries(entries) });
+    }).catch(() => {}).finally(() => prefetchingRef.current.delete(key));
+  }, [readFocusedSession, panelFor, treeByWorkspace, setTreeFor]);
+
   const ensureRootOpen = useCallback(
     async (): Promise<void> => {
       const target = readFocusedSession()?.workspace;
@@ -356,7 +375,7 @@ export function useWorkspaceFiles(host: WorkspaceFilesHost) {
 
   return {
     agentFiles, tree, expanded, hiddenPaths, recoveryRecords,
-    readAgentFile, isHiddenPath, toggleDir, ensureRootOpen, refreshTree, unhidePath,
+    readAgentFile, isHiddenPath, toggleDir, prefetchDir, ensureRootOpen, refreshTree, unhidePath,
     dismissChange, dismissChanges, loadRecovery, openRecovery, acknowledgeRecovery,
     resetVisibility, hidePath, restoreDetachedPath, hideNestedWorkspace, restoreNestedWorkspaceVisibility,
     expandParent, recordCreatedEntry, renameObservedPrefix, moveObservedPrefix, moveObservedPaths,

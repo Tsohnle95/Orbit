@@ -84,7 +84,7 @@ logs and errors for that same workspace. Logs and state are delivered through
 the trusted preload bridge, not OpenCode's response stream.
 
 `src/main/sass-watch.test.ts` uses real Sass and filesystem watching in temporary
-roots; `src/renderer/src/components/StatusBar.sass.test.tsx` covers selection and
+roots; `src/renderer/src/components/EditorStatusMenu.sass.test.tsx` covers selection and
 state transitions. After building, `npm run test:sass-worker` checks the emitted
 worker and bundled compiler without network access. Mirror-app checks cover the
 real preload/IPC, footer, output panel and CSS disk writes.

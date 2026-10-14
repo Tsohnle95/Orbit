@@ -22,6 +22,153 @@ function Icon({ name, children, className, ...rest }: IconProps & { name: string
   );
 }
 
+function LucideIcon({ name, children, className, ...rest }: IconProps & { name: string; children: ReactNode }): ReactNode {
+  return (
+    <svg
+      className={`os-icon lucide-icon lucide-${name}${className ? ` ${className}` : ""}`}
+      width="1em"
+      height="1em"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...rest}
+    >
+      {children}
+    </svg>
+  );
+}
+
+// Filled glyphs copied verbatim from the reference app's icon set.
+function CodexIcon({ name, children, className, ...rest }: IconProps & { name: string; children: ReactNode }): ReactNode {
+  return (
+    <svg
+      className={`os-icon codex-icon codex-${name}${className ? ` ${className}` : ""}`}
+      width="1em"
+      height="1em"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      {...rest}
+    >
+      {children}
+    </svg>
+  );
+}
+
+// `magnifying_glass_search.svg` from the reference app's icon assets.
+export function IconSearch(props: IconProps): ReactNode {
+  return (
+    <CodexIcon name="search" {...props}>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M10.875 4.5C7.35418 4.5 4.5 7.35418 4.5 10.875C4.5 14.3958 7.35418 17.25 10.875 17.25C14.3958 17.25 17.25 14.3958 17.25 10.875C17.25 7.35418 14.3958 4.5 10.875 4.5ZM2.5 10.875C2.5 6.24962 6.24962 2.5 10.875 2.5C15.5004 2.5 19.25 6.24962 19.25 10.875C19.25 12.8273 18.582 14.6236 17.462 16.0478L21.2071 19.7929C21.5976 20.1834 21.5976 20.8166 21.2071 21.2071C20.8166 21.5976 20.1834 21.5976 19.7929 21.2071L16.0478 17.462C14.6236 18.582 12.8273 19.25 10.875 19.25C6.24962 19.25 2.5 15.5004 2.5 10.875Z"
+      />
+    </CodexIcon>
+  );
+}
+
+// Lucide geometry (lucide.dev, ISC) matches the reference app's panel controls.
+export function IconPanelLeftClose(props: IconProps): ReactNode {
+  return (
+    <LucideIcon name="panel-left-close" {...props}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+      <path d="m16 15-3-3 3-3" />
+    </LucideIcon>
+  );
+}
+
+// The reference app's sidebar toggle is the plain panel-left glyph (its
+// `panel_left.svg`); the dashed variant (`panel_left_dashed.svg`) marks the
+// hidden state.
+export function IconPanelLeft(props: IconProps): ReactNode {
+  return (
+    <LucideIcon name="panel-left" {...props}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+    </LucideIcon>
+  );
+}
+
+export function IconPanelLeftDashed(props: IconProps): ReactNode {
+  return (
+    <LucideIcon name="panel-left-dashed" {...props}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 14v1" />
+      <path d="M9 19v2" />
+      <path d="M9 3v2" />
+      <path d="M9 9v1" />
+    </LucideIcon>
+  );
+}
+
+export function IconPanelLeftOpen(props: IconProps): ReactNode {
+  return (
+    <LucideIcon name="panel-left-open" {...props}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+      <path d="m14 9 3 3-3 3" />
+    </LucideIcon>
+  );
+}
+
+// The right-panel toggle is the same control mirrored, so the two titlebar
+// controls read as one pair.
+export function IconPanelRight(props: IconProps): ReactNode {
+  return (
+    <LucideIcon name="panel-right" {...props}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M15 3v18" />
+    </LucideIcon>
+  );
+}
+
+export function IconPanelRightDashed(props: IconProps): ReactNode {
+  return (
+    <LucideIcon name="panel-right-dashed" {...props}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M15 14v1" />
+      <path d="M15 19v2" />
+      <path d="M15 3v2" />
+      <path d="M15 9v1" />
+    </LucideIcon>
+  );
+}
+
+export function IconPanelRightClose(props: IconProps): ReactNode {
+  return (
+    <LucideIcon name="panel-right-close" {...props}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M15 3v18" />
+      <path d="m8 9 3 3-3 3" />
+    </LucideIcon>
+  );
+}
+
+export function IconPanelRightOpen(props: IconProps): ReactNode {
+  return (
+    <LucideIcon name="panel-right-open" {...props}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M15 3v18" />
+      <path d="m10 15-3-3 3-3" />
+    </LucideIcon>
+  );
+}
+
+export function IconSquarePen(props: IconProps): ReactNode {
+  return (
+    <LucideIcon name="square-pen" {...props}>
+      <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
+    </LucideIcon>
+  );
+}
+
 export function IconAdd(props: IconProps): ReactNode {
   return (
     <Icon name="add" {...props}>
@@ -316,24 +463,6 @@ export function IconTerminal(props: IconProps): ReactNode {
     <Icon name="terminal" {...props}>
       <rect x="2.2" y="3" width="11.6" height="10" rx="1.8" />
       <path d="M5 6.6L7 8.4l-2 1.8M8.8 10.6h2.8" />
-    </Icon>
-  );
-}
-
-export function IconSidebarLeft(props: IconProps): ReactNode {
-  return (
-    <Icon name="sidebar-left" {...props}>
-      <rect x="1.5" y="1.5" width="13" height="13" rx="2" />
-      <rect x="1.5" y="1.5" width="6.5" height="13" rx="2" fill="currentColor" stroke="none" />
-    </Icon>
-  );
-}
-
-export function IconSidebarRight(props: IconProps): ReactNode {
-  return (
-    <Icon name="sidebar-right" {...props}>
-      <rect x="1.5" y="1.5" width="13" height="13" rx="2" />
-      <rect x="8" y="1.5" width="6.5" height="13" rx="2" fill="currentColor" stroke="none" />
     </Icon>
   );
 }
