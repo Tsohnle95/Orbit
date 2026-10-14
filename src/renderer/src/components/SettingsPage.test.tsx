@@ -77,15 +77,40 @@ describe("SettingsPage", () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    window.localStorage.clear();
+    document.documentElement.removeAttribute("data-shell");
     vi.clearAllMocks();
     vi.unstubAllGlobals();
   });
 
-  it("defaults to Prism, persists color-profile selection, restores it, and tracks native appearance", () => {
+  it("picks the interface independently of the palette", () => {
+    act(() => root.render(<ThemeProvider><SettingsPage section="appearance" onClose={() => {}} /></ThemeProvider>));
+
+    const choices = [...container.querySelectorAll<HTMLButtonElement>(".ui-choice-card")];
+    expect(choices.map((card) => card.textContent)).toEqual([
+      expect.stringContaining("Codex interface"),
+      expect.stringContaining("Classic interface")
+    ]);
+    expect(choices.map((card) => card.getAttribute("aria-checked"))).toEqual(["true", "false"]);
+    expect(document.documentElement.dataset.shell).toBe("codex");
+
+    act(() => choices[1]!.click());
+
+    expect(document.documentElement.dataset.shell).toBe("classic");
+    expect(window.localStorage.getItem("orbit.ui")).toBe("classic");
+    const after = [...container.querySelectorAll<HTMLButtonElement>(".ui-choice-card")];
+    expect(after.map((card) => card.getAttribute("aria-checked"))).toEqual(["false", "true"]);
+    // The palette is untouched by an interface switch.
+    expect(document.documentElement.dataset.theme).toBe("codex");
+  });
+
+  it("defaults to Codex, persists color-profile selection, restores it, and tracks native appearance", () => {
     act(() => root.render(<ThemeProvider><SettingsPage section="appearance" onClose={() => {}} /></ThemeProvider>));
 
     const cards = [...container.querySelectorAll<HTMLButtonElement>(".theme-card")];
     expect(cards.map((card) => card.textContent)).toEqual([
+      expect.stringContaining("Codex"),
+      expect.stringContaining("Codex Dark"),
       expect.stringContaining("Quiet Habitat"),
       expect.stringContaining("Control Deck"),
       expect.stringContaining("Papertrail"),
@@ -99,13 +124,13 @@ describe("SettingsPage", () => {
       expect.stringContaining("Kitty Glass"),
       expect.stringContaining("Original Dark")
     ]);
-    expect(document.documentElement.dataset.theme).toBe("prism");
-    expect(window.localStorage.getItem("orbit.theme")).toBe("prism");
-    expect(setAppearance).toHaveBeenLastCalledWith("dark");
+    expect(document.documentElement.dataset.theme).toBe("codex");
+    expect(window.localStorage.getItem("orbit.theme")).toBe("codex");
+    expect(setAppearance).toHaveBeenLastCalledWith("light");
 
-    act(() => cards[2].click());
+    act(() => cards[4].click());
     expect(document.documentElement.dataset.theme).toBe("papertrail");
-    expect(cards[2].getAttribute("aria-checked")).toBe("true");
+    expect(cards[4].getAttribute("aria-checked")).toBe("true");
     expect(setAppearance).toHaveBeenLastCalledWith("light");
 
     act(() => root.unmount());
@@ -117,12 +142,12 @@ describe("SettingsPage", () => {
     expect(setAppearance).toHaveBeenLastCalledWith("light");
 
     const restored = [...container.querySelectorAll<HTMLButtonElement>(".theme-card")];
-    act(() => restored[5].click());
+    act(() => restored[7].click());
     expect(document.documentElement.dataset.theme).toBe("prism");
     expect(window.localStorage.getItem("orbit.theme")).toBe("prism");
     expect(setAppearance).toHaveBeenLastCalledWith("dark");
 
-    act(() => restored[0].click());
+    act(() => restored[2].click());
     expect(document.documentElement.dataset.theme).toBe("quiet-habitat");
     expect(window.localStorage.getItem("orbit.theme")).toBe("quiet-habitat");
     expect(setAppearance).toHaveBeenLastCalledWith("light");
@@ -136,6 +161,14 @@ describe("SettingsPage", () => {
     expect(container.querySelector<HTMLButtonElement>(`.theme-card[aria-checked="true"]`)?.textContent)
       .toContain(saved === "kitty" ? "Kitty Glass" : "Original Dark");
     expect(setAppearance).toHaveBeenLastCalledWith("dark");
+    // The Codex shell paints one flat workspace for every palette …
+    expect(document.documentElement.style.getPropertyValue("--workspace-background"))
+      .toBe(saved === "kitty" ? "#0e121c" : "#171412");
+
+    // … while the palette's own treatment (Kitty's glass) belongs to the
+    // classic shell.
+    act(() => container.querySelectorAll<HTMLButtonElement>(".ui-choice-card")[1]!.click());
+    expect(document.documentElement.dataset.shell).toBe("classic");
     expect(document.documentElement.style.getPropertyValue("--workspace-background"))
       .toBe(saved === "kitty" ? "transparent" : "#171412");
   });
@@ -143,14 +176,14 @@ describe("SettingsPage", () => {
   it("restores Kitty Glass transparency and clears it when choosing another profile", () => {
     act(() => root.render(<ThemeProvider><SettingsPage section="appearance" onClose={() => {}} /></ThemeProvider>));
     const cards = [...container.querySelectorAll<HTMLButtonElement>(".theme-card")];
-    act(() => cards[10].click());
+    act(() => cards[12].click());
 
     expect(document.documentElement.dataset.theme).toBe("kitty");
     expect(window.localStorage.getItem("orbit.theme")).toBe("kitty");
     expect(document.documentElement.style.getPropertyValue("--bg")).toBe("transparent");
     expect(document.documentElement.style.getPropertyValue("--panel-surface-image")).toContain("radial-gradient");
 
-    act(() => cards[5].click());
+    act(() => cards[7].click());
     expect(document.documentElement.dataset.theme).toBe("prism");
     expect(document.documentElement.style.getPropertyValue("--panel-surface-image")).toBe("none");
   });

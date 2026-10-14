@@ -1,26 +1,87 @@
-import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from "react";
-import { APPEARANCES, appearanceForId, type AppearanceId } from "./appearances";
+import { createContext, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
+import { APPEARANCES, appearanceForId, type AppearanceColors, type AppearanceId } from "./appearances";
 
 export type ThemeId = AppearanceId;
+
+// Two independent axes: the *appearance* supplies colours, the *shell* decides
+// the chrome (the Codex shell is the new UI, `classic` is the original card
+// chrome). Every appearance works in either shell.
+export type UiShell = "codex" | "classic";
+
 export { APPEARANCES };
 
 interface ThemeContextValue {
   theme: ThemeId;
   setTheme: (theme: ThemeId) => void;
+  uiShell: UiShell;
+  setUiShell: (shell: UiShell) => void;
 }
 
 const THEME_KEY = "orbit.theme";
+const SHELL_KEY = "orbit.ui";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+// File-tree glyph colours for dark schemes; the light set is the foundation
+// default. Design constant, not a palette.
+const DARK_TREE_ICONS: Record<string, string> = {
+  "--trees-icon-gray": "#adadb1",
+  "--trees-icon-red": "#ff6762",
+  "--trees-icon-vermilion": "#d5512f",
+  "--trees-icon-orange": "#ffa359",
+  "--trees-icon-yellow": "#ffd452",
+  "--trees-icon-green": "#5ecc71",
+  "--trees-icon-teal": "#64d1db",
+  "--trees-icon-cyan": "#68cdf2",
+  "--trees-icon-blue": "#69b1ff",
+  "--trees-icon-indigo": "#9d6afb",
+  "--trees-icon-purple": "#d568ea",
+  "--trees-icon-pink": "#ff678d",
+  "--trees-icon-mauve": "#79697b"
+};
+
+function storedShell(): UiShell {
+  return window.localStorage.getItem(SHELL_KEY) === "classic" ? "classic" : "codex";
+}
 
 function storedTheme(): ThemeId {
   const value = window.localStorage.getItem(THEME_KEY);
   const stored = APPEARANCES.find((appearance) => appearance.id === value);
   if (stored) return stored.id;
   if (value === "paper") return "papertrail";
-  return "prism";
+  return "codex";
 }
 
-function applyAppearance(theme: ThemeId): void {
+function neutralHover(shell: UiShell, colors: AppearanceColors, amount: number): string {
+  const base = shell === "codex" ? colors.ink : colors.accent;
+  return `color-mix(in srgb, ${base} ${amount}%, transparent)`;
+}
+
+// Tokens the Codex shell needs on top of any palette's colours.
+function codexShellVariables(colors: AppearanceColors, scheme: "dark" | "light"): Record<string, string> {
+  return {
+    "--workspace-background": colors.base,
+    "--agent-composer-border": colors.lineStrong,
+    "--agent-send-background": colors.accent,
+    "--agent-send-hover": `color-mix(in srgb, ${colors.accent} 88%, ${scheme === "light" ? "black" : "white"})`,
+    ...(scheme === "dark" ? DARK_TREE_ICONS : {})
+  };
+}
+
+function originalVariables(colors: AppearanceColors): Record<string, string> {
+  return {
+    "--workspace-background": colors.base,
+    "--agent-composer-background": "linear-gradient(118deg, rgba(148, 174, 151, 0.045), transparent 34%), linear-gradient(300deg, rgba(196, 181, 154, 0.03), transparent 42%), #262220",
+    "--agent-composer-border": "rgba(148, 174, 151, 0.18)",
+    "--agent-composer-shadow": "0 4px 16px rgba(0, 0, 0, 0.28), 0 0 16px rgba(148, 174, 151, 0.025)"
+  };
+}
+
+// Variables applied by the last call, so switching palettes or shells cannot
+// leave stale inline tokens behind (an appearance's glass overrides, the shell's
+// dark glyph set) on the document element.
+let appliedVariables: string[] = [];
+
+function applyAppearance(theme: ThemeId, uiShell: UiShell): void {
   const { colors, scheme } = appearanceForId(theme);
   const root = document.documentElement;
   const accentMix = (amount: number): string => `color-mix(in srgb, ${colors.accent} ${amount}%, transparent)`;
@@ -30,8 +91,8 @@ function applyAppearance(theme: ThemeId): void {
     "--bg-inset": colors.tab,
     "--bg-elev": colors.card,
     "--bg-active-pill": colors.selected,
-    "--bg-hover": accentMix(7),
-    "--bg-active": accentMix(16),
+    "--bg-hover": neutralHover(uiShell, colors, 7),
+    "--bg-active": neutralHover(uiShell, colors, 16),
     "--vscode-menu-foreground": colors.ink,
     "--vscode-menu-background": colors.card,
     "--vscode-menu-selectionForeground": colors.ink,
@@ -53,8 +114,8 @@ function applyAppearance(theme: ThemeId): void {
     "--agent-bg-base": colors.agent,
     "--agent-bg-deep": colors.base,
     "--agent-bg-layer": colors.card,
-    "--agent-bg-hover": accentMix(7),
-    "--agent-bg-active": accentMix(13),
+    "--agent-bg-hover": neutralHover(uiShell, colors, 7),
+    "--agent-bg-active": neutralHover(uiShell, colors, 13),
     "--agent-user-bubble": colors.user,
     "--agent-border-muted": colors.lineSoft,
     "--agent-border-base": colors.line,
@@ -88,7 +149,7 @@ function applyAppearance(theme: ThemeId): void {
     "--border-subtle": colors.lineSoft,
     "--fg": colors.ink,
     "--bg-raised": colors.card,
-    "--interactive-hover": accentMix(7),
+    "--interactive-hover": neutralHover(uiShell, colors, 7),
     "--on-accent": colors.sendInk,
     "--danger": colors.danger,
     "--danger-bg": `color-mix(in srgb, ${colors.danger} 14%, transparent)`,
@@ -111,32 +172,37 @@ function applyAppearance(theme: ThemeId): void {
     "--agent-composer-focus-border": "rgba(0, 162, 206, 0.64)",
     "--agent-composer-focus-shadow": "0 8px 26px rgba(0, 0, 0, 0.42), 0 0 0 3px rgba(0, 162, 206, 0.12)"
   });
-  if (theme === "original") Object.assign(variables, {
-    "--workspace-background": colors.base,
-    "--agent-composer-background": "linear-gradient(118deg, rgba(148, 174, 151, 0.045), transparent 34%), linear-gradient(300deg, rgba(196, 181, 154, 0.03), transparent 42%), #262220",
-    "--agent-composer-border": "rgba(148, 174, 151, 0.18)",
-    "--agent-composer-shadow": "0 4px 16px rgba(0, 0, 0, 0.28), 0 0 16px rgba(148, 174, 151, 0.025)"
-  });
+  if (theme === "original") Object.assign(variables, originalVariables(colors));
+  if (uiShell === "codex") Object.assign(variables, codexShellVariables(colors, scheme));
   root.dataset.theme = theme;
+  root.dataset.shell = uiShell;
   root.style.colorScheme = scheme;
+  for (const property of appliedVariables) if (!(property in variables)) root.style.removeProperty(property);
   for (const [property, color] of Object.entries(variables)) root.style.setProperty(property, color);
+  appliedVariables = Object.keys(variables);
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }): ReactNode {
   const [theme, setTheme] = useState<ThemeId>(storedTheme);
+  const [uiShell, setUiShell] = useState<UiShell>(storedShell);
 
   useLayoutEffect(() => {
     const appearance = appearanceForId(theme);
-    applyAppearance(theme);
+    applyAppearance(theme, uiShell);
     window.localStorage.setItem(THEME_KEY, theme);
+    window.localStorage.setItem(SHELL_KEY, uiShell);
     // Keep the native appearance (macOS window vibrancy and native chrome) on
     // the theme's side of light/dark; a light system appearance would
     // otherwise wash the transparent glass profiles out with a near-white
     // material. The main process applies this to `nativeTheme.themeSource`.
     void window.openshell?.setAppearance?.(appearance.scheme)?.catch(() => {});
-  }, [theme]);
+  }, [theme, uiShell]);
 
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
+  const value = useMemo<ThemeContextValue>(
+    () => ({ theme, setTheme, uiShell, setUiShell }),
+    [theme, uiShell]
+  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme(): ThemeContextValue {

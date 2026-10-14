@@ -2,19 +2,14 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import type { CommandOption, McpServerOption, OrbitAppUpdateStatus, PluginOption, SkillOption } from "@shared/types";
 import { useStore } from "../store";
 import type { UnsavedEditorFile } from "../store";
-import { APPEARANCES, type ThemeId, useTheme } from "../theme";
+import { useTheme } from "../theme";
+import { AppearanceSettings } from "./AppearanceSettings";
 import { OrbitMark } from "./OrbitMark";
 import { ProviderSettings } from "./ProviderSettings";
 import { ServerSettings } from "./ServerSettings";
 import { MobileSetup } from "./MobileSetup";
 import type { SettingsSection } from "./SettingsSidebar";
 
-const themes: Array<{ id: ThemeId; name: string; description: string; colors: { base: string; pane: string; editor: string; agent: string; terminal: string; accent: string; good: string; muted: string } }> = APPEARANCES.map(({ id, name, description, colors }) => ({
-  id,
-  name,
-  description,
-  colors: { base: colors.base, pane: colors.pane, editor: colors.editor, agent: colors.agent, terminal: colors.console, accent: colors.accent, good: colors.good, muted: colors.muted }
-}));
 
 const sectionCopy: Record<SettingsSection, { title: string; description: string }> = {
   appearance: { title: "Appearance", description: "Choose how Orbit looks and how code is presented." },
@@ -46,7 +41,7 @@ function orbitUpdateErrorMessage(error: unknown): string {
 }
 
 export function SettingsPage({ section, onClose }: { section: SettingsSection; onClose: () => void }): ReactNode {
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
   const {
     session,
     unsavedEditorFileCount,
@@ -221,42 +216,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
         <button className="settings-close" onClick={onClose}>Back to workspace</button>
       </header>
 
-      {section === "appearance" && <section className="settings-section" aria-label="Appearance settings">
-        <div className="theme-grid" role="radiogroup" aria-label="Color theme">
-          {themes.map((option) => (
-            <button
-              key={option.id}
-              className={`theme-card ${theme === option.id ? "selected" : ""}`}
-              role="radio"
-              aria-checked={theme === option.id}
-              onClick={() => setTheme(option.id)}
-            >
-              <span
-                className="theme-preview"
-                style={{
-                  "--preview-base": option.colors.base,
-                  "--preview-pane": option.colors.pane,
-                  "--preview-editor": option.colors.editor,
-                  "--preview-agent": option.colors.agent,
-                  "--preview-terminal": option.colors.terminal,
-                  "--preview-accent": option.colors.accent,
-                  "--preview-good": option.colors.good,
-                  "--preview-muted": option.colors.muted
-                } as CSSProperties}
-              >
-                <span className="theme-preview-rail" />
-                <span className="theme-preview-sidebar" />
-                <span className="theme-preview-editor"><i /><i /><i /></span>
-                <span className="theme-preview-agent" />
-                <span className="theme-preview-terminal" />
-              </span>
-              <span className="theme-card-copy"><strong>{option.name}</strong><small>{option.description}</small></span>
-              <span className="theme-swatches">{[option.colors.base, option.colors.pane, option.colors.accent, option.colors.good, option.colors.muted].map((color) => <i key={color} style={{ background: color }} />)}</span>
-              <span className="theme-check">{theme === option.id ? "Selected" : "Select"}</span>
-            </button>
-          ))}
-        </div>
-      </section>}
+      {section === "appearance" && <AppearanceSettings />}
 
       {section === "plugins" && <section className="settings-section">
         <div className="settings-list">

@@ -97,16 +97,76 @@ for (const { id, scheme, colors } of APPEARANCES) {
     "diffEditor.removedLineBackground": "#e2988a17",
     "scrollbarSlider.hoverBackground": "#ffffff26"
   } : {};
+  const variable = colors.syntaxVariable ?? colors.syntaxFunction;
+  const attribute = colors.syntaxAttribute ?? colors.syntaxNumber;
+  const type = colors.syntaxType ?? variable;
+  const constant = colors.syntaxConstant ?? colors.syntaxNumber;
+  const operator = colors.syntaxOperator ?? colors.syntaxKeyword;
+  const punctuation = colors.syntaxPunctuation ?? operator;
+  const tag = colors.syntaxTag ?? colors.syntaxFunction;
+  const decorator = colors.syntaxDecorator ?? colors.syntaxFunction;
+  const namespace = colors.syntaxNamespace ?? colors.syntaxNumber;
+  const regexp = colors.syntaxRegexp ?? colors.syntaxString;
   monaco.editor.defineTheme(`orbit-${id}`, {
     base: scheme === "light" ? "vs" : "vs-dark",
     inherit: true,
     rules: [
-      { token: "comment", foreground: colors.syntaxComment.slice(1), fontStyle: "italic" },
+      // Token colors mirror the reference editor's Pierre theme; comments are
+      // plain (not italic) there.
+      { token: "comment", foreground: colors.syntaxComment.slice(1) },
       { token: "keyword", foreground: colors.syntaxKeyword.slice(1) },
+      // JSON literals (true/false/null) use the reference's cyan literal color.
+      { token: "keyword.json", foreground: operator.slice(1) },
+      { token: "storage", foreground: colors.syntaxKeyword.slice(1) },
+      { token: "operator", foreground: operator.slice(1) },
+      { token: "delimiter", foreground: punctuation.slice(1) },
+      { token: "punctuation", foreground: punctuation.slice(1) },
       { token: "string", foreground: colors.syntaxString.slice(1) },
       { token: "number", foreground: colors.syntaxNumber.slice(1) },
-      { token: "type", foreground: colors.icon.slice(1) },
-      { token: "function", foreground: colors.syntaxFunction.slice(1) }
+      { token: "constant", foreground: constant.slice(1) },
+      { token: "predefined", foreground: constant.slice(1) },
+      { token: "type", foreground: type.slice(1) },
+      { token: "type.identifier", foreground: type.slice(1) },
+      { token: "variable", foreground: variable.slice(1) },
+      { token: "identifier", foreground: variable.slice(1) },
+      { token: "function", foreground: colors.syntaxFunction.slice(1) },
+      { token: "namespace", foreground: namespace.slice(1) },
+      { token: "regexp", foreground: regexp.slice(1) },
+      { token: "annotation", foreground: decorator.slice(1) },
+      { token: "attribute", foreground: attribute.slice(1) },
+      { token: "attribute.name", foreground: attribute.slice(1) },
+      { token: "string.key", foreground: tag.slice(1) },
+      { token: "string.value", foreground: colors.syntaxString.slice(1) },
+      { token: "tag", foreground: tag.slice(1) },
+      { token: "meta", foreground: colors.syntaxFunction.slice(1) },
+      // The built-in base themes define deeper token nodes (e.g.
+      // `string.key.json`) that would otherwise shadow the rules above; mirror
+      // them so the reference palette also wins for JSON, YAML, HTML/XML, and
+      // SCSS tokens.
+      { token: "string.key.json", foreground: tag.slice(1) },
+      { token: "string.value.json", foreground: colors.syntaxString.slice(1) },
+      { token: "string.yaml", foreground: colors.syntaxString.slice(1) },
+      { token: "string.html", foreground: colors.syntaxString.slice(1) },
+      { token: "string.sql", foreground: colors.syntaxString.slice(1) },
+      { token: "key", foreground: variable.slice(1) },
+      { token: "number.hex", foreground: colors.syntaxNumber.slice(1) },
+      { token: "keyword.flow", foreground: colors.syntaxKeyword.slice(1) },
+      { token: "keyword.flow.scss", foreground: colors.syntaxKeyword.slice(1) },
+      { token: "attribute.value", foreground: colors.syntaxString.slice(1) },
+      { token: "attribute.value.html", foreground: colors.syntaxString.slice(1) },
+      { token: "attribute.value.xml", foreground: colors.syntaxString.slice(1) },
+      { token: "attribute.value.number", foreground: colors.syntaxNumber.slice(1) },
+      { token: "attribute.value.unit", foreground: colors.syntaxNumber.slice(1) },
+      { token: "delimiter.html", foreground: punctuation.slice(1) },
+      { token: "delimiter.xml", foreground: punctuation.slice(1) },
+      { token: "metatag", foreground: punctuation.slice(1) },
+      { token: "metatag.html", foreground: punctuation.slice(1) },
+      { token: "metatag.xml", foreground: punctuation.slice(1) },
+      { token: "metatag.content.html", foreground: tag.slice(1) },
+      { token: "operator.scss", foreground: operator.slice(1) },
+      { token: "operator.sql", foreground: operator.slice(1) },
+      { token: "operator.swift", foreground: operator.slice(1) },
+      { token: "predefined.sql", foreground: constant.slice(1) }
     ],
     colors: {
       "editor.background": colors.editorOpaque,

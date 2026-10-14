@@ -106,7 +106,7 @@
   margin-bottom: 20px;
 }
 
-.settings-section-heading > span { color: var(--accent); font: 10px "SF Mono", Menlo, monospace; padding-top: 4px; }
+.settings-section-heading > span { color: var(--accent); font: 10px ui-monospace, "SFMono-Regular", "SF Mono", Menlo, monospace; padding-top: 4px; }
 .settings-section-heading h2 { margin: 0; font-size: 16px; }
 .settings-section-heading p { margin: 4px 0 0; color: var(--text-faint); font-size: 11.5px; }
 
@@ -218,8 +218,8 @@
 .provider-card-heading > div { min-width: 0; }
 .provider-card-heading strong, .provider-card-heading small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .provider-card-heading strong { font-size: 12.5px; }
-.provider-card-heading small { margin-top: 2px; color: var(--text-faint); font: 9px "SF Mono", Menlo, monospace; }
-.provider-monogram { display: grid; place-items: center; width: 32px; height: 32px; color: var(--accent); background: var(--accent-dim); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 10px; font: 700 10px "SF Mono", Menlo, monospace; }
+.provider-card-heading small { margin-top: 2px; color: var(--text-faint); font: 9px ui-monospace, "SFMono-Regular", "SF Mono", Menlo, monospace; }
+.provider-monogram { display: grid; place-items: center; width: 32px; height: 32px; color: var(--accent); background: var(--accent-dim); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 10px; font: 700 10px ui-monospace, "SFMono-Regular", "SF Mono", Menlo, monospace; }
 .provider-connections { display: grid; gap: 5px; margin-top: 12px; }
 .provider-connections > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 9px; background: var(--bg-inset); border-radius: var(--radius-md); font-size: 10.5px; }
 .provider-connections span { display: flex; align-items: center; gap: 7px; }
@@ -286,16 +286,16 @@
 
 .mobile-setup-guide { padding: 22px 24px; }
 .mobile-setup-intro { padding-bottom: 19px; border-bottom: 1px solid var(--border); }
-.mobile-setup-kicker { margin: 0 0 8px; color: var(--accent); font: 700 9px "SF Mono", Menlo, monospace; letter-spacing: 0.15em; text-transform: uppercase; }
+.mobile-setup-kicker { margin: 0 0 8px; color: var(--accent); font: 700 9px ui-monospace, "SFMono-Regular", "SF Mono", Menlo, monospace; letter-spacing: 0.15em; text-transform: uppercase; }
 .mobile-setup-intro h2 { max-width: 440px; margin: 0; font-size: clamp(21px, 2.5vw, 27px); line-height: 1.15; letter-spacing: -0.035em; }
 .mobile-setup-intro > p:last-child { max-width: 580px; margin: 10px 0 0; color: var(--text-dim); font-size: 11.5px; line-height: 1.65; }
 
 .mobile-setup-step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; padding: 16px 0; border-bottom: 1px solid var(--border); }
-.mobile-setup-number { color: var(--accent); font: 12px "SF Mono", Menlo, monospace; }
+.mobile-setup-number { color: var(--accent); font: 12px ui-monospace, "SFMono-Regular", "SF Mono", Menlo, monospace; }
 .mobile-setup-step strong { display: block; font-size: 11.5px; }
 .mobile-setup-step p { margin: 4px 0 0; color: var(--text-dim); font-size: 10.5px; line-height: 1.6; }
 .mobile-setup-network { margin: 14px 0 0; color: var(--text-faint); font-size: 10px; line-height: 1.6; }
-.mobile-setup code { overflow-wrap: anywhere; color: var(--text); font: 10px "SF Mono", Menlo, monospace; }
+.mobile-setup code { overflow-wrap: anywhere; color: var(--text); font: 10px ui-monospace, "SFMono-Regular", "SF Mono", Menlo, monospace; }
 
 .mobile-setup-pairing { padding: 18px; }
 .mobile-setup-pairing-heading { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
@@ -344,3 +344,29 @@
   .provider-grid { grid-template-columns: 1fr; }
   .mobile-setup { grid-template-columns: 1fr; }
 }
+
+/* Interface choice: which shell the app renders, independent of the palette. */
+.ui-choice { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+
+.ui-choice-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  min-width: 240px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-raised);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ui-choice-card strong { font-size: 13px; }
+
+.ui-choice-card small { color: var(--text-faint); font-size: 11.5px; }
+
+.ui-choice-card:hover { border-color: var(--accent); }
+
+.ui-choice-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }

@@ -1,0 +1,263 @@
+// Codex shell skin: flat, flush surfaces with hairline dividers replace the
+// floating card chrome. The shell is independent of the appearance — every
+// palette supplies colours through the CSS variables this skin consumes, and
+// `data-shell="classic"` keeps the original card chrome.
+
+$codex: ':is([data-shell="codex"])';
+
+#{$codex} {
+  --rail-w: 54px;
+}
+
+
+// ── Shell ──────────────────────────────────────────────────────────────────
+// The reference's chrome is one continuous shade: the top band and the rail
+// share `#f6f6f6` with no border between them, and the file/session panel below
+// is a lighter `#fcfcfc`, so the band and rail read as a single surface.
+#{$codex} .app {
+  padding-top: 40px;
+}
+
+#{$codex} .titlebar {
+  height: 40px;
+  gap: 10px;
+  border-bottom: 0;
+}
+
+// The reference band carries a faint inner edge along its bottom, but only
+// beside the editor: the rail stays the band's exact shade, so the rail must
+// not be tinted (that reads as the top and left panels differing in colour).
+#{$codex} .titlebar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: var(--rail-w);
+  height: 6px;
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.02));
+  pointer-events: none;
+}
+
+#{$codex} .main-row {
+  gap: 0;
+  padding: 0;
+}
+
+// ── Rail ───────────────────────────────────────────────────────────────────
+#{$codex} .activity-rail {
+  align-items: center;
+  gap: 6px;
+  padding: 14px 0;
+  background: var(--rail-surface);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#{$codex} .activity-tool {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: var(--text-dim);
+}
+
+#{$codex} .activity-tool:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+#{$codex} .activity-tool.active {
+  color: var(--text);
+  background: var(--bg-active-pill);
+  box-shadow: none;
+}
+
+#{$codex} .activity-tool .os-icon {
+  width: 19px;
+  height: 19px;
+}
+
+#{$codex} .activity-tool .codicon {
+  font-size: 20px;
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+#{$codex} .sidebar {
+  background-image: none;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#{$codex} .sessions-new {
+  color: var(--text);
+}
+
+#{$codex} .sessions-new:hover {
+  background: var(--bg-hover);
+}
+
+#{$codex} .settings-nav-item.active {
+  background: var(--bg-active-pill);
+  color: var(--text);
+}
+
+#{$codex} .sessions-pane {
+  --session-list-row-height: 30px;
+  padding: 6px 8px 12px;
+}
+
+#{$codex} .sessions-row,
+#{$codex} .sessions-project-head {
+  border-radius: 10px;
+}
+
+#{$codex} .tree-row {
+  border-radius: 10px;
+}
+
+#{$codex} .titlebar-actions .icon-btn.on,
+#{$codex} .titlebar-leading-actions .icon-btn.on {
+  background: transparent;
+  color: var(--text);
+}
+
+// ── Editor ─────────────────────────────────────────────────────────────────
+#{$codex} .workspace-area > .editor-pane {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#{$codex} .workspace-area.agent-open > .editor-pane {
+  margin-right: var(--editor-right, 0px);
+}
+
+#{$codex} .workspace-area.agent-open > .tray-area {
+  width: calc(100% - var(--editor-right, 0px));
+}
+
+#{$codex} .tabbar {
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+}
+
+#{$codex} .tab-list .tab {
+  flex: 1 1 90px;
+  min-width: 90px;
+  max-width: 240px;
+  height: 30px;
+  margin: 0;
+  padding: 2px 6px 2px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+
+#{$codex} .tab:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+#{$codex} .tab.active {
+  background: var(--editor-surface);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+#{$codex} .tab.active .tab-file-icon { color: inherit; }
+
+#{$codex} .tab-close {
+  opacity: 0;
+  transition: opacity 100ms var(--ease);
+}
+
+#{$codex} .tab:hover .tab-close,
+#{$codex} .tab.active .tab-close,
+#{$codex} .tab-close:focus-visible {
+  opacity: 1;
+}
+
+#{$codex} .tab-dirty {
+  background: var(--text-dim);
+  box-shadow: none;
+}
+
+#{$codex} .tab-diff-badge { color: var(--text-dim); }
+
+#{$codex} .editor-group-focused > .tabbar {
+  background: transparent;
+  border-bottom-color: transparent;
+}
+
+// ── Agent composer (the reference's input) ──────────────────────────────────
+// The reference input is a flat rounded box one step above the panel, with the
+// placeholder dimmed well below the panel's body text and the model controls
+// stepping aside once the panel reaches its minimum width.
+#{$codex} [data-component="session-prompt-dock"] {
+  padding: 20px;
+}
+
+#{$codex} .agent-panel .composer-body {
+  min-height: 96px;
+  border-width: 1px;
+  border-color: color-mix(in srgb, var(--text) 6%, transparent);
+  border-radius: 20px;
+  box-shadow: none;
+}
+
+#{$codex} .agent-panel .composer-input {
+  min-height: 40px;
+  padding: 12px 12px 4px;
+}
+
+#{$codex} .agent-panel .composer-chips {
+  padding-bottom: 14px;
+}
+
+// The reference's placeholder reads rgb(104,104,104) over the input's #363636.
+:root[data-theme="codex-dark"] .agent-panel .composer-input::placeholder { color: #686868; }
+
+// At the panel's minimum width the reference keeps only icons on the control
+// row: the mode control collapses to its glyph, the reasoning control to a
+// single chevron, and the variant control steps out of the way entirely.
+@container (max-width: 360px) {
+  #{$codex} .agent-panel .composer-selector {
+    padding-inline: 5px;
+  }
+
+  #{$codex} .agent-panel .composer-selector.strength {
+    display: none;
+  }
+
+  #{$codex} .agent-panel .composer-selector.agent .codicon-chevron-down,
+  #{$codex} .agent-panel .composer-selector.agent > span,
+  #{$codex} .agent-panel .composer-selector.model > span {
+    display: none;
+  }
+}
+
+// ── Agent panel (docked right) ─────────────────────────────────────────────
+#{$codex} .agent-header {
+  border-bottom: 0;
+}
+
+#{$codex} .agent-col > .agent-panel {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+#{$codex} .agent-panel {
+  background: var(--panel-float-color);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 0;
+  border-left: 1px solid var(--border);
+}
