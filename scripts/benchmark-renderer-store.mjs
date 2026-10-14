@@ -22,7 +22,7 @@ for (let index = 0; index < args.length; index += 2) {
   else if (args[index] === "--operation") operation = args[index + 1];
   else throw new Error(`Unknown or repeated option: ${args[index]}`);
 }
-if (!["streaming", "workspace-files", "session-inbox"].includes(operation)) throw new Error(`Unknown operation: ${operation}`);
+if (!["streaming", "workspace-files", "session-inbox", "session-requests"].includes(operation)) throw new Error(`Unknown operation: ${operation}`);
 const supportedNode = readFileSync(path.join(repository, ".node-version"), "utf8").trim();
 if (process.versions.node !== supportedNode) throw new Error(`Use Node ${supportedNode}; active version is ${process.versions.node}`);
 const git = (...gitArgs) => execFileSync("git", gitArgs, { cwd: repository, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }).trim();
@@ -68,13 +68,22 @@ async function sample() {
   const session = { id: "session", directory: "/fixture", workspace: { id: "11111111-1111-4111-8111-111111111111", generation: 1 } };
   const queueKey = `${session.workspace.id}\n${session.id}`;
   let queueWrites = 0;
+  let approvalWrites = 0;
   const cancelled = [];
+  const formReplies = [], permissionReplies = [];
   if (operation === "session-inbox") {
     localStorage.setItem("messageQueue", JSON.stringify({ followUpBehavior: "queue", quarantinedLegacyMessages: {},
       queuedMessages: { [queueKey]: Array.from({ length: 20 }, (_, index) => ({ id: `queued-${index}`, content: `Local ${index}`, createdAt: index + 1 })) } }));
     const setItem = dom.window.Storage.prototype.setItem;
     dom.window.Storage.prototype.setItem = function (key, value) {
       if (key === "messageQueue") queueWrites++;
+      return setItem.call(this, key, value);
+    };
+  }
+  if (operation === "session-requests") {
+    const setItem = dom.window.Storage.prototype.setItem;
+    dom.window.Storage.prototype.setItem = function (key, value) {
+      if (key === "approvalMode") approvalWrites++;
       return setItem.call(this, key, value);
     };
   }
@@ -100,7 +109,11 @@ async function sample() {
     sessionUsage: async () => null, sessionTranscript: async () => ({ transcript: [], todos: [] }),
     inboxList: empty, formsList: empty, recoveryList: empty, reportUnsavedEditorFiles: () => {},
     ...(operation !== "streaming" ? { recoveryRecords: empty } : {}),
-    ...(operation === "session-inbox" ? { inboxCancel: async (...args) => { cancelled.push(args); } } : {})
+    ...(operation === "session-inbox" ? { inboxCancel: async (...args) => { cancelled.push(args); } } : {}),
+    ...(operation === "session-requests" ? {
+      formReply: async (...args) => { formReplies.push(args); },
+      permissionReply: async (...args) => { permissionReplies.push(args); }
+    } : {})
   };
   function Probe() { store = useStore(); renders++; return null; }
   const root = createRoot(document.querySelector("#root"));
@@ -109,6 +122,39 @@ async function sample() {
     let start = performance.now();
     await React.act(async () => store.addModelPanel("/fixture"));
     const openMs = performance.now() - start;
+    if (operation === "session-requests") {
+      const previousRenders = renders;
+      const emit = (type, data, id) => handler({ kind: "event", type,
+        data: { id: `${type}-${id}`, created: 1, orbitSessionIDs: [session.id], data: { sessionID: session.id, ...data } } });
+      start = performance.now();
+      for (let index = 0; index < 100; index++) {
+        const id = `form-${index}`;
+        await React.act(async () => emit("form.created", { form: { id, sessionID: "global", title: id,
+          fields: [{ key: "answer", type: "string", required: true }] } }, id));
+        const pending = store.panelViews[session.workspace.id].pendingForms;
+        if (pending.length !== 1 || pending[0].sessionID !== "global" || pending[0].fields[0].key !== "answer") throw new Error("Form attribution or fields changed");
+        await React.act(async () => store.submitForm(session.workspace, id, { answer: `Answer ${index}` }, "global"));
+        if (store.panelViews[session.workspace.id].pendingForms.length) throw new Error("Form submission removal changed");
+      }
+      const formsMs = performance.now() - start;
+      start = performance.now();
+      for (let index = 0; index < 100; index++) {
+        const id = `permission-${index}`;
+        await React.act(async () => emit("permission.asked", { id, action: "edit", resources: ["notes.txt"] }, id));
+        await React.act(async () => store.replyPermission(id, "once", session.id));
+      }
+      const permissionsMs = performance.now() - start;
+      start = performance.now();
+      for (let index = 0; index < 100; index++) await React.act(async () => store.toggleApprovalMode());
+      const preferenceMs = performance.now() - start;
+      const rows = store.transcript.filter((item) => item.kind === "permission");
+      if (rows.length !== 100 || rows.some((item, index) => item.requestID !== `permission-${index}` || item.pending || item.resolvedWith !== "once")) throw new Error("Permission rows changed");
+      if (formReplies.length !== 100 || formReplies.some((args, index) => args[0] !== session.workspace || args[1] !== `form-${index}` || args[2].answer !== `Answer ${index}` || args[3] !== "global")) throw new Error("Form reply contract changed");
+      if (permissionReplies.length !== 100 || permissionReplies.some((args, index) => args[0] !== session.workspace || args[1] !== `permission-${index}` || args[2] !== "once" || args[3] !== session.id)) throw new Error("Permission reply contract changed");
+      if (approvalWrites !== 100 || localStorage.getItem("approvalMode") !== "ask" || store.approvalMode !== "ask") throw new Error("Approval persistence changed");
+      return { openMs, formsMs, permissionsMs, preferenceMs, updateRenders: renders - previousRenders,
+        formReplies: formReplies.length, permissionReplies: permissionReplies.length, approvalWrites, permissionRows: rows.length };
+    }
     if (operation === "session-inbox") {
       const previousRenders = renders;
       start = performance.now();
@@ -215,9 +261,11 @@ console.log(JSON.stringify({
   scope: "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
   operation,
   workload: operation === "streaming" ? { assistants: 100, setupEvents: 600, toolOutputChars: 32768, deltas: 100, warmups: 3, samples: 9 }
+    : operation === "session-requests" ? { formRequests: 100, permissionRequests: 100, approvalToggles: 100, warmups: 3, samples: 9 }
     : operation === "session-inbox" ? { nativeEnqueuesAndPops: 100, followUpChanges: 100, localPops: 20, missingPop: 1, noOpReorder: 1, warmups: 3, samples: 9 }
       : { fileUpdates: 500, editorOpens: 20, editorSaves: 10, rootReads: 100, listingEntries: 1002, cachedToggles: 3, warmups: 3, samples: 9 },
   ...Object.fromEntries((operation === "streaming" ? ["openMs", "streamingMs"]
+    : operation === "session-requests" ? ["openMs", "formsMs", "permissionsMs", "preferenceMs"]
     : operation === "session-inbox" ? ["openMs", "inboxMs", "localQueueMs"]
       : ["openMs", "observationsMs", "editorOpenMs", "editorSaveMs", "directoryMs"]).map((field) => [field, distribution(field)])), samples
 }, null, 2));

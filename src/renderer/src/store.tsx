@@ -13,15 +13,11 @@ import {
 import { normalizePendingForm } from "@shared/forms";
 import { formatFailure, normalizeFailure } from "@shared/errors";
 import type {
-  ApprovalMode,
   BackendMessage,
   OpenFileWorkspaceResult,
-  PendingPermissionRequest,
   PermissionReply,
   PromptDelivery,
   SessionRevertStage,
-  FormAnswers,
-  PendingFormRequest,
   PromptFile,
   ProviderUsageResult,
   RuntimeManifest,
@@ -44,6 +40,7 @@ import { useExplorerMutations } from "./use-explorer-mutations";
 import { useWorkspaceFiles } from "./use-workspace-files";
 import { useWorkspaceEditor } from "./use-workspace-editor";
 import { useSessionSelection } from "./use-session-selection";
+import { useSessionRequests } from "./use-session-requests";
 import { useSessionInbox } from "./use-session-inbox";
 import { useSessionInventory } from "./use-session-inventory";
 import { useSessionChatRecords } from "./use-session-chat-records";
@@ -208,11 +205,35 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     shouldIgnoreRuntimeWork, noteRuntimeReduction, touchDeltaStream,
     startExecution, finishExecution, applyStatusEvent
   } = execution;
-  const [formsBySession, setFormsBySession] = useState<Record<string, PendingFormRequest[]>>({});
   const [stagedReverts, setStagedReverts] = useState<Record<string, SessionRevertStage | null>>({});
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [approvalMode, setApprovalMode] = useState<ApprovalMode>(
-    () => (window.localStorage.getItem("approvalMode") === "approve" ? "approve" : "ask")
+  const toast = useCallback((text: string, tone: "info" | "error" = "info") => {
+    const id = ++toastId;
+    setToasts((prev) => [...prev.slice(-3), { id, text, tone }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
+
+  const panelFor = useCallback(
+    (workspace: WorkspaceIdentity): SessionInfo | null =>
+      panelsRef.current.find((panel) => sameWorkspace(panel.workspace, workspace)) ?? null,
+    []
+  );
+
+  const panelForSession = useCallback(
+    (sessionID: string): SessionInfo | null =>
+      panelsRef.current.find((panel) => panel.id === sessionID) ?? null,
+    []
+  );
+
+  const readFocusedSession = useCallback(() => sessionRef.current, []);
+  const readPanels = useCallback(() => panelsRef.current, []);
+  const {
+    approvalMode, formsBySession, refreshForms, submitForm, dismissForm,
+    reconcilePermissions, replyPermission, toggleApprovalMode, readApprovalMode,
+    receiveForms, removeTerminalForms
+  } = useSessionRequests(
+    { panelFor, panelForSession, readFocusedSession, readPanels, notify: toast },
+    { reconcilePermissionRows, resolvePermission }
   );
   const [usageBySession, setUsageBySession] = useState<Record<string, SessionUsage>>({});
   const [compactionBaselineBySession, setCompactionBaselineBySession] = useState<Record<string, number>>(() => {
@@ -286,11 +307,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   usageBySessionRef.current = usageBySession;
   const compactionBaselineBySessionRef = useRef(compactionBaselineBySession);
   compactionBaselineBySessionRef.current = compactionBaselineBySession;
-  const formsBySessionRef = useRef(formsBySession);
-  formsBySessionRef.current = formsBySession;
   const todoKeysRef = useRef<Record<string, string>>({});
-  const approvalModeRef = useRef<ApprovalMode>(approvalMode);
-  approvalModeRef.current = approvalMode;
   const sessionRef = useRef<SessionInfo | null>(session);
   sessionRef.current = session;
   const requestSeqRef = useRef(0);
@@ -299,12 +316,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const userActivatedRef = useRef(false);
   const focusSeqRef = useRef(0);
   const startupRestoreStartedRef = useRef(false);
-
-  const toast = useCallback((text: string, tone: "info" | "error" = "info") => {
-    const id = ++toastId;
-    setToasts((prev) => [...prev.slice(-3), { id, text, tone }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  }, []);
 
   const {
     activeSessions, sessions, refreshActiveSessions, addActiveSession,
@@ -317,26 +328,12 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     return () => clearInterval(timer);
   }, [refreshActiveSessions]);
 
-  const panelFor = useCallback(
-    (workspace: WorkspaceIdentity): SessionInfo | null =>
-      panelsRef.current.find((panel) => sameWorkspace(panel.workspace, workspace)) ?? null,
-    []
-  );
-
-  const panelForSession = useCallback(
-    (sessionID: string): SessionInfo | null =>
-      panelsRef.current.find((panel) => panel.id === sessionID) ?? null,
-    []
-  );
-
   const workspaceOfSession = useCallback(
     (sessionID: string): WorkspaceIdentity | null =>
       panelsRef.current.find((panel) => panel.id === sessionID)?.workspace ?? null,
     []
   );
 
-  const readFocusedSession = useCallback(() => sessionRef.current, []);
-  const readPanels = useCallback(() => panelsRef.current, []);
   const {
     agentFiles, tree, expanded, hiddenPaths, recoveryRecords,
     readAgentFile, isHiddenPath, toggleDir, ensureRootOpen, refreshTree, unhidePath,
@@ -350,33 +347,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     setTodosByWorkspace((current) =>
       current[workspaceID] === items ? current : { ...current, [workspaceID]: items });
   }, []);
-
-  const reconcilePermissions = useCallback(async (): Promise<void> => {
-    const panels = panelsRef.current;
-    if (panels.length === 0) return;
-    const workspaces = new Map<string, WorkspaceIdentity>();
-    for (const panel of panels) workspaces.set(panel.workspace.id, panel.workspace);
-    const fetched = new Map<string, PendingPermissionRequest[]>();
-    const successfulWorkspaces = new Set<string>();
-    await Promise.all([...workspaces.values()].map(async (workspace) => {
-      const requests = await window.openshell.listPermissions(workspace).catch(() => null);
-      if (!requests) return;
-      successfulWorkspaces.add(workspace.id);
-      for (const request of requests) {
-        const list = fetched.get(request.sessionID) ?? [];
-        list.push(request);
-        fetched.set(request.sessionID, list);
-      }
-    }));
-    for (const panel of panels) {
-      // A failed permission-list request is not proof that the session has no
-      // pending approvals. Keep the event-backed card until a later poll can
-      // confirm the request is gone.
-      if (!successfulWorkspaces.has(panel.workspace.id)) continue;
-      const requests = fetched.get(panel.id) ?? [];
-      reconcilePermissionRows(panel.id, requests);
-    }
-  }, [reconcilePermissionRows]);
 
   const materializingRef = useRef(new Set<string>());
   const swapPendingRef = useRef(false);
@@ -403,15 +373,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     { appendTranscriptItem, appendUniqueTranscriptItem },
     { currentAgentByWorkspace, currentModelByWorkspace }
   );
-
-  const refreshForms = useCallback(async (sessionID: string): Promise<void> => {
-    const panel = panelsRef.current.find((candidate) => candidate.id === sessionID);
-    if (!panel) return;
-    try {
-      const forms = await window.openshell.formsList(panel.workspace);
-      setFormsBySession((current) => ({ ...current, [sessionID]: forms }));
-    } catch {}
-  }, []);
 
   const refreshSessionUsage = useCallback(async (sessionID: string): Promise<void> => {
     if (!panelForSession(sessionID)) return;
@@ -464,36 +425,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       materializingRef.current.delete(sessionID);
     }
   }, [panelForSession, mergeMaterializedRecords, applyProjection, reconcileStreaming, setTodosFor, setSessionBusy, protectedSessionIDs, toast, abortFor]);
-
-  const submitForm = useCallback(async (
-    workspace: WorkspaceIdentity,
-    formID: string,
-    answers: FormAnswers,
-    formSessionID?: string
-  ): Promise<void> => {
-    const panel = panelFor(workspace);
-    if (!panel) return;
-    setFormsBySession((current) => ({
-      ...current,
-      [panel.id]: (current[panel.id] ?? []).filter((form) => form.id !== formID)
-    }));
-    try {
-      await window.openshell.formReply(workspace, formID, answers, formSessionID);
-    } catch (err) {
-      void refreshForms(panel.id);
-      if (panelFor(workspace)) toast(err instanceof Error ? err.message : String(err), "error");
-    }
-  }, [panelFor, refreshForms, toast]);
-
-  const dismissForm = useCallback((workspace: WorkspaceIdentity, formID: string, formSessionID?: string): void => {
-    const panel = panelFor(workspace);
-    if (!panel) return;
-    setFormsBySession((current) => ({
-      ...current,
-      [panel.id]: (current[panel.id] ?? []).filter((form) => form.id !== formID)
-    }));
-    window.openshell.formCancel(workspace, formID, formSessionID).catch(() => {});
-  }, [panelFor]);
 
   const attachPanel = useCallback((info: SessionInfo, saveWorkspace = true): void => {
     if (saveWorkspace) rememberWorkspace(info.directory);
@@ -1184,31 +1115,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     }
   }, [panels, busyBySession, transcriptsBySession, setTodosFor]);
 
-  const replyPermission = useCallback(
-    async (requestID: string, reply: PermissionReply, sessionID?: string) => {
-      const sid = sessionID ?? sessionRef.current?.id;
-      const panel = sid ? panelForSession(sid) : null;
-      if (!panel) return;
-      try {
-        await window.openshell.permissionReply(panel.workspace, requestID, reply, panel.id);
-      } catch (err) {
-        toast(err instanceof Error ? err.message : String(err), "error");
-        return;
-      }
-      resolvePermission(panel.id, requestID, reply);
-    },
-    [toast, panelForSession, resolvePermission]
-  );
-
-  const toggleApprovalMode = useCallback(() => {
-    setApprovalMode((current) => {
-      const next = current === "approve" ? "ask" : "approve";
-      approvalModeRef.current = next;
-      window.localStorage.setItem("approvalMode", next);
-      return next;
-    });
-  }, []);
-
   const attachFileWorkspace = useCallback(
     async (result: OpenFileWorkspaceResult, activation: number): Promise<SessionInfo | null> => {
       if (activation !== activationSeqRef.current) {
@@ -1410,16 +1316,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           const ownerIDs = locationForm ? locationFormOwnerIDs : targetSessionID ? [targetSessionID] : [];
           if (normalized && ownerIDs.length > 0 &&
               (locationForm || normalized.sessionID === "global" || normalized.sessionID === targetSessionID)) {
-            setFormsBySession((current) => {
-              const next = { ...current };
-              for (const ownerID of ownerIDs) {
-                next[ownerID] = [
-                  ...(current[ownerID] ?? []).filter((form) => form.id !== normalized.id),
-                  normalized
-                ];
-              }
-              return next;
-            });
+            receiveForms(ownerIDs, normalized);
           }
           break;
         }
@@ -1428,17 +1325,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           const formID = typeof data.id === "string" ? data.id : "";
           const ownerIDs = locationForm ? locationFormOwnerIDs : targetSessionID ? [targetSessionID] : [];
           if (ownerIDs.length > 0 && formID) {
-            setFormsBySession((current) => {
-              let changed = false;
-              const next = { ...current };
-              for (const ownerID of ownerIDs) {
-                const list = current[ownerID];
-                if (!list?.some((form) => form.id === formID)) continue;
-                changed = true;
-                next[ownerID] = list.filter((form) => form.id !== formID);
-              }
-              return changed ? next : current;
-            });
+            removeTerminalForms(ownerIDs, formID);
           }
           break;
         }
@@ -1630,7 +1517,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
         case "permission.asked": {
           const requestID = String(data.id);
-          const automatic = approvalModeRef.current === "approve";
+          const automatic = readApprovalMode() === "approve";
           if (!targetSessionID) break;
           addPermissionFromEvent(targetSessionID, requestID, data);
           const panel = targetSessionID ? panelForSession(targetSessionID) : null;
@@ -1740,6 +1627,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     refreshSessionUsage,
     reconcilePermissions,
     refreshForms,
+    readApprovalMode,
+    receiveForms,
+    removeTerminalForms,
     cancelAll,
     refreshActiveSessions,
     loadSessions,

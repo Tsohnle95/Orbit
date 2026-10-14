@@ -4,6 +4,7 @@ import type {
   ApprovalMode,
   FormAnswers,
   ModelOption,
+  PendingFormField,
   PendingFormRequest,
   PermissionReply,
   ProjectInfo,
@@ -26,6 +27,12 @@ import type { SessionActivityResult } from "./session-activity";
 import type { ActiveAssistantModel, FormingSummary, WorkingSummary } from "./assistant-status";
 import type { FollowUpBehavior, QueuedMessage } from "./message-queue";
 
+export type FormFieldReadView = Readonly<Omit<PendingFormField, "options">> & {
+  readonly options?: readonly Readonly<NonNullable<PendingFormField["options"]>[number]>[];
+};
+export type FormRequestReadView = Readonly<Omit<PendingFormRequest, "fields">> & {
+  readonly fields: readonly FormFieldReadView[];
+};
 export interface Toast {
   id: number;
   text: string;

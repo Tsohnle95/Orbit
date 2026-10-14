@@ -267,6 +267,21 @@ The queue and saved-workspace lazy storage reads are independent and caught;
 extraction reverses their incidental read order while both finish before hydration
 effects, without changing keys, defaults, or writes.
 
+`use-session-requests.ts` owns the form record, refresh/reply/cancel commands and
+approval preference/ref, and uses the Chat owner's permission reconciliation and
+resolution commands without keeping a second permission record. Store keeps
+normalization, true-session versus location-panel attribution, event guards,
+automatic permission transport, and existing polling/effect placement. The
+uncaught approval storage initializer stays before other persisted records;
+toggles update its ref inside the state updater before the uncaught storage write.
+Permission lists capture panels before parallel requests, retain event-backed
+rows for failed workspaces, and apply successful lists after panel closure. Form
+refreshes also retain late success; failed form replies refresh then toast only
+while the workspace remains attached. Manual permission reply failures toast
+globally, and successful replies resolve the captured row after panel closure.
+Forms are borrowed with readonly nested fields and options; the unused render
+mirror ref was removed.
+
 Actions: `openSession` / `selectFolder` (replace the current panels with one fresh
 panel and automatically save its directory as a workspace), `saveWorkspace`
 (bookmark a directory from the native folder picker), `addModelPanel(dir)`

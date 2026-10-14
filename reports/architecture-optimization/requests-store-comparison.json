@@ -1,0 +1,1250 @@
+{
+  "phase": "Forms and approval request authority",
+  "baselineRef": "4f41111",
+  "runner": "scripts/benchmark-renderer-store.mjs",
+  "runnerSha256": "fa12438c1fc7e1050496f408b0f6f992c0ccc482d3b1863799ebdb2a11e301b2",
+  "command": "PATH=/Users/tdawg/.local/share/orbit-toolchains/node-v22.23.2/bin:$PATH node scripts/benchmark-renderer-store.mjs --operation session-requests [--ref 4f41111]",
+  "afterSourceSha256": {
+    "src/renderer/src/store.tsx": "38693a0ebc9a2a78f11e475ad4b2dd3d81a8487d09e9ad39b00360f653f865a4",
+    "src/renderer/src/use-session-requests.ts": "9b5952c5a8bf6ed31dabc2b915c8a9945a9f4608e3bc0d97e8b4f0fa53df11fe",
+    "src/renderer/src/store-contract.ts": "30fff800cf20914cb7b3383805edfc9f9f26afb09e19526b9f283a894487cfde",
+    "src/renderer/src/panel-projection.ts": "1bbfd605160c8279df208156459952f9c3e1e7a6b4329858beb3786012ee818e"
+  },
+  "order": [
+    "before-1",
+    "after-1",
+    "after-2",
+    "before-2",
+    "after-3",
+    "before-3",
+    "before-4",
+    "after-4"
+  ],
+  "interpretation": "Initial paired medians increased consistently (forms approximately0.52\u20131.15ms, permissions1.84\u20132.44ms and preference0.13\u20130.71ms per100operations), prompting another paired/reverse comparison. Final pair did not reproduce permission/preference increases: permissions13.900\u219213.636ms and preference4.337\u21924.262ms; forms8.584\u21928.728ms. All paired timing ranges overlap; no confirmed meaningful gain or regression established. Retain all72samples and initial higher timings; no speedup claim. All72samples preserve500consumer commits/100form replies/100permission replies/100approval writes/100resolved permission rows, exact workspace and true session IDs, answers, emptied form list and final ask preference. Scope actual Store/React-jsdom coordination with mocked bridge/localStorage; excludes real IPC/provider latency and Chromium layout/paint. Eight comparison runs occurred after full gate/compiler/tests completed and before native GUI requests checks.",
+  "runs": {
+    "before-1": {
+      "source": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "head": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "node": "v22.23.2",
+      "bundleSha256": "0a0869375266937c256023b9053abe51e3cc876369a54c7cdfc30e63895d7215",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-requests",
+      "workload": {
+        "formRequests": 100,
+        "permissionRequests": 100,
+        "approvalToggles": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.09454200000004676,
+        "median": 0.17066699999986668,
+        "max": 0.25708399999996345
+      },
+      "formsMs": {
+        "min": 8.186042000000043,
+        "median": 9.076874999999973,
+        "max": 19.940875000000005
+      },
+      "permissionsMs": {
+        "min": 13.234666999999945,
+        "median": 15.689834000000019,
+        "max": 29.89320799999996
+      },
+      "preferenceMs": {
+        "min": 3.907375000000002,
+        "median": 4.08483299999989,
+        "max": 8.19354199999998
+      },
+      "samples": [
+        {
+          "openMs": 0.19920799999999872,
+          "formsMs": 19.940875000000005,
+          "permissionsMs": 29.89320799999996,
+          "preferenceMs": 8.19354199999998,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.25708399999996345,
+          "formsMs": 16.769374999999968,
+          "permissionsMs": 27.265874999999937,
+          "preferenceMs": 6.122375000000034,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.20379099999991013,
+          "formsMs": 11.37020799999982,
+          "permissionsMs": 18.68766699999992,
+          "preferenceMs": 6.04683399999999,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.17066699999986668,
+          "formsMs": 11.553916999999956,
+          "permissionsMs": 17.400667000000112,
+          "preferenceMs": 5.004415999999992,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.10541699999998855,
+          "formsMs": 9.076874999999973,
+          "permissionsMs": 14.290457999999944,
+          "preferenceMs": 4.029999999999973,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.20700000000010732,
+          "formsMs": 8.578708000000006,
+          "permissionsMs": 14.23483299999998,
+          "preferenceMs": 4.067499999999882,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.10145799999986593,
+          "formsMs": 8.186042000000043,
+          "permissionsMs": 13.556125000000065,
+          "preferenceMs": 3.9809580000001006,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.09820799999988594,
+          "formsMs": 8.680624999999964,
+          "permissionsMs": 13.234666999999945,
+          "preferenceMs": 3.907375000000002,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.09454200000004676,
+          "formsMs": 8.48329200000012,
+          "permissionsMs": 15.689834000000019,
+          "preferenceMs": 4.08483299999989,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        }
+      ]
+    },
+    "after-1": {
+      "source": "working tree",
+      "head": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "node": "v22.23.2",
+      "bundleSha256": "df6669afca31190c635e314cc57fbc2b0a8642dadffc863dc5eed678dfcc6239",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-requests",
+      "workload": {
+        "formRequests": 100,
+        "permissionRequests": 100,
+        "approvalToggles": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.09995900000001257,
+        "median": 0.1344170000000986,
+        "max": 0.25629099999997607
+      },
+      "formsMs": {
+        "min": 8.310958000000028,
+        "median": 9.598500000000058,
+        "max": 17.736958999999956
+      },
+      "permissionsMs": {
+        "min": 13.233957999999916,
+        "median": 17.526791000000003,
+        "max": 28.47479100000004
+      },
+      "preferenceMs": {
+        "min": 3.8969170000000304,
+        "median": 4.218999999999937,
+        "max": 8.350999999999999
+      },
+      "samples": [
+        {
+          "openMs": 0.217708000000016,
+          "formsMs": 17.736958999999956,
+          "permissionsMs": 28.47479100000004,
+          "preferenceMs": 8.350999999999999,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.25629099999997607,
+          "formsMs": 17.019000000000005,
+          "permissionsMs": 27.930458000000044,
+          "preferenceMs": 5.021082999999976,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.1949170000000322,
+          "formsMs": 10.275250000000028,
+          "permissionsMs": 17.526791000000003,
+          "preferenceMs": 5.342875000000049,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.1344170000000986,
+          "formsMs": 9.598500000000058,
+          "permissionsMs": 18.512499999999932,
+          "preferenceMs": 4.6633339999999635,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.10262499999998909,
+          "formsMs": 9.336957999999981,
+          "permissionsMs": 19.203625000000102,
+          "preferenceMs": 4.194792000000007,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.22758399999997891,
+          "formsMs": 10.016707999999994,
+          "permissionsMs": 14.222250000000031,
+          "preferenceMs": 4.218999999999937,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.11562500000002274,
+          "formsMs": 8.351583000000005,
+          "permissionsMs": 13.353375000000028,
+          "preferenceMs": 3.9199579999999514,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.09995900000001257,
+          "formsMs": 8.310958000000028,
+          "permissionsMs": 13.233957999999916,
+          "preferenceMs": 3.8969170000000304,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.11158299999999599,
+          "formsMs": 8.622083999999973,
+          "permissionsMs": 14.111083000000008,
+          "preferenceMs": 4.121999999999957,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        }
+      ]
+    },
+    "after-2": {
+      "source": "working tree",
+      "head": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "node": "v22.23.2",
+      "bundleSha256": "df6669afca31190c635e314cc57fbc2b0a8642dadffc863dc5eed678dfcc6239",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-requests",
+      "workload": {
+        "formRequests": 100,
+        "permissionRequests": 100,
+        "approvalToggles": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.09366699999998218,
+        "median": 0.15620799999999235,
+        "max": 0.24983399999996436
+      },
+      "formsMs": {
+        "min": 8.656624999999963,
+        "median": 9.83020799999997,
+        "max": 17.311709000000008
+      },
+      "permissionsMs": {
+        "min": 13.53862499999991,
+        "median": 16.70391600000005,
+        "max": 29.85179199999999
+      },
+      "preferenceMs": {
+        "min": 4.0990829999999505,
+        "median": 4.835207999999966,
+        "max": 8.529749999999979
+      },
+      "samples": [
+        {
+          "openMs": 0.18695800000000418,
+          "formsMs": 17.285374999999988,
+          "permissionsMs": 29.85179199999999,
+          "preferenceMs": 8.529749999999979,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.24983399999996436,
+          "formsMs": 17.311709000000008,
+          "permissionsMs": 27.35829199999995,
+          "preferenceMs": 5.621917000000053,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.20279200000004494,
+          "formsMs": 11.025792000000024,
+          "permissionsMs": 17.644042000000013,
+          "preferenceMs": 5.429458000000068,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.15620799999999235,
+          "formsMs": 9.83020799999997,
+          "permissionsMs": 17.44820900000002,
+          "preferenceMs": 5.173750000000041,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.10662500000000819,
+          "formsMs": 8.72341700000004,
+          "permissionsMs": 14.84191599999997,
+          "preferenceMs": 4.505167000000029,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.2066660000000411,
+          "formsMs": 9.90037499999994,
+          "permissionsMs": 16.23687499999994,
+          "preferenceMs": 4.0990829999999505,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.10666700000001583,
+          "formsMs": 8.960874999999987,
+          "permissionsMs": 16.70391600000005,
+          "preferenceMs": 4.222459000000072,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.0985840000000735,
+          "formsMs": 8.656624999999963,
+          "permissionsMs": 14.062542000000008,
+          "preferenceMs": 4.835207999999966,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.09366699999998218,
+          "formsMs": 8.863500000000045,
+          "permissionsMs": 13.53862499999991,
+          "preferenceMs": 4.145208000000025,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        }
+      ]
+    },
+    "before-2": {
+      "source": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "head": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "node": "v22.23.2",
+      "bundleSha256": "0a0869375266937c256023b9053abe51e3cc876369a54c7cdfc30e63895d7215",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-requests",
+      "workload": {
+        "formRequests": 100,
+        "permissionRequests": 100,
+        "approvalToggles": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.09945799999991323,
+        "median": 0.140041999999994,
+        "max": 0.2531660000000784
+      },
+      "formsMs": {
+        "min": 8.127415999999926,
+        "median": 8.677374999999984,
+        "max": 17.135582999999997
+      },
+      "permissionsMs": {
+        "min": 13.083499999999958,
+        "median": 14.267749999999978,
+        "max": 29.894457999999986
+      },
+      "preferenceMs": {
+        "min": 3.9813749999999573,
+        "median": 4.129332999999974,
+        "max": 8.465832999999975
+      },
+      "samples": [
+        {
+          "openMs": 0.20662499999991724,
+          "formsMs": 16.690249999999992,
+          "permissionsMs": 29.894457999999986,
+          "preferenceMs": 8.465832999999975,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.2531660000000784,
+          "formsMs": 17.135582999999997,
+          "permissionsMs": 27.622375000000034,
+          "preferenceMs": 4.990374999999972,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.18758300000001782,
+          "formsMs": 10.398083999999926,
+          "permissionsMs": 17.796542000000045,
+          "preferenceMs": 5.308915999999954,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.140041999999994,
+          "formsMs": 9.505833000000052,
+          "permissionsMs": 18.090082999999936,
+          "preferenceMs": 4.425958000000037,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.11933299999998326,
+          "formsMs": 8.485667000000035,
+          "permissionsMs": 14.101666000000023,
+          "preferenceMs": 4.035250000000019,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.24412500000005366,
+          "formsMs": 8.677374999999984,
+          "permissionsMs": 14.267749999999978,
+          "preferenceMs": 4.08624999999995,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.10729200000002947,
+          "formsMs": 8.59375,
+          "permissionsMs": 13.281540999999947,
+          "preferenceMs": 4.1065830000000005,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.10025000000007367,
+          "formsMs": 8.605000000000018,
+          "permissionsMs": 13.083499999999958,
+          "preferenceMs": 3.9813749999999573,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.09945799999991323,
+          "formsMs": 8.127415999999926,
+          "permissionsMs": 13.44941700000004,
+          "preferenceMs": 4.129332999999974,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        }
+      ]
+    },
+    "after-3": {
+      "source": "working tree",
+      "head": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "node": "v22.23.2",
+      "bundleSha256": "df6669afca31190c635e314cc57fbc2b0a8642dadffc863dc5eed678dfcc6239",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-requests",
+      "workload": {
+        "formRequests": 100,
+        "permissionRequests": 100,
+        "approvalToggles": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.1079579999999396,
+        "median": 0.14429100000006656,
+        "max": 0.3787919999999758
+      },
+      "formsMs": {
+        "min": 9.437124999999924,
+        "median": 10.059917000000041,
+        "max": 23.69304199999999
+      },
+      "permissionsMs": {
+        "min": 16.514124999999922,
+        "median": 19.710749999999962,
+        "max": 34.74604099999999
+      },
+      "preferenceMs": {
+        "min": 4.304750000000013,
+        "median": 4.423999999999978,
+        "max": 9.761999999999944
+      },
+      "samples": [
+        {
+          "openMs": 0.19854100000009112,
+          "formsMs": 19.417542000000026,
+          "permissionsMs": 34.74604099999999,
+          "preferenceMs": 9.761999999999944,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.3787919999999758,
+          "formsMs": 23.69304199999999,
+          "permissionsMs": 29.818167000000017,
+          "preferenceMs": 6.336375000000089,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.20366699999999582,
+          "formsMs": 11.93587500000001,
+          "permissionsMs": 24.846624999999904,
+          "preferenceMs": 6.615917000000081,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.14429100000006656,
+          "formsMs": 10.989791999999966,
+          "permissionsMs": 19.710749999999962,
+          "preferenceMs": 4.495750000000044,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.11041599999998652,
+          "formsMs": 10.059917000000041,
+          "permissionsMs": 16.514124999999922,
+          "preferenceMs": 4.423999999999978,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.20366599999999835,
+          "formsMs": 9.891500000000065,
+          "permissionsMs": 17.056125000000065,
+          "preferenceMs": 4.398958999999991,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.1397500000000491,
+          "formsMs": 9.681958000000009,
+          "permissionsMs": 16.781082999999967,
+          "preferenceMs": 4.38129200000003,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.1079579999999396,
+          "formsMs": 10.022916999999893,
+          "permissionsMs": 21.472790999999916,
+          "preferenceMs": 4.417832999999973,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.11958300000014788,
+          "formsMs": 9.437124999999924,
+          "permissionsMs": 16.83595800000012,
+          "preferenceMs": 4.304750000000013,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        }
+      ]
+    },
+    "before-3": {
+      "source": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "head": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "node": "v22.23.2",
+      "bundleSha256": "0a0869375266937c256023b9053abe51e3cc876369a54c7cdfc30e63895d7215",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-requests",
+      "workload": {
+        "formRequests": 100,
+        "permissionRequests": 100,
+        "approvalToggles": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.10058400000002621,
+        "median": 0.1438340000000835,
+        "max": 0.34720899999990706
+      },
+      "formsMs": {
+        "min": 8.332625000000121,
+        "median": 9.92470800000001,
+        "max": 19.734125000000063
+      },
+      "permissionsMs": {
+        "min": 13.418667000000141,
+        "median": 18.311042000000043,
+        "max": 29.045375000000035
+      },
+      "preferenceMs": {
+        "min": 3.9475419999999986,
+        "median": 4.343792000000008,
+        "max": 8.379291999999964
+      },
+      "samples": [
+        {
+          "openMs": 0.19316700000001674,
+          "formsMs": 17.11175000000003,
+          "permissionsMs": 27.31279200000006,
+          "preferenceMs": 8.379291999999964,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.34720899999990706,
+          "formsMs": 19.734125000000063,
+          "permissionsMs": 29.045375000000035,
+          "preferenceMs": 7.763916999999992,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.234375,
+          "formsMs": 10.891959000000043,
+          "permissionsMs": 18.311042000000043,
+          "preferenceMs": 8.340667000000053,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.1438340000000835,
+          "formsMs": 9.92470800000001,
+          "permissionsMs": 18.548374999999965,
+          "preferenceMs": 4.437915999999973,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.10366699999997309,
+          "formsMs": 8.806583000000046,
+          "permissionsMs": 14.635707999999909,
+          "preferenceMs": 4.2199170000000095,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.21104200000002038,
+          "formsMs": 10.805334000000016,
+          "permissionsMs": 13.885083000000009,
+          "preferenceMs": 4.194208000000003,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.11120800000003328,
+          "formsMs": 8.708624999999984,
+          "permissionsMs": 19.85329200000001,
+          "preferenceMs": 3.9475419999999986,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.10058400000002621,
+          "formsMs": 8.649625000000015,
+          "permissionsMs": 15.113207999999986,
+          "preferenceMs": 4.343792000000008,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.10950000000002547,
+          "formsMs": 8.332625000000121,
+          "permissionsMs": 13.418667000000141,
+          "preferenceMs": 4.302833999999848,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        }
+      ]
+    },
+    "before-4": {
+      "source": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "head": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "node": "v22.23.2",
+      "bundleSha256": "0a0869375266937c256023b9053abe51e3cc876369a54c7cdfc30e63895d7215",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-requests",
+      "workload": {
+        "formRequests": 100,
+        "permissionRequests": 100,
+        "approvalToggles": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.08929200000000037,
+        "median": 0.1322499999999991,
+        "max": 0.24341599999991104
+      },
+      "formsMs": {
+        "min": 8.087625000000003,
+        "median": 8.584084000000075,
+        "max": 16.859708999999953
+      },
+      "permissionsMs": {
+        "min": 13.14149999999995,
+        "median": 13.900417000000061,
+        "max": 28.28383400000007
+      },
+      "preferenceMs": {
+        "min": 4.147625000000062,
+        "median": 4.336542000000009,
+        "max": 7.871749999999906
+      },
+      "samples": [
+        {
+          "openMs": 0.18858399999999165,
+          "formsMs": 16.655791000000022,
+          "permissionsMs": 28.28383400000007,
+          "preferenceMs": 7.871749999999906,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.24341599999991104,
+          "formsMs": 16.859708999999953,
+          "permissionsMs": 26.942250000000058,
+          "preferenceMs": 5.238416999999913,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.18245899999999438,
+          "formsMs": 10.831542000000013,
+          "permissionsMs": 18.106041000000005,
+          "preferenceMs": 4.892541999999935,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.1322499999999991,
+          "formsMs": 9.717791999999918,
+          "permissionsMs": 17.04275000000007,
+          "preferenceMs": 4.710083000000054,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.09962500000006003,
+          "formsMs": 8.584084000000075,
+          "permissionsMs": 13.900417000000061,
+          "preferenceMs": 4.336542000000009,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.2117919999999458,
+          "formsMs": 8.391375000000039,
+          "permissionsMs": 13.615625000000023,
+          "preferenceMs": 4.327958000000081,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.11970799999994597,
+          "formsMs": 8.287041999999929,
+          "permissionsMs": 13.380415999999968,
+          "preferenceMs": 4.210291999999981,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.09604200000001129,
+          "formsMs": 8.18158399999993,
+          "permissionsMs": 13.476584000000003,
+          "preferenceMs": 4.147625000000062,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.08929200000000037,
+          "formsMs": 8.087625000000003,
+          "permissionsMs": 13.14149999999995,
+          "preferenceMs": 4.175584000000072,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        }
+      ]
+    },
+    "after-4": {
+      "source": "working tree",
+      "head": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+      "node": "v22.23.2",
+      "bundleSha256": "df6669afca31190c635e314cc57fbc2b0a8642dadffc863dc5eed678dfcc6239",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "session-requests",
+      "workload": {
+        "formRequests": 100,
+        "permissionRequests": 100,
+        "approvalToggles": 100,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.09583299999997053,
+        "median": 0.14270799999997053,
+        "max": 0.24595799999997325
+      },
+      "formsMs": {
+        "min": 8.088499999999954,
+        "median": 8.727750000000015,
+        "max": 17.18625000000003
+      },
+      "permissionsMs": {
+        "min": 13.103959000000032,
+        "median": 13.635500000000093,
+        "max": 27.778374999999983
+      },
+      "preferenceMs": {
+        "min": 3.905083999999988,
+        "median": 4.262333000000012,
+        "max": 8.288792
+      },
+      "samples": [
+        {
+          "openMs": 0.18566599999996924,
+          "formsMs": 17.18625000000003,
+          "permissionsMs": 27.778374999999983,
+          "preferenceMs": 8.288792,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.24595799999997325,
+          "formsMs": 16.89100000000002,
+          "permissionsMs": 27.45387500000004,
+          "preferenceMs": 5.6694160000000124,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.20708300000001145,
+          "formsMs": 10.803041000000007,
+          "permissionsMs": 17.465791999999965,
+          "preferenceMs": 5.288833000000068,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.14270799999997053,
+          "formsMs": 9.516583999999966,
+          "permissionsMs": 17.660750000000007,
+          "preferenceMs": 4.450500000000034,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.09841599999992923,
+          "formsMs": 8.727750000000015,
+          "permissionsMs": 13.635500000000093,
+          "preferenceMs": 4.106667000000016,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.22937500000000455,
+          "formsMs": 8.529708000000028,
+          "permissionsMs": 13.45470899999998,
+          "preferenceMs": 3.9168750000000045,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.11295900000004622,
+          "formsMs": 8.156916000000024,
+          "permissionsMs": 13.103959000000032,
+          "preferenceMs": 3.905083999999988,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.09583299999997053,
+          "formsMs": 8.088499999999954,
+          "permissionsMs": 13.175792000000001,
+          "preferenceMs": 4.112999999999943,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        },
+        {
+          "openMs": 0.10383300000000872,
+          "formsMs": 8.224166000000082,
+          "permissionsMs": 13.193958000000066,
+          "preferenceMs": 4.262333000000012,
+          "updateRenders": 500,
+          "formReplies": 100,
+          "permissionReplies": 100,
+          "approvalWrites": 100,
+          "permissionRows": 100
+        }
+      ]
+    }
+  },
+  "pilot": {
+    "source": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+    "head": "4f41111343fcd115dd0b0fa7c68c5ee782338503",
+    "node": "v22.23.2",
+    "bundleSha256": "0a0869375266937c256023b9053abe51e3cc876369a54c7cdfc30e63895d7215",
+    "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+    "operation": "session-requests",
+    "workload": {
+      "formRequests": 100,
+      "permissionRequests": 100,
+      "approvalToggles": 100,
+      "warmups": 3,
+      "samples": 9
+    },
+    "openMs": {
+      "min": 0.09245900000018992,
+      "median": 0.1386250000000473,
+      "max": 0.2517919999999094
+    },
+    "formsMs": {
+      "min": 8.132833000000005,
+      "median": 8.995707999999922,
+      "max": 17.02150000000006
+    },
+    "permissionsMs": {
+      "min": 13.336084000000028,
+      "median": 14.305499999999938,
+      "max": 27.966166999999928
+    },
+    "preferenceMs": {
+      "min": 3.9610420000000204,
+      "median": 4.338375000000042,
+      "max": 9.859459000000015
+    },
+    "samples": [
+      {
+        "openMs": 0.18975000000000364,
+        "formsMs": 17.02150000000006,
+        "permissionsMs": 27.966166999999928,
+        "preferenceMs": 9.859459000000015,
+        "updateRenders": 500,
+        "formReplies": 100,
+        "permissionReplies": 100,
+        "approvalWrites": 100,
+        "permissionRows": 100
+      },
+      {
+        "openMs": 0.2517919999999094,
+        "formsMs": 16.987333000000035,
+        "permissionsMs": 27.103582999999958,
+        "preferenceMs": 4.934208000000012,
+        "updateRenders": 500,
+        "formReplies": 100,
+        "permissionReplies": 100,
+        "approvalWrites": 100,
+        "permissionRows": 100
+      },
+      {
+        "openMs": 0.18466699999999037,
+        "formsMs": 10.316125000000056,
+        "permissionsMs": 17.20279199999993,
+        "preferenceMs": 5.151917000000026,
+        "updateRenders": 500,
+        "formReplies": 100,
+        "permissionReplies": 100,
+        "approvalWrites": 100,
+        "permissionRows": 100
+      },
+      {
+        "openMs": 0.1386250000000473,
+        "formsMs": 9.545749999999998,
+        "permissionsMs": 17.26445799999999,
+        "preferenceMs": 4.705084000000056,
+        "updateRenders": 500,
+        "formReplies": 100,
+        "permissionReplies": 100,
+        "approvalWrites": 100,
+        "permissionRows": 100
+      },
+      {
+        "openMs": 0.10054100000002109,
+        "formsMs": 8.410333000000037,
+        "permissionsMs": 14.232708000000002,
+        "preferenceMs": 4.338375000000042,
+        "updateRenders": 500,
+        "formReplies": 100,
+        "permissionReplies": 100,
+        "approvalWrites": 100,
+        "permissionRows": 100
+      },
+      {
+        "openMs": 0.20916599999998198,
+        "formsMs": 8.295416000000046,
+        "permissionsMs": 14.305499999999938,
+        "preferenceMs": 3.9610420000000204,
+        "updateRenders": 500,
+        "formReplies": 100,
+        "permissionReplies": 100,
+        "approvalWrites": 100,
+        "permissionRows": 100
+      },
+      {
+        "openMs": 0.10133300000006784,
+        "formsMs": 8.132833000000005,
+        "permissionsMs": 14.181124999999952,
+        "preferenceMs": 4.023832999999968,
+        "updateRenders": 500,
+        "formReplies": 100,
+        "permissionReplies": 100,
+        "approvalWrites": 100,
+        "permissionRows": 100
+      },
+      {
+        "openMs": 0.09908299999995052,
+        "formsMs": 8.19462499999986,
+        "permissionsMs": 13.798166999999921,
+        "preferenceMs": 4.027541999999812,
+        "updateRenders": 500,
+        "formReplies": 100,
+        "permissionReplies": 100,
+        "approvalWrites": 100,
+        "permissionRows": 100
+      },
+      {
+        "openMs": 0.09245900000018992,
+        "formsMs": 8.995707999999922,
+        "permissionsMs": 13.336084000000028,
+        "preferenceMs": 4.042124999999942,
+        "updateRenders": 500,
+        "formReplies": 100,
+        "permissionReplies": 100,
+        "approvalWrites": 100,
+        "permissionRows": 100
+      }
+    ]
+  }
+}
