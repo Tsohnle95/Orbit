@@ -1,0 +1,632 @@
+{
+  "mainStart": "0cf9652ad51f33892e167c80064b95909434872c",
+  "sourceCommit": "ee8d29881f03a9a77dd6a22176df789d23babdbe",
+  "commonAncestor": "3e63792433ef7a6d2ff04540a7181458d953d7a5",
+  "paths": [
+    {
+      "path": ".agent/tasks/browser-tabs.md",
+      "beforeSha256": null,
+      "sourceSha256": "e1e1847964111680365fecb5c3b372605f52f9bbe7e6096e103b533859bf3e79",
+      "integration": "source-workspace task history; retained in source, not migrated",
+      "status": "Source task history retained in source/Git; replaced by current integration ledger, not copied",
+      "targetSha256": null
+    },
+    {
+      "path": ".agent/tasks/codex-shell-redesign.md",
+      "beforeSha256": null,
+      "sourceSha256": "d6de03543773ef5196f3b5e0b87859eee32c98445115b7ed8df55df8e63c976f",
+      "integration": "source-workspace task history; retained in source, not migrated",
+      "status": "Source task history retained in source/Git; replaced by current integration ledger, not copied",
+      "targetSha256": null
+    },
+    {
+      "path": ".agent/tasks/ui-shell-and-appearances.md",
+      "beforeSha256": null,
+      "sourceSha256": "efff6c848a96937ba0444b2ae702904e321eb6fef8a4eaa046374bb5bec59522",
+      "integration": "source-workspace task history; retained in source, not migrated",
+      "status": "Source task history retained in source/Git; replaced by current integration ledger, not copied",
+      "targetSha256": null
+    },
+    {
+      "path": "docs/main.md",
+      "beforeSha256": "0a4c028ed5d62aa38a57492f11afae094790b11c9baea2d56e0021d8282ea8b6",
+      "sourceSha256": "8e40310984d5ac58a7d8ebb08efaa039a4a3da01f26f1ea7c726b650dd3c7c42",
+      "integration": "update current canonical sections, preserve refactor documentation",
+      "status": "Feature documentation integrated into current canonical owner without restoring old refactor sections",
+      "targetSha256": "d7527715bf8c2f73b4f0f3101c9d43bf1209a8397aa8afd18dc2639e772bcb22"
+    },
+    {
+      "path": "docs/renderer.md",
+      "beforeSha256": "bb631248850a0fbfff7ac8a3b62078f0fbb8db64cf288377479dc14c8df2ccf8",
+      "sourceSha256": "6c439a6b3197bdddac58599911c5b4486e6ba679642ac0b0683afb46d8e04823",
+      "integration": "update current canonical sections, preserve refactor documentation",
+      "status": "Feature documentation integrated into current canonical owner without restoring old refactor sections",
+      "targetSha256": "4d45c3f61c8933dd31b65f42be2aa0c0bfd6bc1a45477b5d3e838f49ac156d81"
+    },
+    {
+      "path": "docs/sass.md",
+      "beforeSha256": "c596d3462e8c287a227ac31f2ee3d0c16f2abed8450ea0c82b467dda3629645b",
+      "sourceSha256": "7fbb78e0bebb6ddfc12d00ab344b55cbf4a567b9d116e3c23664698dfd230fa7",
+      "integration": "update current canonical sections, preserve refactor documentation",
+      "status": "Feature documentation integrated into current canonical owner without restoring old refactor sections",
+      "targetSha256": "7fbb78e0bebb6ddfc12d00ab344b55cbf4a567b9d116e3c23664698dfd230fa7"
+    },
+    {
+      "path": "scripts/make-dev-app.mjs",
+      "beforeSha256": "72778adec4176ccc9907a2d52257ae2536023168480a5aeddedc953e9175b72b",
+      "sourceSha256": "eccbe0689e49356413dffdba26a3ed950c810a85145ea960bc3769f598b246ef",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "eccbe0689e49356413dffdba26a3ed950c810a85145ea960bc3769f598b246ef"
+    },
+    {
+      "path": "src/main/browser-guards.ts",
+      "beforeSha256": null,
+      "sourceSha256": "a1f7f5098019ba35a02a5cccfc6ff55a469ef8d4e7cb604df29fdd42ecbf599b",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "e531dcd0d0ac47d874dafd38becc71729132682f458d856e68cbc0435e6a295f"
+    },
+    {
+      "path": "src/main/index.ts",
+      "beforeSha256": "f9b310bc115e8536713e42da277c723aae0bb7524efa0693f4cd5049efcef790",
+      "sourceSha256": "990414d5026b42146df94c455d8f7ff3c817f9ce45199ff380993dc4eb3d79c6",
+      "integration": "browser enable/guard integration only; exclude design profile default",
+      "status": "Browser enable/guard ported; design-copy userData override and cosmetic close-handler compression excluded",
+      "targetSha256": "a10c2d36ebeba10b960706f1ed90c161942652c12b09f50f5117258d1d482343"
+    },
+    {
+      "path": "src/main/security.ts",
+      "beforeSha256": "c49bb8e64944d4f98036c69eda85df2e45f3b57e124a47ad39fa047196c8f75e",
+      "sourceSha256": "ad547f2e8f50d35adc940fc5998bcdf2485749106d4c29c0b59468d653c5de8a",
+      "integration": "browser additions isolated in browser-policy owner; app trust unchanged",
+      "status": "Browser additions implemented in browser-policy.ts/browser-guards.ts; current app trust module unchanged",
+      "targetSha256": "c49bb8e64944d4f98036c69eda85df2e45f3b57e124a47ad39fa047196c8f75e"
+    },
+    {
+      "path": "src/renderer/src/App.layout.test.tsx",
+      "beforeSha256": "f6ed5ef9ea24e3b1911ca0ebc03937b576b0caad8c0cdbfd8d90a2684d8ebb7c",
+      "sourceSha256": "d359c5887ba504c69936611eedca5ecec39b78fb3d89f1864172922a8f6f9b8a",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "f2e445cc2f64379731e460fd83c72f411715c8be2e5b1fbc08af61c756545eea"
+    },
+    {
+      "path": "src/renderer/src/App.tsx",
+      "beforeSha256": "7c7033ccc5e938e2d9cc2280df7d117b8ecbc45b0ed204668edc97c83aedb672",
+      "sourceSha256": "83e4080acd83ec30dbc5f7a017f3fcb51da4e892417cf58936bb1ff0bc8f7b49",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "f36a92a90ff33ad490df66a06944a7ae63eeceb88bd8db60ea8e9f61b707079b"
+    },
+    {
+      "path": "src/renderer/src/appearances.ts",
+      "beforeSha256": "57f857f801cea65835f3dd2b066a5694f95057004103e8cf893cb2de33714731",
+      "sourceSha256": "e38e1a6db8d71d273c442dc21af2ed3269ccd62b34f8230f70f8167866a9eea9",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "e38e1a6db8d71d273c442dc21af2ed3269ccd62b34f8230f70f8167866a9eea9"
+    },
+    {
+      "path": "src/renderer/src/browser-store-provider.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "b8e6bdcb65857cc7b5d1ae078b73144cc333d26f8ee80c611702dea4d75121f0",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "bdcc0e65112cc10fa4d0bf06eb93b09d9133f79faa6afa9776226070d3d90177"
+    },
+    {
+      "path": "src/renderer/src/browser-tabs-context.test.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "4c3921b7c4ea2b933b481b181054b86dd5b34bfe76ee4bdfb545f078139f1386",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "4c3921b7c4ea2b933b481b181054b86dd5b34bfe76ee4bdfb545f078139f1386"
+    },
+    {
+      "path": "src/renderer/src/browser-tabs-context.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "ff1f579a12fe108ca4cefeb183494a905b7d7c4add1bfe708e23aa5ab4210dae",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "ff1f579a12fe108ca4cefeb183494a905b7d7c4add1bfe708e23aa5ab4210dae"
+    },
+    {
+      "path": "src/renderer/src/components/AgentPanel.tsx",
+      "beforeSha256": "3fa84108caa8d76a2dfcfe495cd4978c6fa1ef008253372477b2949716fdcb9d",
+      "sourceSha256": "565e6643400b1509140a9bfdec7c127b4d462297a225a9272bb93d54f4f3b21c",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "565e6643400b1509140a9bfdec7c127b4d462297a225a9272bb93d54f4f3b21c"
+    },
+    {
+      "path": "src/renderer/src/components/AgentPanel.usage.test.tsx",
+      "beforeSha256": "c6d799c61e8407bf2b9a9e5a664ba2d7b086fee2daa5ae6d62871e9f61987b81",
+      "sourceSha256": "4d998a3f78d1fa807fbb2cb437327202f43fab064cff3e5ae2db86bc577280bd",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "4d998a3f78d1fa807fbb2cb437327202f43fab064cff3e5ae2db86bc577280bd"
+    },
+    {
+      "path": "src/renderer/src/components/AgentPanel.workspace.test.tsx",
+      "beforeSha256": "c2f68ac6a30f780148e63fae69feebbeedf69e1dda0348c41635ce17276c2ac4",
+      "sourceSha256": "312af0fee6c861c9dc906646a3796dcfcd6372bec4e6d7949d84f967f3145863",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "312af0fee6c861c9dc906646a3796dcfcd6372bec4e6d7949d84f967f3145863"
+    },
+    {
+      "path": "src/renderer/src/components/AgentTui.tsx",
+      "beforeSha256": "2c8cbce79a44c352f6ae0a5983723b3dd388d65d8b5e149e79bb11b43e4aa5ef",
+      "sourceSha256": "d4b0ca298a9e322b702c2327ea9f33d8e24917999179bdbb68b5d710344862b1",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "d4b0ca298a9e322b702c2327ea9f33d8e24917999179bdbb68b5d710344862b1"
+    },
+    {
+      "path": "src/renderer/src/components/AgentUsage.tsx",
+      "beforeSha256": "be9ff3f4f9e64748e07e718509b411d1047bc233dbb877962ac5b9bfec5340fe",
+      "sourceSha256": "b88367c70933cd44aece0b6759171c8046dd03b6ce95120e63fcb2c376d33ed3",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "b88367c70933cd44aece0b6759171c8046dd03b6ce95120e63fcb2c376d33ed3"
+    },
+    {
+      "path": "src/renderer/src/components/AppearanceSettings.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "0bfed8dcbc717f767d1abb7882379a6b56b8acdee79769fe7c92dad07e4bccf2",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "0bfed8dcbc717f767d1abb7882379a6b56b8acdee79769fe7c92dad07e4bccf2"
+    },
+    {
+      "path": "src/renderer/src/components/BrowserPane.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "17ce2379fe6e4a7d0d156d801c47eb603ebd14eee30b7944081c8a3992ddac1e",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "66c01529cba33dcbc24c874fe1863e6c1f3e485a0986a9a5ee15e7e6b0284464"
+    },
+    {
+      "path": "src/renderer/src/components/BrowserTabs.test.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "967258b04bcddc6da41126c8e52070e083ce531fcbf5b78208f928c40d61aa89",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "0c6d818da4c2cebc1840c3de19da5dd7142b665d93c58d6324f0e93b36d94a5d"
+    },
+    {
+      "path": "src/renderer/src/components/Composer.tsx",
+      "beforeSha256": "57e7d80e87a3fc2a514728ec174edc6ab15af1fe442b4dac36f20d5f0e4667d0",
+      "sourceSha256": "626dde51b49340e3e22043dab4659a770dff7592d0ecf87e4014117dbb25cf58",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "626dde51b49340e3e22043dab4659a770dff7592d0ecf87e4014117dbb25cf58"
+    },
+    {
+      "path": "src/renderer/src/components/EditorPane.split.test.tsx",
+      "beforeSha256": "ce31675b3823e51b2457e51741986ec05e2addd8c8e4a097ec7cf0a213dae854",
+      "sourceSha256": "64a2a0513e2c8b170dee6a0662ad5b158eaa19bd0059f3bb77228fb03fb9eb72",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "5169fab90e7b41f5eb9ee5df370f215273a937bcd3ade69d8be57228d158fc8e"
+    },
+    {
+      "path": "src/renderer/src/components/EditorPane.tsx",
+      "beforeSha256": "854d84f4a66b6fb1d89c388d80619fb4d4d1b18b742affaa7af8b3991703a864",
+      "sourceSha256": "9da45d2c9980763955a3bb6f38dae5f3e32f456e4d35221b034d25ef74f9d87a",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "3494cbd07c3fb74fed0b2af8a656aea523317cba1b5d0f02fa3bd8a1032810f0"
+    },
+    {
+      "path": "src/renderer/src/components/EditorStatusMenu.sass.test.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "78dc74b4a0e8d8642d846a18e1341b7c0b53d284310e8c7e027cfd89e630c36c",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "78dc74b4a0e8d8642d846a18e1341b7c0b53d284310e8c7e027cfd89e630c36c"
+    },
+    {
+      "path": "src/renderer/src/components/EditorStatusMenu.test.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "7d215aa1b5f54ac97668d34b4f4f119c6902f646f7c77495255579d68942a9ff",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "81c3b042c71817a30330eca13bb1fd2875576b61291bbca659bb3f8c2f9aa2d5"
+    },
+    {
+      "path": "src/renderer/src/components/EditorStatusMenu.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "693a7ef1a5629745c3ba45515afb15c522b3ba7ac0ee94685b7a5f6fa751af9b",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "906a14f7ec3418596cefcb3210038de66533129e95d27183f24abc9edb4e00df"
+    },
+    {
+      "path": "src/renderer/src/components/EditorTabs.test.ts",
+      "beforeSha256": null,
+      "sourceSha256": "87ef317f7c64ae93006cc55f3977aa5f480ab1c83c36cec88c13909ea1b34efb",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "27dfe60a2afcbd156d6aad0873a83d9510cbabd3eec12de6f428ebec70314f9c"
+    },
+    {
+      "path": "src/renderer/src/components/EditorTabs.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "6171199e8c2d078034a12dc2fbed985606634c13c84f02be49f341dd8c228837",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "542b2d5e27339062b721fc933e0cad21514147a02347c77b89db57ceb8f9871e"
+    },
+    {
+      "path": "src/renderer/src/components/ExplorerTree.tsx",
+      "beforeSha256": "7dee47b8760f8a138f6505f8123b1701f5f95eaa4017d6210b570e522cf479bf",
+      "sourceSha256": "ad0f0fc1c2b9ab5786da732c3ad1b438e47016a1b2c10dd1611ea550f46e9f77",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "ad0f0fc1c2b9ab5786da732c3ad1b438e47016a1b2c10dd1611ea550f46e9f77"
+    },
+    {
+      "path": "src/renderer/src/components/FileIcons.tsx",
+      "beforeSha256": "eea76b591744105ffae5e376a75f326d15c7929c5143a920e499e15b9c0f74ac",
+      "sourceSha256": "0501c7d501fd8a838a31ef6013a21c8bd42d40051c0d5dc08ddaa4f2fe852ebc",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "0501c7d501fd8a838a31ef6013a21c8bd42d40051c0d5dc08ddaa4f2fe852ebc"
+    },
+    {
+      "path": "src/renderer/src/components/FileSidebar.create.test.tsx",
+      "beforeSha256": "f2d875125f9a831542c3d8f6911c0b37914a0c9b665f314b8806867e14f7fac3",
+      "sourceSha256": "94bb1045a08d2808ab4eef464ad1a93402f9d53327e6a9293081dfcb24bc15ce",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "94bb1045a08d2808ab4eef464ad1a93402f9d53327e6a9293081dfcb24bc15ce"
+    },
+    {
+      "path": "src/renderer/src/components/FileSidebar.move.test.tsx",
+      "beforeSha256": "b6c67a3c2981a76a9deec14068c168c764e041c665b3809a2a48e0bf44c9eca7",
+      "sourceSha256": "b39744d8ecee28101415d89aaad767e5660c0dd1ad146ea4c4c498cf5a5e02bd",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "b39744d8ecee28101415d89aaad767e5660c0dd1ad146ea4c4c498cf5a5e02bd"
+    },
+    {
+      "path": "src/renderer/src/components/FileSidebar.single.test.tsx",
+      "beforeSha256": "6bb986cade46de53845f24e4656aa9d3bdcb1de82428c2dd6c84f039f90f3420",
+      "sourceSha256": "26529aedd40bb1a8d44b702911dc303847ea3acade9562f6a97290a51145e428",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "26529aedd40bb1a8d44b702911dc303847ea3acade9562f6a97290a51145e428"
+    },
+    {
+      "path": "src/renderer/src/components/FileSidebar.tabs.test.tsx",
+      "beforeSha256": "e6cd6289b0967cc9f3d77fc16b3dbe02ea2572d6b08c7340d7173204e243b0fe",
+      "sourceSha256": "01382cdae13e2488e0a67ec46aa08333895398fa1752f281dda08c503a6ddbc5",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "01382cdae13e2488e0a67ec46aa08333895398fa1752f281dda08c503a6ddbc5"
+    },
+    {
+      "path": "src/renderer/src/components/FileSidebar.tsx",
+      "beforeSha256": "1f3857f5a24122d8b2572e5a9a95c4f96ecae46d6444196b558364e85cd6a091",
+      "sourceSha256": "46ba630d8b0773ebba364333d94ae01e1b8f0252639ef16a9d6021886c253620",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "46ba630d8b0773ebba364333d94ae01e1b8f0252639ef16a9d6021886c253620"
+    },
+    {
+      "path": "src/renderer/src/components/NeptuneSprite.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "ad327b5221d1d414236442156873ca2e7f09c5840761340d737dee2a11575278",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "ad327b5221d1d414236442156873ca2e7f09c5840761340d737dee2a11575278"
+    },
+    {
+      "path": "src/renderer/src/components/SessionsPane.tsx",
+      "beforeSha256": "71b5d32e6678b50d707ed6005a23418e4304fca9fb74550be0cdbb5ee7bd3104",
+      "sourceSha256": "ecddc4f1767b33a39c04aae0c4d658676c54b530e52c429b7aeac6314d3efed3",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "ecddc4f1767b33a39c04aae0c4d658676c54b530e52c429b7aeac6314d3efed3"
+    },
+    {
+      "path": "src/renderer/src/components/SettingsPage.test.tsx",
+      "beforeSha256": "44e1af3f86802648fe3b2d95482cb808b77c9c67491398123dcf06b4bda0dde3",
+      "sourceSha256": "4c0c72fc14b3191a88945b502d6dedb8decb41e05224d90f53399a5239c76fbc",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "4c0c72fc14b3191a88945b502d6dedb8decb41e05224d90f53399a5239c76fbc"
+    },
+    {
+      "path": "src/renderer/src/components/SettingsPage.tsx",
+      "beforeSha256": "3e777de5b1665a2bfa3bede66644873a28b6597db3b0021872a95777c1bbf9d0",
+      "sourceSha256": "928f30eabd4e208af737bb788205e879451ecf2f7edaf72c99b102ae68c74fd8",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "928f30eabd4e208af737bb788205e879451ecf2f7edaf72c99b102ae68c74fd8"
+    },
+    {
+      "path": "src/renderer/src/components/StatusBar.sass.test.tsx",
+      "beforeSha256": "d38ea43cc874e59cc477800e304fa01977308f3a9a361db04369584e1fbe4c1b",
+      "sourceSha256": null,
+      "integration": "feature",
+      "status": "Superseded source module removed after relocation (status bar to editor status menu)",
+      "targetSha256": null
+    },
+    {
+      "path": "src/renderer/src/components/StatusBar.test.tsx",
+      "beforeSha256": "32b98e98c4ae5a2e1e2b22373f7f642326aeeca2d0455d7d42494974eba60071",
+      "sourceSha256": null,
+      "integration": "feature",
+      "status": "Superseded source module removed after relocation (status bar to editor status menu)",
+      "targetSha256": null
+    },
+    {
+      "path": "src/renderer/src/components/StatusBar.tsx",
+      "beforeSha256": "60395ec8a25783ae81c53481da5147a264db803297ddf2ee99b00a8faa3785a0",
+      "sourceSha256": null,
+      "integration": "feature",
+      "status": "Superseded source module removed after relocation (status bar to editor status menu)",
+      "targetSha256": null
+    },
+    {
+      "path": "src/renderer/src/components/TerminalTray.tsx",
+      "beforeSha256": "4bd0eb3695c8d93d1c5adef1c778563fe74d0ca711d28046e41619ba3b076b89",
+      "sourceSha256": "d9b8c944d9488d563506cd4b6e657318c51639bcfd4fef3f274e769044b08188",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "d9b8c944d9488d563506cd4b6e657318c51639bcfd4fef3f274e769044b08188"
+    },
+    {
+      "path": "src/renderer/src/components/Titlebar.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "eb71a74291cb1161fc9d9662c5ef0c80e4bf480a3763a48fe96cf20b04a9a6dc",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "eb71a74291cb1161fc9d9662c5ef0c80e4bf480a3763a48fe96cf20b04a9a6dc"
+    },
+    {
+      "path": "src/renderer/src/components/UnknownBaseline.test.tsx",
+      "beforeSha256": "fc8d503e03486619d0c2b3372c296e952c9cfef94c39537fbbb327c75c3a6ec4",
+      "sourceSha256": "1aababccf582013c167d797ffe0ad431f27f86e06f5390b3528af7b40ddb09ec",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "b86717a0ff1ff45e055ce1044dab5eb3c4612fb29222bbea555c1510592220f0"
+    },
+    {
+      "path": "src/renderer/src/components/editor-groups.ts",
+      "beforeSha256": null,
+      "sourceSha256": "3e999e423323632bd901c8cd5f3afff9e26b39c569d57ccf49e88c38fe5802ff",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "3e999e423323632bd901c8cd5f3afff9e26b39c569d57ccf49e88c38fe5802ff"
+    },
+    {
+      "path": "src/renderer/src/components/file-glyphs.ts",
+      "beforeSha256": null,
+      "sourceSha256": "1f4a4e81b46cb6cdf0017e1599b8d19bd6fabbc6f675daa167dbc6433e35a63c",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "1f4a4e81b46cb6cdf0017e1599b8d19bd6fabbc6f675daa167dbc6433e35a63c"
+    },
+    {
+      "path": "src/renderer/src/components/icons.tsx",
+      "beforeSha256": "be78684ce2e355e2093ae00872cd6cb0bc186667092fab1fbc9c28541a6ac544",
+      "sourceSha256": "8f1383baaf1fb30154d43991cecbfa0f8bc238d859e393791f4908efca0ab6cb",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "8f1383baaf1fb30154d43991cecbfa0f8bc238d859e393791f4908efca0ab6cb"
+    },
+    {
+      "path": "src/renderer/src/editor-activity.ts",
+      "beforeSha256": null,
+      "sourceSha256": "06c9690bc4a0d775a29e2af352d875f5c67e5ef7355df39f9ef4bb40506aa168",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "06c9690bc4a0d775a29e2af352d875f5c67e5ef7355df39f9ef4bb40506aa168"
+    },
+    {
+      "path": "src/renderer/src/layout/RailBrowserButton.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "6e04090896f61ff0eeca0a2b5f982e450eb57f2394fc8acd88bf14e2c2f4779f",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "6e04090896f61ff0eeca0a2b5f982e450eb57f2394fc8acd88bf14e2c2f4779f"
+    },
+    {
+      "path": "src/renderer/src/layout/panel-interactions.test.ts",
+      "beforeSha256": null,
+      "sourceSha256": "4081e1425c6b6d97908c53db94c478ffb4dd310b0713fbd96d22b1fe978d1cc7",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "4081e1425c6b6d97908c53db94c478ffb4dd310b0713fbd96d22b1fe978d1cc7"
+    },
+    {
+      "path": "src/renderer/src/layout/panel-interactions.ts",
+      "beforeSha256": "b67ed64de5ec0ae081fa9cf804561e58f5b2ee361c19ab21c52b4e804a211806",
+      "sourceSha256": "f6a646785926e95d12d2095667cee787d8c348ed6f77990bf715950684074a44",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "f6a646785926e95d12d2095667cee787d8c348ed6f77990bf715950684074a44"
+    },
+    {
+      "path": "src/renderer/src/layout/rail.ts",
+      "beforeSha256": null,
+      "sourceSha256": "62db602989b57181d34cd67869533ccce48fd8c5d3e1b4a5e014200551d82ea1",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "62db602989b57181d34cd67869533ccce48fd8c5d3e1b4a5e014200551d82ea1"
+    },
+    {
+      "path": "src/renderer/src/monaco.ts",
+      "beforeSha256": "7cf869317d88f82979a5c0bfb5fa7439ebe1403e2baeb13c080793fcfe3d5cc4",
+      "sourceSha256": "44d73e0df69f483ca4785d2bcc08f914dcf2cecbd94f8c84fed960a8e16afa84",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "44d73e0df69f483ca4785d2bcc08f914dcf2cecbd94f8c84fed960a8e16afa84"
+    },
+    {
+      "path": "src/renderer/src/store-contract.ts",
+      "beforeSha256": "22aaca0aa411e19e8793d3531854d9af63570fed993b8b1ed8f4cc35b7c6ff8c",
+      "sourceSha256": "866d954bfc2462ffc1c1ae240569f914a211a9c9ce9601041a4d602cd9ccb6b1",
+      "integration": "add prefetch contract while retaining current readonly contracts",
+      "status": "Prefetch facade added; current readonly contracts retained",
+      "targetSha256": "1a767345219974a908e97d840b0a97ad4e22f79d247243c1144298f4ced9dca6"
+    },
+    {
+      "path": "src/renderer/src/store.tsx",
+      "beforeSha256": "5ae3edbeb7fe6735a426c36c8dabf84511251810a69a5e6fc370afc37023df6e",
+      "sourceSha256": "ca539935a548439274ea2725b7fee6dfb3b2f451cf093496a7418617e8a2a570",
+      "integration": "adapt through current WorkspaceFiles/Editor owners and facade; do not copy",
+      "status": "Prefetch moved into WorkspaceFiles; file/browser activation through Editor notification; latest lifecycle/inbox/progress/execution owners preserved",
+      "targetSha256": "12b7c4a54b9d2188da56660663e53530445a99da14e1b09d81717458415598d3"
+    },
+    {
+      "path": "src/renderer/src/styles/_agent-prompt-dock.scss",
+      "beforeSha256": "5aef514dc5dea15384fc7a134220d84dd8406585e665e7ad80511a468fb9d171",
+      "sourceSha256": "962719e3e93c649cb65620fa5d62a31c7e0db6ee03bee6263c0f73b5a3085b59",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "75876e051697b6e8d5b0cb3cad30401486336b7d86012b544e110d3b55e221cc"
+    },
+    {
+      "path": "src/renderer/src/styles/_agent.scss",
+      "beforeSha256": "f521374fede17f507d51286bf26887fc79e6a7997f353afc6394ae33a3bbb442",
+      "sourceSha256": "db1f1f8aab819057ad870b324ba453310b1c518fd975547af0a423717f475968",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "db1f1f8aab819057ad870b324ba453310b1c518fd975547af0a423717f475968"
+    },
+    {
+      "path": "src/renderer/src/styles/_browser.scss",
+      "beforeSha256": null,
+      "sourceSha256": "006e26f1a45318b4f7d29d627f0fd26fd2606e77dbc1030899011c38c6a710c6",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "006e26f1a45318b4f7d29d627f0fd26fd2606e77dbc1030899011c38c6a710c6"
+    },
+    {
+      "path": "src/renderer/src/styles/_codex.scss",
+      "beforeSha256": null,
+      "sourceSha256": "83e59c37af9bde774d5627180f8749502159a91ff31ce8a6ddedeea819134cc7",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "83e59c37af9bde774d5627180f8749502159a91ff31ce8a6ddedeea819134cc7"
+    },
+    {
+      "path": "src/renderer/src/styles/_editor.scss",
+      "beforeSha256": "fc6dd01f97a9b57a89cc2a05f5be7d1f872442368b3ee0f62af9e844f9601f3a",
+      "sourceSha256": "6c4d42fb85df8fab43e3431e6d6bbc95447819444878503792b8fb9277ec6703",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "6c4d42fb85df8fab43e3431e6d6bbc95447819444878503792b8fb9277ec6703"
+    },
+    {
+      "path": "src/renderer/src/styles/_foundation.scss",
+      "beforeSha256": "2af8b035e0cc9177b53b071ac5fe1a0372f908f269a98af165e82ace68878147",
+      "sourceSha256": "658c96fb34bac75dab35421c7a3e6abd46131c4fc38cc491f0996bffdfc6c969",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "658c96fb34bac75dab35421c7a3e6abd46131c4fc38cc491f0996bffdfc6c969"
+    },
+    {
+      "path": "src/renderer/src/styles/_layout.scss",
+      "beforeSha256": "d10724a7eff0a221d907d036248ec4124da44d8a24a774835b3d98dba3ea4878",
+      "sourceSha256": "614c6cdcad2004d6f886b6e0d759ce8682b61a418d0dfb43fa0a50d26cf1294c",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "614c6cdcad2004d6f886b6e0d759ce8682b61a418d0dfb43fa0a50d26cf1294c"
+    },
+    {
+      "path": "src/renderer/src/styles/_sessions.scss",
+      "beforeSha256": "891d42d6812d2f6638734b39ee1e0bb928b51b4ee3caad870e34c44e54c4427f",
+      "sourceSha256": "0c8e46f1885fd2d1995e283bb6418070af44cacd129e7681c1692e74ad31972a",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "0c8e46f1885fd2d1995e283bb6418070af44cacd129e7681c1692e74ad31972a"
+    },
+    {
+      "path": "src/renderer/src/styles/_settings.scss",
+      "beforeSha256": "2d3164f16a7cbe951df3163da3f8d0aeab9bc61e684f4189d3bd26a5fc71930e",
+      "sourceSha256": "5220ce755caee207354d1349f2eeadb86231cafae38dc2d40818bd18ed48d743",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "5220ce755caee207354d1349f2eeadb86231cafae38dc2d40818bd18ed48d743"
+    },
+    {
+      "path": "src/renderer/src/styles/_sidebar.scss",
+      "beforeSha256": "c8cd30fc733a87c5650836f64ee7e5c3155d889d806cd091a05afb3e889dbe60",
+      "sourceSha256": "6e4c12a20699e3ca09743fb218c34f0a29e6e4a0cb17d8e98e3b833f791a9b6a",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "6e4c12a20699e3ca09743fb218c34f0a29e6e4a0cb17d8e98e3b833f791a9b6a"
+    },
+    {
+      "path": "src/renderer/src/styles/_status-menu.scss",
+      "beforeSha256": null,
+      "sourceSha256": "eb2ab8e37d36ca076bed4142849f89ae1700e4928f77c2b2094abb5e2b917b66",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "eb2ab8e37d36ca076bed4142849f89ae1700e4928f77c2b2094abb5e2b917b66"
+    },
+    {
+      "path": "src/renderer/src/styles/_statusbar.scss",
+      "beforeSha256": "1c4c155406345405f9bbb62668ae45a895ed57b0080534b1ebc07d0ef4b83a03",
+      "sourceSha256": null,
+      "integration": "feature",
+      "status": "Superseded source module removed after relocation (status bar to editor status menu)",
+      "targetSha256": null
+    },
+    {
+      "path": "src/renderer/src/styles/main.scss",
+      "beforeSha256": "905362428495e16209ce58320d5392f49986b29709ac0249c1ea2c2164f4a857",
+      "sourceSha256": "5d4d044c0518442e5b42be90988b509fdabd27e028957ef3ad96bd99ce2b0da2",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "5d4d044c0518442e5b42be90988b509fdabd27e028957ef3ad96bd99ce2b0da2"
+    },
+    {
+      "path": "src/renderer/src/theme.test.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "5bf906098613d087bd8763759a62ffe4f4764b6c0316bc503aa71184c63a63a4",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "5bf906098613d087bd8763759a62ffe4f4764b6c0316bc503aa71184c63a63a4"
+    },
+    {
+      "path": "src/renderer/src/theme.tsx",
+      "beforeSha256": "4e2b50dbfd65ce516154b132a8e3527edfc4c4f59890763ef57dc18bef959a90",
+      "sourceSha256": "2001b273906ce9700b71f0951589308bdc1300cf0abc27fdbf7d0d21d8f18b8a",
+      "integration": "feature",
+      "status": "Integrated; source-identical",
+      "targetSha256": "2001b273906ce9700b71f0951589308bdc1300cf0abc27fdbf7d0d21d8f18b8a"
+    },
+    {
+      "path": "src/renderer/src/use-browser-guest.ts",
+      "beforeSha256": null,
+      "sourceSha256": "9328b02ac5a6051bdf9afbef01a8f3e46b2f29def8d946fa02fbd30d806d6430",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "cf2a30f5e3582978694aae3b3ae489f594515dcc8de708bce919290f422f86b9"
+    },
+    {
+      "path": "src/renderer/src/use-browser-tabs.test.tsx",
+      "beforeSha256": null,
+      "sourceSha256": "861480f7da87765cccb9c072b946622d8ccf0fe7cbf67980855bf1dce6d8c59e",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "e3fd0b33940b5c1cd3e405932b85c13feb9626e69e8052b9ca52c13735d420c0"
+    },
+    {
+      "path": "src/renderer/src/use-browser-tabs.ts",
+      "beforeSha256": null,
+      "sourceSha256": "1c159db4432c787c2d367a5e37e8a9ede1da4adb6cf38e4de039b1a24cc2c938",
+      "integration": "feature",
+      "status": "Integrated with current-owner adaptation or tested correction; see results.md",
+      "targetSha256": "1fbbedb9bdc4b9bae0f1b4a4916467816d3efe324404927fc671c9c2d12836b8"
+    }
+  ],
+  "integratedProductionCommit": "7f28dad39e78276b0bd99c1f6137270790912106"
+}
