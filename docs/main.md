@@ -595,3 +595,16 @@ window if it was destroyed; the backend's single-flight event loop remains
 active while the window lives. Opening a new session no longer resets the
 terminal tray: terminals belong to their workspace identity and each
 session's tray manages its own PTYs.
+
+## Embedded browser guests
+
+`browser-guards.ts` installs main-owned webview attachment guards before the
+application renderer loads. `browser-policy.ts` admits credential-free HTTP(S)
+and exact `about:blank`; it strips preload and session overrides, disables Node
+in frames/workers and nested guests, and forces sandbox, context isolation and
+web security. The `orbit-browser` partition is nonpersistent and denies
+permission requests, permission checks and device grants before attachment.
+Guest navigation/frame navigation/redirects remain restricted; popups are denied
+and only the existing safe HTTPS external-link policy may open an OS browser.
+Application-window navigation and privileged IPC still require the owned main
+WebContents/frame and trusted application URL; guests receive no bridge.

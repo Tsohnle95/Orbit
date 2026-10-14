@@ -454,3 +454,12 @@ emitted worker with Orbit's production Sass dependency in a disposable root.
 It never installs workspace packages or contacts the network. For footer and
 workspace-lifecycle verification use isolated mirror apps as described in
 [the Sass service guide](sass.md).
+
+### Embedded browser smoke
+
+`node scripts/electron-browser-smoke.mjs` (also in `npm run test:platform`)
+runs on macOS CI and launches an isolated Electron host and localhost guest, bundling the current
+browser policy/guards. It exercises guest/worker isolation, permission denial,
+actual guest IPC identity rejection and blocked attachment/navigation/redirects.
+Popup OS launching is mocked; device denial does not prompt physical hardware.
+Native macOS checks require an unlocked GUI outside restrictive shell sandboxes.

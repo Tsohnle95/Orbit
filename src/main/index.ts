@@ -6,6 +6,7 @@ import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { OpenShellBackend, SessionWorkspaceNotFoundError } from "./opencode";
+import { attachBrowserGuards } from "./browser-guards";
 import { createDisabledOrbitAppUpdater, createOrbitAppUpdater } from "./app-updater";
 import { briefFilePath } from "./app-updater-window";
 import { AppUpdateController } from "./app-update-controller";
@@ -195,6 +196,7 @@ function createWindow(show = true): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      webviewTag: true,
       spellcheck: false,
       backgroundThrottling: false,
       additionalArguments: [
@@ -301,6 +303,8 @@ function createWindow(show = true): BrowserWindow {
   wc.on("will-redirect", (event, url, _isInPlace, isMainFrame) => {
     if (!isAllowedMainFrameNavigation(url, isMainFrame, location)) event.preventDefault();
   });
+
+  attachBrowserGuards(wc);
 
   devTools.attach(wc);
 

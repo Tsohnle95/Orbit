@@ -17,7 +17,7 @@
     "install-app": "node scripts/install-app.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
-    "test:platform": "vitest run scripts/launch.test.ts src/main/terminal.test.ts && node scripts/pty-smoke.mjs && node scripts/electron-pty-smoke.mjs && node scripts/electron-trust-smoke.mjs && node scripts/workspace-observation-smoke.mjs",
+    "test:platform": "vitest run scripts/launch.test.ts src/main/terminal.test.ts && node scripts/pty-smoke.mjs && node scripts/electron-pty-smoke.mjs && node scripts/electron-trust-smoke.mjs && node scripts/workspace-observation-smoke.mjs && node scripts/electron-browser-smoke.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "architecture:check": "node scripts/check-architecture.mjs",
     "architecture:ratchet": "node scripts/check-architecture.mjs --ratchet",

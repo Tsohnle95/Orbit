@@ -37,8 +37,8 @@ Appearance/theme/settings/Monaco; App/rail/titlebar; file tree/session list/agen
 | Phase | Scope | Status | Validation | Commit |
 |---|---|---|---|---|
 | 0 | Branch delta inventory and independent plan review | complete | baseline1326-test canonical; three bounded discovery reviews | — |
-| 1 | Independent appearance/shell and syntax palettes | complete | 20 targeted/type; isolated canonical; native settings palette/shell independence; independent approval | checkpoint pending |
-| 2 | Main browser isolation and navigation foundation | pending | guard/trust/permission tests, platform, canonical | — |
+| 1 | Independent appearance/shell and syntax palettes | complete | 20 targeted/type; isolated canonical; native settings palette/shell independence; independent approval | c0b6af7 |
+| 2 | Main browser isolation and navigation foundation | complete | 13 targeted; isolated1338-test canonical; full macOS platform incl realElectron guest smoke; independentreview | checkpoint pending |
 | 3 | Chrome/session/tree/agent/editor/browser presentation and owner integration | pending | owner/guest/layout tests, platform/native UI, canonical | — |
 | 4 | Cumulative review, feature parity, docs/guardrails cleanup | pending | full canonical/platform + independent review | — |
 
@@ -68,3 +68,5 @@ Node22.23.2. Keep source comparison frozen at ee8d298 and initial main 0cf9652. 
 - [ ] Delete completed temporary task file in completion checkpoint
 
 - 2026-10-14 — Phase1 exact isolated snapshot uses physical bundled dependencies (symlinked Vite worker paths rejected outside snapshot root, no source failure). Supported canonical gate and native disposable UI passed; saved theme IDs retained. Current main browser/renderer feature work excluded from this snapshot and commit.
+
+- 2026-10-14 — Browser foundation native smoke passed outside shell sandbox (sandbox Electron SIGABRT). Devices use installed denial handler without physical prompt; actual guest identity checked against IPC predicate, no injected guest bridge. Popup OS opening mocked. Main normal profile unchanged. Exact createWindow+2 composition ceiling independently justified; no other prior budget changes in phase2.

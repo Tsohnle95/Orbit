@@ -285,10 +285,10 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/main/index.ts:createWindow#1": {
-      "codeLines": 152,
+      "codeLines": 154,
       "cyclomatic": 20,
       "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
+      "reason": "Reviewed redesign browser feature adds exactly two composition lines: enable webviewTag and install main-owned browser guards before renderer load. Previous152-line budget; cyclomatic/nesting ceilings unchanged. New guest state/security belongs to browser owners, not this function."
     },
     "src/main/stream-pipeline.ts:createStreamPipeline#1": {
       "codeLines": 223,

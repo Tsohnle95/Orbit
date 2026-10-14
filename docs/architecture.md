@@ -389,6 +389,7 @@ of application state.
 
 | Responsibility | Entry point and private owner | Dependency boundary |
 |---|---|---|
+| Embedded browser isolation | `src/main/browser-guards.ts`, policy in `src/main/browser-policy.ts` | Main attaches guest guards before renderer load; external content has no application preload, Node or IPC authority. Dedicated nonpersistent session denies permission checks, requests and devices. |
 | Appearance and interface selection | `src/renderer/src/theme.tsx`, palettes in `src/renderer/src/appearances.ts`, private settings presenter `src/renderer/src/components/AppearanceSettings.tsx`, skin `src/renderer/src/styles/_codex.scss` | Palette selects colors and syntax; independent shell preference selects chrome. Settings never owns session or runtime state. |
 | Electron lifecycle, windows, trusted IPC | `src/main/index.ts`; domain registrations in `src/main/ipc/` | Main composition retains sender validation and raw `ipcMain` authority. Domain registrars receive only the trusted registration interface, and own no runtime/session state. |
 | Runtime/session orchestration and service traffic | `src/main/opencode.ts`; adapter contracts and retained implementations in `src/main/runtimes/` | Main remains the only OpenCode SDK owner. Dormant DeepSeek implementation is private to its retained runtime directory. |
