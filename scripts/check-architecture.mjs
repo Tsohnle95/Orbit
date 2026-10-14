@@ -95,6 +95,7 @@ export function architectureViolations(report, configuration) {
   if (invalidConfiguration.length) return invalidConfiguration;
   const violations = [];
   const add = (rule, subject, detail) => violations.push({ rule, subject, detail });
+  for (const drift of report.pinnedStyleDrift ?? []) add("pinned-style-integrity", drift.file, `Pinned upstream content changed: expected ${drift.expected}, actual ${drift.actual}. Review upstream provenance before updating the frozen inventory.`);
   const fileSet = new Set(report.production.inventory.map((file) => file.path));
   const routes = report.ownershipRoutes ?? [];
   const hasOwner = (file) => routes.some((route) => route.owner?.trim() && (route.path.endsWith("/") ? file.startsWith(route.path) : file === route.path));

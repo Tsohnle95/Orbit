@@ -1,0 +1,22 @@
+{
+  "upstreamCommit": "03e67171ab2dc1e7f16e8cebfbc7f778f61b89f0",
+  "provenance": "MIT upstream styles, document selectors scoped to transcript root; theme.scss generated verbatim by pinned token resolvers. Frozen path and SHA256 inventory from architecture baseline a1c54a35c3856e56209110cf4db493754699ed00. Changes require review of upstream provenance and measurement scope; never auto-ratchet.",
+  "files": {
+    "src/renderer/src/styles/opencode/accordion.scss": "33403c203949089ae54600a1aa0edb79e958cce8abc8a10f1e61a38e1cd8d661",
+    "src/renderer/src/styles/opencode/basic-tool.scss": "f31351834cadc8e7d9d37b3edbedb2baa154a1db8c1b23538badac346c2e73ca",
+    "src/renderer/src/styles/opencode/card.scss": "2f6c9d81a8a446d500b3cc4164f04ff5e8dbd1ef920eca9b7776ce748dafecf6",
+    "src/renderer/src/styles/opencode/collapsible.scss": "e659bc4eff6d118a43a6fc144259fe22d30486b52df7a7b9dc9f0cd3fb469270",
+    "src/renderer/src/styles/opencode/diff-changes.scss": "1ed4a6554772700bf5cdf49e574554691abb69614a966bef758e8aec3c8c70f4",
+    "src/renderer/src/styles/opencode/file-icon.scss": "16380a0b5cf00a5fccd90690450f0f810be8c2b5ab11ddbd31468a5fdfa72e57",
+    "src/renderer/src/styles/opencode/icon-button-v2.scss": "422e9f10050ca78f346c140fcd232de85edb6b1ba9f566c59650247216709977",
+    "src/renderer/src/styles/opencode/icon-button.scss": "54e3fc48f6b017e4bcfdd07f4684ea0e8314d91eb022473fa99132ae6145f1af",
+    "src/renderer/src/styles/opencode/markdown.scss": "653f47590eec4dd2cfc95d5187af57405b12afc0b884c8346b2876f1097c6f02",
+    "src/renderer/src/styles/opencode/message-part.scss": "7be47c4dc60b4e29e01b85aa703e7d0247fb6bc3c3a51ac12eadaf21090923ba",
+    "src/renderer/src/styles/opencode/session-turn.scss": "e83963443ad05dbc662d6095c24bfb347aef47928fd590f6bf294af0ebb1ee74",
+    "src/renderer/src/styles/opencode/sticky-accordion-header.scss": "57f6140ef8879b997311af6c7926d092cf95dfeb8b567ebe117e848cd9c6a536",
+    "src/renderer/src/styles/opencode/theme.scss": "ce1eb260ca0183c2d08418182691e2730c5f174f6144a247ebde9cb89c801dde",
+    "src/renderer/src/styles/opencode/tool-error-card.scss": "47cf6700e1ff51ca634f93a746b65afb4d00d6b8b4a95c34f991c50f8b75ff98",
+    "src/renderer/src/styles/opencode/tooltip-v2.css": "51f8e84b9759e48456f303e1bc2e71247081082a54f1f7347f8ac52187671c42",
+    "src/renderer/src/styles/opencode/tooltip.scss": "ea5979966b2a9a3ed131ebccf72021530d59d7e84fe9e7cca7885ed9c48719d4"
+  }
+}

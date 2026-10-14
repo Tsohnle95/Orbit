@@ -424,7 +424,9 @@ implementation imports, and privileged authority leaks fail validation.
 New modules must resolve to a named file or directory route in this ownership
 table before their paths can enter the ratchet. Computed dependency loaders and
 invalid guard manifests fail closed; literal dependency forms share the same
-authority and cycle checks.
+authority and cycle checks. Retained upstream styles have a frozen path/hash
+inventory; changed pinned content and new unowned production in that directory
+cannot inherit its exclusion.
 The cohesive inline-code language table is retained as baseline size debt;
 compressing data literals or moving them outside the measured scope would not
 improve responsibility ownership. See [operations](operations.md#architecture-fitness-and-measurement)

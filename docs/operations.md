@@ -126,6 +126,15 @@ ratcheting; misspelled selectors or removal of the ownership table also fail.
 The documented cyclomatic metric counts logical binary operators; short-circuit
 assignment operators are not included in that frozen measurement.
 
+The retained upstream stylesheet exclusion uses the exact paths and SHA256 hashes
+in [the pinned inventory](../scripts/pinned-upstream-styles.json), rather than a
+directory exemption. Unlisted files in that directory count as production and
+receive the normal architectural checks. Present pinned files are checked for content drift; deletion does not count as
+production savings and still requires normal import/build and diff review.
+Changed pinned content fails verification;
+upstream upgrades require an explicit provenance and measurement review before
+updating the inventory. The architecture ratchet never updates these pins.
+
 After a verified extraction, run `npm run architecture:ratchet` and review the
 manifest diff in the same checkpoint. Ratcheting first requires a passing check;
 it only lowers/removes debt allowances and records current production paths.
