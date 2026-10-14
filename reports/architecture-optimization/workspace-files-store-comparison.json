@@ -1,0 +1,633 @@
+{
+  "phase": "workspace file ownership",
+  "baselineRef": "198b358",
+  "runner": "scripts/benchmark-renderer-store.mjs",
+  "runnerSha256": "cf07b5d486d732ba0ed9e444d04856c978aa499b295f646d48038551a683a79e",
+  "command": "PATH=/Users/tdawg/.local/share/orbit-toolchains/node-v22.23.2/bin:$PATH node scripts/benchmark-renderer-store.mjs --operation workspace-files [--ref 198b358]",
+  "afterSourceSha256": {
+    "src/renderer/src/store.tsx": "e93d752e91602936f33c4be94dac0922edfc332376bd4c42b64b201361f7860e",
+    "src/renderer/src/use-workspace-files.ts": "8d4c0d7ba66f6bc43317e9b1d2bef18224990858c23994cfc60681973ffc5960",
+    "src/renderer/src/use-workspace-editor.ts": "94fe12da71e3cf996c13c246717bfe79cb377960254d9c640862bb62f9e3542f"
+  },
+  "order": [
+    "before-1",
+    "after-1",
+    "after-2",
+    "before-2"
+  ],
+  "interpretation": "Timings are inconclusive: ranges overlap and operation medians vary across the reverse-order repeat. No confirmed speedup or meaningful regression established. All36samples retain643consumer updates,500observedfiles,20tabs,10writes and101directory reads with identical sorted listings, input order, captured baselines, saved content and expected-content guards. Parents stay unexpanded during file events, so no debounce timers are scheduled. Each sample completes below the1s polling cadence; mocked active catalog is stable. Scope JavaScript/React-jsdom coordination, not native filesystem, IPC or Chromium paint.",
+  "runs": {
+    "before-1": {
+      "source": "198b358b516e90be26d82992317cdddd90f07cad",
+      "head": "198b358b516e90be26d82992317cdddd90f07cad",
+      "node": "v22.23.2",
+      "bundleSha256": "9ddb5843a73d40e6dd597609204cb8c0b8bf4a24f5cbf25497aa8184bf6a72dc",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "workspace-files",
+      "workload": {
+        "fileUpdates": 500,
+        "editorOpens": 20,
+        "editorSaves": 10,
+        "rootReads": 100,
+        "listingEntries": 1002,
+        "cachedToggles": 3,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.11429199999997763,
+        "median": 0.16162499999995816,
+        "max": 0.21145799999999326
+      },
+      "observationsMs": {
+        "min": 25.832333000000062,
+        "median": 28.79366600000003,
+        "max": 49.59987500000011
+      },
+      "editorOpenMs": {
+        "min": 0.8170000000000073,
+        "median": 0.8897090000000389,
+        "max": 1.6265829999999823
+      },
+      "editorSaveMs": {
+        "min": 0.815958000000137,
+        "median": 0.923917000000074,
+        "max": 1.4670000000000982
+      },
+      "directoryMs": {
+        "min": 20.836500000000115,
+        "median": 22.22262499999988,
+        "max": 24.876541999999972
+      },
+      "samples": [
+        {
+          "openMs": 0.18624999999997272,
+          "observationsMs": 43.976249999999936,
+          "editorOpenMs": 1.4032910000000811,
+          "editorSaveMs": 1.4670000000000982,
+          "directoryMs": 24.001250000000027,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.21145799999999326,
+          "observationsMs": 49.59987500000011,
+          "editorOpenMs": 1.6265829999999823,
+          "editorSaveMs": 1.4654170000001159,
+          "directoryMs": 24.876541999999972,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.1327089999999771,
+          "observationsMs": 28.79366600000003,
+          "editorOpenMs": 1.1115420000000995,
+          "editorSaveMs": 0.923917000000074,
+          "directoryMs": 23.481374999999844,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.17170800000008057,
+          "observationsMs": 29.360875000000078,
+          "editorOpenMs": 0.855542000000014,
+          "editorSaveMs": 0.846416999999974,
+          "directoryMs": 20.836500000000115,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.16162499999995816,
+          "observationsMs": 26.695290999999997,
+          "editorOpenMs": 0.8902080000000296,
+          "editorSaveMs": 0.881249999999909,
+          "directoryMs": 21.732291000000032,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.19887500000004366,
+          "observationsMs": 25.832333000000062,
+          "editorOpenMs": 0.8170000000000073,
+          "editorSaveMs": 0.815958000000137,
+          "directoryMs": 21.110165999999936,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.13808399999993526,
+          "observationsMs": 27.892916000000014,
+          "editorOpenMs": 0.8830829999999423,
+          "editorSaveMs": 0.9572920000000522,
+          "directoryMs": 22.22262499999988,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.12387499999999818,
+          "observationsMs": 32.15820899999994,
+          "editorOpenMs": 0.8897090000000389,
+          "editorSaveMs": 0.9084170000000995,
+          "directoryMs": 23.07249999999999,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.11429199999997763,
+          "observationsMs": 27.062625000000025,
+          "editorOpenMs": 0.8688329999999951,
+          "editorSaveMs": 0.9867080000001351,
+          "directoryMs": 21.762416999999914,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        }
+      ]
+    },
+    "after-1": {
+      "source": "working tree",
+      "head": "198b358b516e90be26d82992317cdddd90f07cad",
+      "node": "v22.23.2",
+      "bundleSha256": "5a6fcc738d81cb0126bb3ac356aa66a4b567f7ef093fc5f5c141cf87224a128a",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "workspace-files",
+      "workload": {
+        "fileUpdates": 500,
+        "editorOpens": 20,
+        "editorSaves": 10,
+        "rootReads": 100,
+        "listingEntries": 1002,
+        "cachedToggles": 3,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.12562499999989996,
+        "median": 0.1752079999999978,
+        "max": 0.24225000000001273
+      },
+      "observationsMs": {
+        "min": 26.272249999999985,
+        "median": 28.057749999999942,
+        "max": 44.06158300000004
+      },
+      "editorOpenMs": {
+        "min": 0.8216670000001614,
+        "median": 0.9163330000000087,
+        "max": 1.46062500000005
+      },
+      "editorSaveMs": {
+        "min": 0.8371670000001359,
+        "median": 0.9297500000000127,
+        "max": 1.485416999999984
+      },
+      "directoryMs": {
+        "min": 21.01216599999998,
+        "median": 22.28475000000003,
+        "max": 27.225832999999966
+      },
+      "samples": [
+        {
+          "openMs": 0.19870800000001054,
+          "observationsMs": 42.91983300000004,
+          "editorOpenMs": 1.4315000000000282,
+          "editorSaveMs": 1.485416999999984,
+          "directoryMs": 24.18654200000003,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.21783299999992778,
+          "observationsMs": 44.06158300000004,
+          "editorOpenMs": 1.46062500000005,
+          "editorSaveMs": 1.4437090000000126,
+          "directoryMs": 23.03866699999992,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.18808400000000347,
+          "observationsMs": 28.057749999999942,
+          "editorOpenMs": 0.9163330000000087,
+          "editorSaveMs": 0.8940410000000156,
+          "directoryMs": 27.225832999999966,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.1752079999999978,
+          "observationsMs": 28.203374999999937,
+          "editorOpenMs": 0.8662090000000262,
+          "editorSaveMs": 0.9297500000000127,
+          "directoryMs": 21.01216599999998,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.15845899999999347,
+          "observationsMs": 26.272249999999985,
+          "editorOpenMs": 0.8216670000001614,
+          "editorSaveMs": 0.8742919999999685,
+          "directoryMs": 22.28475000000003,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.24225000000001273,
+          "observationsMs": 27.60262499999999,
+          "editorOpenMs": 1.2077500000000327,
+          "editorSaveMs": 0.9386250000000018,
+          "directoryMs": 21.30574999999999,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.1264169999999467,
+          "observationsMs": 27.829917000000023,
+          "editorOpenMs": 0.906833000000006,
+          "editorSaveMs": 0.8371670000001359,
+          "directoryMs": 21.28583299999991,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.12562499999989996,
+          "observationsMs": 31.93945799999983,
+          "editorOpenMs": 1.1737500000001546,
+          "editorSaveMs": 1.1430830000001606,
+          "directoryMs": 23.126999999999953,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.13045800000008967,
+          "observationsMs": 27.394250000000056,
+          "editorOpenMs": 0.8316670000001523,
+          "editorSaveMs": 0.8949580000000878,
+          "directoryMs": 21.171082999999953,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        }
+      ]
+    },
+    "after-2": {
+      "source": "working tree",
+      "head": "198b358b516e90be26d82992317cdddd90f07cad",
+      "node": "v22.23.2",
+      "bundleSha256": "5a6fcc738d81cb0126bb3ac356aa66a4b567f7ef093fc5f5c141cf87224a128a",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "workspace-files",
+      "workload": {
+        "fileUpdates": 500,
+        "editorOpens": 20,
+        "editorSaves": 10,
+        "rootReads": 100,
+        "listingEntries": 1002,
+        "cachedToggles": 3,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.10029199999985394,
+        "median": 0.19899999999995543,
+        "max": 3.076458999999886
+      },
+      "observationsMs": {
+        "min": 24.812875000000076,
+        "median": 26.310416999999916,
+        "max": 67.57116700000006
+      },
+      "editorOpenMs": {
+        "min": 0.8497919999999795,
+        "median": 0.9141670000001341,
+        "max": 1.540707999999995
+      },
+      "editorSaveMs": {
+        "min": 0.8116669999999431,
+        "median": 0.8719170000001668,
+        "max": 1.4853749999999764
+      },
+      "directoryMs": {
+        "min": 20.43108300000017,
+        "median": 21.213917000000038,
+        "max": 23.65229199999999
+      },
+      "samples": [
+        {
+          "openMs": 0.19899999999995543,
+          "observationsMs": 43.681291999999985,
+          "editorOpenMs": 1.482040999999981,
+          "editorSaveMs": 1.4853749999999764,
+          "directoryMs": 23.589958000000024,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.20179099999995742,
+          "observationsMs": 45.577541999999994,
+          "editorOpenMs": 1.540707999999995,
+          "editorSaveMs": 1.450333999999998,
+          "directoryMs": 23.65229199999999,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.20154200000001765,
+          "observationsMs": 28.932125000000042,
+          "editorOpenMs": 1.0571250000000418,
+          "editorSaveMs": 1.03125,
+          "directoryMs": 23.27237500000001,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.1069999999999709,
+          "observationsMs": 25.143542000000025,
+          "editorOpenMs": 0.8539999999998145,
+          "editorSaveMs": 0.8719170000001668,
+          "directoryMs": 20.713459000000057,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.1638749999999618,
+          "observationsMs": 26.21158300000002,
+          "editorOpenMs": 1.1295420000001286,
+          "editorSaveMs": 0.8344590000001517,
+          "directoryMs": 21.213917000000038,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.23737500000015643,
+          "observationsMs": 26.310416999999916,
+          "editorOpenMs": 0.8781669999998485,
+          "editorSaveMs": 0.9503749999998945,
+          "directoryMs": 22.511040999999977,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 3.076458999999886,
+          "observationsMs": 67.57116700000006,
+          "editorOpenMs": 0.8845409999998992,
+          "editorSaveMs": 0.8644999999999072,
+          "directoryMs": 20.490166000000045,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.10370800000009694,
+          "observationsMs": 24.812875000000076,
+          "editorOpenMs": 0.8497919999999795,
+          "editorSaveMs": 0.8592089999999644,
+          "directoryMs": 20.972667,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.10029199999985394,
+          "observationsMs": 25.077999999999975,
+          "editorOpenMs": 0.9141670000001341,
+          "editorSaveMs": 0.8116669999999431,
+          "directoryMs": 20.43108300000017,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        }
+      ]
+    },
+    "before-2": {
+      "source": "198b358b516e90be26d82992317cdddd90f07cad",
+      "head": "198b358b516e90be26d82992317cdddd90f07cad",
+      "node": "v22.23.2",
+      "bundleSha256": "9ddb5843a73d40e6dd597609204cb8c0b8bf4a24f5cbf25497aa8184bf6a72dc",
+      "scope": "Actual Store processing and React/jsdom context consumer commits; mocked bridge; excludes filesystem, IPC, provider latency, Chromium layout and paint",
+      "operation": "workspace-files",
+      "workload": {
+        "fileUpdates": 500,
+        "editorOpens": 20,
+        "editorSaves": 10,
+        "rootReads": 100,
+        "listingEntries": 1002,
+        "cachedToggles": 3,
+        "warmups": 3,
+        "samples": 9
+      },
+      "openMs": {
+        "min": 0.11591699999985394,
+        "median": 0.15841699999987213,
+        "max": 0.21870800000010604
+      },
+      "observationsMs": {
+        "min": 24.26887499999998,
+        "median": 27.83962499999984,
+        "max": 61.65829199999985
+      },
+      "editorOpenMs": {
+        "min": 0.7809999999999491,
+        "median": 1.0548330000001442,
+        "max": 2.54358400000001
+      },
+      "editorSaveMs": {
+        "min": 0.8091249999999945,
+        "median": 0.9940420000000358,
+        "max": 2.3675000000000637
+      },
+      "directoryMs": {
+        "min": 20.079749999999876,
+        "median": 21.734208999999964,
+        "max": 29.844500000000153
+      },
+      "samples": [
+        {
+          "openMs": 0.21870800000010604,
+          "observationsMs": 43.48149999999998,
+          "editorOpenMs": 1.4030829999999241,
+          "editorSaveMs": 1.4022909999998774,
+          "directoryMs": 23.821957999999995,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.21841700000004494,
+          "observationsMs": 47.01929099999984,
+          "editorOpenMs": 1.5037090000000717,
+          "editorSaveMs": 1.7837919999999485,
+          "directoryMs": 25.84375,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.1323330000000169,
+          "observationsMs": 32.05799999999999,
+          "editorOpenMs": 1.0823749999999563,
+          "editorSaveMs": 1.356499999999869,
+          "directoryMs": 29.844500000000153,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.15841699999987213,
+          "observationsMs": 61.65829199999985,
+          "editorOpenMs": 2.54358400000001,
+          "editorSaveMs": 2.3675000000000637,
+          "directoryMs": 28.65141699999981,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.17887500000006185,
+          "observationsMs": 25.045916000000034,
+          "editorOpenMs": 0.8462500000000546,
+          "editorSaveMs": 0.8679159999999229,
+          "directoryMs": 20.822875000000067,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.186333999999988,
+          "observationsMs": 24.635416000000077,
+          "editorOpenMs": 0.7809999999999491,
+          "editorSaveMs": 0.8159579999999096,
+          "directoryMs": 20.171790999999985,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.11591699999985394,
+          "observationsMs": 24.26887499999998,
+          "editorOpenMs": 0.8146250000002055,
+          "editorSaveMs": 0.8262919999999667,
+          "directoryMs": 20.079749999999876,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.12216600000010658,
+          "observationsMs": 24.88737500000002,
+          "editorOpenMs": 0.8076669999998103,
+          "editorSaveMs": 0.8091249999999945,
+          "directoryMs": 20.12754199999995,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        },
+        {
+          "openMs": 0.1431249999998272,
+          "observationsMs": 27.83962499999984,
+          "editorOpenMs": 1.0548330000001442,
+          "editorSaveMs": 0.9940420000000358,
+          "directoryMs": 21.734208999999964,
+          "updateRenders": 643,
+          "observedFiles": 500,
+          "editorTabs": 20,
+          "directoryReads": 101,
+          "writeCount": 10
+        }
+      ]
+    }
+  }
+}

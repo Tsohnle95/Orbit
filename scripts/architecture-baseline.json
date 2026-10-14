@@ -185,6 +185,7 @@
     "src/renderer/src/use-session-inventory.ts",
     "src/renderer/src/use-session-selection.ts",
     "src/renderer/src/use-workspace-editor.ts",
+    "src/renderer/src/use-workspace-files.ts",
     "src/renderer/src/validation-report.ts",
     "src/renderer/src/w3c-validation.ts",
     "src/shared/errors.ts",
@@ -199,7 +200,7 @@
   ],
   "modules": {
     "src/renderer/src/store.tsx": {
-      "loc": 2467,
+      "loc": 2196,
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     },
     "src/main/opencode.ts": {
@@ -213,8 +214,8 @@
   },
   "functions": {
     "src/renderer/src/store.tsx:StoreBody#1": {
-      "codeLines": 2233,
-      "cyclomatic": 22,
+      "codeLines": 1982,
+      "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -225,7 +226,7 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage#1": {
-      "codeLines": 430,
+      "codeLines": 398,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -243,8 +244,8 @@
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
     "src/renderer/src/store.tsx:StoreBody/useEffect callback:processMessage/processMessage#1": {
-      "codeLines": 376,
-      "cyclomatic": 184,
+      "codeLines": 344,
+      "cyclomatic": 176,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -672,7 +673,7 @@
     },
     "src/renderer/src/use-workspace-editor.ts:useWorkspaceEditor/openFile#1": {
       "codeLines": 100,
-      "cyclomatic": 25,
+      "cyclomatic": 24,
       "nesting": 5,
       "origin": "src/renderer/src/store.tsx:StoreBody/openFile#1",
       "reason": "Moved unchanged generation-confined read/open action; retains binary, size, snapshot and stale-read guards. Original complexity25; cannot grow."
@@ -718,6 +719,13 @@
       "nesting": 5,
       "origin": "src/renderer/src/store.tsx:StoreBody/processMessage session.status branch at cb5f433 (original complexity30)",
       "reason": "Existing38-line status policy retains both reduction/synchronization passes, abort guards and retry notice order. Frozen migrated30-decision ceiling; no inherited parent budget. Length and nesting use defaults."
+    },
+    "src/renderer/src/use-workspace-files.ts:useWorkspaceFiles#1": {
+      "codeLines": 304,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "origin": "src/renderer/src/store.tsx:StoreBody#1 file/tree/visibility/recovery state and commands at198b358",
+      "reason": "Owns five existing workspace records, private render refs/timers and named directory/observation/visibility/recovery commands. Inclusive304-line composition has88 own lines and29 separately constrained callbacks; no new effects/subscription/cleanup. Fixed reviewed composition ceiling cannot grow."
     }
   },
   "edgeExceptions": [
@@ -880,6 +888,13 @@
     {
       "owner": "session execution state",
       "targetPrefix": "src/renderer/src/use-session-execution.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
+      ]
+    },
+    {
+      "owner": "workspace file state",
+      "targetPrefix": "src/renderer/src/use-workspace-files.ts",
       "allowedFrom": [
         "src/renderer/src/store.tsx"
       ]
@@ -1068,6 +1083,15 @@
         "src/renderer/src/chat-stream.ts",
         "src/renderer/src/chat-store.ts",
         "src/renderer/src/streaming.ts"
+      ],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-workspace-files.ts",
+      "allowedLocal": [
+        "src/shared/types.ts"
       ],
       "allowedExternal": [
         "react"

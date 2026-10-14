@@ -10,8 +10,9 @@ their local interaction state. Monaco is configured in `monaco.ts`.
 
 `store.tsx` remains the public `useStore()` / `usePanel()` facade and the owner
 of session orchestration, workspace generation guards, filesystem action routing
-and backend-event dispatch; editor state and actions belong to
-`use-workspace-editor.ts`. `store-contract.ts` owns its renderer-only contracts;
+and backend-event dispatch. Editor state and actions belong to
+`use-workspace-editor.ts`; observed file changes, Explorer listings/visibility
+and recovery records belong to `use-workspace-files.ts`. `store-contract.ts` owns its renderer-only contracts;
 existing type imports from the facade remain supported. It depends only on shared
 contracts and renderer domain types, so internal owners can use those types
 without importing the orchestration module.
@@ -24,6 +25,19 @@ session attachment code. `panel-projection.ts` owns the pure panel view derivati
 from session/workspace records and the authoritative chat state. It preserves
 record references and queue ordering without owning subscriptions or caches;
 generation filtering and React memoization remain in the facade.
+
+`use-workspace-files.ts` owns workspace agent-file, tree, expansion, hidden-path
+and recovery records, their last-render read references and directory refresh
+debounce timers. Add listing, visibility, observed-change or recovery behavior
+there. Its public actions retain the Store facade; narrow integration commands
+receive attributed file updates, restore nested workspace visibility and apply
+successful mutation results. It receives rendered focus, lazy current-focus and
+panel queries, generation validation and notifications. Store owns mutation IPC,
+confirmation/pending-name UI, session attachment and backend attribution; it
+orders editor preparation, observed-file receipt, editor conflict application and
+scheduled listing refresh. The editor reads its baseline before awaited file IO.
+Directory application is synchronous after the original reads, without additional
+subscriptions, caching or timer cleanup.
 
 Exposed state:
 
@@ -389,8 +403,9 @@ Key mechanisms:
   unsaved-file projection, opening, save/conflict actions and editor reactions to
   filesystem changes. Its host supplies focused/attached session access,
   generation validation, focus, captured agent baselines and notifications.
-  Store retains session lifecycle, mutation IPC, agent-file records and tree
-  refresh; it forwards successful mutations through editor domain operations.
+  Store retains session lifecycle and mutation IPC; the workspace-file owner
+  manages observed changes and tree refresh. Store forwards successful mutations
+  through editor and file domain operations.
   File updates prepare rename/echo classification before agent-file updates,
   then apply tab conflicts. Backend-subscription cleanup still cancels editor
   persistence at its original lifecycle boundary, including subscription reruns.

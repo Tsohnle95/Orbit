@@ -844,4 +844,73 @@ describe("store workspace continuations", () => {
     expect(store.session?.directory).toBe("/parent");
     expect(store.hiddenPaths).toEqual(new Set());
   });
+  it("caches a toggled directory and filters/sorts listings without mutating input", async () => {
+    const entries = [{ path: "z.txt", type: "file" as const }, { path: ".DS_Store", type: "file" as const },
+      { path: "node_modules", type: "directory" as const }, { path: "alpha", type: "directory" as const }];
+    const listDir = vi.fn(async () => entries);
+    window.openshell = api({ listDir });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.toggleDir("folder"));
+    expect(store.tree.folder.map((entry) => entry.path)).toEqual(["alpha", "z.txt"]);
+    expect(entries.map((entry) => entry.path)).toEqual(["z.txt", ".DS_Store", "node_modules", "alpha"]);
+    await act(async () => store.toggleDir("folder"));
+    await act(async () => store.toggleDir("folder"));
+    expect(listDir).toHaveBeenCalledTimes(1);
+    expect(store.expanded.has("folder")).toBe(true);
+  });
+
+  it("ignores stale manual directory success but still reports a stale manual failure", async () => {
+    let resolve!: (entries: Array<{ path: string; type: "file" }>) => void;
+    let reject!: (error: Error) => void;
+    window.openshell = api({ listDir: () => new Promise((done, fail) => { resolve = done; reject = fail; }) });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    let opening!: Promise<void>;
+    act(() => { opening = store.toggleDir("old"); });
+    await act(async () => store.openSession("/two"));
+    await act(async () => { resolve([{ path: "old.txt", type: "file" }]); await opening; });
+    expect(store.tree).toEqual({});
+    let failing!: Promise<void>;
+    act(() => { failing = store.toggleDir("old"); });
+    await act(async () => store.openSession("/three"));
+    await act(async () => { reject(new Error("stale directory failure")); await failing; });
+    expect(store.toasts.at(-1)?.text).toBe("stale directory failure");
+    expect(store.tree).toEqual({});
+  });
+
+  it("samples an observed baseline before a deferred editor file read", async () => {
+    const read = deferred<string>();
+    window.openshell = api({ readFile: () => read.promise });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    const panel = store.session!;
+    const update = (content: string) => ({ kind: "file-update" as const, file: {
+      workspace: panel.workspace, sessionID: panel.id, path: "file", baseline: { kind: "known" as const, content },
+      content: "changed", deleted: false
+    } });
+    act(() => messageHandler?.(update("before")));
+    let opening!: Promise<void>;
+    act(() => { opening = store.openFile("file"); });
+    act(() => messageHandler?.(update("after")));
+    await act(async () => { read.resolve("disk"); await opening; });
+    expect(store.tabs[0]?.baseline).toEqual({ kind: "known", content: "before" });
+    expect(store.agentFiles.get("file")?.baseline).toEqual({ kind: "known", content: "after" });
+  });
+
+  it("rejects observed file updates addressed to another session or workspace generation", async () => {
+    window.openshell = api();
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    const panel = store.session!;
+    const file = { workspace: panel.workspace, sessionID: panel.id, path: "file", baseline: { kind: "unknown" as const }, content: "new", deleted: false };
+    act(() => {
+      messageHandler?.({ kind: "file-update", file: { ...file, sessionID: "foreign" } });
+      messageHandler?.({ kind: "file-update", file: { ...file, workspace: { ...panel.workspace, generation: panel.workspace.generation + 1 } } });
+    });
+    expect(store.agentFiles.size).toBe(0);
+    act(() => messageHandler?.({ kind: "file-update", file }));
+    expect(store.agentFiles.get("file")?.content).toBe("new");
+  });
+
 });

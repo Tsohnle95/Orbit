@@ -20,11 +20,12 @@ describe("workspace editor authority", () => {
   const sessionRef = { current: first as SessionInfo | null };
   const panelsRef = { current: [first, second] };
   const agentFilesRef = { current: {} as Record<string, Map<string, AgentFileState>> };
+  const readAgentFile = (workspace: SessionInfo["workspace"], path: string) => agentFilesRef.current[workspace.id]?.get(path);
   const notify = vi.fn();
   const focusSession = vi.fn((id: string) => { sessionRef.current = panelsRef.current.find((panel) => panel.id === id) ?? null; });
   const panelFor = (workspace: SessionInfo["workspace"]) => panelsRef.current.find((panel) => panel.workspace.id === workspace.id && panel.workspace.generation === workspace.generation) ?? null;
   function Probe() {
-    editor = useWorkspaceEditor({ sessionRef, panelsRef, panelFor, focusSession, agentFilesRef, notify });
+    editor = useWorkspaceEditor({ sessionRef, panelsRef, panelFor, focusSession, readAgentFile, notify });
     return null;
   }
   const render = async () => act(async () => root.render(<Probe />));

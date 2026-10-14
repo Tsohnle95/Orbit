@@ -13,7 +13,6 @@ import {
 import { normalizePendingForm } from "@shared/forms";
 import { formatFailure, normalizeFailure } from "@shared/errors";
 import type {
-  AgentFileState,
   ApprovalMode,
   BackendMessage,
   OpenFileWorkspaceResult,
@@ -25,7 +24,6 @@ import type {
   PendingFormRequest,
   PromptFile,
   ProviderUsageResult,
-  RecoveryRecord,
   RuntimeManifest,
   SessionInboxEntry,
   SessionInfo,
@@ -58,6 +56,7 @@ import { requestReveal } from "./reveal";
 import { sameWorkspace } from "@shared/generation";
 import { retainSessionRecord } from "@shared/retention";
 import { useSavedWorkspaces } from "./use-saved-workspaces";
+import { useWorkspaceFiles } from "./use-workspace-files";
 import { useWorkspaceEditor } from "./use-workspace-editor";
 import { useSessionSelection } from "./use-session-selection";
 import { useSessionInventory } from "./use-session-inventory";
@@ -84,10 +83,6 @@ function ancestorDirs(path: string): string[] {
 }
 
 const Ctx = createContext<Store | null>(null);
-
-const HIDDEN_DIRS = new Set([
-  ".git", "node_modules", ".next", ".venv", "__pycache__", ".cache", ".turbo", ".svn", ".hg", ".nx", ".openshell-recovery", ".orbit-recovery"
-]);
 
 function todoToolName(value: string): boolean {
   return value.toLowerCase().replace(/[^a-z]/g, "") === "todowrite";
@@ -122,21 +117,6 @@ function todoSnapshotFromTranscript(items: TranscriptItem[]): { key: string; tod
     }
   }
   return null;
-}
-
-function sortEntries(entries: TreeEntry[]): TreeEntry[] {
-  return [...entries].sort((a, b) => {
-    if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
-    return a.path.localeCompare(b.path);
-  });
-}
-
-function filterEntries(entries: TreeEntry[]): TreeEntry[] {
-  return entries.filter((e) => {
-    const name = e.path.split("/").pop() ?? e.path;
-    if (e.type === "directory") return !HIDDEN_DIRS.has(name);
-    return name !== ".DS_Store";
-  });
 }
 
 const AUX_CHAT_STREAM_TYPES = new Set([
@@ -194,9 +174,6 @@ function failureForStreamEvent(type: string, data: Record<string, any>): { error
 
 let toastId = 0;
 
-const EMPTY_AGENT_FILES: Map<string, AgentFileState> = new Map();
-const EMPTY_TREE: Record<string, TreeEntry[]> = {};
-const EMPTY_EXPANDED: Set<string> = new Set();
 const STALE_SESSION_LAYOUT_KEY = "orbit.sessionLayout";
 
 export function StoreProvider({ children }: { children: ReactNode }): ReactNode {
@@ -255,12 +232,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const [inboxBySession, setInboxBySession] = useState<Record<string, SessionInboxEntry[]>>({});
   const [formsBySession, setFormsBySession] = useState<Record<string, PendingFormRequest[]>>({});
   const [stagedReverts, setStagedReverts] = useState<Record<string, SessionRevertStage | null>>({});
-  const [agentFilesByWorkspace, setAgentFilesByWorkspace] = useState<Record<string, Map<string, AgentFileState>>>({});
-  const [treeByWorkspace, setTreeByWorkspace] = useState<Record<string, Record<string, TreeEntry[]>>>({});
-  const [expandedByWorkspace, setExpandedByWorkspace] = useState<Record<string, Set<string>>>({});
-  const [hiddenPathsByWorkspace, setHiddenPathsByWorkspace] = useState<Record<string, Set<string>>>({});
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [recoveryByWorkspace, setRecoveryByWorkspace] = useState<Record<string, RecoveryRecord[]>>({});
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>(
     () => (window.localStorage.getItem("approvalMode") === "approve" ? "approve" : "ask")
   );
@@ -288,7 +260,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
 
   useEffect(() => {
     if (!session) return;
-    setHiddenPathsByWorkspace((current) => ({ ...current, [session.workspace.id]: new Set() }));
+    resetVisibility(session.workspace);
   }, [session?.directory, session?.workspace.id]);
   useEffect(() => {
     try {
@@ -304,11 +276,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const todos = session ? (todosByWorkspace[session.workspace.id] ?? []) : [];
   const transcript = session ? transcriptsBySession[session.id] ?? [] : [];
   const sessionUsage = session ? usageBySession[session.id] ?? null : null;
-  const agentFiles = session ? agentFilesByWorkspace[session.workspace.id] ?? EMPTY_AGENT_FILES : EMPTY_AGENT_FILES;
-  const tree = session ? treeByWorkspace[session.workspace.id] ?? EMPTY_TREE : EMPTY_TREE;
-  const expanded = session ? expandedByWorkspace[session.workspace.id] ?? EMPTY_EXPANDED : EMPTY_EXPANDED;
-  const hiddenPaths = session ? hiddenPathsByWorkspace[session.workspace.id] ?? EMPTY_EXPANDED : EMPTY_EXPANDED;
-  const recoveryRecords = session ? recoveryByWorkspace[session.workspace.id] ?? [] : [];
   const refreshRuntimes = useCallback(async (): Promise<RuntimeManifest[]> => {
     const items = await window.openshell.runtimes();
     setRuntimes(items);
@@ -350,10 +317,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const formsBySessionRef = useRef(formsBySession);
   formsBySessionRef.current = formsBySession;
   const messageQueueRef = useRef<MessageQueueState>(messageQueue);
-  const agentFilesByWorkspaceRef = useRef(agentFilesByWorkspace);
-  agentFilesByWorkspaceRef.current = agentFilesByWorkspace;
-  const expandedByWorkspaceRef = useRef(expandedByWorkspace);
-  expandedByWorkspaceRef.current = expandedByWorkspace;
   const pendingCreateRef = useRef(pendingCreate);
   pendingCreateRef.current = pendingCreate;
   const pendingRenameRef = useRef(pendingRename);
@@ -369,7 +332,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const userActivatedRef = useRef(false);
   const focusSeqRef = useRef(0);
   const startupRestoreStartedRef = useRef(false);
-  const treeRefreshTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   const toast = useCallback((text: string, tone: "info" | "error" = "info") => {
     const id = ++toastId;
@@ -406,33 +368,16 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     []
   );
 
-  const setAgentFilesFor = useCallback((
-    workspaceID: string,
-    update: Map<string, AgentFileState> | ((prev: Map<string, AgentFileState>) => Map<string, AgentFileState>)
-  ) => {
-    setAgentFilesByWorkspace((current) => {
-      const previous = current[workspaceID] ?? new Map<string, AgentFileState>();
-      const next = typeof update === "function" ? update(previous) : update;
-      return previous === next ? current : { ...current, [workspaceID]: next };
-    });
-  }, []);
-
-  const setTreeFor = useCallback((workspaceID: string, update: (prev: Record<string, TreeEntry[]>) => Record<string, TreeEntry[]>) => {
-    setTreeByWorkspace((current) => {
-      const next = update(current[workspaceID] ?? {});
-      return next === (current[workspaceID] ?? {}) ? current : { ...current, [workspaceID]: next };
-    });
-  }, []);
-
-  const setExpandedFor = useCallback((workspaceID: string, next: Set<string>) => {
-    setExpandedByWorkspace((current) =>
-      current[workspaceID] === next ? current : { ...current, [workspaceID]: next });
-  }, []);
-
-  const setRecoveryFor = useCallback((workspaceID: string, records: RecoveryRecord[]) => {
-    setRecoveryByWorkspace((current) =>
-      current[workspaceID] === records ? current : { ...current, [workspaceID]: records });
-  }, []);
+  const readFocusedSession = useCallback(() => sessionRef.current, []);
+  const readPanels = useCallback(() => panelsRef.current, []);
+  const {
+    agentFiles, tree, expanded, hiddenPaths, recoveryRecords,
+    readAgentFile, isHiddenPath, toggleDir, ensureRootOpen, refreshTree, unhidePath,
+    dismissChange, dismissChanges, loadRecovery, openRecovery, acknowledgeRecovery,
+    resetVisibility, hidePath, restoreDetachedPath, hideNestedWorkspace, restoreNestedWorkspaceVisibility,
+    expandParent, recordCreatedEntry, renameObservedPrefix, moveObservedPrefix, moveObservedPaths,
+    receiveFileUpdate, receiveRecovery, scheduleFileRefresh
+  } = useWorkspaceFiles({ renderSession: session, readFocusedSession, panelFor, readPanels, notify: toast });
 
   const setTodosFor = useCallback((workspaceID: string, items: TodoItem[]) => {
     setTodosByWorkspace((current) =>
@@ -788,30 +733,14 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     setSingleFileFor, addCreatedFile, removePathTabs, removePathsTabs,
     renameTabs, movePathTabs, movePathsTabs, prepareFileUpdate, applyFileUpdate,
     cancelPrefix, cancelAll
-  } = useWorkspaceEditor({ sessionRef, panelsRef, panelFor, focusSession, agentFilesRef: agentFilesByWorkspaceRef, notify: toast });
+  } = useWorkspaceEditor({ sessionRef, panelsRef, panelFor, focusSession, readAgentFile, notify: toast });
 
   const ejectPanelFromView = useCallback((sessionID: string): SessionInfo | null => {
     const closing = panelsRef.current.find((panel) => panel.id === sessionID) ?? null;
     if (!closing) return null;
     panelsRef.current = panelsRef.current.filter((panel) => panel.id !== sessionID);
     setPanels(panelsRef.current);
-    const childDirectory = closing.directory.replaceAll("\\", "/").replace(/\/+$/, "");
-    setHiddenPathsByWorkspace((current) => {
-      let changed = false;
-      const next = { ...current };
-      for (const panel of panelsRef.current) {
-        const parentDirectory = panel.directory.replaceAll("\\", "/").replace(/\/+$/, "");
-        if (!childDirectory.startsWith(`${parentDirectory}/`)) continue;
-        const relative = childDirectory.slice(parentDirectory.length + 1);
-        const paths = current[panel.workspace.id];
-        if (!paths?.has(relative)) continue;
-        const restored = new Set(paths);
-        restored.delete(relative);
-        next[panel.workspace.id] = restored;
-        changed = true;
-      }
-      return changed ? next : current;
-    });
+    restoreNestedWorkspaceVisibility(closing.directory);
     setWorkspaceOnlyPanelIDs((current) => {
       if (!current.has(sessionID)) return current;
       const next = new Set(current);
@@ -824,7 +753,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       setActiveSessionID(neighbor?.id ?? null);
     }
     return closing;
-  }, []);
+  }, [restoreNestedWorkspaceVisibility]);
 
   const detachPanel = useCallback((sessionID: string): void => {
     // Replacement without teardown: the session leaves the visible panels
@@ -895,17 +824,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     }
     attachPanel(next);
   }, [attachPanel, detachPanel]);
-
-  const loadRecovery = useCallback(async (workspace: WorkspaceIdentity) => {
-    try {
-      const records = await window.openshell.recoveryRecords(workspace);
-      if (panelFor(workspace)) setRecoveryFor(workspace.id, records);
-    } catch (error) {
-      if (panelFor(workspace)) {
-        toast(error instanceof Error ? error.message : String(error), "error");
-      }
-    }
-  }, [toast, panelFor, setRecoveryFor]);
 
   useEffect(() => {
     if (connected) void loadSessions();
@@ -1007,17 +925,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           await window.openshell.closeSession(info.workspace).catch(() => {});
           return;
         }
-        const source = dir.replaceAll("\\", "/").replace(/\/+$/, "");
-        for (const panel of panelsRef.current) {
-          const parent = panel.directory.replaceAll("\\", "/").replace(/\/+$/, "");
-          if (!source.startsWith(`${parent}/`)) continue;
-          const relative = source.slice(parent.length + 1);
-          setHiddenPathsByWorkspace((current) => {
-            const next = new Set(current[panel.workspace.id] ?? []);
-            next.add(relative);
-            return { ...current, [panel.workspace.id]: next };
-          });
-        }
+        hideNestedWorkspace(dir);
         attachPanel(info);
         userActivatedRef.current = true;
         focusSeqRef.current += 1;
@@ -1034,7 +942,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         toast(err instanceof Error ? err.message : String(err), "error");
       }
     },
-    [attachPanel, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]
+    [hideNestedWorkspace, attachPanel, toast, loadModels, loadAgents, loadRecovery, loadSessions, hydrateTranscript]
   );
 
   const openWorkspacePanel = useCallback(async (dir: string): Promise<void> => {
@@ -1434,95 +1342,18 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     });
   }, []);
 
-  const toggleDir = useCallback(
-    async (path: string) => {
-      const target = sessionRef.current?.workspace;
-      if (!target) return;
-      const current = expandedByWorkspaceRef.current[target.id] ?? new Set<string>();
-      const isOpen = current.has(path);
-      setExpandedFor(target.id, (() => {
-        const next = new Set(current);
-        if (isOpen) next.delete(path);
-        else next.add(path);
-        return next;
-      })());
-      if (isOpen) return;
-      if (!treeByWorkspace[target.id]?.[path]) {
-        try {
-          const entries = await window.openshell.listDir(target, path);
-          if (!panelFor(target)) return;
-          setTreeFor(target.id, (prev) => ({ ...prev, [path]: sortEntries(filterEntries(entries)) }));
-        } catch (err) {
-          toast(err instanceof Error ? err.message : String(err), "error");
-        }
-      }
-    },
-    [treeByWorkspace, toast, panelFor, setExpandedFor, setTreeFor]
-  );
-
-  const ensureRootOpen = useCallback(
-    async (): Promise<void> => {
-      const target = sessionRef.current?.workspace;
-      if (!target) return;
-      const current = expandedByWorkspaceRef.current[target.id] ?? new Set<string>();
-      const wasOpen = current.has("");
-      if (!wasOpen) {
-        const next = new Set(current);
-        next.add("");
-        setExpandedFor(target.id, next);
-      }
-      if (wasOpen || !treeByWorkspace[target.id]?.[""]) {
-        try {
-          const entries = await window.openshell.listDir(target, "");
-          if (!panelFor(target)) return;
-          setTreeFor(target.id, (prev) => ({ ...prev, "": sortEntries(filterEntries(entries)) }));
-        } catch (err) {
-          toast(err instanceof Error ? err.message : String(err), "error");
-        }
-      }
-    },
-    [treeByWorkspace, toast, panelFor, setExpandedFor, setTreeFor]
-  );
-
-  const refreshTree = useCallback(async (dirs: string[], workspace?: WorkspaceIdentity): Promise<void> => {
-    const unique = [...new Set(dirs)];
-    const target = workspace ?? sessionRef.current?.workspace;
-    if (!target) return;
-    const current = expandedByWorkspaceRef.current[target.id] ?? new Set<string>();
-    if (current.has("") && !unique.includes("")) unique.push("");
-    await Promise.all(
-      unique.map(async (dir) => {
-        try {
-          const entries = await window.openshell.listDir(target, dir);
-          if (!panelFor(target)) return;
-          setTreeFor(target.id, (prev) => ({ ...prev, [dir]: sortEntries(filterEntries(entries)) }));
-        } catch {
-          /* keep previous listing */
-        }
-      })
-    );
-  }, [panelFor, setTreeFor]);
-
   const removeFromWorkspace = useCallback((path: string) => {
     const target = sessionRef.current?.workspace;
     if (!target) return;
     const confirmed = window.confirm(`Remove "${path}" from Orbit? The item will remain on disk.`);
     if (!confirmed) return;
     closeCtxMenu();
-    setHiddenPathsByWorkspace((current) => {
-      const next = new Set(current[target.id] ?? []);
-      next.add(path);
-      return { ...current, [target.id]: next };
-    });
+    hidePath(target, path);
     void window.openshell.detachPath(target, path).then(() => {
-      setHiddenPathsByWorkspace((current) => {
-        const next = new Set(current[target.id] ?? []);
-        next.delete(path);
-        return { ...current, [target.id]: next };
-      });
+      restoreDetachedPath(target, path);
       void refreshTree(ancestorDirs(path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ""));
     }).catch((error) => toast(error instanceof Error ? error.message : String(error), "error"));
-  }, [closeCtxMenu, refreshTree, toast]);
+  }, [closeCtxMenu, refreshTree, toast, hidePath, restoreDetachedPath]);
 
   const startCreate = useCallback((parent: string, kind: "file" | "dir") => {
     closeCtxMenu();
@@ -1530,12 +1361,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     setPendingCreate({ parent, kind });
     const target = sessionRef.current?.workspace;
     if (!target) return;
-    const current = expandedByWorkspaceRef.current[target.id] ?? new Set<string>();
-    if (current.has(parent)) return;
-    const next = new Set(current);
-    next.add(parent);
-    setExpandedFor(target.id, next);
-  }, [setExpandedFor, closeCtxMenu]);
+    expandParent(target, parent);
+  }, [expandParent, closeCtxMenu]);
 
   const startRename = useCallback((path: string) => {
     closeCtxMenu();
@@ -1555,16 +1382,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
     }
   }, [closeCtxMenu, panelFor, toast]);
-
-  const unhidePath = useCallback((path: string): void => {
-    const target = sessionRef.current;
-    if (!target || !hiddenPathsByWorkspace[target.workspace.id]?.has(path)) return;
-    setHiddenPathsByWorkspace((current) => {
-      const next = new Set(current[target.workspace.id] ?? []);
-      next.delete(path);
-      return { ...current, [target.workspace.id]: next };
-    });
-  }, [hiddenPathsByWorkspace]);
 
   const cancelPending = useCallback(() => {
     setPendingCreate(null);
@@ -1623,7 +1440,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         if (!panelFor(target)) return;
         for (const result of results) {
           if (result.imported) toast(`Imported ${result.rel}`);
-          else if (hiddenPathsByWorkspace[target.id]?.has(result.rel)) {
+          else if (isHiddenPath(target, result.rel)) {
             unhidePath(result.rel);
             continue;
           }
@@ -1635,7 +1452,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         if (panelFor(target)) toast(err instanceof Error ? err.message : String(err), "error");
       }
     },
-    [toast, panelFor, refreshTree, hiddenPathsByWorkspace, unhidePath]
+    [toast, panelFor, refreshTree, isHiddenPath, unhidePath]
   );
   const dropIntoExplorer = useCallback(
     async (paths: string[]): Promise<void> => {
@@ -1644,22 +1461,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     },
     [importPaths]
   );
-  const dismissChange = useCallback((path: string): void => {
-    const target = sessionRef.current?.workspace;
-    if (!target) return;
-    const current = agentFilesByWorkspaceRef.current[target.id];
-    if (!current?.has(path)) return;
-    const next = new Map(current);
-    next.delete(path);
-    setAgentFilesFor(target.id, next);
-  }, [setAgentFilesFor]);
-  const dismissChanges = useCallback((): void => {
-    const target = sessionRef.current?.workspace;
-    if (!target) return;
-    const current = agentFilesByWorkspaceRef.current[target.id];
-    if (!current || current.size === 0) return;
-    setAgentFilesFor(target.id, new Map());
-  }, [setAgentFilesFor]);
   const attachFileWorkspace = useCallback(
     async (result: OpenFileWorkspaceResult, activation: number): Promise<SessionInfo | null> => {
       if (activation !== activationSeqRef.current) {
@@ -1785,12 +1586,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
             ? window.openshell.createFile(target, targetPath)
             : window.openshell.createDir(target, targetPath));
           if (!panelFor(target)) return;
-          setTreeFor(target.id, (prev) => {
-            const current = prev[create.parent] ?? [];
-            if (current.some((e) => e.path === targetPath)) return prev;
-            const entry: TreeEntry = { path: targetPath, type: create.kind === "file" ? "file" : "directory" };
-            return { ...prev, [create.parent]: sortEntries(filterEntries([...current, entry])) };
-          });
+          recordCreatedEntry(target, create.parent, targetPath, create.kind);
           if (create.kind === "file") {
             addCreatedFile(target, targetPath);
           }
@@ -1804,18 +1600,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           await window.openshell.renamePath(target, rename.path, trimmed);
           if (!panelFor(target)) return;
           renameTabs(target, rename.path, newPath, trimmed, activePathByWorkspace[target.id] ?? null);
-          setAgentFilesFor(target.id, (() => {
-            const current = agentFilesByWorkspaceRef.current[target.id] ?? new Map<string, AgentFileState>();
-            const next = new Map<string, AgentFileState>();
-            for (const [p, state] of current) {
-              if (p === rename.path || p.startsWith(`${rename.path}/`)) {
-                next.set(`${newPath}${p.slice(rename.path.length)}`, state);
-              } else {
-                next.set(p, state);
-              }
-            }
-            return next;
-          })());
+          renameObservedPrefix(target, rename.path, newPath);
           void refreshTree(ancestorDirs(parent));
         }
         cancelPending();
@@ -1825,7 +1610,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         }
       }
     },
-    [toast, refreshTree, cancelPending, cancelPrefix, panelFor, addCreatedFile, renameTabs, setAgentFilesFor, setTreeFor, activePathByWorkspace]
+    [toast, refreshTree, cancelPending, cancelPrefix, panelFor, addCreatedFile, renameTabs, renameObservedPrefix, recordCreatedEntry, activePathByWorkspace]
   );
 
   const moveEntry = useCallback(
@@ -1845,22 +1630,11 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
       if (!panelFor(target)) return;
       movePathTabs(target, path, newPath, name);
-      setAgentFilesFor(target.id, (() => {
-        const current = agentFilesByWorkspaceRef.current[target.id] ?? new Map<string, AgentFileState>();
-        const next = new Map<string, AgentFileState>();
-        for (const [p, state] of current) {
-          if (p === path || p.startsWith(`${path}/`)) {
-            if (!state.deleted) next.set(`${newPath}${p.slice(path.length)}`, state);
-          } else {
-            next.set(p, state);
-          }
-        }
-        return next;
-      })());
+      moveObservedPrefix(target, path, newPath);
       const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
       void refreshTree([...ancestorDirs(parent), ...ancestorDirs(destDir)], target);
     },
-    [toast, refreshTree, cancelPrefix, panelFor, movePathTabs, setAgentFilesFor]
+    [toast, refreshTree, cancelPrefix, panelFor, movePathTabs, moveObservedPrefix]
   );
 
   const moveEntries = useCallback(async (paths: string[], destDir: string): Promise<void> => {
@@ -1881,37 +1655,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     }
     if (moved.length === 0 || !panelFor(workspace)) return;
     const remap = movePathsTabs(workspace, moved);
-    setAgentFilesFor(workspace.id, (current) => {
-      const next = new Map<string, AgentFileState>();
-      for (const [path, state] of current) {
-        const movedPath = remap(path);
-        if (!state.deleted) next.set(movedPath, state);
-      }
-      return next;
-    });
+    moveObservedPaths(workspace, remap);
     const parents = moved.map(({ path }) => path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
     void refreshTree([...parents.flatMap((parent) => ancestorDirs(parent)), ...ancestorDirs(destDir)], workspace);
-  }, [cancelPrefix, panelFor, toast, movePathsTabs, setAgentFilesFor, refreshTree]);
-
-  const openRecovery = useCallback(async (id: string) => {
-    const target = sessionRef.current?.workspace;
-    if (!target) return;
-    try {
-      await window.openshell.openRecovery(target, id);
-    } catch (error) {
-      toast(error instanceof Error ? error.message : String(error), "error");
-    }
-  }, [toast]);
-
-  const acknowledgeRecovery = useCallback(async (id: string) => {
-    const target = sessionRef.current?.workspace;
-    if (!target) return;
-    try {
-      await window.openshell.acknowledgeRecovery(target, id);
-    } catch (error) {
-      toast(error instanceof Error ? error.message : String(error), "error");
-    }
-  }, [toast]);
+  }, [cancelPrefix, panelFor, toast, movePathsTabs, moveObservedPaths, refreshTree]);
 
   useEffect(() => {
     const processMessage = (msg: BackendMessage): void => {
@@ -1934,7 +1681,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
       if (msg.kind === "recovery") {
         if (msg.recovery && panelFor(msg.recovery.workspace)) {
-          setRecoveryFor(msg.recovery.workspace.id, msg.recovery.records);
+          receiveRecovery(msg.recovery.workspace, msg.recovery.records);
         }
         return;
       }
@@ -1943,41 +1690,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         const panel = panelFor(f.workspace);
         if (!panel || f.sessionID !== panel.id) return;
         const origin = prepareFileUpdate(f);
-        setAgentFilesFor(f.workspace.id, (current) => {
-          const next = new Map(current);
-          const clean = f.baseline.kind === "known" && (
-            (!f.deleted && f.content === f.baseline.content) ||
-            (f.deleted && f.baseline.exists === false)
-          );
-          if (clean) next.delete(f.path);
-          else next.set(f.path, { baseline: f.baseline, content: f.content, deleted: f.deleted });
-          return next;
-        });
+        receiveFileUpdate(f);
         applyFileUpdate(f, origin);
-        const parents = new Set([
-          f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/")) : "",
-          ...(f.movedFrom
-            ? [f.movedFrom.includes("/") ? f.movedFrom.slice(0, f.movedFrom.lastIndexOf("/")) : ""]
-            : [])
-        ]);
-        const workspaceExpanded = expandedByWorkspaceRef.current[f.workspace.id] ?? new Set<string>();
-        for (const parent of parents) {
-          if (parent === f.path || !workspaceExpanded.has(parent)) continue;
-          const expected = f.workspace;
-          const key = `${expected.id}:${parent}`;
-          const existing = treeRefreshTimersRef.current.get(key);
-          if (existing) clearTimeout(existing);
-          treeRefreshTimersRef.current.set(key, setTimeout(() => {
-            treeRefreshTimersRef.current.delete(key);
-            void window.openshell
-              .listDir(expected, parent)
-              .then((entries) =>
-                panelFor(expected) &&
-                setTreeFor(expected.id, (prev) => ({ ...prev, [parent]: sortEntries(filterEntries(entries)) }))
-              )
-              .catch(() => {});
-          }, 50));
-        }
+        scheduleFileRefresh(f);
         return;
       }
       if (msg.kind !== "event") return;
@@ -2389,11 +2104,11 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     workspaceOfSession,
     protectedSessionIDs,
     setTodosFor,
-    setRecoveryFor,
-    setAgentFilesFor,
+    receiveRecovery,
+    receiveFileUpdate,
+    scheduleFileRefresh,
     prepareFileUpdate,
     applyFileUpdate,
-    setTreeFor,
     snapshotSession,
     reduceSessionEvent,
     materializeSession,

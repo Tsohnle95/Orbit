@@ -2,12 +2,16 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import type { AgentFileState, FileUpdate, SessionInfo, Tab, WorkspaceIdentity } from "@shared/types";
 import { EditorPersistence, type FileUpdateOrigin, type SaveSnapshot } from "./editor-persistence";
 
+type ObservedFileView = Readonly<Omit<AgentFileState, "baseline">> & {
+  readonly baseline: Readonly<AgentFileState["baseline"]>;
+};
+
 interface EditorHost {
   sessionRef: Readonly<{ current: SessionInfo | null }>;
   panelsRef: Readonly<{ current: readonly SessionInfo[] }>;
   panelFor: (workspace: WorkspaceIdentity) => SessionInfo | null;
   focusSession: (sessionID: string) => void;
-  agentFilesRef: Readonly<{ current: Readonly<Record<string, ReadonlyMap<string, AgentFileState>>> }>;
+  readAgentFile: (workspace: WorkspaceIdentity, path: string) => ObservedFileView | undefined;
   notify: (text: string, tone?: "info" | "error") => void;
 }
 
@@ -24,7 +28,7 @@ function dropKey<T>(record: Record<string, T>, key: string): Record<string, T> {
 }
 
 export function useWorkspaceEditor(host: EditorHost) {
-  const { sessionRef, panelsRef, panelFor, focusSession, agentFilesRef: agentFilesByWorkspaceRef, notify: toast } = host;
+  const { sessionRef, panelsRef, panelFor, focusSession, readAgentFile, notify: toast } = host;
   const session = sessionRef.current;
   const panels = panelsRef.current;
   const [tabsByWorkspace, setTabsByWorkspace] = useState<Record<string, Tab[]>>({});
@@ -100,7 +104,7 @@ export function useWorkspaceEditor(host: EditorHost) {
         return;
       }
       try {
-        const agentFile = target ? (agentFilesByWorkspaceRef.current[target.id] ?? new Map()).get(path) : undefined;
+        const agentFile = target ? readAgentFile(target, path) : undefined;
         let content = await window.openshell.readFile(target, path);
         if (!panelFor(target)) return;
         if (content === null && agentFile?.deleted) content = "";
@@ -137,7 +141,7 @@ export function useWorkspaceEditor(host: EditorHost) {
         if (target && panelFor(target)) toast(err instanceof Error ? err.message : String(err), "error");
       }
     },
-    [toast, panelFor, setTabsFor, setActivePathFor]
+    [toast, panelFor, setTabsFor, setActivePathFor, readAgentFile]
   );
   const openExternalPath = useCallback(
     async (absolutePath: string, workspace?: WorkspaceIdentity): Promise<string | null> => {
