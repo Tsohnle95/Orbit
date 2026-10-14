@@ -32,12 +32,26 @@ debounce timers. Add listing, visibility, observed-change or recovery behavior
 there. Its public actions retain the Store facade; narrow integration commands
 receive attributed file updates, restore nested workspace visibility and apply
 successful mutation results. It receives rendered focus, lazy current-focus and
-panel queries, generation validation and notifications. Store owns mutation IPC,
-confirmation/pending-name UI, session attachment and backend attribution; it
+panel queries, generation validation and notifications. `use-explorer-mutations.ts` owns mutation IPC and pending-name intent; Store owns
+session attachment and backend attribution. Store
 orders editor preparation, observed-file receipt, editor conflict application and
 scheduled listing refresh. The editor reads its baseline before awaited file IO.
 Directory application is synchronous after the original reads, without additional
 subscriptions, caching or timer cleanup.
+
+`use-explorer-mutations.ts` owns create/rename intent, last-render intent
+references and Explorer mutation workflows: create, rename, delete, move, detach,
+import and reveal. Add mutation sequencing and its failure handling there. Its
+four host callbacks provide current focus, generation validation, notifications
+and menu closure; structural editor/file ports expose only named domain commands.
+The editor's rendered active-path query preserves deferred rename selection,
+while visibility queries preserve their captured render and invocation-time
+focus distinctions. No Node/filesystem SDK or private owner implementation is
+imported. Store exposes its actions directly and retains session lifecycle and
+backend routing. Focus clears mutation intent through the stable cancellation
+command after menu closure; its lazy reference preserves startup initialization
+and the existing subscription dependencies. Mutation state changes introduce no
+new effects or resource lifetime policy.
 
 Exposed state:
 
@@ -403,9 +417,9 @@ Key mechanisms:
   unsaved-file projection, opening, save/conflict actions and editor reactions to
   filesystem changes. Its host supplies focused/attached session access,
   generation validation, focus, captured agent baselines and notifications.
-  Store retains session lifecycle and mutation IPC; the workspace-file owner
-  manages observed changes and tree refresh. Store forwards successful mutations
-  through editor and file domain operations.
+  Store retains session lifecycle; the Explorer mutation owner sequences IPC
+  and forwards successful mutations through editor and file domain operations.
+  The workspace-file owner manages observed changes and tree refresh.
   File updates prepare rename/echo classification before agent-file updates,
   then apply tab conflicts. Backend-subscription cleanup still cancels editor
   persistence at its original lifecycle boundary, including subscription reruns.

@@ -178,6 +178,7 @@
     "src/renderer/src/styles/main.scss",
     "src/renderer/src/terminal-state.ts",
     "src/renderer/src/theme.tsx",
+    "src/renderer/src/use-explorer-mutations.ts",
     "src/renderer/src/use-sass-watch.ts",
     "src/renderer/src/use-saved-workspaces.ts",
     "src/renderer/src/use-session-chat-records.ts",
@@ -200,7 +201,7 @@
   ],
   "modules": {
     "src/renderer/src/store.tsx": {
-      "loc": 2196,
+      "loc": 1988,
       "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
     },
     "src/main/opencode.ts": {
@@ -214,7 +215,7 @@
   },
   "functions": {
     "src/renderer/src/store.tsx:StoreBody#1": {
-      "codeLines": 1982,
+      "codeLines": 1780,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -402,12 +403,6 @@
     "src/main/opencode.ts:OpenShellBackend/openSessionById#1": {
       "codeLines": 100,
       "cyclomatic": 32,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/renderer/src/store.tsx:StoreBody/commitName#1": {
-      "codeLines": 100,
-      "cyclomatic": 21,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -669,7 +664,7 @@
       "cyclomatic": 20,
       "nesting": 5,
       "origin": "src/renderer/src/store.tsx:StoreBody#1 editor state/persistence/action slices",
-      "reason": "Cohesive editor hook owns records, refs and persistence. Inclusive502 lines count30 separately guarded nested callbacks; independently measured composition-only body is96 token-code lines. No subscriptions/effects or session authority. Exact composition ceiling cannot grow."
+      "reason": "Cohesive editor hook owns records, refs and persistence. Inclusive502 lines count31 separately guarded nested callbacks; independently measured composition-only body is96 token-code lines. No subscriptions/effects or session authority. Exact composition ceiling cannot grow."
     },
     "src/renderer/src/use-workspace-editor.ts:useWorkspaceEditor/openFile#1": {
       "codeLines": 100,
@@ -726,6 +721,13 @@
       "nesting": 5,
       "origin": "src/renderer/src/store.tsx:StoreBody#1 file/tree/visibility/recovery state and commands at198b358",
       "reason": "Owns five existing workspace records, private render refs/timers and named directory/observation/visibility/recovery commands. Inclusive304-line composition has88 own lines and29 separately constrained callbacks; no new effects/subscription/cleanup. Fixed reviewed composition ceiling cannot grow."
+    },
+    "src/renderer/src/use-explorer-mutations.ts:useExplorerMutations#1": {
+      "codeLines": 228,
+      "cyclomatic": 20,
+      "nesting": 5,
+      "origin": "aa8acb4 src/renderer/src/store.tsx:StoreBody#1 Explorer intent and disk mutation workflows",
+      "reason": "Owns existing create/rename intents and twelve unchanged disk workflows through named file/editor capabilities. Inclusive228-line composition has56 own lines and12 separately constrained callbacks; no new effects, cleanup or generation authority. Fixed reviewed composition ceiling cannot grow."
     }
   },
   "edgeExceptions": [
@@ -895,6 +897,13 @@
     {
       "owner": "workspace file state",
       "targetPrefix": "src/renderer/src/use-workspace-files.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
+      ]
+    },
+    {
+      "owner": "Explorer disk mutation workflows",
+      "targetPrefix": "src/renderer/src/use-explorer-mutations.ts",
       "allowedFrom": [
         "src/renderer/src/store.tsx"
       ]
@@ -1092,6 +1101,17 @@
       "file": "src/renderer/src/use-workspace-files.ts",
       "allowedLocal": [
         "src/shared/types.ts"
+      ],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-explorer-mutations.ts",
+      "allowedLocal": [
+        "src/shared/types.ts",
+        "src/renderer/src/store-contract.ts",
+        "src/renderer/src/explorer-selection.ts"
       ],
       "allowedExternal": [
         "react"

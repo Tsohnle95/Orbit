@@ -86,9 +86,9 @@ export function useWorkspaceEditor(host: EditorHost) {
         : `${owner.directory.replace(/[\\/]+$/, "")}/${tab.path.replace(/^[\\/]+/, "")}`
     }));
   }), [tabsByWorkspace, panels]);
-  const unsavedEditorFileCount = unsavedEditorFiles.length;
-  const activePath = session ? activePathByWorkspace[session.workspace.id] ?? null : null;
   const singleFile = session ? singleFileByWorkspace[session.workspace.id] ?? null : null;
+  const readRenderedActivePath = useCallback((workspace: WorkspaceIdentity): string | null =>
+    activePathByWorkspace[workspace.id] ?? null, [activePathByWorkspace]);
   const openFile = useCallback(
     async (path: string, opts?: { mode?: "edit" | "diff" }, workspace?: WorkspaceIdentity) => {
       const target = workspace ?? sessionRef.current?.workspace;
@@ -533,8 +533,8 @@ export function useWorkspaceEditor(host: EditorHost) {
     );
   }, [setTabsFor]);
   return {
-    tabs, activePath, singleFile, unsavedEditorFiles, unsavedEditorFileCount,
-    activePathByWorkspace: activePathByWorkspace as Readonly<Record<string, string | null>>,
+    tabs, activePath: session ? readRenderedActivePath(session.workspace) : null,
+    singleFile, unsavedEditorFiles, unsavedEditorFileCount: unsavedEditorFiles.length, readRenderedActivePath,
     dirtyTabsFor, doSaveRef,
     openFile, openExternalPath, setActive, setTabMode, saveAllEditorFiles,
     closeTab, saveTab, editContent, reloadTab, overwriteTab, mergeTab,

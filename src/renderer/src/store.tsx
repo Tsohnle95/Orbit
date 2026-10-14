@@ -36,7 +36,6 @@ import type {
   WorkspaceIdentity
 } from "@shared/types";
 import type { ChatStreamEvent } from "./chat-stream";
-import { compactExplorerSelection, movableExplorerPaths } from "./explorer-selection";
 import { IDLE_ACTIVITY, resolveSessionActivity } from "./session-activity";
 import {
   addToQueue,
@@ -56,6 +55,7 @@ import { requestReveal } from "./reveal";
 import { sameWorkspace } from "@shared/generation";
 import { retainSessionRecord } from "@shared/retention";
 import { useSavedWorkspaces } from "./use-saved-workspaces";
+import { useExplorerMutations } from "./use-explorer-mutations";
 import { useWorkspaceFiles } from "./use-workspace-files";
 import { useWorkspaceEditor } from "./use-workspace-editor";
 import { useSessionSelection } from "./use-session-selection";
@@ -63,7 +63,7 @@ import { useSessionInventory } from "./use-session-inventory";
 import { useSessionChatRecords } from "./use-session-chat-records";
 import { useSessionExecution, useSessionSettlement } from "./use-session-execution";
 import { projectPanelViews } from "./panel-projection";
-import type { Toast, CtxMenuState, CtxMenuApi, PendingCreate, PanelView, Store } from "./store-contract";
+import type { Toast, CtxMenuState, CtxMenuApi, PanelView, Store } from "./store-contract";
 
 export type { Toast, CtxMenuState, CtxMenuApi, PendingCreate, PanelView, UnsavedEditorFile } from "./store-contract";
 
@@ -73,13 +73,6 @@ export function useCtxMenu(): CtxMenuApi {
   const ctx = useContext(CtxMenuContext);
   if (!ctx) throw new Error("useCtxMenu must be used within StoreProvider");
   return ctx;
-}
-
-function ancestorDirs(path: string): string[] {
-  const parts = path.split("/");
-  const out: string[] = [];
-  for (let i = parts.length; i > 0; i--) out.push(parts.slice(0, i).join("/"));
-  return out;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -247,8 +240,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   });
   const [providerUsage, setProviderUsage] = useState<ProviderUsageResult[]>([]);
   const [providerUsageLoading, setProviderUsageLoading] = useState(false);
-  const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null);
-  const [pendingRename, setPendingRename] = useState<{ path: string } | null>(null);
   const [messageQueue, setMessageQueue] = useState<MessageQueueState>(() => loadMessageQueueState());
 
   const activeWorkspaceID = activeSessionID
@@ -317,10 +308,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   const formsBySessionRef = useRef(formsBySession);
   formsBySessionRef.current = formsBySession;
   const messageQueueRef = useRef<MessageQueueState>(messageQueue);
-  const pendingCreateRef = useRef(pendingCreate);
-  pendingCreateRef.current = pendingCreate;
-  const pendingRenameRef = useRef(pendingRename);
-  pendingRenameRef.current = pendingRename;
   const todoKeysRef = useRef<Record<string, string>>({});
   const approvalModeRef = useRef<ApprovalMode>(approvalMode);
   approvalModeRef.current = approvalMode;
@@ -720,20 +707,32 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     sessionRef.current = panel;
     setActiveSessionID(sessionID);
     closeCtxMenu();
-    setPendingCreate(null);
-    setPendingRename(null);
+    // Stable later owner command is called lazily; no initializer invokes focus.
+    cancelPending();
     if (hydrate && !hasTranscript(sessionID)) void hydrateTranscript(sessionID);
   }, [hydrateTranscript, closeCtxMenu, hasTranscript]);
 
   const {
     tabs, activePath, singleFile, unsavedEditorFiles, unsavedEditorFileCount,
-    activePathByWorkspace, dirtyTabsFor, doSaveRef,
+    readRenderedActivePath, dirtyTabsFor, doSaveRef,
     openFile, openExternalPath, setActive, setTabMode, saveAllEditorFiles,
     closeTab, saveTab, editContent, reloadTab, overwriteTab, mergeTab,
     setSingleFileFor, addCreatedFile, removePathTabs, removePathsTabs,
     renameTabs, movePathTabs, movePathsTabs, prepareFileUpdate, applyFileUpdate,
     cancelPrefix, cancelAll
   } = useWorkspaceEditor({ sessionRef, panelsRef, panelFor, focusSession, readAgentFile, notify: toast });
+
+  const {
+    pendingCreate, pendingRename, startCreate, startRename, cancelPending, commitName,
+    deleteEntry, deleteEntries, removeFromWorkspace, importPaths, dropIntoExplorer,
+    moveEntry, moveEntries, revealInFileManager
+  } = useExplorerMutations(
+    { readFocusedSession, panelFor, notify: toast, closeMenu: closeCtxMenu },
+    { expandParent, hidePath, restoreDetachedPath, refreshTree, isHiddenPath, unhidePath,
+      recordCreatedEntry, renameObservedPrefix, moveObservedPrefix, moveObservedPaths },
+    { cancelPrefix, addCreatedFile, removePathTabs, removePathsTabs, renameTabs,
+      movePathTabs, movePathsTabs, readRenderedActivePath }
+  );
 
   const ejectPanelFromView = useCallback((sessionID: string): SessionInfo | null => {
     const closing = panelsRef.current.find((panel) => panel.id === sessionID) ?? null;
@@ -1342,125 +1341,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     });
   }, []);
 
-  const removeFromWorkspace = useCallback((path: string) => {
-    const target = sessionRef.current?.workspace;
-    if (!target) return;
-    const confirmed = window.confirm(`Remove "${path}" from Orbit? The item will remain on disk.`);
-    if (!confirmed) return;
-    closeCtxMenu();
-    hidePath(target, path);
-    void window.openshell.detachPath(target, path).then(() => {
-      restoreDetachedPath(target, path);
-      void refreshTree(ancestorDirs(path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ""));
-    }).catch((error) => toast(error instanceof Error ? error.message : String(error), "error"));
-  }, [closeCtxMenu, refreshTree, toast, hidePath, restoreDetachedPath]);
-
-  const startCreate = useCallback((parent: string, kind: "file" | "dir") => {
-    closeCtxMenu();
-    setPendingRename(null);
-    setPendingCreate({ parent, kind });
-    const target = sessionRef.current?.workspace;
-    if (!target) return;
-    expandParent(target, parent);
-  }, [expandParent, closeCtxMenu]);
-
-  const startRename = useCallback((path: string) => {
-    closeCtxMenu();
-    setPendingCreate(null);
-    setPendingRename({ path });
-  }, [closeCtxMenu]);
-
-  const revealInFileManager = useCallback(async (path: string): Promise<void> => {
-    closeCtxMenu();
-    const target = sessionRef.current?.workspace;
-    if (!target) return;
-    try {
-      await window.openshell.revealInFileManager(target, path);
-    } catch (err) {
-      if (panelFor(target)) {
-        toast(err instanceof Error ? err.message : String(err), "error");
-      }
-    }
-  }, [closeCtxMenu, panelFor, toast]);
-
-  const cancelPending = useCallback(() => {
-    setPendingCreate(null);
-    setPendingRename(null);
-  }, []);
-
-  const deleteEntry = useCallback(
-    async (path: string, workspace?: WorkspaceIdentity) => {
-      closeCtxMenu();
-      const target = workspace ?? sessionRef.current?.workspace;
-      if (!target) return;
-      cancelPrefix(target, path);
-      try {
-        await window.openshell.deletePath(target, path);
-      } catch (err) {
-        if (panelFor(target)) {
-          toast(err instanceof Error ? err.message : String(err), "error");
-        }
-        return;
-      }
-      if (!panelFor(target)) return;
-      removePathTabs(target, path);
-      const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-      void refreshTree(ancestorDirs(parent), target);
-    },
-    [toast, refreshTree, cancelPrefix, panelFor, removePathTabs, closeCtxMenu]
-  );
-
-  const deleteEntries = useCallback(async (paths: string[]): Promise<void> => {
-    const workspace = sessionRef.current?.workspace;
-    if (!workspace) return;
-    closeCtxMenu();
-    const selected = compactExplorerSelection(paths);
-    const deleted: string[] = [];
-    for (const path of selected) {
-      cancelPrefix(workspace, path);
-      try {
-        await window.openshell.deletePath(workspace, path);
-        deleted.push(path);
-      } catch (err) {
-        if (panelFor(workspace)) toast(err instanceof Error ? err.message : String(err), "error");
-      }
-    }
-    if (deleted.length === 0 || !panelFor(workspace)) return;
-    removePathsTabs(workspace, deleted);
-    const parents = deleted.map((path) => path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
-    void refreshTree(parents.flatMap((parent) => ancestorDirs(parent)), workspace);
-  }, [closeCtxMenu, cancelPrefix, panelFor, toast, removePathsTabs, refreshTree]);
-
-  const importPaths = useCallback(
-    async (destDir: string, sources: string[]): Promise<void> => {
-      const target = sessionRef.current?.workspace;
-      if (!target || sources.length === 0) return;
-      try {
-        const results = await window.openshell.importExternal(target, destDir, sources);
-        if (!panelFor(target)) return;
-        for (const result of results) {
-          if (result.imported) toast(`Imported ${result.rel}`);
-          else if (isHiddenPath(target, result.rel)) {
-            unhidePath(result.rel);
-            continue;
-          }
-          else if (result.reason === "already exists" || result.reason === "already in the workspace") continue;
-          else toast(`Could not import ${result.name}: ${result.reason ?? "unknown"}`, "error");
-        }
-        void refreshTree([...ancestorDirs(destDir)]);
-      } catch (err) {
-        if (panelFor(target)) toast(err instanceof Error ? err.message : String(err), "error");
-      }
-    },
-    [toast, panelFor, refreshTree, isHiddenPath, unhidePath]
-  );
-  const dropIntoExplorer = useCallback(
-    async (paths: string[]): Promise<void> => {
-      if (paths.length === 0) return;
-      await importPaths("", paths);
-    },
-    [importPaths]
-  );
   const attachFileWorkspace = useCallback(
     async (result: OpenFileWorkspaceResult, activation: number): Promise<SessionInfo | null> => {
       if (activation !== activationSeqRef.current) {
@@ -1562,103 +1442,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
     }
   }, [openSession, openWorkspacePanel, openFileWorkspace, openExternalPath, toast]);
-
-  const commitName = useCallback(
-    async (name: string) => {
-      const create = pendingCreateRef.current;
-      const rename = pendingRenameRef.current;
-      if (!create && !rename) return;
-      const trimmed = name.trim();
-      if (!trimmed) {
-        cancelPending();
-        return;
-      }
-      if (trimmed.includes("/") || trimmed === "." || trimmed === "..") {
-        toast("Invalid name", "error");
-        return;
-      }
-      const target = sessionRef.current?.workspace;
-      if (!target) return;
-      try {
-        if (create) {
-          const targetPath = create.parent ? `${create.parent}/${trimmed}` : trimmed;
-          await (create.kind === "file"
-            ? window.openshell.createFile(target, targetPath)
-            : window.openshell.createDir(target, targetPath));
-          if (!panelFor(target)) return;
-          recordCreatedEntry(target, create.parent, targetPath, create.kind);
-          if (create.kind === "file") {
-            addCreatedFile(target, targetPath);
-          }
-          void refreshTree(ancestorDirs(create.parent));
-        } else if (rename) {
-          const parent = rename.path.includes("/")
-            ? rename.path.slice(0, rename.path.lastIndexOf("/"))
-            : "";
-          const newPath = parent ? `${parent}/${trimmed}` : trimmed;
-          cancelPrefix(target, rename.path);
-          await window.openshell.renamePath(target, rename.path, trimmed);
-          if (!panelFor(target)) return;
-          renameTabs(target, rename.path, newPath, trimmed, activePathByWorkspace[target.id] ?? null);
-          renameObservedPrefix(target, rename.path, newPath);
-          void refreshTree(ancestorDirs(parent));
-        }
-        cancelPending();
-      } catch (err) {
-        if (panelFor(target)) {
-          toast(err instanceof Error ? err.message : String(err), "error");
-        }
-      }
-    },
-    [toast, refreshTree, cancelPending, cancelPrefix, panelFor, addCreatedFile, renameTabs, renameObservedPrefix, recordCreatedEntry, activePathByWorkspace]
-  );
-
-  const moveEntry = useCallback(
-    async (path: string, destDir: string, workspace?: WorkspaceIdentity) => {
-      const target = workspace ?? sessionRef.current?.workspace;
-      if (!target) return;
-      const name = path.split("/").pop() ?? path;
-      const newPath = destDir ? `${destDir}/${name}` : name;
-      cancelPrefix(target, path);
-      try {
-        await window.openshell.movePath(target, path, destDir);
-      } catch (err) {
-        if (panelFor(target)) {
-          toast(err instanceof Error ? err.message : String(err), "error");
-        }
-        return;
-      }
-      if (!panelFor(target)) return;
-      movePathTabs(target, path, newPath, name);
-      moveObservedPrefix(target, path, newPath);
-      const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-      void refreshTree([...ancestorDirs(parent), ...ancestorDirs(destDir)], target);
-    },
-    [toast, refreshTree, cancelPrefix, panelFor, movePathTabs, moveObservedPrefix]
-  );
-
-  const moveEntries = useCallback(async (paths: string[], destDir: string): Promise<void> => {
-    const workspace = sessionRef.current?.workspace;
-    if (!workspace) return;
-    const selected = movableExplorerPaths(paths, destDir);
-    const moved: Array<{ path: string; newPath: string; name: string }> = [];
-    for (const path of selected) {
-      const name = path.split("/").pop() ?? path;
-      const newPath = destDir ? `${destDir}/${name}` : name;
-      cancelPrefix(workspace, path);
-      try {
-        await window.openshell.movePath(workspace, path, destDir);
-        moved.push({ path, newPath, name });
-      } catch (err) {
-        if (panelFor(workspace)) toast(err instanceof Error ? err.message : String(err), "error");
-      }
-    }
-    if (moved.length === 0 || !panelFor(workspace)) return;
-    const remap = movePathsTabs(workspace, moved);
-    moveObservedPaths(workspace, remap);
-    const parents = moved.map(({ path }) => path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
-    void refreshTree([...parents.flatMap((parent) => ancestorDirs(parent)), ...ancestorDirs(destDir)], workspace);
-  }, [cancelPrefix, panelFor, toast, movePathsTabs, moveObservedPaths, refreshTree]);
 
   useEffect(() => {
     const processMessage = (msg: BackendMessage): void => {

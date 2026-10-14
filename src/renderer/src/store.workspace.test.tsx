@@ -913,4 +913,38 @@ describe("store workspace continuations", () => {
     expect(store.agentFiles.get("file")?.content).toBe("new");
   });
 
+  it("retains the rendered active-tab selection captured by a deferred rename", async () => {
+    const rename = deferred();
+    window.openshell = api({ renamePath: () => rename.promise });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openFile("original.txt"));
+    await act(async () => store.openFile("other.txt"));
+    act(() => store.setActive("original.txt"));
+    act(() => store.startRename("original.txt"));
+    let pending!: Promise<void>;
+    act(() => { pending = store.commitName("renamed.txt"); });
+    act(() => store.setActive("other.txt"));
+    expect(store.activePath).toBe("other.txt");
+    await act(async () => { rename.resolve(); await pending; });
+    expect(store.activePath).toBe("renamed.txt");
+    expect(store.tabs.map((tab) => tab.path)).toEqual(["renamed.txt", "other.txt"]);
+  });
+
+  it("uses last-render create intent when committing within the same batch", async () => {
+    const createFile = vi.fn(async () => {});
+    window.openshell = api({ createFile });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => {
+      store.startCreate("", "file");
+      await store.commitName("early.txt");
+    });
+    expect(createFile).not.toHaveBeenCalled();
+    expect(store.pendingCreate).toEqual({ parent: "", kind: "file" });
+    await act(async () => store.commitName("committed.txt"));
+    expect(createFile).toHaveBeenCalledWith(store.session!.workspace, "committed.txt");
+    expect(store.pendingCreate).toBeNull();
+  });
+
 });
