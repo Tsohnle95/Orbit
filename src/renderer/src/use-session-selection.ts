@@ -1,17 +1,18 @@
+import type { SessionReadView } from "./store-contract";
 import { useCallback, useRef, useState } from "react";
-import type { AgentOption, ModelOption, SessionInfo, WorkspaceIdentity } from "@shared/types";
+import type { AgentOption, ModelOption, WorkspaceIdentity } from "@shared/types";
 
 interface SelectionHost {
-  sessionRef: Readonly<{ current: SessionInfo | null }>;
-  panelFor: (workspace: WorkspaceIdentity) => SessionInfo | null;
+  readFocusedSession: () => SessionReadView | null;
+  panelFor: (workspace: WorkspaceIdentity) => SessionReadView | null;
   notify: (text: string, tone?: "info" | "error") => void;
 }
 
 type ModelSelection = { id?: string; providerID?: string; variant?: string };
 
 export function useSessionSelection(host: SelectionHost) {
-  const { sessionRef, panelFor, notify: toast } = host;
-  const session = sessionRef.current;
+  const { readFocusedSession, panelFor, notify: toast } = host;
+  const session = readFocusedSession();
   const [modelsByWorkspace, setModelsByWorkspace] = useState<Record<string, ModelOption[]>>({});
   const [currentModelByWorkspace, setCurrentModelByWorkspace] = useState<Record<string, ModelOption | null>>({});
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
@@ -23,7 +24,7 @@ export function useSessionSelection(host: SelectionHost) {
   const agentsByWorkspaceRef = useRef(agentsByWorkspace);
   agentsByWorkspaceRef.current = agentsByWorkspace;
   const loadModels = useCallback(async (workspace?: WorkspaceIdentity) => {
-    const target = workspace ?? sessionRef.current?.workspace;
+    const target = workspace ?? readFocusedSession()?.workspace;
     if (!target) return;
     try {
       const [list, def, selection] = await Promise.all([
@@ -56,7 +57,7 @@ export function useSessionSelection(host: SelectionHost) {
 
   const switchModel = useCallback(
     async (id: string, providerID: string, variant?: string, workspace?: WorkspaceIdentity) => {
-      const target = workspace ?? sessionRef.current?.workspace;
+      const target = workspace ?? readFocusedSession()?.workspace;
       if (!target) return;
       try {
         await window.openshell.switchModel(target, id, providerID, variant);
@@ -71,7 +72,7 @@ export function useSessionSelection(host: SelectionHost) {
   );
 
   const loadAgents = useCallback(async (workspace?: WorkspaceIdentity) => {
-    const target = workspace ?? sessionRef.current?.workspace;
+    const target = workspace ?? readFocusedSession()?.workspace;
     if (!target) return;
     try {
       const [list, selection] = await Promise.all([
@@ -107,7 +108,7 @@ export function useSessionSelection(host: SelectionHost) {
 
   const switchAgent = useCallback(
     async (id: string, workspace?: WorkspaceIdentity) => {
-      const target = workspace ?? sessionRef.current?.workspace;
+      const target = workspace ?? readFocusedSession()?.workspace;
       if (!target) return;
       try {
         await window.openshell.switchAgent(target, id);

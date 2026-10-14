@@ -1,5 +1,6 @@
+import type { SessionReadView } from "./store-contract";
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { AgentFileState, FileUpdate, SessionInfo, Tab, WorkspaceIdentity } from "@shared/types";
+import type { AgentFileState, FileUpdate, Tab, WorkspaceIdentity } from "@shared/types";
 import { EditorPersistence, type FileUpdateOrigin, type SaveSnapshot } from "./editor-persistence";
 
 type ObservedFileView = Readonly<Omit<AgentFileState, "baseline">> & {
@@ -7,9 +8,9 @@ type ObservedFileView = Readonly<Omit<AgentFileState, "baseline">> & {
 };
 
 interface EditorHost {
-  sessionRef: Readonly<{ current: SessionInfo | null }>;
-  panelsRef: Readonly<{ current: readonly SessionInfo[] }>;
-  panelFor: (workspace: WorkspaceIdentity) => SessionInfo | null;
+  readFocusedSession: () => SessionReadView | null;
+  readPanels: () => readonly SessionReadView[];
+  panelFor: (workspace: WorkspaceIdentity) => SessionReadView | null;
   focusSession: (sessionID: string) => void;
   readAgentFile: (workspace: WorkspaceIdentity, path: string) => ObservedFileView | undefined;
   notify: (text: string, tone?: "info" | "error") => void;
@@ -28,9 +29,9 @@ function dropKey<T>(record: Record<string, T>, key: string): Record<string, T> {
 }
 
 export function useWorkspaceEditor(host: EditorHost) {
-  const { sessionRef, panelsRef, panelFor, focusSession, readAgentFile, notify: toast } = host;
-  const session = sessionRef.current;
-  const panels = panelsRef.current;
+  const { readFocusedSession, readPanels, panelFor, focusSession, readAgentFile, notify: toast } = host;
+  const session = readFocusedSession();
+  const panels = readPanels();
   const [tabsByWorkspace, setTabsByWorkspace] = useState<Record<string, Tab[]>>({});
   const [activePathByWorkspace, setActivePathByWorkspace] = useState<Record<string, string | null>>({});
   const [singleFileByWorkspace, setSingleFileByWorkspace] = useState<Record<string, string>>({});
@@ -91,7 +92,7 @@ export function useWorkspaceEditor(host: EditorHost) {
     activePathByWorkspace[workspace.id] ?? null, [activePathByWorkspace]);
   const openFile = useCallback(
     async (path: string, opts?: { mode?: "edit" | "diff" }, workspace?: WorkspaceIdentity) => {
-      const target = workspace ?? sessionRef.current?.workspace;
+      const target = workspace ?? readFocusedSession()?.workspace;
       if (!target) return;
       const currentTabs = target ? (tabsByWorkspaceRef.current[target.id] ?? []) : [];
       const existing = currentTabs.find((t) => t.path === path);
@@ -145,11 +146,11 @@ export function useWorkspaceEditor(host: EditorHost) {
   );
   const openExternalPath = useCallback(
     async (absolutePath: string, workspace?: WorkspaceIdentity): Promise<string | null> => {
-      const target = workspace ?? sessionRef.current?.workspace ?? panelsRef.current[panelsRef.current.length - 1]?.workspace;
+      const target = workspace ?? readFocusedSession()?.workspace ?? readPanels()[readPanels().length - 1]?.workspace;
       if (!target) return null;
       const panel = panelFor(target);
       if (!panel) return null;
-      if (!sessionRef.current || sessionRef.current.id !== panel.id) focusSession(panel.id);
+      if (!readFocusedSession() || readFocusedSession()!.id !== panel.id) focusSession(panel.id);
       try {
         const result = await window.openshell.openExternal(target, absolutePath);
         if (result.kind === "relative") {
@@ -200,12 +201,12 @@ export function useWorkspaceEditor(host: EditorHost) {
     [openFile, toast, panelFor, focusSession, setTabsFor, setActivePathFor]
   );
   const setActive = useCallback((path: string) => {
-    const target = sessionRef.current?.workspace;
+    const target = readFocusedSession()?.workspace;
     if (target) setActivePathFor(target.id, path);
   }, [setActivePathFor]);
 
   const setTabMode = useCallback((path: string, mode: "edit" | "diff") => {
-    const target = sessionRef.current?.workspace;
+    const target = readFocusedSession()?.workspace;
     if (!target) return;
     setTabsFor(target.id, (prev) => prev.map((t) => (t.path === path ? { ...t, mode } : t)));
   }, [setTabsFor]);
@@ -248,7 +249,7 @@ export function useWorkspaceEditor(host: EditorHost) {
   const saveAllEditorFiles = useCallback(async (): Promise<boolean> => {
     const snapshots: SaveSnapshot[] = [];
     for (const [workspaceID, workspaceTabs] of Object.entries(tabsByWorkspaceRef.current)) {
-      const workspace = panelsRef.current.find((panel) => panel.workspace.id === workspaceID)?.workspace;
+      const workspace = readPanels().find((panel) => panel.workspace.id === workspaceID)?.workspace;
       for (const tab of workspaceTabs) {
         if (!tab.dirty) continue;
         if (!workspace || tab.conflict) {
@@ -269,7 +270,7 @@ export function useWorkspaceEditor(host: EditorHost) {
   }, [doSave, toast]);
 
   const closeTab = useCallback((path: string) => {
-    const target = sessionRef.current?.workspace;
+    const target = readFocusedSession()?.workspace;
     if (!target) return;
     const tab = (tabsByWorkspaceRef.current[target.id] ?? []).find((candidate) => candidate.path === path);
     if (!tab) return;
@@ -307,7 +308,7 @@ export function useWorkspaceEditor(host: EditorHost) {
 
   const saveTab = useCallback(
     async (path: string) => {
-      const target = sessionRef.current?.workspace;
+      const target = readFocusedSession()?.workspace;
       const tab = target
         ? (tabsByWorkspaceRef.current[target.id] ?? []).find((candidate) => candidate.path === path)
         : undefined;
@@ -326,7 +327,7 @@ export function useWorkspaceEditor(host: EditorHost) {
 
   const editContent = useCallback(
     (path: string, content: string) => {
-      const target = sessionRef.current?.workspace;
+      const target = readFocusedSession()?.workspace;
       const tab = target
         ? (tabsByWorkspaceRef.current[target.id] ?? []).find((candidate) => candidate.path === path)
         : undefined;
@@ -339,7 +340,7 @@ export function useWorkspaceEditor(host: EditorHost) {
   );
 
   const reloadTab = useCallback((path: string) => {
-    const target = sessionRef.current?.workspace;
+    const target = readFocusedSession()?.workspace;
     if (!target) return;
     persistence.cancelPath(target, path);
     setTabsFor(target.id, (prev) => prev.map((tab) => {
@@ -359,7 +360,7 @@ export function useWorkspaceEditor(host: EditorHost) {
   }, [persistence, setTabsFor]);
 
   const overwriteTab = useCallback(async (path: string) => {
-    const target = sessionRef.current?.workspace;
+    const target = readFocusedSession()?.workspace;
     const tab = target
       ? (tabsByWorkspaceRef.current[target.id] ?? []).find((candidate) => candidate.path === path)
       : undefined;
@@ -376,7 +377,7 @@ export function useWorkspaceEditor(host: EditorHost) {
   }, [doSave]);
 
   const mergeTab = useCallback((path: string) => {
-    const target = sessionRef.current?.workspace;
+    const target = readFocusedSession()?.workspace;
     if (!target) return;
     setTabsFor(target.id, (prev) => prev.map((tab) => tab.path === path && tab.conflict
       ? { ...tab, conflict: { ...tab.conflict, resolution: "merge" } }

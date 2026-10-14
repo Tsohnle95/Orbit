@@ -5,6 +5,14 @@ import type { AgentOption, ModelOption, SessionInfo } from "@shared/types";
 import type { OpenShellApi } from "../../preload";
 import { useSessionSelection } from "./use-session-selection";
 
+function rejectLifecycleQueries(host: Parameters<typeof useSessionSelection>[0]) {
+  // @ts-expect-error Selection borrows readonly current focus.
+  host.readFocusedSession()!.id = "other";
+  // @ts-expect-error Selection cannot change workspace generation.
+  host.panelFor(host.readFocusedSession()!.workspace)!.workspace.generation++;
+}
+void rejectLifecycleQueries;
+
 const first: SessionInfo = { id: "first", directory: "/first", workspace: { id: "first-workspace", generation: 1 } };
 const second: SessionInfo = { id: "second", directory: "/second", workspace: { id: "second-workspace", generation: 2 } };
 const model: ModelOption = { id: "model", providerID: "provider", name: "Model", limit: { context: 10000 } };
@@ -24,7 +32,7 @@ describe("session selection ownership", () => {
   const notify = vi.fn();
   const panelFor = (workspace: SessionInfo["workspace"]) => panels.find((panel) => panel.workspace.id === workspace.id && panel.workspace.generation === workspace.generation) ?? null;
   function Probe() {
-    selection = useSessionSelection({ sessionRef, panelFor, notify });
+    selection = useSessionSelection({ readFocusedSession: () => sessionRef.current, panelFor, notify });
     return null;
   }
   beforeEach(async () => {

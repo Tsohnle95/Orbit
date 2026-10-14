@@ -7,6 +7,14 @@ import type { ChatSnapshotReadView } from "./chat-store";
 import { emptyStreamingStore } from "./streaming";
 import { useSessionExecution, useSessionSettlement } from "./use-session-execution";
 
+function rejectLifecycleQueries(host: Parameters<typeof useSessionSettlement>[1]) {
+  // @ts-expect-error Settlement cannot replace borrowed panels.
+  host.readPanels()[0] = host.readPanels()[0];
+  // @ts-expect-error Settlement cannot change captured workspace identities.
+  host.readPanels()[0].workspace.id = "other";
+}
+void rejectLifecycleQueries;
+
 type Activity = ReturnType<typeof useSessionExecution>;
 type Port = Parameters<typeof useSessionExecution>[0];
 const panel: SessionInfo = { id: "session", directory: "/fixture", workspace: { id: "workspace", generation: 1 } };
@@ -36,6 +44,7 @@ describe("session execution authority", () => {
   let nextStreaming: ReturnType<typeof emptyStreamingStore> | null;
   let calls: string[];
   const panelsRef = { current: [panel] };
+  const readPanels = () => panelsRef.current;
   const notify = vi.fn();
   function Probe() {
     activity = useSessionExecution({ ...port });
@@ -44,7 +53,7 @@ describe("session execution authority", () => {
   function SettledProbe() {
     activity = useSessionExecution({ ...port });
     useSessionSettlement(activity, {
-      panelsRef, transcriptFor: port.transcriptFor, completeLatest: port.completeLatest,
+      readPanels, transcriptFor: port.transcriptFor, completeLatest: port.completeLatest,
       projectSession: port.projectSession, notify
     });
     return null;

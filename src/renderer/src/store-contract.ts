@@ -27,6 +27,10 @@ import type { SessionActivityResult } from "./session-activity";
 import type { ActiveAssistantModel, FormingSummary, WorkingSummary } from "./assistant-status";
 import type { FollowUpBehavior, QueuedMessage } from "./message-queue";
 
+export type SessionReadView = Readonly<Omit<SessionInfo, "workspace">> & {
+  readonly workspace: Readonly<WorkspaceIdentity>;
+};
+
 export type FormFieldReadView = Readonly<Omit<PendingFormField, "options">> & {
   readonly options?: readonly Readonly<NonNullable<PendingFormField["options"]>[number]>[];
 };

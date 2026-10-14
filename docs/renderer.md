@@ -9,8 +9,10 @@ their local interaction state. Monaco is configured in `monaco.ts`.
 ## Store (`store.tsx`)
 
 `store.tsx` remains the public `useStore()` / `usePanel()` facade and the owner
-of session orchestration, workspace generation guards, filesystem action routing
-and backend-event dispatch. Editor state and actions belong to
+of attributed backend-event dispatch, reconnect/startup scheduling and cross-domain
+orchestration. Session attachment, focus and acquisition/close workflows belong to
+`use-session-lifecycle.ts`; its authority owns visible panels, focus mirrors and
+request/activation identities. Editor state and actions belong to
 `use-workspace-editor.ts`; observed file changes, Explorer listings/visibility
 and recovery records belong to `use-workspace-files.ts`. `store-contract.ts` owns its renderer-only contracts;
 existing type imports from the facade remain supported. It depends only on shared
@@ -52,6 +54,15 @@ backend routing. Focus clears mutation intent through the stable cancellation
 command after menu closure; its lazy reference preserves startup initialization
 and the existing subscription dependencies. Mutation state changes introduce no
 new effects or resource lifetime policy.
+
+`use-session-lifecycle.ts` composes its private authority at Store entry and its
+workflows after Editor/Explorer initialization. Stable named queries replace shared
+mutable panel/focus references; Store mirrors rendered state at the existing slot.
+The owner preserves captured acquisition identities, replacement suppression and
+dirty-save close ordering through narrow structural domain commands. Store keeps
+replay/materialization transactions, startup/reconnect and all existing effects.
+The editor focus bridge invokes the later workflow lazily after render; it adds
+no resource lifetime or subscription policy.
 
 Exposed state:
 

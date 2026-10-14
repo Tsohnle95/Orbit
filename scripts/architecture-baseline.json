@@ -185,6 +185,7 @@
     "src/renderer/src/use-session-execution.ts",
     "src/renderer/src/use-session-inbox.ts",
     "src/renderer/src/use-session-inventory.ts",
+    "src/renderer/src/use-session-lifecycle.ts",
     "src/renderer/src/use-session-progress.ts",
     "src/renderer/src/use-session-requests.ts",
     "src/renderer/src/use-session-selection.ts",
@@ -204,8 +205,8 @@
   ],
   "modules": {
     "src/renderer/src/store.tsx": {
-      "loc": 1593,
-      "reason": "Existing oversized owner awaiting cohesive refactoring; no LOC growth."
+      "loc": 1172,
+      "reason": "Reviewed application context facade and runtime event/IO coordinator. Session, chat, execution, file/editor, explorer, inbox, request, progress, selection and inventory authority live in private cohesive owners. Remaining materialization/hydration, prompt and attributed event sequencing share protected cross-domain ordering; moving them into a god EventsHub would hide coupling. Exact existing ceiling ratchets downward and cannot grow."
     },
     "src/main/opencode.ts": {
       "loc": 1910,
@@ -218,7 +219,7 @@
   },
   "functions": {
     "src/renderer/src/store.tsx:StoreBody#1": {
-      "codeLines": 1435,
+      "codeLines": 1015,
       "cyclomatic": 20,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
@@ -424,12 +425,6 @@
     "src/main/sass-config.ts:sassPlan#1": {
       "codeLines": 100,
       "cyclomatic": 43,
-      "nesting": 5,
-      "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
-    },
-    "src/renderer/src/store.tsx:StoreBody/reopenSession#1": {
-      "codeLines": 100,
-      "cyclomatic": 26,
       "nesting": 5,
       "reason": "Existing baseline function; no metric growth; remove allowance after cohesive refactoring."
     },
@@ -752,6 +747,20 @@
       "nesting": 5,
       "origin": "a7301bc src/renderer/src/store.tsx:StoreBody#1 todos, session/provider usage and compaction baselines",
       "reason": "One progress owner with five records and four private refs. Inclusive120-line composition has50 own token-bearing lines with nested bodies masked preserving newlines and11 independently constrained direct callbacks including the existing caught storage initializer. Store retains three effect slots, scheduling and event attribution. Fixed reviewed composition ceiling cannot grow."
+    },
+    "src/renderer/src/use-session-lifecycle.ts:useSessionLifecycle#1": {
+      "codeLines": 427,
+      "cyclomatic": 1,
+      "nesting": 0,
+      "origin": "fd9fc17 src/renderer/src/store.tsx:StoreBody#1 visible session acquisition and close workflows",
+      "reason": "One visible-session lifecycle owner with three records and seven private identity refs initialized in its early authority hook. The later427-line composition contains112 own token-bearing lines with nested bodies masked preserving newlines and24 separately constrained callbacks. Explicit domain ports preserve acquisition, focus, dirty close and stale-context ordering; no new effects or generic state container. Reviewed inclusive ceiling and branch-free composition cannot grow."
+    },
+    "src/renderer/src/use-session-lifecycle.ts:useSessionLifecycle/reopenSession#1": {
+      "codeLines": 58,
+      "cyclomatic": 25,
+      "nesting": 3,
+      "origin": "fd9fc17 src/renderer/src/store.tsx:StoreBody/reopenSession#1 (baseline cyclomatic26)",
+      "reason": "Exact inherited durable-session restoration flow retains distinct existing-panel, silent restoration, generation rejection, target placement, abandonment close, replay and finally-count semantics. Root owns the synchronous replay transaction. Independently characterized19 public cases and callback AST equivalence justify preserving cohesive control flow rather than extracting only to satisfy a numeric threshold. Fixed58/C25/n3 ceiling cannot grow."
     }
   },
   "edgeExceptions": [
@@ -952,6 +961,13 @@
       "allowedFrom": [
         "src/renderer/src/store.tsx"
       ]
+    },
+    {
+      "owner": "visible session lifecycle authority and workflows",
+      "targetPrefix": "src/renderer/src/use-session-lifecycle.ts",
+      "allowedFrom": [
+        "src/renderer/src/store.tsx"
+      ]
     }
   ],
   "pureOwners": [
@@ -1076,7 +1092,8 @@
       "file": "src/renderer/src/use-workspace-editor.ts",
       "allowedLocal": [
         "src/shared/types.ts",
-        "src/renderer/src/editor-persistence.ts"
+        "src/renderer/src/editor-persistence.ts",
+        "src/renderer/src/store-contract.ts"
       ],
       "allowedExternal": [
         "react"
@@ -1100,7 +1117,8 @@
     {
       "file": "src/renderer/src/use-session-selection.ts",
       "allowedLocal": [
-        "src/shared/types.ts"
+        "src/shared/types.ts",
+        "src/renderer/src/store-contract.ts"
       ],
       "allowedExternal": [
         "react"
@@ -1136,7 +1154,8 @@
         "src/renderer/src/assistant-status.ts",
         "src/renderer/src/chat-stream.ts",
         "src/renderer/src/chat-store.ts",
-        "src/renderer/src/streaming.ts"
+        "src/renderer/src/streaming.ts",
+        "src/renderer/src/store-contract.ts"
       ],
       "allowedExternal": [
         "react"
@@ -1189,6 +1208,18 @@
         "src/shared/types.ts",
         "src/shared/session-presentation.ts",
         "src/shared/retention.ts",
+        "src/renderer/src/store-contract.ts"
+      ],
+      "allowedExternal": [
+        "react"
+      ]
+    },
+    {
+      "file": "src/renderer/src/use-session-lifecycle.ts",
+      "allowedLocal": [
+        "src/shared/types.ts",
+        "src/shared/generation.ts",
+        "src/renderer/src/editor-persistence.ts",
         "src/renderer/src/store-contract.ts"
       ],
       "allowedExternal": [

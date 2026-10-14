@@ -406,6 +406,7 @@ of application state.
 | Window DevTools | `src/main/devtools-controller.ts`, private to main composition | Owns picker, debugger events and frontend polling; receives the application-confined source resolver. Window trust and IPC remain in main. |
 | Explorer presentation | `src/renderer/src/components/ExplorerTree.tsx`, private to FileSidebar | Recursive rows, inputs and menus receive the existing gesture contracts. Sidebar owns selection, drop routing and workspace state. |
 | Session chat records | `src/renderer/src/use-session-chat-records.ts`, private to Store | Owns raw records, transcript projection, replay commands and permission/status rows. Exposes readonly borrowed records and named mutations. Store retains event attribution, generations and materialization IO; execution state belongs to the session execution owner. |
+| Visible session lifecycle | `src/renderer/src/use-session-lifecycle.ts`, private to Store; query views in `src/renderer/src/store-contract.ts` | Owns panels, focus and acquisition/close identity across an early authority initializer and later workflow composition in the same module. Borrows named inventory, bookmark, file/editor, catalog, replay and execution operations. Root retains startup scheduling, materialization, hydration and attributed event order. Private state is opaque; consumers receive readonly queries. |
 | Session progress | `src/renderer/src/use-session-progress.ts`, private to Store; borrowed UI views in `src/renderer/src/store-contract.ts` | Owns workspace todos, session/provider usage, compaction baselines and their private timing refs. Store retains event attribution, materialization/replay order, three effect slots and refresh timers. Permitted imports are shared presentation/retention/contracts and React. |
 | Forms and approval requests | `src/renderer/src/use-session-requests.ts`, private to Store; borrowed UI views in `src/renderer/src/store-contract.ts` | Owns form records, approval preference and request commands. Existing chat commands remain the permission-row authority. Store retains event normalization, location and session attribution, automatic reply dispatch and polling slots. |
 | Session inbox and local queue | `src/renderer/src/use-session-inbox.ts`, private to Store; pure queue policy in `src/renderer/src/message-queue.ts` | Owns local queue persistence and immediate ref authority, server inbox render mirrors and queue commands. Borrows render-captured selection metadata and structural transcript append commands. Store retains normal prompt lifecycle, polling and event attribution/order. |
@@ -442,3 +443,13 @@ standalone-file capabilities have distinct confinement/failure semantics; their
 methods remain individually constrained. The integration ceiling ratchets down;
 new growth requires reassessing helper and capability ownership rather than
 raising the baseline automatically.
+
+The remaining `store.tsx` size exception covers the public React context facade
+and cross-domain runtime event/IO coordinator. Its private owners retain session,
+chat, execution, files/editor, explorer, inbox, requests, progress and catalog
+authority. Materialization, hydration, prompts, reconnect and the single attributed
+event dispatcher retain their shared ordering here; an opaque EventsHub would
+merely relocate that coupling. Each callback remains individually constrained
+and the composition ceiling ratchets downward. Lifecycle workflows have one
+precisely inherited reopen-complexity exception for generation, silent restoration,
+placement, abandonment, replay and finally-count behavior; its budget cannot grow.

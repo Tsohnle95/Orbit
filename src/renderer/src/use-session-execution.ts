@@ -1,3 +1,4 @@
+import type { SessionReadView } from "./store-contract";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SessionInfo, TranscriptItem } from "@shared/types";
 import { formatFailure } from "@shared/errors";
@@ -231,7 +232,7 @@ export function useSessionExecution(records: ExecutionRecords) {
 }
 
 interface SettlementHost {
-  panelsRef: Readonly<{ current: readonly SessionInfo[] }>;
+  readPanels: () => readonly SessionReadView[];
   transcriptFor: ExecutionRecords["transcriptFor"];
   completeLatest: ExecutionRecords["completeLatest"];
   projectSession: ExecutionRecords["projectSession"];
@@ -240,7 +241,7 @@ interface SettlementHost {
 
 export function useSessionSettlement(activity: ReturnType<typeof useSessionExecution>, host: SettlementHost): void {
   const { busyFor, activityAt, markStreamActivity, reconcileStreaming, setSessionBusy } = activity;
-  const { panelsRef, transcriptFor, completeLatest, projectSession: applyProjection, notify } = host;
+  const { readPanels, transcriptFor, completeLatest, projectSession: applyProjection, notify } = host;
   useEffect(() => {
     const finalizeTrailingAssistant = (sessionID: string, reason: "settle" | "idle"): void => {
       const wasBusy = Boolean(busyFor(sessionID));
@@ -255,7 +256,7 @@ export function useSessionSettlement(activity: ReturnType<typeof useSessionExecu
     };
     const timer = setInterval(() => {
       const now = Date.now();
-      for (const panel of panelsRef.current) {
+      for (const panel of readPanels()) {
         const transcript = transcriptFor(panel.id);
         const trailing = [...transcript].reverse().find((item) => item.kind === "assistant");
         const isBusy = Boolean(busyFor(panel.id));
@@ -295,5 +296,5 @@ export function useSessionSettlement(activity: ReturnType<typeof useSessionExecu
       }
     }, STREAM_SETTLE_POLL_MS);
     return () => clearInterval(timer);
-  }, [completeLatest, applyProjection, reconcileStreaming, setSessionBusy, transcriptFor, busyFor, activityAt, markStreamActivity, notify, panelsRef]);
+  }, [completeLatest, applyProjection, reconcileStreaming, setSessionBusy, transcriptFor, busyFor, activityAt, markStreamActivity, notify, readPanels]);
 }

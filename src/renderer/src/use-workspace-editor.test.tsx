@@ -5,6 +5,18 @@ import type { AgentFileState, FileUpdate, FileWriteIdentity, SessionInfo } from 
 import type { OpenShellApi } from "../../preload";
 import { useWorkspaceEditor } from "./use-workspace-editor";
 
+function rejectLifecycleQueries(host: Parameters<typeof useWorkspaceEditor>[0]) {
+  // @ts-expect-error Editor borrows focus metadata without mutation authority.
+  host.readFocusedSession()!.directory = "/other";
+  // @ts-expect-error Editor borrows readonly workspace identity.
+  host.readPanels()[0].workspace.generation++;
+  // @ts-expect-error Editor cannot replace borrowed panel entries.
+  host.readPanels()[0] = host.readPanels()[0];
+  // @ts-expect-error Generation-validated panel queries are readonly.
+  host.panelFor(host.readPanels()[0].workspace)!.id = "other";
+}
+void rejectLifecycleQueries;
+
 const first: SessionInfo = { id: "first", directory: "/first", workspace: { id: "workspace-first", generation: 1 } };
 const second: SessionInfo = { id: "second", directory: "/second", workspace: { id: "workspace-second", generation: 2 } };
 let editor: ReturnType<typeof useWorkspaceEditor>;
@@ -25,7 +37,7 @@ describe("workspace editor authority", () => {
   const focusSession = vi.fn((id: string) => { sessionRef.current = panelsRef.current.find((panel) => panel.id === id) ?? null; });
   const panelFor = (workspace: SessionInfo["workspace"]) => panelsRef.current.find((panel) => panel.workspace.id === workspace.id && panel.workspace.generation === workspace.generation) ?? null;
   function Probe() {
-    editor = useWorkspaceEditor({ sessionRef, panelsRef, panelFor, focusSession, readAgentFile, notify });
+    editor = useWorkspaceEditor({ readFocusedSession: () => sessionRef.current, readPanels: () => panelsRef.current, panelFor, focusSession, readAgentFile, notify });
     return null;
   }
   const render = async () => act(async () => root.render(<Probe />));

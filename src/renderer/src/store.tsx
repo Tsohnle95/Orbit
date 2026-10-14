@@ -14,7 +14,6 @@ import { normalizePendingForm } from "@shared/forms";
 import { formatFailure, normalizeFailure } from "@shared/errors";
 import type {
   BackendMessage,
-  OpenFileWorkspaceResult,
   PermissionReply,
   PromptDelivery,
   SessionRevertStage,
@@ -32,7 +31,7 @@ import type {
 import type { ChatStreamEvent } from "./chat-stream";
 import { IDLE_ACTIVITY, resolveSessionActivity } from "./session-activity";
 import { requestReveal } from "./reveal";
-import { sameWorkspace } from "@shared/generation";
+import { useSessionLifecycleAuthority, useSessionLifecycle } from "./use-session-lifecycle";
 import { useSavedWorkspaces } from "./use-saved-workspaces";
 import { useExplorerMutations } from "./use-explorer-mutations";
 import { useWorkspaceFiles } from "./use-workspace-files";
@@ -135,16 +134,12 @@ export function StoreProvider({ children }: { children: ReactNode }): ReactNode 
 }
 
 const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children: ReactNode; closeCtxMenu: () => void }): ReactNode {
-  const [panels, setPanels] = useState<SessionInfo[]>([]);
-  const [workspaceOnlyPanelIDs, setWorkspaceOnlyPanelIDs] = useState<Set<string>>(() => new Set());
-  const [activeSessionID, setActiveSessionID] = useState<string | null>(null);
+  const lifecycle = useSessionLifecycleAuthority();
+  const { panels, workspaceOnlyPanelIDs, activeSessionID, session,
+    protectedSessionIDs, panelFor, panelForSession, readFocusedSession, readPanels,
+    workspaceOfSession, nextRequest, hasUserActivated, hasPendingSwap, hasPendingReplacement, mirrorRenderedState } = lifecycle;
   const [connected, setConnected] = useState(false);
   const [runtimes, setRuntimes] = useState<RuntimeManifest[]>([]);
-  const protectedSessionIDs = useCallback(
-    (): Set<string> => new Set(panelsRef.current.map((panel) => panel.id)),
-    []
-  );
-
   const {
     transcriptsBySession, rawChatReadMap, transcriptFor, hasTranscript, recordStatusFor,
     snapshotSession, reduceSessionEvent, completeLatest, attachRetry, projectSession: applyProjection,
@@ -176,20 +171,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   }, []);
 
-  const panelFor = useCallback(
-    (workspace: WorkspaceIdentity): SessionInfo | null =>
-      panelsRef.current.find((panel) => sameWorkspace(panel.workspace, workspace)) ?? null,
-    []
-  );
-
-  const panelForSession = useCallback(
-    (sessionID: string): SessionInfo | null =>
-      panelsRef.current.find((panel) => panel.id === sessionID) ?? null,
-    []
-  );
-
-  const readFocusedSession = useCallback(() => sessionRef.current, []);
-  const readPanels = useCallback(() => panelsRef.current, []);
   const {
     approvalMode, formsBySession, refreshForms, submitForm, dismissForm,
     reconcilePermissions, replyPermission, toggleApprovalMode, readApprovalMode,
@@ -204,13 +185,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     persistRenderedBaseline, inferRenderedBaselines, inferMaterializedBaseline,
     snapshotCompactionBaseline, removeClosedBaseline, applyBusyTodoFallback
   } = useSessionProgress({ panelForSession, protectedSessionIDs, notify: toast });
-  const activeWorkspaceID = activeSessionID
-    ? (panels.find((panel) => panel.id === activeSessionID)?.workspace.id ?? null)
-    : null;
-  const session = activeWorkspaceID
-    ? (panels.find((panel) => panel.workspace.id === activeWorkspaceID) ?? null)
-    : null;
-
   useEffect(() => {
     if (!session) return;
     resetVisibility(session.workspace);
@@ -245,13 +219,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     inferRenderedBaselines(panels, transcriptsBySession, usageBySession, compactionBaselineBySession);
   }, [panels, transcriptsBySession, usageBySession, compactionBaselineBySession]);
 
-  const panelsRef = useRef(panels);
-  panelsRef.current = panels;
-  const sessionRef = useRef<SessionInfo | null>(session);
-  sessionRef.current = session;
-  const requestSeqRef = useRef(0);
-  const activationSeqRef = useRef(0);
-  const userActivatedRef = useRef(false);
+  mirrorRenderedState(panels, session);
   const startupRestoreStartedRef = useRef(false);
 
   const {
@@ -265,12 +233,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     return () => clearInterval(timer);
   }, [refreshActiveSessions]);
 
-  const workspaceOfSession = useCallback(
-    (sessionID: string): WorkspaceIdentity | null =>
-      panelsRef.current.find((panel) => panel.id === sessionID)?.workspace ?? null,
-    []
-  );
-
   const {
     agentFiles, tree, expanded, hiddenPaths, recoveryRecords,
     readAgentFile, isHiddenPath, toggleDir, ensureRootOpen, refreshTree, unhidePath,
@@ -281,11 +243,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   } = useWorkspaceFiles({ renderSession: session, readFocusedSession, panelFor, readPanels, notify: toast });
 
   const materializingRef = useRef(new Set<string>());
-  const swapPendingRef = useRef(false);
-  const replacingSessionIDsRef = useRef(new Map<string, number>());
 
   useSessionSettlement(execution, {
-    panelsRef, transcriptFor, completeLatest, projectSession: applyProjection, notify: toast
+    readPanels, transcriptFor, completeLatest, projectSession: applyProjection, notify: toast
   });
 
   const { savedWorkspaces, rememberWorkspace, replaceSavedWorkspace, saveWorkspace, removeWorkspace } = useSavedWorkspaces(connected, toast);
@@ -294,7 +254,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     modelsByWorkspace, currentModelByWorkspace, agentsByWorkspace, currentAgentByWorkspace,
     loadModels, switchModel, loadAgents, switchAgent,
     applyModelSelection, applyAgentSelection
-  } = useSessionSelection({ sessionRef, panelFor, notify: toast });
+  } = useSessionSelection({ readFocusedSession, panelFor, notify: toast });
 
   const {
     messageQueue, inboxBySession, refreshInbox, setFollowUpBehavior,
@@ -338,18 +298,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     }
   }, [panelForSession, mergeMaterializedRecords, applyProjection, reconcileStreaming, setTodosFor, setSessionBusy, recordUsage, inferMaterializedBaseline, toast, abortFor]);
 
-  const attachPanel = useCallback((info: SessionInfo, saveWorkspace = true): void => {
-    if (saveWorkspace) rememberWorkspace(info.directory);
-    panelsRef.current = panelsRef.current.some((panel) => panel.id === info.id)
-      ? panelsRef.current.map((panel) => (panel.id === info.id ? info : panel))
-      : [...panelsRef.current, info];
-    setPanels(panelsRef.current);
-    addActiveSession(info);
-  }, [addActiveSession, rememberWorkspace]);
-
   const hydrateTranscript = useCallback(
     async (sessionID: string): Promise<void> => {
-      const request = ++requestSeqRef.current;
+      const request = nextRequest();
       try {
         const reopened = await window.openshell.openSessionById(sessionID, request);
         if (!panelForSession(sessionID)) return;
@@ -409,16 +360,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   }, [panelFor, toast]);
 
 
-  const focusSession = useCallback((sessionID: string, hydrate = true): void => {
-    const panel = panelsRef.current.find((candidate) => candidate.id === sessionID);
-    if (!panel) return;
-    userActivatedRef.current = true;
-    sessionRef.current = panel;
-    setActiveSessionID(sessionID);
-    closeCtxMenu();
-    // Stable later owner command is called lazily; no initializer invokes focus.
-    cancelPending();
-    if (hydrate && !hasTranscript(sessionID)) void hydrateTranscript(sessionID);
+  // Editor initializes before lifecycle workflows; this stable bridge is invoked only after render.
+  const focusEditorSession = useCallback((sessionID: string, hydrate = true): void => {
+    focusSession(sessionID, hydrate);
   }, [hydrateTranscript, closeCtxMenu, hasTranscript]);
 
   const {
@@ -429,7 +373,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     setSingleFileFor, addCreatedFile, removePathTabs, removePathsTabs,
     renameTabs, movePathTabs, movePathsTabs, prepareFileUpdate, applyFileUpdate,
     cancelPrefix, cancelAll
-  } = useWorkspaceEditor({ sessionRef, panelsRef, panelFor, focusSession, readAgentFile, notify: toast });
+  } = useWorkspaceEditor({ readFocusedSession, readPanels, panelFor, focusSession: focusEditorSession, readAgentFile, notify: toast });
 
   const {
     pendingCreate, pendingRename, startCreate, startRename, cancelPending, commitName,
@@ -443,391 +387,47 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       movePathTabs, movePathsTabs, readRenderedActivePath }
   );
 
-  const ejectPanelFromView = useCallback((sessionID: string): SessionInfo | null => {
-    const closing = panelsRef.current.find((panel) => panel.id === sessionID) ?? null;
-    if (!closing) return null;
-    panelsRef.current = panelsRef.current.filter((panel) => panel.id !== sessionID);
-    setPanels(panelsRef.current);
-    restoreNestedWorkspaceVisibility(closing.directory);
-    setWorkspaceOnlyPanelIDs((current) => {
-      if (!current.has(sessionID)) return current;
-      const next = new Set(current);
-      next.delete(sessionID);
-      return next;
-    });
-    if (sessionRef.current?.id === sessionID) {
-      const neighbor = panelsRef.current[panelsRef.current.length - 1] ?? null;
-      sessionRef.current = neighbor;
-      setActiveSessionID(neighbor?.id ?? null);
+  const applyReopenedSnapshot = useCallback((reopened: Awaited<ReturnType<typeof window.openshell.openSessionById>>): void => {
+    const merged = prepareReopenedReplay(reopened.session.id, reopened.transcript, false);
+    reconcileStreaming(reopened.session.id);
+    commitReplayTranscript(reopened.session.id, merged);
+    const running = [...reopened.transcript].reverse().find((item) => item.kind === "assistant");
+    seedReplayBusy(reopened.session.id, running);
+    setTodosFor(reopened.session.workspace.id, reopened.todos);
+    if (reopened.usage) {
+      recordUsage(reopened.session.id, () => reopened.usage!);
     }
-    return closing;
-  }, [restoreNestedWorkspaceVisibility]);
+  }, [prepareReopenedReplay, reconcileStreaming, commitReplayTranscript, seedReplayBusy, setTodosFor, recordUsage]);
+  const forgetClosedSessionRecords = useCallback((sessionID: string): void => {
+    forgetRecords(sessionID);
+    materializingRef.current.delete(sessionID);
+    removeClosedBaseline(sessionID);
+  }, [forgetRecords, removeClosedBaseline]);
+  const saveCapturedSnapshot = useCallback((snapshot: Parameters<typeof doSaveRef.current>[0]) =>
+    doSaveRef.current(snapshot), []);
 
-  const detachPanel = useCallback((sessionID: string): void => {
-    // Replacement without teardown: the session leaves the visible panels
-    // but its backend context, Open now entry, and chat state stay alive so
-    // the user can jump back to it. Only an explicit close tears it down.
-    ejectPanelFromView(sessionID);
-  }, [ejectPanelFromView]);
-
-  const finishClosePanel = useCallback((sessionID: string, preserveBusy: boolean): void => {
-    const closing = panelsRef.current.find((panel) => panel.id === sessionID);
-    const active = activeSessionFor(sessionID);
-    if (!closing && active) {
-      removeActiveSession(sessionID);
-      dropClosedActivity(sessionID);
-      void window.openshell.closeSession(active.workspace).catch(() => {});
-      return;
-    }
-    const ejected = ejectPanelFromView(sessionID);
-    if (!ejected) return;
-    const keepActive = preserveBusy && Boolean(busyFor(sessionID));
-    if (!keepActive) {
-      removeActiveSession(sessionID);
-      forgetRecords(sessionID);
-      materializingRef.current.delete(sessionID);
-      removeClosedBaseline(sessionID);
-    }
-    if (!keepActive) {
-      void window.openshell.closeSession(ejected.workspace).catch(() => {});
-    }
-  }, [removeActiveSession, ejectPanelFromView, activeSessionFor, forgetRecords, dropClosedActivity, busyFor, removeClosedBaseline]);
-
-  const closePanel = useCallback((sessionID: string, preserveBusy = false): void => {
-    const closing = panelsRef.current.find((panel) => panel.id === sessionID);
-    const active = activeSessionFor(sessionID);
-    const workspace = closing?.workspace ?? active?.workspace;
-    const dirtyTabs = workspace
-      ? dirtyTabsFor(workspace.id)
-      : [];
-    if (dirtyTabs.length > 0 && workspace) {
-      if (dirtyTabs.some((tab) => tab.conflict)) {
-        toast("Resolve external file conflicts before closing this workspace.", "error");
-        return;
-      }
-      const snapshots = dirtyTabs.map((tab) => ({
-        workspace,
-        path: tab.path,
-        content: tab.content,
-        expectedContent: tab.saved,
-        revision: tab.revision,
-        standalone: tab.standalone
-      }));
-      void Promise.all(snapshots.map((snapshot) => doSaveRef.current(snapshot))).then((saved) => {
-        if (saved.every(Boolean)) finishClosePanel(sessionID, preserveBusy);
-      });
-      return;
-    }
-    finishClosePanel(sessionID, preserveBusy);
-  }, [finishClosePanel, toast, activeSessionFor]);
-
-  const replacePanels = useCallback((next: SessionInfo): void => {
-    for (const panel of [...panelsRef.current]) {
-      if (panel.id !== next.id) detachPanel(panel.id);
-    }
-    attachPanel(next);
-  }, [attachPanel, detachPanel]);
+  const {
+    attachPanel, focusSession, closePanel, deleteSession, openSession, addModelPanel,
+    openWorkspacePanel, selectAddPanel, selectPanelDirectory, changePanelDirectory,
+    selectFolder, reopenSession, selectFile, openFileWorkspace
+  } = useSessionLifecycle(lifecycle,
+    { addActiveSession, removeActiveSession, activeSessionFor, summaryFor, loadSessions },
+    { rememberWorkspace, replaceSavedWorkspace },
+    { hideNestedWorkspace, restoreNestedWorkspaceVisibility, loadRecovery },
+    { dirtyTabsFor, saveCapturedSnapshot, setSingleFileFor, openFile },
+    { refreshInbox, refreshForms, loadModels, loadAgents },
+    { hasTranscript, hydrateTranscript, applyReopenedSnapshot },
+    { busyFor, dropClosedActivity },
+    { notify: toast, closeMenu: closeCtxMenu, cancelPending, forgetClosedSessionRecords }
+  );
 
   useEffect(() => {
     if (connected) void loadSessions();
   }, [connected, loadSessions]);
 
-  const deleteSession = useCallback(async (sessionID: string): Promise<void> => {
-    const panel = panelForSession(sessionID);
-    const summary = summaryFor(sessionID);
-    const title = panel?.title ?? summary?.title ?? sessionID;
-    if (!window.confirm(`Delete session "${title}"? This permanently removes it from opencode and cannot be undone.`)) return;
-    try {
-      if (panel) closePanel(sessionID);
-      await window.openshell.deleteSession(sessionID);
-      toast(`Deleted session ${title}`);
-      void loadSessions();
-    } catch (err) {
-      toast(err instanceof Error ? err.message : String(err), "error");
-    }
-  }, [panelForSession, closePanel, toast, loadSessions, summaryFor]);
-
-  const replacePanel = useCallback((workspace: WorkspaceIdentity, info: SessionInfo): boolean => {
-    const index = panelsRef.current.findIndex((panel) => sameWorkspace(panel.workspace, workspace));
-    if (index === -1) return false;
-    rememberWorkspace(info.directory);
-    // Detach without teardown (see detachPanel): the replaced session keeps
-    // its backend context and Open now entry so it stays jumpable; only an
-    // explicit close ends it.
-    ejectPanelFromView(panelsRef.current[index].id);
-    // The eject above already removed the old entry, so the survivors after
-    // `index` have shifted down one slot.
-    panelsRef.current = [
-      ...panelsRef.current.slice(0, index),
-      info,
-      ...panelsRef.current.slice(index).filter((panel) => !sameWorkspace(panel.workspace, info.workspace))
-    ];
-    setPanels(panelsRef.current);
-    userActivatedRef.current = true;
-    sessionRef.current = info;
-    setActiveSessionID(info.id);
-    addActiveSession(info);
-    return true;
-  }, [addActiveSession, ejectPanelFromView, rememberWorkspace]);
-
-  const launchSessionContent = useCallback((info: SessionInfo): void => {
-    void hydrateTranscript(info.id);
-    void refreshInbox(info.id);
-    void refreshForms(info.id);
-    void loadRecovery(info.workspace);
-  }, [hydrateTranscript, refreshInbox, refreshForms, loadRecovery]);
-
-  const launchSessionCatalog = useCallback((info: SessionInfo): void => {
-    void loadModels(info.workspace);
-    void loadAgents(info.workspace);
-    void loadSessions();
-  }, [loadModels, loadAgents, loadSessions]);
-
-  const swapPanelTo = useCallback((workspace: WorkspaceIdentity, info: SessionInfo): void => {
-    if (!replacePanel(workspace, info)) {
-      void window.openshell.closeSession(info.workspace).catch(() => {});
-      return;
-    }
-    launchSessionContent(info);
-    launchSessionCatalog(info);
-  }, [replacePanel, launchSessionContent, launchSessionCatalog]);
-
-  const openSession = useCallback(
-    async (dir: string): Promise<SessionInfo | null> => {
-      const request = ++requestSeqRef.current;
-      const activation = ++activationSeqRef.current;
-      try {
-        const info = await window.openshell.openSession(dir, request);
-        if (activation !== activationSeqRef.current) {
-          await window.openshell.closeSession(info.workspace).catch(() => {});
-          return null;
-        }
-        if (dir !== info.directory) replaceSavedWorkspace(dir, info.directory);
-        userActivatedRef.current = true;
-        replacePanels(info);
-        sessionRef.current = info;
-        setActiveSessionID(info.id);
-        launchSessionContent(info);
-        toast(`Opened ${info.directory}`);
-        launchSessionCatalog(info);
-        return info;
-      } catch (err) {
-        toast(err instanceof Error ? err.message : String(err), "error");
-        return null;
-      }
-    },
-    [replacePanels, replaceSavedWorkspace, toast, launchSessionContent, launchSessionCatalog]
-  );
-
-  const addModelPanel = useCallback(
-    async (dir: string) => {
-      const request = ++requestSeqRef.current;
-      const activation = activationSeqRef.current;
-      try {
-        const info = await window.openshell.openSession(dir, request);
-        if (activation !== activationSeqRef.current) {
-          await window.openshell.closeSession(info.workspace).catch(() => {});
-          return;
-        }
-        hideNestedWorkspace(dir);
-        attachPanel(info);
-        userActivatedRef.current = true;
-        sessionRef.current = info;
-        setActiveSessionID(info.id);
-        launchSessionContent(info);
-        launchSessionCatalog(info);
-      } catch (err) {
-        toast(err instanceof Error ? err.message : String(err), "error");
-      }
-    },
-    [hideNestedWorkspace, attachPanel, toast, launchSessionContent, launchSessionCatalog]
-  );
-
-  const openWorkspacePanel = useCallback(async (dir: string): Promise<void> => {
-    await addModelPanel(dir);
-    const opened = sessionRef.current;
-    if (!opened) return;
-    setWorkspaceOnlyPanelIDs((current) => {
-      const next = new Set(current);
-      next.add(opened.id);
-      return next;
-    });
-  }, [addModelPanel]);
-
-  const selectAddPanel = useCallback(async (): Promise<SessionInfo | null> => {
-    const request = ++requestSeqRef.current;
-    const activation = activationSeqRef.current;
-    try {
-      const info = await window.openshell.selectFolder(request);
-      if (!info) return null;
-      if (activation !== activationSeqRef.current) {
-        await window.openshell.closeSession(info.workspace).catch(() => {});
-        return null;
-      }
-      attachPanel(info);
-      userActivatedRef.current = true;
-      sessionRef.current = info;
-      setActiveSessionID(info.id);
-      launchSessionContent(info);
-      launchSessionCatalog(info);
-      return info;
-    } catch (err) {
-      toast(err instanceof Error ? err.message : String(err), "error");
-      return null;
-    }
-  }, [attachPanel, toast, launchSessionContent, launchSessionCatalog]);
-
-  const swapPanelWorkspace = useCallback(
-    async (workspace: WorkspaceIdentity, pick: (request: number) => Promise<SessionInfo | null>) => {
-      const request = ++requestSeqRef.current;
-      const activation = activationSeqRef.current;
-      swapPendingRef.current = true;
-      try {
-        const info = await pick(request);
-        if (!info) return;
-        if (activation !== activationSeqRef.current) {
-          await window.openshell.closeSession(info.workspace).catch(() => {});
-          return;
-        }
-        swapPanelTo(workspace, info);
-      } catch (err) {
-        if (panelFor(workspace)) toast(err instanceof Error ? err.message : String(err), "error");
-      } finally {
-        swapPendingRef.current = false;
-      }
-    },
-    [swapPanelTo, toast, panelFor]
-  );
-
-  const selectPanelDirectory = useCallback(
-    (workspace: WorkspaceIdentity) =>
-      swapPanelWorkspace(workspace, (request) => window.openshell.selectFolder(request)),
-    [swapPanelWorkspace]
-  );
-
-  const changePanelDirectory = useCallback(
-    (workspace: WorkspaceIdentity, dir: string) =>
-      swapPanelWorkspace(workspace, (request) => window.openshell.openSession(dir, request)),
-    [swapPanelWorkspace]
-  );
-
-  const selectFolder = useCallback(async () => {
-    const request = ++requestSeqRef.current;
-    const activation = ++activationSeqRef.current;
-    try {
-      const info = await window.openshell.selectFolder(request);
-      if (info) {
-        if (activation !== activationSeqRef.current) {
-          await window.openshell.closeSession(info.workspace).catch(() => {});
-          return;
-        }
-        userActivatedRef.current = true;
-        replacePanels(info);
-        sessionRef.current = info;
-        setActiveSessionID(info.id);
-        launchSessionContent(info);
-        toast(`Opened ${info.directory}`);
-        launchSessionCatalog(info);
-      }
-    } catch (err) {
-      toast(err instanceof Error ? err.message : String(err), "error");
-    }
-  }, [replacePanels, toast, launchSessionContent, launchSessionCatalog]);
-
-  const reopenSession = useCallback(
-    async (sessionID: string, silent = false, directoryHint?: string): Promise<SessionInfo | null> => {
-      const existing = panelForSession(sessionID);
-      if (existing) {
-        if (!hasTranscript(sessionID)) void hydrateTranscript(sessionID);
-        if (!silent) {
-          focusSession(sessionID);
-          void loadSessions();
-        }
-        return existing;
-      }
-      const request = ++requestSeqRef.current;
-      const activation = silent ? 0 : ++activationSeqRef.current;
-      const targetWorkspace = silent ? null : sessionRef.current?.workspace ?? null;
-      const previousDirectory = directoryHint ?? summaryFor(sessionID)?.directory;
-      if (!silent) {
-        replacingSessionIDsRef.current.set(sessionID, (replacingSessionIDsRef.current.get(sessionID) ?? 0) + 1);
-      }
-      try {
-        const reopened = silent
-          ? await window.openshell.openSessionById(sessionID, request)
-          : await window.openshell.openSessionById(sessionID, request, undefined, true);
-        if (!silent && activation !== activationSeqRef.current) {
-          await window.openshell.closeSession(reopened.session.workspace).catch(() => {});
-          return null;
-        }
-        if (silent) {
-          attachPanel(reopened.session, false);
-        } else if (targetWorkspace) {
-          if (!replacePanel(targetWorkspace, reopened.session)) {
-            await window.openshell.closeSession(reopened.session.workspace).catch(() => {});
-            return null;
-          }
-        } else {
-          replacePanels(reopened.session);
-          userActivatedRef.current = true;
-          sessionRef.current = reopened.session;
-          setActiveSessionID(reopened.session.id);
-        }
-        if (!silent && previousDirectory && previousDirectory !== reopened.session.directory) {
-          replaceSavedWorkspace(previousDirectory, reopened.session.directory);
-        }
-        void loadRecovery(reopened.session.workspace);
-        const merged = prepareReopenedReplay(reopened.session.id, reopened.transcript, false);
-        reconcileStreaming(reopened.session.id);
-        commitReplayTranscript(reopened.session.id, merged);
-        const running = [...reopened.transcript].reverse().find((item) => item.kind === "assistant");
-        seedReplayBusy(reopened.session.id, running);
-        setTodosFor(reopened.session.workspace.id, reopened.todos);
-        if (reopened.usage) {
-          recordUsage(reopened.session.id, () => reopened.usage!);
-        }
-        void loadModels(reopened.session.workspace);
-        void loadAgents(reopened.session.workspace);
-        void loadSessions();
-        return reopened.session;
-      } catch (err) {
-        if (!silent) toast(err instanceof Error ? err.message : String(err), "error");
-        return null;
-      } finally {
-        if (!silent) {
-          const pending = replacingSessionIDsRef.current.get(sessionID) ?? 0;
-          if (pending <= 1) replacingSessionIDsRef.current.delete(sessionID);
-          else replacingSessionIDsRef.current.set(sessionID, pending - 1);
-        }
-      }
-    },
-    [
-    attachPanel,
-    replacePanels,
-    replacePanel,
-    replaceSavedWorkspace,
-    focusSession,
-    panelForSession,
-    prepareReopenedReplay,
-    commitReplayTranscript,
-    hasTranscript,
-    reconcileStreaming,
-    setTodosFor,
-    toast,
-    loadModels,
-    loadAgents,
-    loadSessions,
-    loadRecovery,
-    hydrateTranscript,
-    recordUsage,
-    summaryFor,
-    seedReplayBusy,
-  ]
-  );
-
   const sendPrompt = useCallback(
     async (text: string, files: PromptFile[] = [], workspace?: WorkspaceIdentity) => {
-      const target = workspace ?? sessionRef.current?.workspace;
+      const target = workspace ?? readFocusedSession()?.workspace;
       const panel = target ? panelFor(target) : null;
       if (!panel || !target) {
         toast("[ORBIT_PROMPT_NO_SESSION] No active session is available for this prompt", "error");
@@ -925,7 +525,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   );
 
   const runCommand = useCallback(async (name: string, args = "", workspace?: WorkspaceIdentity) => {
-    const target = workspace ?? sessionRef.current?.workspace;
+    const target = workspace ?? readFocusedSession()?.workspace;
     if (!target) return;
     try {
       await window.openshell.runCommand(target, name, args);
@@ -949,7 +549,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   }, [panelFor, toast, refreshSessionUsage]);
 
   const stop = useCallback(async (workspace?: WorkspaceIdentity) => {
-    const target = workspace ?? sessionRef.current?.workspace;
+    const target = workspace ?? readFocusedSession()?.workspace;
     const panel = target ? panelFor(target) : null;
     if (!panel || !target) return;
     const abortFlag = beginLocalAbort(panel.id, Date.now());
@@ -974,62 +574,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     applyBusyTodoFallback(panels, busyBySession, transcriptsBySession);
   }, [panels, busyBySession, transcriptsBySession, setTodosFor]);
 
-  const attachFileWorkspace = useCallback(
-    async (result: OpenFileWorkspaceResult, activation: number): Promise<SessionInfo | null> => {
-      if (activation !== activationSeqRef.current) {
-        await window.openshell.closeSession(result.session.workspace).catch(() => {});
-        return null;
-      }
-      userActivatedRef.current = true;
-      replacePanels(result.session);
-      sessionRef.current = result.session;
-      setActiveSessionID(result.session.id);
-      setSingleFileFor(result.session.workspace.id, result.path);
-      void hydrateTranscript(result.session.id);
-      void loadRecovery(result.session.workspace);
-      void loadModels(result.session.workspace);
-      void loadAgents(result.session.workspace);
-      void loadSessions();
-      await openFile(result.path, { mode: "edit" }, result.session.workspace);
-      return result.session;
-    },
-    [replacePanels, setSingleFileFor, hydrateTranscript, loadRecovery, loadModels, loadAgents, loadSessions, openFile]
-  );
-  const selectFile = useCallback(
-    async (): Promise<void> => {
-      const request = ++requestSeqRef.current;
-      const activation = ++activationSeqRef.current;
-      try {
-        const result = await window.openshell.selectFile(request);
-        if (!result) return;
-        const info = await attachFileWorkspace(result, activation);
-        if (info) toast(`Opened ${result.path}`);
-      } catch (err) {
-        toast(err instanceof Error ? err.message : String(err), "error");
-      }
-    },
-    [attachFileWorkspace, toast]
-  );
-  const openFileWorkspace = useCallback(
-    async (file: string): Promise<SessionInfo | null> => {
-      const request = ++requestSeqRef.current;
-      const activation = ++activationSeqRef.current;
-      try {
-        const result = await window.openshell.openFileWorkspace(file, request);
-        const info = await attachFileWorkspace(result, activation);
-        if (info) toast(`Opened ${result.path}`);
-        return info;
-      } catch (err) {
-        toast(err instanceof Error ? err.message : String(err), "error");
-        return null;
-      }
-    },
-    [attachFileWorkspace, toast]
-  );
   const openSourceTarget = useCallback(
     async (path: string, line: number): Promise<void> => {
       if (!path.startsWith("/")) return;
-      const active = sessionRef.current?.workspace ?? null;
+      const active = readFocusedSession()?.workspace ?? null;
       if (active) {
         const openedPath = await openExternalPath(path, active);
         if (openedPath) requestReveal(openedPath, line);
@@ -1061,10 +609,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       }
       try {
         if (kind === "directory") {
-          if (panelsRef.current.length === 0) await openSession(absolutePath);
+          if (readPanels().length === 0) await openSession(absolutePath);
           else await openWorkspacePanel(absolutePath);
         } else if (kind === "file") {
-          if (panelsRef.current.length === 0) await openFileWorkspace(absolutePath);
+          if (readPanels().length === 0) await openFileWorkspace(absolutePath);
           else await openExternalPath(absolutePath);
         } else {
           toast(`${absolutePath} is not available`, "error");
@@ -1080,7 +628,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       if (msg.kind === "session") {
         if (msg.session) {
           addActiveSession(msg.session);
-          if (!swapPendingRef.current && !replacingSessionIDsRef.current.has(msg.session.id)) {
+          if (!hasPendingSwap() && !hasPendingReplacement(msg.session.id)) {
             attachPanel(msg.session);
           }
         }
@@ -1147,10 +695,10 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         return;
       }
       const targetSessionID = locationForm
-        ? (locationFormOwnerIDs.includes(sessionRef.current?.id ?? "") ? sessionRef.current!.id : locationFormOwnerIDs[0])
-        : (addressedSessionID ?? sessionRef.current?.id);
+        ? (locationFormOwnerIDs.includes(readFocusedSession()?.id ?? "") ? readFocusedSession()!.id : locationFormOwnerIDs[0])
+        : (addressedSessionID ?? readFocusedSession()?.id);
       const targetWorkspace = targetSessionID ? workspaceOfSession(targetSessionID) : null;
-      const active = Boolean(targetSessionID && targetSessionID === sessionRef.current?.id);
+      const active = Boolean(targetSessionID && targetSessionID === readFocusedSession()?.id);
       if (type === "session.inbox.delivered" && targetSessionID && typeof data.inboxID === "string") {
         promoteDeliveredInput(targetSessionID, data.inboxID);
       }
@@ -1248,7 +796,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
         case "server.connected":
         case "global.disposed": {
           void loadSessions();
-          for (const panel of panelsRef.current) {
+          for (const panel of readPanels()) {
             void materializeSession(panel.id);
             void refreshForms(panel.id);
           }
@@ -1405,7 +953,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
     void tryConnect();
     const permissionTimer = setInterval(() => void reconcilePermissions(), 3000);
     const formTimer = setInterval(() => {
-      for (const panel of panelsRef.current) void refreshForms(panel.id);
+      for (const panel of readPanels()) void refreshForms(panel.id);
     }, 3000);
     void window.openshell.takePendingPaths().then((paths) => {
       if (paths.length > 0) void openPaths(paths);
@@ -1429,7 +977,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
           if (session) restored.push(session);
         }
         if (cancelled) return;
-        if (!userActivatedRef.current && restored.length > 0) {
+        if (!hasUserActivated() && restored.length > 0) {
           focusSession(restored[restored.length - 1]!.id, false);
         }
       })();
@@ -1499,7 +1047,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
   ]);
 
   useEffect(() => {
-    if (!connected || !sessionRef.current) return;
+    if (!connected || !readFocusedSession()) return;
     void loadModels();
     void loadAgents();
   }, [connected, loadModels, loadAgents]);
@@ -1577,8 +1125,8 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu }: { children
       saveWorkspace,
       removeWorkspace,
       activeSessions,
-      panels,
-      workspaceOnlyPanelIDs,
+      panels: panels as SessionInfo[],
+      workspaceOnlyPanelIDs: workspaceOnlyPanelIDs as Set<string>,
       panelViews,
       activeSessionID,
       focusSession,
