@@ -8,6 +8,10 @@ vi.mock("./components/EditorPane", () => ({
   EditorPane: () => null
 }));
 
+vi.mock("./components/ChangesView", () => ({
+  ChangesView: () => <div data-testid="changes-view" />
+}));
+
 vi.mock("./monaco", () => ({
   languageForPath: () => "plaintext",
   monaco: { editor: { setModelMarkers: vi.fn() } }
@@ -230,6 +234,30 @@ describe("Layout panel sizing", () => {
     expect(container.querySelector(".sidebar")).not.toBeNull();
   });
 
+  it("opens the Changes review view from the activity rail", async () => {
+    await act(async () => root.render(<App />));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+
+    const button = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-changes"]')!;
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    expect(container.querySelector('[data-testid="changes-view"]')).toBeNull();
+
+    await act(async () => {
+      button.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    expect(container.querySelector('[data-testid="changes-view"]')).not.toBeNull();
+    expect(container.querySelector(".app")?.classList.contains("changes-open")).toBe(true);
+
+    await act(async () => {
+      button.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    expect(container.querySelector(".app")?.classList.contains("changes-open")).toBe(false);
+  });
+
   it("opens Settings from the activity rail and keeps the file and session views", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
@@ -247,7 +275,10 @@ describe("Layout panel sizing", () => {
     expect(rail.querySelector('button[aria-label="Files"]')).not.toBeNull();
     expect(rail.querySelector('button[aria-label="Sessions"]')).not.toBeNull();
     expect(rail.querySelector('button[aria-label="Terminal"]')).not.toBeNull();
+    expect(rail.querySelector('button[aria-label="Changes"]')).not.toBeNull();
     expect(rail.querySelector('button[aria-label="Settings"]')).not.toBeNull();
+    // Changes sits between Terminal and the browser action.
+    expect(rail.querySelector('[data-panel-action="toggle-changes"]')?.previousElementSibling?.getAttribute("aria-label")).toBe("Terminal");
     expect(container.querySelector(".side-tabs")).toBeNull();
     expect(sideTab(container, "Files")).not.toBeNull();
     expect(sideTab(container, "Sessions")).not.toBeNull();

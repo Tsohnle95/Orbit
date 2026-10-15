@@ -17,9 +17,10 @@ import { protectEditorUnload } from "./editor-close-guard";
 import { ThemeProvider } from "./theme";
 import { agentPanelGrid, panelSlotFor, distributePanelSlots, MAX_AGENT_PANELS, AGENT_DEFAULT_W, AGENT_MIN_W, EDITOR_MIN_VISIBLE_W, type PanelSlot } from "./agent-panels";
 import { PanelColumn } from "./layout/PanelColumn";
-import { railToolClass, railToolTitle, sidebarViewVisible, sidebarViews } from "./layout/rail";
+import { sidebarViewVisible } from "./layout/rail";
 import { useDragResize, useTitlebarTabsOffset, useTrayHeight } from "./layout/panel-interactions";
-import { RailBrowserButton } from "./layout/RailBrowserButton";
+import { ActivityRail } from "./layout/ActivityRail";
+import { ChangesView } from "./components/ChangesView";
 import { BrowserTabsProvider, useBrowserTabActions } from "./browser-tabs-context";
 import { BrowserStoreProvider } from "./browser-store-provider";
 
@@ -80,6 +81,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const [terminalRequest, setTerminalRequest] = useState<{ id: number; directory: string } | null>(null);
   const [sideTab, setSideTab] = useState<SidebarTab>("files");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [changesOpen, setChangesOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("appearance");
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [terminalPanel, setTerminalPanel] = useState<"terminal" | "problems" | "sass">("terminal");
@@ -93,7 +95,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const emptyAgentRef = useRef<HTMLDivElement>(null);
   const prevSidebarRef = useRef<{ open: boolean; width: number } | null>(null);
   const inAgentMode = agentModeActive;
-  const { sessions: sessionsView, files: filesView } = sidebarViews(settingsOpen, sideOpen, sideTab);
 
   const codingPanel = useMemo(
     () => allPanels.find((panel) => panel.id === activeSessionID) ?? agentPanels[0] ?? null,
@@ -548,6 +549,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   const openSettings = (): void => {
     setSidebarOpen(true);
     setSettingsSection("appearance");
+    setChangesOpen(false);
     setSettingsOpen(true);
   };
 
@@ -582,7 +584,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   };
 
   return (
-    <div className={`app ${inAgentMode ? "agent-mode" : ""}`}>
+    <div className={`app ${inAgentMode ? "agent-mode" : ""} ${changesOpen ? "changes-open" : ""}`}>
       <Titlebar
         sidebarOpen={!inAgentMode && sideOpen}
         agentMode={inAgentMode}
@@ -601,51 +603,20 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
         className={sideOpen ? "main-row" : "main-row sidebar-closed"}
         style={{ "--pane-columns": cols } as CSSProperties}
       >
-        <nav className="activity-rail" aria-label="Workspace views">
-          <button
-            className={railToolClass(sessionsView)}
-            data-panel-action="show-sessions" aria-label="Sessions"
-            aria-pressed={sessionsView}
-            title={railToolTitle(sessionsView, "Sessions")}
-            onClick={() => activateSidebarTab("sessions")}
-          >
-            <i className="codicon codicon-comment-discussion" aria-hidden="true" />
-          </button>
-          <button
-            className={railToolClass(filesView)}
-            data-panel-action="show-files"
-            aria-label="Files"
-            aria-pressed={filesView}
-            title={railToolTitle(filesView, "Files")}
-            onClick={() => activateSidebarTab("files")}
-          >
-            <i className="codicon codicon-files" aria-hidden="true" />
-          </button>
-          <button
-            className={`activity-tool ${trayOpen ? "active" : ""}`}
-            title={!session
-              ? "No workspace open"
-              : trayOpen
-                ? (traySnapped ? "Expand terminal (⌥O)" : "Hide terminal (⌥O)")
-                : "Show terminal (⌥O)"}
-            aria-label="Terminal"
-            onClick={toggleTray}
-          >
-            <i className="codicon codicon-terminal" aria-hidden="true" />
-          </button>
-          <RailBrowserButton onOpen={() => openBrowserTab()} />
-          <span className="activity-spacer" aria-hidden />
-          <button
-            className={`activity-tool ${settingsOpen ? "active" : ""}`}
-            data-panel-action="toggle-settings"
-            title={settingsOpen ? "Close settings" : "Settings"}
-            aria-label="Settings"
-            aria-pressed={settingsOpen}
-            onClick={() => settingsOpen ? setSettingsOpen(false) : openSettings()}
-          >
-            <i className="codicon codicon-settings-gear" aria-hidden="true" />
-          </button>
-        </nav>
+        <ActivityRail
+          activeTab={sideTab}
+          sideOpen={sideOpen}
+          settingsOpen={settingsOpen}
+          changesOpen={changesOpen}
+          session={session}
+          trayOpen={trayOpen}
+          traySnapped={traySnapped}
+          onSelectTab={activateSidebarTab}
+          onToggleTerminal={toggleTray}
+          onOpenBrowser={() => openBrowserTab()}
+          onToggleChanges={() => { setSettingsOpen(false); setChangesOpen((value) => !value); }}
+          onToggleSettings={() => settingsOpen ? setSettingsOpen(false) : openSettings()}
+        />
         <div className={`sidebar-slot ${sideOpen ? "" : "collapsed"}`}>
           {settingsOpen ? <SettingsSidebar
             section={settingsSection}
@@ -682,6 +653,7 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
               showTray();
             }}
           />
+          {changesOpen && <ChangesView onClose={() => setChangesOpen(false)} />}
           {ordered.map((panel, index) => {
             const s = slotFor(panel);
             const anchorId = panels[0]?.workspace.id ?? null;

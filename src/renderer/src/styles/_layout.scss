@@ -65,6 +65,7 @@
 }
 
 .workspace-area > .editor-pane {
+  grid-column: 1;
   grid-row: 1;
   min-height: 0;
   border: 1px solid var(--border);

@@ -1,13 +1,11 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AgentFileState, SessionInfo, Tab } from "@shared/types";
-import { FileSidebar } from "./FileSidebar";
+import type { SessionInfo, Tab } from "@shared/types";
 import { EditorPane } from "./EditorPane";
 import { ThemeProvider } from "../theme";
 import { BrowserTabsProvider } from "../browser-tabs-context";
 
-const unknownFile: AgentFileState = { baseline: { kind: "unknown" }, content: "after", deleted: false };
 const tab: Tab = {
   path: "src/unknown.ts",
   name: "unknown.ts",
@@ -33,7 +31,6 @@ const store = {
   tree: { "": [] },
   toggleDir: vi.fn(),
   ensureRootOpen: vi.fn(),
-  agentFiles: new Map([[tab.path, unknownFile]]),
   openFile: vi.fn(),
   expanded: new Set<string>(),
   openCtxMenu: vi.fn(),
@@ -104,14 +101,6 @@ describe("unknown baseline presentation", () => {
     container.remove();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
-  });
-
-  it("labels a Changes row as observed when pre-change content is unavailable", () => {
-    act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
-    act(() => container.querySelector<HTMLButtonElement>(".section-toggle")!.click());
-
-    expect(container.querySelector(".tree-meta")?.textContent).toBe("observed");
-    expect(container.querySelector(".changes-list .tree-row")?.getAttribute("title")).toContain("pre-change content unavailable");
   });
 
   it("shows Diff unavailable and does not mount a diff editor", () => {

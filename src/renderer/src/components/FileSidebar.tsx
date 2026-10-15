@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useCtxMenu, useStore } from "../store";
 import { OrbitMark } from "./OrbitMark";
-import { ChevronIcon, EllipsisIcon, FileIcon, PlusIcon } from "./FileIcons";
+import { FileIcon } from "./FileIcons";
 import { droppedFilePaths, isExternalFileDrag } from "../drop";
 import { compactExplorerSelection, movableExplorerPaths } from "../explorer-selection";
 import type { TreeEntry } from "@shared/types";
@@ -29,30 +28,6 @@ function explorerPathsFromDrag(e: React.DragEvent): string[] {
   } catch {
     return [];
   }
-}
-
-function useChangesDrag(initial: number): [number, (e: React.MouseEvent) => void] {
-  const [height, setHeight] = useState(initial);
-  const startRef = useRef<{ y: number; height: number } | null>(null);
-
-  const onMouseDown = (e: React.MouseEvent): void => {
-    e.preventDefault();
-    startRef.current = { y: e.clientY, height };
-    const move = (ev: MouseEvent): void => {
-      if (!startRef.current) return;
-      const dy = ev.clientY - startRef.current.y;
-      setHeight(Math.min(520, Math.max(90, startRef.current.height + dy)));
-    };
-    const up = (): void => {
-      startRef.current = null;
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
-    };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
-  };
-
-  return [height, onMouseDown];
 }
 
 function NoWorkspaceEmpty(): ReactNode {
@@ -95,7 +70,6 @@ export function FileSidebar({
     tree,
     toggleDir,
     ensureRootOpen,
-    agentFiles,
     openFile,
     tabs = [],
     expanded,
@@ -111,26 +85,11 @@ export function FileSidebar({
     importPaths,
     dropIntoExplorer,
     openWorkspacePanel,
-    dismissChange,
-    dismissChanges,
     hiddenPaths = EMPTY_HIDDEN_PATHS
   } = useStore();
   const { openCtxMenu } = useCtxMenu();
-  const [changesOpen, setChangesOpen] = useState(false);
-  const [changesMenu, setChangesMenu] = useState<{ x: number; y: number; path: string | null } | null>(null);
-  const changesMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!changesMenu) return;
-    const onDown = (e: PointerEvent): void => {
-      if (changesMenuRef.current && !changesMenuRef.current.contains(e.target as Node)) setChangesMenu(null);
-    };
-    document.addEventListener("pointerdown", onDown, true);
-    return () => document.removeEventListener("pointerdown", onDown, true);
-  }, [changesMenu]);
   const [fallbackTab] = useState<SidebarTab>(initialTab);
   const activeTab = tab ?? fallbackTab;
-  const [changesH, changesDrag] = useChangesDrag(200);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const selectionAnchor = useRef<string | null>(null);
   const treeRef = useRef<HTMLDivElement>(null);
@@ -389,7 +348,6 @@ export function FileSidebar({
     }
   };
 
-  const changes = [...agentFiles.entries()];
   const dropSpace = <div className={`tree-drop-space ${externalDrop || blankMoveDrop ? "active" : ""}`}>
     {(externalDrop || blankMoveDrop) && <span className="tree-drop-label">
       {externalDrop ? blankDropLabel : `Move into ${session?.directory.split("/").filter(Boolean).pop() ?? "workspace"}`}
@@ -452,94 +410,8 @@ export function FileSidebar({
       ) : (
         <>
           <div className="section-trigger files-brand-header">
-            <button
-              className={`section-toggle ${changesOpen ? "open" : ""}`}
-              aria-label="Changes" aria-expanded={changesOpen}
-              onClick={() => setChangesOpen((o) => !o)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setChangesMenu({ x: e.clientX, y: e.clientY, path: null });
-              }}
-            >
-              <span className="sidebar-brand">Mira</span>
-              <span className="sidebar-count changes-count push">{changes.length}</span>
-              <span className="section-chevron">
-                <ChevronIcon open={changesOpen} />
-              </span>
-            </button>
+            <span className="sidebar-brand">Mira</span>
           </div>
-      {changesOpen && (
-        <>
-          <div
-            className="sidebar-section changes"
-            style={{ "--changes-height": `${changesH}px` } as CSSProperties}
-          >
-            <div className="changes-list">
-              {changes.length === 0 && <div className="tree-empty">No changes yet</div>}
-              {changes.map(([path, state]) => {
-                const name = path.split("/").pop() ?? path;
-                const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-                return (
-                  <div
-                    key={path}
-                    className={`tree-row file ${state.deleted ? "deleted" : ""}`}
-                    onClick={() => void openFile(path, { mode: "diff" })}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setChangesMenu({ x: e.clientX, y: e.clientY, path });
-                    }}
-                    title={state.baseline.kind === "unknown" ? `${path} · pre-change content unavailable` : path}
-                  >
-                    <FileIcon name={name} isDir={false} />
-                    <span className="tree-name">
-                      {name}
-                      {dir && <span className="tree-dir-suffix"> · {dir}</span>}
-                    </span>
-                    <span className={`tree-meta ${state.deleted ? "deleted" : ""}`}>
-                      {state.deleted ? "deleted" : state.baseline.kind === "unknown" ? "observed" : "modified"}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="sidebar-vdivider" onMouseDown={changesDrag} title="Drag to resize changes panel" />
-        </>
-      )}
-      {changesMenu && createPortal(
-        <div
-          className="ctx-menu"
-          ref={changesMenuRef}
-          style={{
-            left: Math.min(changesMenu.x, window.innerWidth - 190),
-            top: Math.min(changesMenu.y, window.innerHeight - 60)
-          }}
-          data-testid="changes-menu"
-        >
-          {changesMenu.path ? (
-            <button
-              className="ctx-item"
-              onClick={() => {
-                dismissChange(changesMenu.path!);
-                setChangesMenu(null);
-              }}
-            >
-              Clear
-            </button>
-          ) : (
-            <button
-              className="ctx-item"
-              onClick={() => {
-                dismissChanges();
-                setChangesMenu(null);
-              }}
-            >
-              Clear all changes
-            </button>
-          )}
-        </div>,
-        document.body
-      )}
 
        <div
          className={`section-trigger with-actions explorer-trigger ${rootOpen ? "open" : ""} ${dropDir === "" ? "drop-target" : ""}`}

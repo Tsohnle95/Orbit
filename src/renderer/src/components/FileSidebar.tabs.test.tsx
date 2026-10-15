@@ -196,10 +196,9 @@ describe("FileSidebar tabs and sessions pane", () => {
     );
     await settle();
     expect(container.querySelector(".sessions-pane")).toBeNull();
+    expect(container.querySelector(".sidebar-brand")?.textContent).toBe("Mira");
     const labels = [...container.querySelectorAll(".section-toggle")].map((el) => el.textContent ?? "");
-    expect(labels.length).toBe(2);
-    expect(labels[0]?.startsWith("Mira")).toBe(true);
-    expect(labels[1]).toBe("workspace");
+    expect(labels).toEqual(["workspace"]);
 
     await act(async () =>
       root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} tab="sessions" />)
