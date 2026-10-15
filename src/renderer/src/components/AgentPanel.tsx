@@ -4,12 +4,14 @@ import { OpenCodeTimeline, PermissionPrompt } from "./OpenCodeTimeline";
 import { FormPrompt } from "./FormPrompt";
 import { OpenCodeTodoDock } from "./OpenCodeTodoDock";
 import type { SessionInfo, TranscriptItem } from "@shared/types";
-import { IconArrowLeft, IconMoreVertical } from "./icons";
+import { IconArrowLeft, IconMoreHorizontal } from "./icons";
 import { AgentTui } from "./AgentTui";
 import { MAX_AGENT_PANELS } from "../agent-panels";
 import { Composer } from "./Composer";
 import { TurnTimer, useAgentUsage } from "./AgentUsage";
+import { MiraMark } from "./MiraMark";
 import { NeptuneSprite } from "./NeptuneSprite";
+import { AgentSceneArt } from "./AgentSceneArt";
 import { useAgentScroll } from "./agent-scroll";
 import { useMenuDismiss } from "./use-menu-dismiss";
 
@@ -76,6 +78,7 @@ export function AgentPanel({
     refreshProviderUsage,
     commitStagedRevert,
     clearStagedRevert,
+    connected,
     runtimes
   } = useStore();
   const activeSession = session === undefined ? storeSession : session;
@@ -151,9 +154,6 @@ export function AgentPanel({
     setModeMenuOpen(false);
   };
 
-  const sessionLabel = (choice: SessionInfo): string =>
-    choice.title ?? choice.directory.split(/[\\/]/).filter(Boolean).pop() ?? choice.agent ?? choice.id;
-
   const handleTuiExit = (exitCode: number | null): void => {
     setPanelMode("gui");
     savePanelMode(activeSession?.id, "gui");
@@ -173,6 +173,11 @@ export function AgentPanel({
     }
     return null;
   }, [transcript]);
+
+  const conversationStarted = useMemo(
+    () => transcript.some((item) => item.kind === "user" || item.kind === "assistant"),
+    [transcript]
+  );
 
   const pendingPermission = useMemo(
     () => [...transcript]
@@ -212,98 +217,43 @@ export function AgentPanel({
             <IconArrowLeft />
           </button>
         )}
-        <TurnTimer startedAt={turnStartedAt} />
-        <div className="agent-header-actions">
-          {modeMenuOpen && (
-            <div className="agent-mode-menu" role="menu" aria-label="Agent panel options">
-              <button
-                role="menuitemradio"
-                aria-checked={panelMode === "gui"}
-                className={panelMode === "gui" ? "selected" : ""}
-                onClick={() => choosePanelMode("gui")}
-              >
-                <span>GUI</span>
-                <small>Orbit agent panel</small>
-              </button>
-              <button
-                role="menuitemradio"
-                aria-checked={panelMode === "tui"}
-                className={`${panelMode === "tui" ? "selected" : ""} ${!tuiAvailable ? "disabled" : ""}`}
-                title={tuiAvailable ? "Open the runtime TUI in this panel" : "TUI is unavailable for this runtime"}
-                onClick={() => choosePanelMode("tui")}
-              >
-                <span>TUI</span>
-                <small>{tuiAvailable ? "Terminal interface" : "Unavailable"}</small>
-              </button>
-              {sessionChoices && sessionChoices.length > 0 && (
-                <>
-                  <div className="agent-mode-menu-divider" />
-                  <div className="agent-mode-menu-heading">Active sessions</div>
-                  {sessionChoices.map((choice) => (
-                    (() => {
-                      const visible = visibleSessionIDs?.has(choice.id) ?? false;
-                      const disabled = Boolean(agentModeActive && agentPanelLimitReached && !visible);
-                      return (
-                        <button
-                          key={choice.id}
-                          role="menuitemcheckbox"
-                          aria-checked={visible}
-                          className={`${visible ? "selected" : ""} ${disabled ? "disabled" : ""}`}
-                          title={disabled ? `Agent panel limit reached (${MAX_AGENT_PANELS})` : choice.directory}
-                          disabled={disabled}
-                          onClick={() => chooseSession(choice.id)}
-                        >
-                          <span>{sessionLabel(choice)}</span>
-                          <small>{disabled ? "Agent panel limit reached" : visible ? (agentModeActive ? "In Agent Mode" : "Current coding workspace") : agentModeActive ? "Add to Agent Mode" : "Switch workspace"}</small>
-                        </button>
-                      );
-                    })()
-                  ))}
-                </>
-              )}
-              {onClose && (
-                <>
-                  <div className="agent-mode-menu-divider" />
-                  <button
-                    role="menuitem"
-                    onClick={() => {
-                      setModeMenuOpen(false);
-                      onClose();
-                    }}
-                  >
-                    <span>Close panel</span>
-                    <small>{agentModeActive ? "Remove this model panel" : "Hide the agent panel"}</small>
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-          <button
-            className={`icon-btn agent-mode-menu-toggle ${modeMenuOpen ? "open" : ""}`}
-            title="Agent panel options"
-            aria-label="Agent panel options"
-            aria-expanded={modeMenuOpen}
-            onClick={() => setModeMenuOpen((open) => !open)}
-          >
-            <IconMoreVertical />
-          </button>
+        <div className="agent-identity">
+          <MiraMark className="agent-mark" />
+          <div className="agent-identity-text">
+            <span className="agent-title agent-brand">MIRA Agent</span>
+            <span className="agent-status">
+              <span className={`agent-status-dot${connected ? " online" : ""}`} aria-hidden="true" />
+              <span className="agent-status-text">{connected ? "Online" : "Offline"}</span>
+            </span>
+          </div>
         </div>
+        <TurnTimer startedAt={turnStartedAt} />
+        <AgentPanelOptionsMenu
+          open={modeMenuOpen}
+          panelMode={panelMode}
+          tuiAvailable={tuiAvailable}
+          sessionChoices={sessionChoices}
+          visibleSessionIDs={visibleSessionIDs}
+          agentModeActive={agentModeActive}
+          agentPanelLimitReached={agentPanelLimitReached}
+          onToggle={() => setModeMenuOpen((value) => !value)}
+          onDismiss={() => setModeMenuOpen(false)}
+          onChoosePanelMode={choosePanelMode}
+          onChooseSession={chooseSession}
+          onClose={onClose}
+        />
       </div>
 
       {panelMode === "tui" && activeSession ? (
         <AgentTui workspace={activeSession.workspace} onExit={handleTuiExit} onError={handleTuiError} />
       ) : (
         <>
+          <AgentSceneArt active={conversationStarted || busy} />
           <div className="agent-scroll" ref={scrollRef} onScroll={onScroll}>
             {tuiNotice && <div className="agent-tui-notice">{tuiNotice}</div>}
-             {!transcript.some((item) => item.kind === "user" || item.kind === "assistant") && (
+             {!conversationStarted && (
               <div className="agent-empty">
                 <NeptuneSprite className="agent-empty-art" />
-                <p>Tell the agent what to work on.</p>
-                <p className="agent-empty-sub">
-                  It will stream its progress here, and every file it touches will show up under{" "}
-                  <b>Changes</b> with a red/green diff.
-                </p>
               </div>
             )}
             <OpenCodeTimeline
@@ -332,5 +282,144 @@ export function AgentPanel({
         </>
       )}
     </div>
+  );
+}
+
+// The panel's options surface: mode switches, the sessions carried by Agent
+// Mode, and panel close. Extracted from the panel body so the header identity
+// and the menu stay independently readable.
+function AgentPanelOptionsMenu({
+  open,
+  panelMode,
+  tuiAvailable,
+  sessionChoices,
+  visibleSessionIDs,
+  agentModeActive,
+  agentPanelLimitReached,
+  onToggle,
+  onDismiss,
+  onChoosePanelMode,
+  onChooseSession,
+  onClose
+}: {
+  open: boolean;
+  panelMode: PanelMode;
+  tuiAvailable: boolean;
+  sessionChoices?: SessionInfo[];
+  visibleSessionIDs?: ReadonlySet<string>;
+  agentModeActive?: boolean;
+  agentPanelLimitReached?: boolean;
+  onToggle: () => void;
+  onDismiss: () => void;
+  onChoosePanelMode: (next: PanelMode) => void;
+  onChooseSession: (sessionID: string) => void;
+  onClose?: () => void;
+}): ReactNode {
+  return (
+    <div className="agent-header-actions">
+      {open && (
+        <div className="agent-mode-menu" role="menu" aria-label="Agent panel options">
+          <button
+            role="menuitemradio"
+            aria-checked={panelMode === "gui"}
+            className={panelMode === "gui" ? "selected" : ""}
+            onClick={() => onChoosePanelMode("gui")}
+          >
+            <span>GUI</span>
+            <small>Orbit agent panel</small>
+          </button>
+          <button
+            role="menuitemradio"
+            aria-checked={panelMode === "tui"}
+            className={`${panelMode === "tui" ? "selected" : ""} ${!tuiAvailable ? "disabled" : ""}`}
+            title={tuiAvailable ? "Open the runtime TUI in this panel" : "TUI is unavailable for this runtime"}
+            onClick={() => onChoosePanelMode("tui")}
+          >
+            <span>TUI</span>
+            <small>{tuiAvailable ? "Terminal interface" : "Unavailable"}</small>
+          </button>
+          {sessionChoices && sessionChoices.length > 0 && (
+            <>
+              <div className="agent-mode-menu-divider" />
+              <div className="agent-mode-menu-heading">Active sessions</div>
+              <AgentPanelSessionRows
+                choices={sessionChoices}
+                visibleSessionIDs={visibleSessionIDs}
+                agentModeActive={agentModeActive}
+                agentPanelLimitReached={agentPanelLimitReached}
+                onChooseSession={onChooseSession}
+              />
+            </>
+          )}
+          {onClose && (
+            <>
+              <div className="agent-mode-menu-divider" />
+              <button
+                role="menuitem"
+                onClick={() => {
+                  onDismiss();
+                  onClose();
+                }}
+              >
+                <span>Close panel</span>
+                <small>{agentModeActive ? "Remove this model panel" : "Hide the agent panel"}</small>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      <button
+        className={`icon-btn agent-mode-menu-toggle ${open ? "open" : ""}`}
+        title="Agent panel options"
+        aria-label="Agent panel options"
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        <IconMoreHorizontal />
+      </button>
+    </div>
+  );
+}
+
+// The sessions the options menu can switch to. Rows stay individually
+// addressed because Agent Mode tracks which of them already has a panel.
+function AgentPanelSessionRows({
+  choices,
+  visibleSessionIDs,
+  agentModeActive,
+  agentPanelLimitReached,
+  onChooseSession
+}: {
+  choices: SessionInfo[];
+  visibleSessionIDs?: ReadonlySet<string>;
+  agentModeActive?: boolean;
+  agentPanelLimitReached?: boolean;
+  onChooseSession: (sessionID: string) => void;
+}): ReactNode {
+  const sessionLabel = (choice: SessionInfo): string =>
+    choice.title ?? choice.directory.split(/[\\/]/).filter(Boolean).pop() ?? choice.agent ?? choice.id;
+  return (
+    <>
+      {choices.map((choice) => (
+        (() => {
+          const visible = visibleSessionIDs?.has(choice.id) ?? false;
+          const disabled = Boolean(agentModeActive && agentPanelLimitReached && !visible);
+          return (
+            <button
+              key={choice.id}
+              role="menuitemcheckbox"
+              aria-checked={visible}
+              className={`${visible ? "selected" : ""} ${disabled ? "disabled" : ""}`}
+              title={disabled ? `Agent panel limit reached (${MAX_AGENT_PANELS})` : choice.directory}
+              disabled={disabled}
+              onClick={() => onChooseSession(choice.id)}
+            >
+              <span>{sessionLabel(choice)}</span>
+              <small>{disabled ? "Agent panel limit reached" : visible ? (agentModeActive ? "In Agent Mode" : "Current coding workspace") : agentModeActive ? "Add to Agent Mode" : "Switch workspace"}</small>
+            </button>
+          );
+        })()
+      ))}
+    </>
   );
 }

@@ -1,0 +1,77 @@
+// Decorative scene artwork behind the agent panel (config in
+// `agent-scenes.ts`, layer in `AgentSceneArt.tsx`). `.agent-panel` is the
+// positioning context; `_agent.scss` keeps the header, transcript and dock
+// above this layer. `--agent-scene-strength` comes from the active appearance
+// (full strength on dark surfaces, a faint imprint on light ones).
+.agent-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  user-select: none;
+  --scene-art-strength: var(--agent-scene-strength, 1);
+}
+
+.agent-scene-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 600ms var(--ease);
+}
+
+.agent-scene-image[data-ready="true"] {
+  opacity: var(--scene-art-strength);
+}
+
+// While a conversation is on screen the artwork recedes so messages keep
+// strong contrast; an empty panel shows the scene at full strength.
+.agent-scene[data-active="true"] .agent-scene-image[data-ready="true"] {
+  opacity: calc(var(--scene-art-strength) * 0.34);
+}
+
+// Narrow docked panels use the tall composition; wider panels and Agent Mode
+// use the full-frame composition. `object-fit: cover` scales each to fill the
+// panel, and `object-position` (from the scene config) keeps the subject in
+// frame - the artwork is never stretched.
+.agent-scene-tall { display: none; }
+
+@container (max-width: 560px) {
+  .agent-scene-wide { display: none; }
+  .agent-scene-tall { display: block; }
+}
+
+// Legibility scrims: shade the chrome rows (panel header, composer dock) and
+// hold a soft pool over the middle for text that crosses the artwork.
+.agent-scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: var(--scene-art-strength);
+  transition: opacity 600ms var(--ease);
+  background:
+    linear-gradient(180deg, rgba(5, 4, 15, 0.72) 0%, rgba(5, 4, 15, 0) 22%),
+    linear-gradient(0deg, rgba(5, 4, 15, 0.78) 0%, rgba(5, 4, 15, 0) 32%),
+    radial-gradient(52% 36% at 50% 48%, rgba(5, 4, 15, 0.5), rgba(5, 4, 15, 0.24) 58%, transparent 80%);
+}
+
+.agent-scene[data-active="true"]::before {
+  opacity: calc(var(--scene-art-strength) * 0.9);
+}
+
+// The scene is the empty panel's artwork; the Neptune sprite stays as the
+// fallback for when the artwork cannot load.
+.agent-panel:has(.agent-scene-image[data-ready="true"]) .agent-empty-art {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-scene-image,
+  .agent-scene::before {
+    transition: none;
+  }
+}

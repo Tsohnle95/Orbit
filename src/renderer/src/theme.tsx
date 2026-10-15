@@ -56,6 +56,10 @@ function neutralHover(shell: UiShell, colors: AppearanceColors, amount: number):
   return `color-mix(in srgb, ${base} ${amount}%, transparent)`;
 }
 
+function accentMix(colors: AppearanceColors, amount: number): string {
+  return `color-mix(in srgb, ${colors.accent} ${amount}%, transparent)`;
+}
+
 // Tokens the Codex shell needs on top of any palette's colours.
 function codexShellVariables(colors: AppearanceColors, scheme: "dark" | "light"): Record<string, string> {
   return {
@@ -84,7 +88,6 @@ let appliedVariables: string[] = [];
 function applyAppearance(theme: ThemeId, uiShell: UiShell): void {
   const { colors, scheme } = appearanceForId(theme);
   const root = document.documentElement;
-  const accentMix = (amount: number): string => `color-mix(in srgb, ${colors.accent} ${amount}%, transparent)`;
   const variables: Record<string, string> = {
     "--bg": colors.base,
     "--bg-panel": colors.pane,
@@ -105,6 +108,10 @@ function applyAppearance(theme: ThemeId, uiShell: UiShell): void {
     "--panel-surface-image": "none",
     "--panel-surface-size": "auto",
     "--panel-surface-repeat": "no-repeat",
+    // Decorative agent-panel scenes stay at full strength on dark surfaces and
+    // recede to a faint imprint on light ones so themed text keeps contrast
+    // (see `_agent-scene.scss`).
+    "--agent-scene-strength": scheme === "light" ? "0.16" : "1",
     "--workspace-background": `radial-gradient(ellipse at 66% 15%, ${colors.glow} 0, transparent 44%), ${colors.base}`,
     "--rail-surface": colors.rail,
     "--top-surface": colors.top,
@@ -125,12 +132,12 @@ function applyAppearance(theme: ThemeId, uiShell: UiShell): void {
     "--agent-composer-border": `color-mix(in srgb, ${colors.accent} 48%, ${colors.line})`,
     "--agent-composer-shadow": colors.composeShadow,
     "--agent-composer-focus-border": colors.accent,
-    "--agent-composer-focus-shadow": `0 8px 26px rgba(0,0,0,.28), 0 0 0 3px ${accentMix(15)}`,
+    "--agent-composer-focus-shadow": `0 8px 26px rgba(0,0,0,.28), 0 0 0 3px ${accentMix(colors, 15)}`,
     "--agent-send-background": `linear-gradient(160deg, ${colors.accent}, color-mix(in srgb, ${colors.accent} 78%, ${colors.base}))`,
     "--agent-send-hover": `linear-gradient(160deg, color-mix(in srgb, ${colors.accent} 84%, white), ${colors.accent})`,
     "--agent-send-color": colors.sendInk,
-    "--agent-send-shadow": `0 5px 16px ${accentMix(30)}`,
-    "--agent-send-hover-shadow": `0 6px 20px ${accentMix(40)}`,
+    "--agent-send-shadow": `0 5px 16px ${accentMix(colors, 30)}`,
+    "--agent-send-hover-shadow": `0 6px 20px ${accentMix(colors, 40)}`,
     "--text": colors.ink,
     "--text-dim": colors.muted,
     "--text-faint": colors.faint,
@@ -138,8 +145,8 @@ function applyAppearance(theme: ThemeId, uiShell: UiShell): void {
     "--text-weak": colors.faint,
     "--accent": colors.accent,
     "--accent-hover": `color-mix(in srgb, ${colors.accent} 84%, white)`,
-    "--accent-dim": accentMix(18),
-    "--accent-tint": accentMix(10),
+    "--accent-dim": accentMix(colors, 18),
+    "--accent-tint": accentMix(colors, 10),
     "--green": colors.good,
     "--red": colors.danger,
     "--yellow": colors.syntaxString,

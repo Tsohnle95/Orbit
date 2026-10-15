@@ -16,6 +16,17 @@
   container-type: inline-size;
 }
 
+// The decorative scene layer paints above the panel's own background but
+// below every content row; give the interactive surfaces an explicit
+// stacking level so artwork can never cover controls, messages, or the
+// composer (see `_agent-scene.scss`).
+.agent-panel > .agent-header,
+.agent-panel > .agent-scroll,
+.agent-panel > [data-component="session-prompt-dock"] {
+  position: relative;
+  z-index: 1;
+}
+
 .agent-header {
   position: relative;
   display: flex;
@@ -97,15 +108,37 @@
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+// Pixel sparkle drawn for the panel identity (see MiraMark): little squares
+// that stay crisp at the header size, with a restrained violet glow.
+.agent-mark {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  shape-rendering: crispEdges;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 5px rgba(164, 141, 255, 0.4));
+}
+
+.agent-identity-text {
+  min-width: 0;
+  display: flex;
   flex-direction: column;
   gap: 1px;
 }
 
-.agent-identity-line {
-  min-width: 0;
-  display: flex;
+.agent-brand {
+  letter-spacing: 0.08em;
+}
+
+.agent-status {
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
+  min-width: 0;
 }
 
 .agent-title {
@@ -166,6 +199,11 @@
   background: var(--green);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
   animation: agent-status-pulse 1.6s ease-in-out infinite;
+}
+
+.agent-status-dot.online {
+  background: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 16%, transparent);
 }
 
 .agent-status-text {
@@ -296,7 +334,7 @@
   .agent-turn-timer { display: none; }
 }
 
-@container (max-width: 340px) {
+@container (max-width: 300px) {
   .agent-status-text { display: none; }
   .agent-header { padding: 12px 0 10px 12px; }
   .agent-header-actions { gap: .25rem; }
@@ -837,6 +875,7 @@
 
 // Pixel sprite drawn for the empty panel (see NeptuneSprite): little squares,
 // sized against the panel width so it stays crisp at the minimum panel size.
+// It is the fallback artwork: the scene layer hides it once an image decodes.
 .agent-empty-art {
   width: clamp(160px, 60cqw, 240px);
   height: auto;
@@ -844,8 +883,6 @@
   shape-rendering: crispEdges;
   image-rendering: pixelated;
 }
-
-.agent-empty-sub { color: var(--text-faint); font-size: 12px; }
 
 .spinner {
   width: 11px;

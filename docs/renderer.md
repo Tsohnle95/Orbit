@@ -684,9 +684,11 @@ express a cross-component invariant or non-obvious state contract.
 | `BrowserPane` | `BrowserPane.tsx`, `use-browser-guest.ts`, `use-browser-tabs.ts` | Browser tab surface: a navigation row (back / forward / reload-or-stop, "Search or enter a URL" field that turns bare hosts into `https:` and everything else into a search) over a `<webview>` guest in the `orbit-browser` partition. Guests are created lazily — a new tab is pure state with no guest at all — so opening one costs nothing, and a loading veil covers the frame until the page stops loading; `use-browser-guest` folds guest events into the browser slice |
 | `BrowserTabsProvider` | `browser-tabs-context.tsx`, `browser-store-provider.tsx` | Browser tab state lives outside the app store, split into a *state* context (tab list + active tab, consumed by the strip and panes) and a stable *actions* context (consumed by the rail, the editor and the store). That split is a responsiveness contract, not a detail: when the slices lived in the app store, opening or closing a tab re-rendered every store consumer (measured 644ms with nine editors open; 2ms after the split)
 | `EditorTabs` | `EditorTabs.tsx`, `editor-groups.ts` | Tab strip for the editor groups: tabs share the strip width (90px floor, 240px ceiling) and overflow past the floor moves into an "all open tabs" menu button; each tab resolves its owning group (drag source and selection target) through the strip's group lookup; owns the tab drag MIME and the editor-group identity helpers |
-| `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status; its header keeps only the panel options menu (session/mode/close) plus the back control for delegated sessions and the turn timer, and the empty panel shows the `NeptuneSprite` pixel art until the first user/assistant turn; Shift+Tab cycles agents, Shift+P cycles favorite models, and Ctrl+Tab cycles response strength without intercepting typed Shift+S |
+| `AgentPanel` | `AgentPanel.tsx` | Session-owned GUI/TUI surface, timeline, composer, model/agent controls, usage/status; its header presents the panel identity (pixel mark, "MIRA Agent", and an online status dot tied to the backend connection) plus the turn timer and the options menu (session/mode/close); the GUI view mounts the `AgentSceneArt` backdrop (full strength until the first user/assistant turn, receded while a turn is on screen) with the `NeptuneSprite` as the fallback artwork when the scene cannot load; Shift+Tab cycles agents, Shift+P cycles favorite models, and Ctrl+Tab cycles response strength without intercepting typed Shift+S |
 | `Composer` | `Composer.tsx` | Authoritative local prompt draft, attachments, keyboard dispatch and agent controls; takes `controls` (extra control-row slot, used for the session usage ring) and `overlay` (popover anchored to the input); completion and model-menu behavior have the owners below; in the agent panel the control row collapses to icons at the panel's minimum width (mode keeps its glyph, reasoning keeps a chevron, the variant chip hides) |
-| `NeptuneSprite` | `NeptuneSprite.tsx` | Decorative 8-bit pixel sprite for the empty agent panel: fixed palette of little squares, one rect per pixel, sized against the panel via `cqw` so it stays crisp at the minimum panel width |
+| `NeptuneSprite` | `NeptuneSprite.tsx` | Decorative 8-bit pixel sprite for the empty agent panel: fixed palette of little squares, one rect per pixel, sized against the panel via `cqw` so it stays crisp at the minimum panel width; shown when the agent scene artwork is unavailable |
+| `MiraMark` | `MiraMark.tsx` | Pixel sparkle mark for the agent-panel header identity: fixed palette, one rect per pixel, crisp edges at the header size |
+| `AgentSceneArt` | `AgentSceneArt.tsx`, `agent-scenes.ts` | Decorative pixel-art scene behind the agent panel; `agent-scenes.ts` pairs a wide and a tall (subject-cropped) composition per scene with assets under `assets/agent-scenes/`, the layer picks between them by panel width via container query with `object-fit: cover` focal positioning, and `active` recedes the artwork while a conversation is on screen; inert (`pointer-events: none`), `aria-hidden`, fades in on decode, and stays invisible if an asset fails; hidden in TUI mode |
 | `AgentTui` | `AgentTui.tsx` | xterm view for the active runtime's PTY-backed TUI |
 | `OpenCodeTimeline` | `OpenCodeTimeline.tsx` | Runtime-neutral chronological rendering of assistant text/tools/delegation with hidden reasoning |
 | `OpenCodeTodoDock` | `OpenCodeTodoDock.tsx` | Structured todo/checklist state near the composer |
@@ -749,14 +751,23 @@ Key cross-component invariants:
   appear in the dock when the panel returns to the GUI view.
 - Timeline order comes from the authoritative chat/session state; components do
   not invent a second activity history.
+- The agent scene layer is decorative and GUI-only: it never owns pointer
+  events, paints between the panel background and the content rows (header,
+  transcript, dock), and is absent from the embedded TUI.
 - Workspace-dependent actions remain inert when no workspace is active.
 
 ## Styles (`src/renderer/src/styles/`)
 
 `_opencode-chat.scss` owns the ordered integration of the pinned upstream
-partials and Orbit's transcript overrides. Prompt, permission/form/revert,
-todo and compact composer presentation lives in `_agent-prompt-dock.scss`;
-the transcript owner includes its mixin at the existing cascade position.
+partials and Orbit's transcript overrides (the transcript surface stays
+transparent so the panel surface and the agent scene show through). Prompt,
+permission/form/revert, todo and compact composer presentation lives in
+`_agent-prompt-dock.scss`; the transcript owner includes its mixin at the
+existing cascade position. `_agent-scene.scss` owns the agent panel's
+decorative scene layer (stacking between the panel background and its content
+rows, the width breakpoint between the wide and tall compositions, and the
+legibility scrims). `_agent.scss` owns the header identity and the empty-state
+fallback sprite over that scene.
 Keep `main.scss` ordering explicit. Move related rules together rather than
 creating per-selector partials; inherited palette overrides are intentional.
 
