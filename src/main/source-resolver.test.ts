@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { resolveAppSource } from "./source-resolver";
+import { resolveAppSource, resolveRunningAppSource } from "./source-resolver";
 
 const roots: string[] = [];
 
@@ -24,6 +24,32 @@ describe("resolveAppSource", () => {
     await writeFile(source, ".root {}", "utf8");
 
     await expect(resolveAppSource(appRoot, source, `${source}:14`)).resolves.toBe(await realpath(source));
+  });
+
+  it("resolves the screenshot link from the running checkout when Electron appPath belongs to a launcher wrapper", async () => {
+    const appRoot = await tempRoot("orbit-wrapper");
+    const checkout = await tempRoot("orbit-checkout");
+    const source = path.join(checkout, "src/renderer/src/styles/_sessions.scss");
+    const mainDirectory = path.join(checkout, "out/main");
+    await mkdir(path.dirname(source), { recursive: true });
+    await mkdir(mainDirectory, { recursive: true });
+    await writeFile(source, ".sessions-actions {}", "utf8");
+    const url = new URL(`file://${source}`).href;
+    await expect(resolveAppSource(appRoot, url, `${url}:81`)).resolves.toBeNull();
+    await expect(resolveRunningAppSource(mainDirectory, url, `${url}:81`)).resolves.toBe(await realpath(source));
+    const unrelated = path.join(appRoot, "_sessions.scss");
+    await writeFile(unrelated, ".decoy {}", "utf8");
+    await expect(resolveRunningAppSource(mainDirectory, unrelated, `${unrelated}:81`)).resolves.toBe(await realpath(source));
+  });
+
+  it("keeps the running-source boundary closed to unrelated files and source-less packages", async () => {
+    const checkout = await tempRoot("orbit-checkout");
+    const wrapper = await tempRoot("orbit-package");
+    const outside = await tempRoot("orbit-private");
+    const source = path.join(outside, "private.scss");
+    await writeFile(source, ".private {}", "utf8");
+    await expect(resolveRunningAppSource(path.join(checkout, "out/main"), source, `${source}:1`)).resolves.toBeNull();
+    await expect(resolveRunningAppSource(path.join(wrapper, "out/main"), source, `${source}:1`)).resolves.toBeNull();
   });
 
   it("rejects an absolute source from an unrelated workspace", async () => {

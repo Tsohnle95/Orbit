@@ -31,7 +31,7 @@ import {
   type WindowSize,
   type WindowView
 } from "./window-sizing";
-import { resolveAppSource } from "./source-resolver";
+import { resolveRunningAppSource } from "./source-resolver";
 import { DevToolsController } from "./devtools-controller";
 import { SavedWorkspaceStore } from "./saved-workspaces";
 import { SassWatchManager } from "./sass-watch";
@@ -110,7 +110,7 @@ const appIconPath = (() => {
   return existsSync(fromApp) ? fromApp : fromOut;
 })();
 const appUpdate = new AppUpdateController(orbitAppUpdater, isOrbitReleaseBuild, appIconPath, () => win, () => unsavedEditorFileNames);
-const devTools = new DevToolsController((file, title) => resolveAppSource(app.getAppPath(), file, title));
+const devTools = new DevToolsController((file, title) => resolveRunningAppSource(__dirname, file, title));
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const LANDING_WIDTH = 760;

@@ -398,9 +398,12 @@ Caveat: `npm start` (electron-vite preview) does NOT forward
 
 `node scripts/electron-devtools-smoke.mjs` (also part of `npm run test:platform`)
 runs an isolated macOS Electron check against the compiled renderer. It selects
-the Mira title, clicks the mapped rule link in the real DevTools Styles panel,
+the Sessions actions container, clicks the mapped rule link with native mouse
+input in the real DevTools Styles panel,
 and verifies the owning SCSS file opens in a Monaco tab. Its fixture backend
-keeps the test offline and never edits the source file. Rebuild before running it.
+keeps the test offline and never edits the source file. The fixture keeps
+Electron appPath separate from the executing checkout, matching the installed
+live launcher. Rebuild before running it.
 
 ## Probing the OpenCode service directly
 

@@ -140,3 +140,9 @@ export async function resolveAppSource(appRoot: string, file: string, title: str
     return null;
   }
 }
+
+// Installed live launchers keep Electron's appPath at the wrapper while loading
+// out/main from the checkout. The executing main module owns the source root.
+export function resolveRunningAppSource(mainDirectory: string, file: string, title: string): Promise<string | null> {
+  return resolveAppSource(path.resolve(mainDirectory, "../.."), file, title);
+}

@@ -18,7 +18,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { DevToolsController } = require(CONTROLLER);
-const { resolveAppSource } = require(RESOLVER);
+const { resolveRunningAppSource } = require(RESOLVER);
 const root = ROOT;
 app.setPath("userData", PROFILE);
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -33,9 +33,9 @@ const watchdog = setTimeout(() => app.exit(2), 40000);
 (async () => {
   await app.whenReady();
   const session = { id: "devtools-smoke", directory: path.join(root, "design"), workspace: { id: "11111111-1111-4111-8111-111111111111", generation: 1 } };
-  const sourcePath = path.join(root, "src/renderer/src/styles/_sidebar.scss");
+  const sourcePath = path.join(root, "src/renderer/src/styles/_sessions.scss");
   const content = fs.readFileSync(sourcePath, "utf8");
-  const line = content.split("\n").findIndex(value => value === ".sidebar-brand {") + 1;
+  const line = content.split("\n").findIndex(value => value === ".sessions-actions {") + 1;
   assert.ok(line > 0);
   let externalRead = null;
   let healthChecked = false;
@@ -59,10 +59,12 @@ const watchdog = setTimeout(() => app.exit(2), 40000);
   const win = new BrowserWindow({ show: false, width: 1280, height: 900, webPreferences: { preload: path.join(root, "out/preload/index.js"), contextIsolation: true, sandbox: true } });
   const wc = win.webContents;
   wc.on("console-message", (_event, level, message) => { if (level >= 2) console.error("renderer:", message); });
+  assert.notEqual(app.getAppPath(), root, "The fixture must preserve the installed wrapper/check-out split");
   const requests = [];
   const controller = new DevToolsController(async (file, title) => {
-    const resolved = await resolveAppSource(root, file, title);
+    const resolved = await resolveRunningAppSource(path.join(root, "out/main"), file, title);
     requests.push({ file, resolved });
+    console.log("source-resolution", JSON.stringify({ appPath: app.getAppPath(), file, resolved }));
     return resolved;
   });
   controller.attach(wc);
@@ -73,25 +75,32 @@ const watchdog = setTimeout(() => app.exit(2), 40000);
     console.error(await wc.executeJavaScript('document.body.innerText'));
     throw error;
   });
+  const sessionsPoint = await wc.executeJavaScript('(()=>{const r=document.querySelector("[data-panel-action=show-sessions]").getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};})()');
+  wc.sendInputEvent({ type: "mouseDown", ...sessionsPoint, button: "left", clickCount: 1 });
+  wc.sendInputEvent({ type: "mouseUp", ...sessionsPoint, button: "left", clickCount: 1 });
+  await wait(() => wc.executeJavaScript('Boolean(document.querySelector(".sessions-actions"))'), "Sessions actions");
   wc.openDevTools({ mode: "bottom" });
   await wait(() => wc.devToolsWebContents && !wc.devToolsWebContents.isLoading(), "DevTools");
-  const point = await wc.executeJavaScript('(()=>{const r=document.querySelector(".sidebar-brand").getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};})()');
+  const point = await wc.executeJavaScript('(()=>{const r=document.querySelector(".sessions-actions").getBoundingClientRect();return {x:Math.round(r.x+1),y:Math.round(r.y+1)};})()');
   wc.inspectElement(point.x, point.y);
   const dt = wc.devToolsWebContents;
   const clickRule = "(" + function(sourceLine) {
     function walk(root) {
       for (const el of root.querySelectorAll("*")) {
-        if (el.shadowRoot && walk(el.shadowRoot)) return true;
-        if ((el.getAttribute("title") || "").endsWith("/_sidebar.scss:" + sourceLine)) { el.click(); return true; }
+        if (el.shadowRoot) { const found = walk(el.shadowRoot); if (found) return found; }
+        if ((el.getAttribute("title") || "").endsWith("/_sessions.scss:" + sourceLine)) { const r=el.getBoundingClientRect(); return { x:Math.round(r.x+r.width/2), y:Math.round(r.y+r.height/2) }; }
       }
       return false;
     }
     return walk(document);
   }.toString() + ")(" + line + ")";
-  await wait(() => dt.executeJavaScript(clickRule), "mapped Styles link");
+  let sourcePoint;
+  await wait(async () => sourcePoint = await dt.executeJavaScript(clickRule), "mapped Styles link");
+  dt.sendInputEvent({ type: "mouseDown", ...sourcePoint, button: "left", clickCount: 1 });
+  dt.sendInputEvent({ type: "mouseUp", ...sourcePoint, button: "left", clickCount: 1 });
   await wait(() => externalRead === sourcePath, "editor source read");
   await wait(() => wc.executeJavaScript('Boolean([...document.querySelectorAll(".tab.active")].find(el => el.title === ' + JSON.stringify(sourcePath) + '))'), "active stylesheet tab");
-  await wait(() => wc.executeJavaScript('Boolean(document.querySelector(".monaco-editor .view-lines")?.textContent.includes("sidebar-brand"))'), "Monaco source at rule");
+  await wait(() => wc.executeJavaScript('Boolean(document.querySelector(".monaco-editor .view-lines")?.textContent.includes("sessions-actions"))'), "Monaco source at rule");
   assert.equal(requests.at(-1).resolved, sourcePath);
   console.log('[electron-devtools-smoke] ' + JSON.stringify({ stylesLinkOpenedEditor: true, source: sourcePath, line }));
   wc.closeDevTools();

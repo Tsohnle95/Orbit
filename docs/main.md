@@ -533,9 +533,11 @@ falling back to a basename search that skips `node_modules`, `out`,
 `dist`, etc. — both the direct and the searched resolution skip known
 build-output directories so a hashed bundle is never opened as if it
 were source. DevTools always inspects Orbit's own renderer, so resolution
-is confined to the canonical application directory and never searches the
-active user workspace. The command carries the canonical absolute path; the
-renderer opens it through the external-file workflow as a writable standalone
+is confined to the canonical source root derived from the executing main
+module (`out/main`), and never searches the active user workspace. Electron
+`app.getAppPath()` can refer to an installed live-launcher wrapper rather than
+the checkout that owns the inspected renderer; it is not the source boundary.
+The command carries the canonical absolute path; the renderer opens it through the external-file workflow as a writable standalone
 tab without replacing the active session. In dev mode (where Vite serves the real `.scss` sources and
 `css.devSourcemap` is on) the links in the Styles panel are the actual
 source files with accurate line numbers, so clicking one opens the
