@@ -108,10 +108,6 @@ function applyAppearance(theme: ThemeId, uiShell: UiShell): void {
     "--panel-surface-image": "none",
     "--panel-surface-size": "auto",
     "--panel-surface-repeat": "no-repeat",
-    // Decorative agent-panel scenes stay at full strength on dark surfaces and
-    // recede to a faint imprint on light ones so themed text keeps contrast
-    // (see `_agent-scene.scss`).
-    "--agent-scene-strength": scheme === "light" ? "0.16" : "1",
     "--workspace-background": `radial-gradient(ellipse at 66% 15%, ${colors.glow} 0, transparent 44%), ${colors.base}`,
     "--rail-surface": colors.rail,
     "--top-surface": colors.top,

@@ -105,10 +105,9 @@
   padding: 12px 0 24px;
   gap: 0;
   overflow-x: hidden;
-  // Deliberately transparent: the panel's own surface, and the decorative
-  // agent scene between that surface and the content, provide the backdrop.
-  // Painting `--v2-background-bg-base` here would repeat the panel colour and
-  // hide the scene.
+  background: var(--v2-background-bg-base);
+}
+:root[data-theme="kitty"] .agent-panel .agent-scroll {
   background: transparent;
 }
 .agent-panel .agent-empty { margin: 0 20px; }
@@ -122,8 +121,7 @@
   font-weight: 440;
   line-height: 24px;
   color: var(--v2-text-text-base);
-  // See `.agent-panel .agent-scroll`: the timeline must not hide the scene.
-  background: transparent;
+  background: var(--v2-background-bg-base);
   --font-family-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --font-family-mono--font-feature-settings: normal;
@@ -143,7 +141,9 @@
   --red: var(--v2-state-fg-danger);
   --accent: var(--v2-text-text-accent);
 }
-
+:root[data-theme="kitty"] .agent-panel .opencode-timeline {
+  background: transparent;
+}
 .opencode-timeline :where(*, *::before, *::after) { box-sizing: border-box; }
 .opencode-timeline :where(p, h1, h2, h3, h4, h5, h6, blockquote, dl, dd, pre, figure, hr, ul, ol) { margin: 0; }
 .opencode-timeline :where(button) { border: 0 solid; padding: 0; background: transparent; color: inherit; font: inherit; text-align: inherit; }

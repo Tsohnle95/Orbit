@@ -16,17 +16,6 @@
   container-type: inline-size;
 }
 
-// The decorative scene layer paints above the panel's own background but
-// below every content row; give the interactive surfaces an explicit
-// stacking level so artwork can never cover controls, messages, or the
-// composer (see `_agent-scene.scss`).
-.agent-panel > .agent-header,
-.agent-panel > .agent-scroll,
-.agent-panel > [data-component="session-prompt-dock"] {
-  position: relative;
-  z-index: 1;
-}
-
 .agent-header {
   position: relative;
   display: flex;
@@ -35,6 +24,9 @@
   min-width: 0;
   padding: 5px 8px 5px 12px;
   border-bottom: 1px solid var(--border);
+  // The identity bar (mark, wordmark, status) keeps its dark backdrop in
+  // every appearance, so the fixed brand colours above it always read.
+  background: linear-gradient(180deg, rgba(5, 4, 15, 0.92) 0%, rgba(5, 4, 15, 0.76) 100%);
 }
 
 .agent-orb {
@@ -127,11 +119,14 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
 }
 
+// Fixed brand colour (the mark's own palette): the identity bar keeps its
+// dark backdrop in every appearance (see `.agent-header`).
 .agent-brand {
   letter-spacing: 0.08em;
+  color: #cbb8ff;
 }
 
 .agent-status {
@@ -211,7 +206,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-dim);
+  // Over the identity bar's dark backdrop (see `.agent-header`), not the
+  // panel surface.
+  color: rgba(226, 222, 245, 0.78);
   font-size: 10.5px;
   line-height: 13px;
   text-transform: capitalize;
@@ -223,6 +220,11 @@
 }
 
 .agent-session-back { flex: 0 0 24px; }
+
+// Header controls ride the identity bar's dark backdrop, so they stay light
+// in every appearance.
+.agent-header .icon-btn { color: rgba(235, 232, 248, 0.82); }
+.agent-header .icon-btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.08); }
 
 .agent-header-actions {
   margin-left: auto;
@@ -335,7 +337,6 @@
 }
 
 @container (max-width: 300px) {
-  .agent-status-text { display: none; }
   .agent-header { padding: 12px 0 10px 12px; }
   .agent-header-actions { gap: .25rem; }
 }
@@ -873,14 +874,13 @@
   font-size: 13px;
 }
 
-// Pixel sprite drawn for the empty panel (see NeptuneSprite): little squares,
-// sized against the panel width so it stays crisp at the minimum panel size.
-// It is the fallback artwork: the scene layer hides it once an image decodes.
+// The MIRA station mark drawn for the empty panel (asset:
+// `assets/agent-station.png`): sized against the panel width and capped so it
+// stays proportionate from the minimum docked panel to Agent Mode.
 .agent-empty-art {
-  width: clamp(160px, 60cqw, 240px);
+  width: clamp(150px, 60cqw, 240px);
   height: auto;
   margin: 0 auto 18px;
-  shape-rendering: crispEdges;
   image-rendering: pixelated;
 }
 

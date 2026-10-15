@@ -127,17 +127,19 @@ describe("composer workspace continuations", () => {
     expect(idle?.title).toBe("Type a prompt first");
   });
 
-  it("draws the pixel sprite only while the panel has no conversation", async () => {
+  it("draws the empty-state mark and prompt only while the panel has no conversation", async () => {
     panelTranscript = [];
     await act(async () => root.render(<AgentPanel />));
 
-    const sprite = container.querySelector(".agent-empty-art");
-    expect(sprite).not.toBeNull();
-    expect(sprite!.querySelectorAll("rect").length).toBeGreaterThan(100);
+    const mark = container.querySelector<HTMLImageElement>(".agent-empty-art");
+    expect(mark).not.toBeNull();
+    expect(mark!.getAttribute("src")).toContain("agent-station");
+    expect(container.querySelector(".agent-empty p")?.textContent).toBe("Tell the agent what to work on.");
 
     panelTranscript = [{ kind: "user", id: "user-1", text: "Inspect" }];
     await act(async () => root.render(<AgentPanel />));
     expect(container.querySelector(".agent-empty-art")).toBeNull();
+    expect(container.textContent).not.toContain("Tell the agent what to work on.");
   });
 
   it("closes the panel from its options menu", async () => {

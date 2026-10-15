@@ -1022,13 +1022,6 @@
       ]
     },
     {
-      "owner": "agent empty sprite",
-      "targetPrefix": "src/renderer/src/components/NeptuneSprite.tsx",
-      "allowedFrom": [
-        "src/renderer/src/components/AgentPanel.tsx"
-      ]
-    },
-    {
       "owner": "window titlebar",
       "targetPrefix": "src/renderer/src/components/Titlebar.tsx",
       "allowedFrom": [

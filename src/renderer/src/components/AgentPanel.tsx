@@ -10,8 +10,7 @@ import { MAX_AGENT_PANELS } from "../agent-panels";
 import { Composer } from "./Composer";
 import { TurnTimer, useAgentUsage } from "./AgentUsage";
 import { MiraMark } from "./MiraMark";
-import { NeptuneSprite } from "./NeptuneSprite";
-import { AgentSceneArt } from "./AgentSceneArt";
+import stationMark from "../assets/agent-station.png";
 import { useAgentScroll } from "./agent-scroll";
 import { useMenuDismiss } from "./use-menu-dismiss";
 
@@ -248,12 +247,19 @@ export function AgentPanel({
         <AgentTui workspace={activeSession.workspace} onExit={handleTuiExit} onError={handleTuiError} />
       ) : (
         <>
-          <AgentSceneArt active={conversationStarted || busy} />
           <div className="agent-scroll" ref={scrollRef} onScroll={onScroll}>
             {tuiNotice && <div className="agent-tui-notice">{tuiNotice}</div>}
-             {!conversationStarted && (
+            {!conversationStarted && (
               <div className="agent-empty">
-                <NeptuneSprite className="agent-empty-art" />
+                <img
+                  className="agent-empty-art"
+                  src={stationMark}
+                  alt=""
+                  aria-hidden="true"
+                  draggable={false}
+                  decoding="async"
+                />
+                <p>Tell the agent what to work on.</p>
               </div>
             )}
             <OpenCodeTimeline
