@@ -243,7 +243,13 @@
 }
 
 .titlebar-leading-actions .icon-btn,
-.titlebar-actions .icon-btn { padding-inline: 4px; }
+.titlebar-actions .icon-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+}
 
 .titlebar .icon-btn .lucide-icon { width: 18px; height: 18px; }
 

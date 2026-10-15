@@ -34,8 +34,8 @@ export function stripLayout(listWidth: number, count: number, reservedWidth = 0,
   const width = Math.max(0, listWidth - reservedWidth);
   const overflows = count * TAB_MIN_W + browserCount * 120 > width;
   const available = Math.max(0, width - (overflows ? TAB_OVERFLOW_W : 0));
-  const files = Math.min(count, Math.floor(available / TAB_MIN_W));
-  const browsers = Math.min(browserCount, Math.floor(Math.max(0, available - files * TAB_MIN_W) / 120));
+  const browsers = Math.min(browserCount, Math.floor(available / 120));
+  const files = browserCount > 0 && browsers === 0 ? 0 : Math.min(count, Math.floor((available - browsers * 120) / TAB_MIN_W));
   return { visibleCount: files + browsers, hiddenCount: count + browserCount - files - browsers };
 }
 
@@ -285,10 +285,24 @@ export function TabBar({
     return () => observer.disconnect();
   }, []);
 
-  const { visibleCount, hiddenCount } = stripLayout(listWidth, tabs.length, 0, browsers.length);
-  const visibleTabs = tabs.slice(0, visibleCount);
-  const visibleBrowsers = browsers.slice(0, Math.max(0, visibleCount - tabs.length));
+  const addWidth = onNewBrowser && browsers.length > 0 ? 28 : 0;
+  const { visibleCount, hiddenCount } = stripLayout(listWidth, tabs.length, addWidth, browsers.length);
+  const available = Math.max(0, listWidth - addWidth - (hiddenCount > 0 ? TAB_OVERFLOW_W : 0));
+  const visibleBrowsers = browsers.slice(0, Math.floor(available / 120));
+  const visibleTabs = tabs.slice(0, visibleCount - visibleBrowsers.length);
   const groupOf = (path: string): EditorGroupID => groupFor?.(path) ?? "primary";
+
+  const addBrowser = onNewBrowser && browsers.length > 0 ? (
+    <button
+      type="button"
+      className="tab-add"
+      aria-label="New browser tab"
+      title="New browser tab"
+      onClick={onNewBrowser}
+    >
+      <IconAdd />
+    </button>
+  ) : null;
 
   return (
     <div className="tabbar">
@@ -318,18 +332,9 @@ export function TabBar({
             onClose={() => onCloseBrowser?.(browser.id)}
           />
         ))}
+        {visibleBrowsers.length > 0 && addBrowser}
       </div>
-      {onNewBrowser && (
-          <button
-            type="button"
-            className="tab-add"
-            aria-label="New browser tab"
-            title="New browser tab"
-            onClick={onNewBrowser}
-          >
-            <IconAdd />
-          </button>
-      )}
+      {visibleBrowsers.length === 0 && addBrowser}
       {hiddenCount > 0 && (
         <TabOverflow tabs={tabs} activePath={activePath} hiddenCount={hiddenCount} onSelect={onSelect}
           browsers={browsers} activeBrowserTabID={activeBrowserTabID} onSelectBrowser={onSelectBrowser} />

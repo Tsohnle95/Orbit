@@ -8,6 +8,8 @@ export function Titlebar({
   onToggleSidebar,
   onToggleAgentMode,
   onToggleAgentPanel,
+  onAddAgentPanel,
+  canAddAgentPanel,
   leadingRef,
   tabsSlotRef
 }: {
@@ -17,6 +19,8 @@ export function Titlebar({
   onToggleSidebar: () => void;
   onToggleAgentMode: () => void;
   onToggleAgentPanel: () => void;
+  onAddAgentPanel: () => void;
+  canAddAgentPanel: boolean;
   leadingRef?: Ref<HTMLSpanElement>;
   tabsSlotRef?: Ref<HTMLDivElement>;
 }): ReactNode {
@@ -50,6 +54,16 @@ export function Titlebar({
           }}
         >
           <i className="codicon codicon-robot" aria-hidden="true" />
+        </button>
+        <button
+          className="icon-btn"
+          data-panel-action="add-model-panel"
+          title={canAddAgentPanel ? "Add agent panel (choose a folder)" : "Agent panel limit reached"}
+          aria-label="Add model panel"
+          disabled={!canAddAgentPanel}
+          onClick={onAddAgentPanel}
+        >
+          <i className="codicon codicon-add" aria-hidden="true" />
         </button>
         <button
           className="icon-btn"

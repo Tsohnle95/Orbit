@@ -68,6 +68,30 @@ describe("mixed tab overflow", () => {
     vi.unstubAllGlobals();
   });
 
+  it("places the browser add button immediately after browser chips and omits it for file-only strips", () => {
+    width = 1200;
+    const tabs = [{ path: "one.ts", name: "one.ts", content: "", saved: "", mode: "edit" }] as Tab[];
+    const browsers = ["one", "two"].map(id => ({ id, url: "", title: id, loading: false, error: null, canGoBack: false, canGoForward: false }));
+    const props = { tabs, activePath: "one.ts", ariaLabel: "Tabs", onSelect: vi.fn(), onClose: vi.fn(), onMoveTab: vi.fn(), onNewBrowser: vi.fn() };
+    act(() => root.render(createElement(TabBar, { ...props, browsers })));
+    const add = container.querySelector(".tab-add")!;
+    expect(add.parentElement?.className).toBe("tab-list");
+    expect(add.previousElementSibling?.classList.contains("browser")).toBe(true);
+    expect(container.querySelectorAll(".tab.browser")).toHaveLength(2);
+    act(() => root.render(createElement(TabBar, props)));
+    expect(container.querySelector(".tab-add")).toBeNull();
+  });
+
+  it("keeps the browser add control next to a browser when files and browsers overflow together", () => {
+    width = 280;
+    const tabs = Array.from({ length: 8 }, (_, index) => ({ path: `${index}.ts`, name: `${index}.ts`, content: "", saved: "", mode: "edit" })) as Tab[];
+    const browsers = ["one", "two"].map(id => ({ id, url: "", title: id, loading: false, error: null, canGoBack: false, canGoForward: false }));
+    act(() => root.render(createElement(TabBar, { tabs, browsers, activePath: null, ariaLabel: "Tabs", onSelect: vi.fn(), onClose: vi.fn(), onMoveTab: vi.fn(), onNewBrowser: vi.fn() })));
+    expect(container.querySelectorAll(".tab.browser")).toHaveLength(1);
+    expect(container.querySelectorAll(".tab:not(.browser)")).toHaveLength(1);
+    expect(container.querySelector(".tab-add")?.previousElementSibling?.classList.contains("browser")).toBe(true);
+  });
+
   it("keeps files, browser tabs and add reachable after shrinking to zero", () => {
     const onSelect = vi.fn();
     const onSelectBrowser = vi.fn();

@@ -237,7 +237,7 @@ describe("Layout panel sizing", () => {
     const panelToggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-agent-panel"]')!;
     const settingsButton = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-settings"]')!;
     expect(panelToggle.closest(".titlebar-actions")).not.toBeNull();
-    expect(panelToggle.previousElementSibling?.getAttribute("data-panel-action")).toBe("toggle-model-mode");
+    expect(panelToggle.previousElementSibling?.getAttribute("data-panel-action")).toBe("add-model-panel");
     expect(container.querySelector('[data-panel-action="toggle-sidebar"]')?.closest(".titlebar-leading-actions")).not.toBeNull();
     expect(settingsButton.closest(".activity-rail")).not.toBeNull();
     expect(settingsButton.getAttribute("aria-pressed")).toBe("false");
@@ -1199,6 +1199,19 @@ describe("Layout panel sizing", () => {
     expect(agentLefts()).toEqual([924]);
   });
 
+  it("keeps the agent add control beside Agent Mode and can add a panel from coding mode", async () => {
+    await act(async () => root.render(<App />));
+    await act(async () => new Promise(resolve => setTimeout(resolve, 20)));
+    const mode = container.querySelector('[data-panel-action="toggle-model-mode"]')!;
+    const add = container.querySelector<HTMLButtonElement>('.titlebar-actions [data-panel-action="add-model-panel"]')!;
+    expect(mode.nextElementSibling).toBe(add);
+    expect(add.classList.contains("icon-btn")).toBe(true);
+    expect(container.querySelector('.activity-rail [data-panel-action="add-model-panel"]')).toBeNull();
+    await act(async () => { add.click(); await new Promise(resolve => setTimeout(resolve, 30)); });
+    expect(container.querySelector(".app")?.classList.contains("agent-mode")).toBe(true);
+    expect(container.querySelectorAll(".agent-panel")).toHaveLength(2);
+  });
+
   it("only the plus control adds a model panel", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
@@ -1214,7 +1227,7 @@ describe("Layout panel sizing", () => {
 
     expect(openSession).not.toHaveBeenCalled();
     expect(container.querySelectorAll(".agent-panel")).toHaveLength(1);
-    expect(container.querySelector('[data-panel-action="add-model-panel"]')).toBeNull();
+    expect(container.querySelector('.titlebar-actions [data-panel-action="add-model-panel"]')).not.toBeNull();
   });
 
   it("preserves an enlarged tray through subagent navigation and back", async () => {

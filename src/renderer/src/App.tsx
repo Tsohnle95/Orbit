@@ -446,11 +446,12 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
   }, [distributeEvenly, inAgentMode, panels, sideOpen, sideW]);
 
   const addModelPanel = (): void => {
-    if (!inAgentMode || panels.length + pendingModelPanels >= MAX_AGENT_PANELS) return;
+    if (panels.length + pendingModelPanels >= MAX_AGENT_PANELS) return;
     setPendingModelPanels((count) => count + 1);
     void selectAddPanel()
       .then((opened) => {
         if (!opened) return;
+        if (!inAgentMode) toggleAgentMode();
         setAgentModePanelIDs((current) => current.includes(opened.id) ? current : [...current, opened.id]);
       })
       .finally(() => setPendingModelPanels((count) => Math.max(0, count - 1)));
@@ -589,6 +590,8 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
         onToggleSidebar={toggleSidebarFromTitlebar}
         onToggleAgentMode={toggleAgentMode}
         onToggleAgentPanel={toggleAgentPanel}
+        onAddAgentPanel={addModelPanel}
+        canAddAgentPanel={panels.length + pendingModelPanels < MAX_AGENT_PANELS}
         leadingRef={titlebarLeadingRef}
         tabsSlotRef={setTabsSlot}
       />
@@ -631,18 +634,6 @@ function Layout({ children }: { children?: ReactNode }): ReactNode {
             <i className="codicon codicon-terminal" aria-hidden="true" />
           </button>
           <RailBrowserButton onOpen={() => openBrowserTab()} />
-          {inAgentMode && (
-            <button
-              className="activity-tool"
-              data-panel-action="add-model-panel"
-              title={panels.length + pendingModelPanels >= MAX_AGENT_PANELS ? `Model panel limit reached (${MAX_AGENT_PANELS})` : "Add model panel (choose a folder for the new panel)"}
-              aria-label="Add model panel"
-              disabled={panels.length + pendingModelPanels >= MAX_AGENT_PANELS}
-              onClick={addModelPanel}
-            >
-              <i className="codicon codicon-add" aria-hidden="true" />
-            </button>
-          )}
           <span className="activity-spacer" aria-hidden />
           <button
             className={`activity-tool ${settingsOpen ? "active" : ""}`}

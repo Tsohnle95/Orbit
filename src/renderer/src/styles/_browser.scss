@@ -130,6 +130,7 @@
 .tab.browser { flex: 0 0 auto; min-width: 120px; max-width: 220px; }
 
 .tab-add {
+  align-self: center;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
