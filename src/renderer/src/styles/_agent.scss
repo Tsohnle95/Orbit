@@ -861,6 +861,11 @@
   image-rendering: pixelated;
 }
 
+// Pale pixel highlights need dark ink on light panel surfaces.
+:root:has(.opencode-timeline[data-color-scheme="light"]) .agent-empty-art {
+  filter: invert(1) hue-rotate(180deg);
+}
+
 .spinner {
   width: 11px;
   height: 11px;

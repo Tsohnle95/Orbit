@@ -767,3 +767,21 @@
 .tree-row-action:hover { background: var(--bg-active); color: var(--accent); }
 
 .tree-row-action .si-mini { flex-shrink: 0; }
+
+.sidebar-brand {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.files-brand-header {
+  padding: 0 8px 0 0;
+}
+
+.files-brand-header .section-toggle {
+  min-height: 56px;
+  padding-left: 16px;
+}

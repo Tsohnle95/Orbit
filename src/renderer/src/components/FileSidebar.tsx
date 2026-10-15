@@ -451,17 +451,17 @@ export function FileSidebar({
         <SessionsPane />
       ) : (
         <>
-          <div className="section-trigger">
+          <div className="section-trigger files-brand-header">
             <button
               className={`section-toggle ${changesOpen ? "open" : ""}`}
-              aria-expanded={changesOpen}
+              aria-label="Changes" aria-expanded={changesOpen}
               onClick={() => setChangesOpen((o) => !o)}
               onContextMenu={(e) => {
                 e.preventDefault();
                 setChangesMenu({ x: e.clientX, y: e.clientY, path: null });
               }}
             >
-              <span>CHANGES</span>
+              <span className="sidebar-brand">Mira</span>
               <span className="sidebar-count changes-count push">{changes.length}</span>
               <span className="section-chevron">
                 <ChevronIcon open={changesOpen} />

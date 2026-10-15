@@ -198,7 +198,7 @@ describe("FileSidebar tabs and sessions pane", () => {
     expect(container.querySelector(".sessions-pane")).toBeNull();
     const labels = [...container.querySelectorAll(".section-toggle")].map((el) => el.textContent ?? "");
     expect(labels.length).toBe(2);
-    expect(labels[0]?.startsWith("CHANGES")).toBe(true);
+    expect(labels[0]?.startsWith("Mira")).toBe(true);
     expect(labels[1]).toBe("workspace");
 
     await act(async () =>

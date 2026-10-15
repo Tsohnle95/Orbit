@@ -151,13 +151,11 @@ function RecentsSection({
 }
 
 function SessionsHeader({
-  title,
   searchOpen,
   query,
   onToggleSearch,
   onQueryChange
 }: {
-  title: string;
   searchOpen: boolean;
   query: string;
   onToggleSearch: () => void;
@@ -166,8 +164,7 @@ function SessionsHeader({
   return (
     <>
       <div className="sessions-header">
-        <span className="sessions-header-title">{title}</span>
-        <i className="codicon codicon-chevron-down sessions-header-chevron" aria-hidden="true" />
+        <span className="sidebar-brand">Mira</span>
         <button
           className={`sessions-header-action ${searchOpen ? "open" : ""}`}
           aria-label={searchOpen ? "Close session filter" : "Filter sessions"}
@@ -207,7 +204,6 @@ export function SessionsPane(): ReactNode {
     removeWorkspace,
     activeSessions,
     loadSessions,
-    session,
   } = useStore();
   const [pinnedIDs, setPinnedIDs] = useState<string[]>(readPinned);
   const [workspacesOpen, setWorkspacesOpen] = useState(false);
@@ -290,9 +286,6 @@ export function SessionsPane(): ReactNode {
   );
   const pinnedList = recents.filter((summary) => pinnedIDs.includes(summary.id) && matchesQuery(summary, needle));
   const unpinnedRecents = recents.filter((summary) => !pinnedIDs.includes(summary.id) && matchesQuery(summary, needle));
-  const workspaceName = session
-    ? session.directory.split(/[\\/]/).filter(Boolean).pop() ?? "Orbit"
-    : "Orbit";
 
   const togglePin = (id: string): void => {
     setPinnedIDs((current) => {
@@ -328,7 +321,6 @@ export function SessionsPane(): ReactNode {
   return (
     <div className="sessions-pane">
       <SessionsHeader
-        title={workspaceName}
         searchOpen={searchOpen}
         query={query}
         onToggleSearch={() => {

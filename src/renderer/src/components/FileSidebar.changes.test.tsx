@@ -45,7 +45,7 @@ function render(): void {
 
 function changesHeader(): HTMLButtonElement {
   return [...container.querySelectorAll<HTMLButtonElement>(".section-toggle")].find(
-    (button) => button.textContent?.includes("CHANGES")
+    (button) => button.getAttribute("aria-label") === "Changes"
   )!;
 }
 
