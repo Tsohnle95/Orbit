@@ -105,7 +105,7 @@ $codex: ':is([data-shell="codex"])';
 
 #{$codex} .sessions-pane {
   --session-list-row-height: 30px;
-  padding: 6px 8px 12px;
+  padding: 0 6px 12px;
 }
 
 #{$codex} .sessions-row,
