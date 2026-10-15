@@ -1,5 +1,8 @@
 # Workspace Sass compilation
 
+This guide covers user-workspace CSS output. Orbit interface styles have a
+[separate application-only live-save owner](main.md), independent of this toggle.
+
 `src/main/sass-watch.ts` owns local watchers, compiler lifetimes, preferences,
 and CSS disk output. It never installs tools or executes workspace scripts.
 Compilation uses Orbit's shipped `sass` dependency in `sass-worker.ts`, keeping

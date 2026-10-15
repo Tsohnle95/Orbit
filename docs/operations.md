@@ -400,8 +400,11 @@ Caveat: `npm start` (electron-vite preview) does NOT forward
 runs an isolated macOS Electron check against the compiled renderer. It selects
 the Sessions actions container, clicks the mapped rule link with native mouse
 input in the real DevTools Styles panel,
-and verifies the owning SCSS file opens in a Monaco tab. Its fixture backend
-keeps the test offline and never edits the source file. The fixture keeps
+and verifies the owning SCSS file opens in a Monaco tab. It then edits and saves
+padding through Monaco, verifies computed layout updates without a renderer
+reload, and checks invalid-Sass preservation, recovery, and removed declarations.
+It copies renderer output and application sources into an isolated fixture;
+its backend stays offline and never edits checkout sources. The fixture keeps
 Electron appPath separate from the executing checkout, matching the installed
 live launcher. Rebuild before running it.
 

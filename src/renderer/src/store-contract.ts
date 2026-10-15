@@ -126,6 +126,7 @@ export interface Store {
   expanded: Set<string>;
   hiddenPaths: Set<string>;
   toasts: Toast[];
+  notify: (text: string, tone?: "info" | "error") => void;
   recoveryRecords: RecoveryRecord[];
   models: ModelOption[];
   availableModels: ModelOption[];

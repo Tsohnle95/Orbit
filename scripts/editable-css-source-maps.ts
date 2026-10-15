@@ -5,6 +5,7 @@ import postcss from "postcss";
 import { compile } from "sass";
 import { SourceMapConsumer, SourceMapGenerator } from "source-map-js";
 import type { Plugin } from "vite";
+import { APP_STYLES_START, APP_STYLES_END } from "../src/shared/app-styles";
 
 interface SourceLocation { source: string; line: number; column: number }
 
@@ -53,7 +54,7 @@ export function editableCssSourceMaps(entry: string): Plugin {
       for (const { offset, text } of insertions.sort((a, b) => b.offset - a.offset)) {
         code = code.slice(0, offset) + text + code.slice(offset);
       }
-      return { code, map: { mappings: "" } };
+      return { code: `${APP_STYLES_START}\n${code}\n${APP_STYLES_END}`, map: { mappings: "" } };
     },
     generateBundle(_options, bundle) {
       let emitted = false;

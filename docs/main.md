@@ -548,6 +548,18 @@ relative source paths so moving the checkout does not retain an old build path.
 The build fails if source locations cannot be preserved. A local application
 source tree must exist; generated bundles and dependencies remain excluded.
 
+Saved application SCSS edits also update compiled windows. `app-styles.ts`
+owns a separate application-only watcher and serialized Sass worker, rooted at
+the executing checkout. Build markers delimit app CSS inside the extracted
+bundle; recompilation replaces that entire region while retaining vendor CSS.
+Asset URLs are resolved against their owning Sass source and the derived
+`out/renderer/assets/orbit-live.css` keeps a source map. Main publishes
+`reload-app-styles` only after successful writes; compilation errors publish
+`app-styles-error` and preserve the last valid CSS. Shutdown cancels publication
+and releases the watcher/worker. Development-server windows retain Vite HMR;
+packages without a local app source tree do not start this watcher. This owner
+is independent of the [workspace Sass compiler](sass.md).
+
 Workspace paths are strict `/`-separated relative paths: absolute paths,
 empty file paths, traversal, backslashes, NULs, duplicate separators, and
 oversized values are rejected. Main canonicalizes the root and rejects any

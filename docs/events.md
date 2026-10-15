@@ -218,3 +218,8 @@ request is never sent to the parent session.
 identity. Footer and terminal-tray hooks consume them; the chat reducer ignores
 them. These are local app notifications, not OpenCode runtime events. See
 [the Sass service](sass.md) for ownership and lifecycle.
+
+`ui-command` notifications `reload-app-styles` and `app-styles-error` are
+consumed by the root app-style hook rather than the chat reducer. They refresh
+Orbit's own compiled stylesheet or report compilation failure; see the
+[application style owner](main.md). They are independent of workspace Sass state.

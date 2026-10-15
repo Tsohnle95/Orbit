@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useAppStyles } from "./app-styles";
 import { useStore } from "./store";
 import { IconChevronDown } from "./components/icons";
 import type { SessionInfo } from "@shared/types";
@@ -806,6 +807,7 @@ export default function App(): ReactNode {
 }
 
 function Root(): ReactNode {
+  useAppStyles();
   const { session, unsavedEditorFileCount, unsavedEditorFiles, saveAllEditorFiles } = useStore();
   const wasOpen = useRef(false);
   const [enteredIde, setEnteredIde] = useState(false);

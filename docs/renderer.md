@@ -765,6 +765,13 @@ dark surfaces use `agent-station.png`, with no color filters on either asset.
 Keep `main.scss` ordering explicit. Move related rules together rather than
 creating per-selector partials; inherited palette overrides are intentional.
 
+`app-styles.ts` subscribes to app-style updates from the root shell and swaps
+only the application stylesheet link after the replacement loads successfully.
+The store exposes its existing notification owner as `notify` so compilation
+and loading failures use the shared toast surface.
+Failed or superseded loads keep the last valid sheet. This changes no editor,
+session, or document state and does not reload the renderer.
+
 `main.scss` is the single renderer stylesheet entry and uses ordered Sass
 partials so the cascade stays explicit. Orbit's runtime-neutral chat tokens,
 slots, typography, row geometry, and animations live in

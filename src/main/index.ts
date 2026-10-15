@@ -32,6 +32,7 @@ import {
   type WindowView
 } from "./window-sizing";
 import { resolveRunningAppSource } from "./source-resolver";
+import { AppStylesController } from "./app-styles";
 import { DevToolsController } from "./devtools-controller";
 import { SavedWorkspaceStore } from "./saved-workspaces";
 import { SassWatchManager } from "./sass-watch";
@@ -111,6 +112,14 @@ const appIconPath = (() => {
 })();
 const appUpdate = new AppUpdateController(orbitAppUpdater, isOrbitReleaseBuild, appIconPath, () => win, () => unsavedEditorFileNames);
 const devTools = new DevToolsController((file, title) => resolveRunningAppSource(__dirname, file, title));
+const appStyles = new AppStylesController(path.resolve(__dirname, "../.."),
+  data => { if (win && !win.isDestroyed()) win.webContents.send("shell:message", { kind: "ui-command", command: "reload-app-styles", data }); },
+  data => { if (win && !win.isDestroyed()) win.webContents.send("shell:message", { kind: "ui-command", command: "app-styles-error", data }); }
+);
+function attachAppInspection(wc: WebContents): void {
+  devTools.attach(wc);
+  if (!process.env["ELECTRON_RENDERER_URL"]) wc.on("did-finish-load", () => { void appStyles.start().then(() => appStyles.publishCurrent()); });
+}
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const LANDING_WIDTH = 760;
@@ -306,7 +315,7 @@ function createWindow(show = true): BrowserWindow {
 
   attachBrowserGuards(wc);
 
-  devTools.attach(wc);
+  attachAppInspection(wc);
 
   newWin.webContents.on("before-input-event", (event, input) => {
     const mod = process.platform === "darwin" ? input.meta : input.control;
@@ -657,7 +666,7 @@ function registerIpc(): void {
     return mobileServer.createPairingQr();
   });
 
-  handleTrusted("shell:health", async () => backend.connect().catch(() => false));
+  handleTrusted("shell:health", async () => { appStyles.publishCurrent(); return backend.connect().catch(() => false); });
 
   handleTrusted("shell:window-view", (_e, view: unknown) => {
     if (!isWindowView(view)) return;
@@ -855,6 +864,7 @@ app.on("before-quit", (event) => {
     // teardown (a late pty exit callback aborts the process), but a wedged
     // child must never block quit forever.
     const shutdown = (async () => {
+      await appStyles.stop();
       await sassWatchers.stopAll();
       await backend.stop();
       await terminals.stopAll();

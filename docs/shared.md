@@ -125,7 +125,10 @@ blocks, and provider metadata is retained instead of flattened away.
   `{ kind: "ui-command", command }` (main→renderer requests, e.g.
   `open-source` with `{ path, line }` when a DevTools CSS source link is clicked — `path` is a
   canonical absolute application-source path opened through the renderer's
-  external-file workflow).
+  external-file workflow). `reload-app-styles` carries `AppStylesheetUpdate`
+  (`src/shared/app-styles.ts`) in `data`; `app-styles-error` carries a displayable
+  compilation error string. App-style updates identify the original app link,
+  replacement URL, and revision; they do not describe workspace compiler output.
   Recovery messages carry `{ workspace, records }` so renderer state rejects
   records emitted for a closed or replaced workspace.
 - `{ kind: "terminal-data", terminal: TerminalData }`

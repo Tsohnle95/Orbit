@@ -1109,7 +1109,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
       tree,
       expanded,
       hiddenPaths,
-      toasts,
+      toasts, notify: toast,
       recoveryRecords,
       models,
       availableModels,
@@ -1197,7 +1197,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
       acknowledgeRecovery
     }),
     [
-      session, connected, runtimes, refreshRuntimes, busy, todos, transcript, sessionUsage, providerUsage, providerUsageLoading, tabs, unsavedEditorFileCount, unsavedEditorFiles, activePath, singleFile, agentFiles, tree, expanded, hiddenPaths, toasts, recoveryRecords,
+      session, connected, runtimes, refreshRuntimes, busy, todos, transcript, sessionUsage, providerUsage, providerUsageLoading, tabs, unsavedEditorFileCount, unsavedEditorFiles, activePath, singleFile, agentFiles, tree, expanded, hiddenPaths, toasts, toast, recoveryRecords,
       models, availableModels, lastModel, currentModel, agents, currentAgent, approvalMode, messageQueue.followUpBehavior, setFollowUpBehavior, sessions, savedWorkspaces, saveWorkspace, removeWorkspace, activeSessions, panels, workspaceOnlyPanelIDs, panelViews, activeSessionID,
       focusSession, closePanel, openSession, addModelPanel, openWorkspacePanel, selectAddPanel, selectFolder, selectFile, openFileWorkspace, openExternalPath, importPaths, dropIntoExplorer, selectPanelDirectory, changePanelDirectory, reopenSession, loadSessions, sendPrompt, runCommand, stop, refreshProviderUsage, loadModels, switchModel,
       loadAgents, switchAgent, toggleApprovalMode,
