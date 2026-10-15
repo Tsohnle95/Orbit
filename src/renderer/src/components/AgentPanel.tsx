@@ -9,7 +9,6 @@ import { AgentTui } from "./AgentTui";
 import { MAX_AGENT_PANELS } from "../agent-panels";
 import { Composer } from "./Composer";
 import { TurnTimer, useAgentUsage } from "./AgentUsage";
-import { MiraMark } from "./MiraMark";
 import stationMark from "../assets/agent-station.png";
 import { useAgentScroll } from "./agent-scroll";
 import { useMenuDismiss } from "./use-menu-dismiss";
@@ -77,7 +76,6 @@ export function AgentPanel({
     refreshProviderUsage,
     commitStagedRevert,
     clearStagedRevert,
-    connected,
     runtimes
   } = useStore();
   const activeSession = session === undefined ? storeSession : session;
@@ -216,16 +214,6 @@ export function AgentPanel({
             <IconArrowLeft />
           </button>
         )}
-        <div className="agent-identity">
-          <MiraMark className="agent-mark" />
-          <div className="agent-identity-text">
-            <span className="agent-title agent-brand">MIRA Agent</span>
-            <span className="agent-status">
-              <span className={`agent-status-dot${connected ? " online" : ""}`} aria-hidden="true" />
-              <span className="agent-status-text">{connected ? "Online" : "Offline"}</span>
-            </span>
-          </div>
-        </div>
         <TurnTimer startedAt={turnStartedAt} />
         <AgentPanelOptionsMenu
           open={modeMenuOpen}

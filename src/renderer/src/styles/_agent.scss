@@ -24,9 +24,6 @@
   min-width: 0;
   padding: 5px 8px 5px 12px;
   border-bottom: 1px solid var(--border);
-  // The identity bar (mark, wordmark, status) keeps its dark backdrop in
-  // every appearance, so the fixed brand colours above it always read.
-  background: linear-gradient(180deg, rgba(5, 4, 15, 0.92) 0%, rgba(5, 4, 15, 0.76) 100%);
 }
 
 .agent-orb {
@@ -100,40 +97,15 @@
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 1px;
 }
 
-// Pixel sparkle drawn for the panel identity (see MiraMark): little squares
-// that stay crisp at the header size, with a restrained violet glow.
-.agent-mark {
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
-  shape-rendering: crispEdges;
-  image-rendering: pixelated;
-  filter: drop-shadow(0 0 5px rgba(164, 141, 255, 0.4));
-}
-
-.agent-identity-text {
+.agent-identity-line {
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-// Fixed brand colour (the mark's own palette): the identity bar keeps its
-// dark backdrop in every appearance (see `.agent-header`).
-.agent-brand {
-  letter-spacing: 0.08em;
-  color: #cbb8ff;
-}
-
-.agent-status {
-  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-width: 0;
+  gap: 7px;
 }
 
 .agent-title {
@@ -196,19 +168,12 @@
   animation: agent-status-pulse 1.6s ease-in-out infinite;
 }
 
-.agent-status-dot.online {
-  background: var(--green);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 16%, transparent);
-}
-
 .agent-status-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  // Over the identity bar's dark backdrop (see `.agent-header`), not the
-  // panel surface.
-  color: rgba(226, 222, 245, 0.78);
+  color: var(--text-dim);
   font-size: 10.5px;
   line-height: 13px;
   text-transform: capitalize;
@@ -220,11 +185,6 @@
 }
 
 .agent-session-back { flex: 0 0 24px; }
-
-// Header controls ride the identity bar's dark backdrop, so they stay light
-// in every appearance.
-.agent-header .icon-btn { color: rgba(235, 232, 248, 0.82); }
-.agent-header .icon-btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.08); }
 
 .agent-header-actions {
   margin-left: auto;
@@ -337,6 +297,7 @@
 }
 
 @container (max-width: 300px) {
+  .agent-status-text { display: none; }
   .agent-header { padding: 12px 0 10px 12px; }
   .agent-header-actions { gap: .25rem; }
 }
@@ -860,19 +821,35 @@
   margin-right: auto;
 }
 
+// Centered against the whole panel (the layer is absolute against
+// `.agent-panel`, which is `position: relative`), so the mark and prompt sit
+// in the middle at every panel size; the decorative layer never intercepts
+// pointer events.
 .agent-empty {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
   display: flex;
-  flex: 1 1 auto;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-height: 0;
   padding: 12px 18px;
   text-align: center;
   color: var(--text-dim);
   font-size: 13px;
 }
+
+// The transcript row rules (`.agent-scroll > *` and the chat partial's
+// empty-state margin) size in-flow rows; the decorative layer owns the full
+// panel bounds instead so its contents centre against the panel.
+.agent-panel .agent-scroll .agent-empty {
+  width: auto;
+  max-width: none;
+  margin: 0;
+}
+
+.agent-empty p { margin: 0; }
 
 // The MIRA station mark drawn for the empty panel (asset:
 // `assets/agent-station.png`): sized against the panel width and capped so it
@@ -880,7 +857,7 @@
 .agent-empty-art {
   width: clamp(150px, 60cqw, 240px);
   height: auto;
-  margin: 0 auto 18px;
+  margin: 0 auto 14px;
   image-rendering: pixelated;
 }
 
