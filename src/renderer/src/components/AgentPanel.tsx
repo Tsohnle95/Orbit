@@ -10,6 +10,7 @@ import { MAX_AGENT_PANELS } from "../agent-panels";
 import { Composer } from "./Composer";
 import { TurnTimer, useAgentUsage } from "./AgentUsage";
 import stationMark from "../assets/agent-station.png";
+import lightStationMark from "../assets/agent-station-light.png";
 import { useAgentScroll } from "./agent-scroll";
 import { useMenuDismiss } from "./use-menu-dismiss";
 
@@ -240,8 +241,16 @@ export function AgentPanel({
             {!conversationStarted && (
               <div className="agent-empty">
                 <img
-                  className="agent-empty-art"
+                  className="agent-empty-art agent-empty-art-dark"
                   src={stationMark}
+                  alt=""
+                  aria-hidden="true"
+                  draggable={false}
+                  decoding="async"
+                />
+                <img
+                  className="agent-empty-art agent-empty-art-light"
+                  src={lightStationMark}
                   alt=""
                   aria-hidden="true"
                   draggable={false}

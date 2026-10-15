@@ -760,8 +760,8 @@ partials and Orbit's transcript overrides. Prompt, permission/form/revert,
 todo and compact composer presentation lives in `_agent-prompt-dock.scss`;
 the transcript owner includes its mixin at the existing cascade position.
 `_agent.scss` owns the empty-state station mark with its prompt line. Light
-transcript surfaces invert its pale highlights into dark detail while retaining
-the blue palette; dark surfaces use the original artwork.
+transcript surfaces use the supplied white-background `agent-station-light.png`;
+dark surfaces use `agent-station.png`, with no color filters on either asset.
 Keep `main.scss` ordering explicit. Move related rules together rather than
 creating per-selector partials; inherited palette overrides are intentional.
 
