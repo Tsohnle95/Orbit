@@ -396,6 +396,12 @@ Caveat: `npm start` (electron-vite preview) does NOT forward
 `--remote-debugging-port`; use `npx electron .` on the built output, or
 `npm run dev` and attach to its window.
 
+`node scripts/electron-devtools-smoke.mjs` (also part of `npm run test:platform`)
+runs an isolated macOS Electron check against the compiled renderer. It selects
+the Mira title, clicks the mapped rule link in the real DevTools Styles panel,
+and verifies the owning SCSS file opens in a Monaco tab. Its fixture backend
+keeps the test offline and never edits the source file. Rebuild before running it.
+
 ## Probing the OpenCode service directly
 
 The service speaks JSON HTTP on a localhost port. Useful when the client

@@ -1,6 +1,7 @@
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "node:path";
+import { editableCssSourceMaps } from "./scripts/editable-css-source-maps";
 
 const isReleaseBuild = process.env.ORBIT_RELEASE_BUILD === "1";
 
@@ -23,6 +24,7 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()]
   },
   renderer: {
+    build: { cssMinify: false },
     css: {
       devSourcemap: true
     },
@@ -35,6 +37,6 @@ export default defineConfig({
         "@shared": resolve(__dirname, "src/shared")
       }
     },
-    plugins: [react()]
+    plugins: [react(), editableCssSourceMaps(resolve(__dirname, "src/renderer/src/styles/main.scss"))]
   }
 });

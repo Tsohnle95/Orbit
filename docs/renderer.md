@@ -772,9 +772,10 @@ slots, typography, row geometry, and animations live in
 `_editor.scss`, `_agent.scss`, `_composer.scss`,
 `_welcome.scss`, `_settings.scss`, `_sessions.scss`, and `_terminal.scss`; app-wide rules are separated into
 `_foundation.scss`, `_layout.scss`, `_buttons.scss`, `_toasts.scss`, and
-`_scrollbars.scss`. Vite CSS source maps are enabled in development, so
+`_scrollbars.scss`. CSS source maps are preserved in development and compiled builds, so
 DevTools links inspected rules back to the partial and source line rather
-than a generated `<style>` block or bundled CSS location. Runtime layout
+than a generated `<style>` block or bundled CSS location. See the
+[main-process source-link flow](main.md) for resolution and build ownership. Runtime layout
 measurements are passed as inline CSS custom-property values; their actual
 presentational declarations remain in the owning SCSS partial.
 

@@ -539,9 +539,12 @@ renderer opens it through the external-file workflow as a writable standalone
 tab without replacing the active session. In dev mode (where Vite serves the real `.scss` sources and
 `css.devSourcemap` is on) the links in the Styles panel are the actual
 source files with accurate line numbers, so clicking one opens the
-editable stylesheet. In the compiled app the links point at the hashed
-bundle and Vite's build emits no CSS maps (a Vite 6 limitation), so
-bundle links do not open an editable app-source tab.
+editable stylesheet. Compiled builds retain the same source-link behavior through
+`scripts/editable-css-source-maps.ts`: it carries Sass locations through Vite's
+CSS extraction and emits a map for the final bundled stylesheet. The map uses
+relative source paths so moving the checkout does not retain an old build path.
+The build fails if source locations cannot be preserved. A local application
+source tree must exist; generated bundles and dependencies remain excluded.
 
 Workspace paths are strict `/`-separated relative paths: absolute paths,
 empty file paths, traversal, backslashes, NULs, duplicate separators, and
