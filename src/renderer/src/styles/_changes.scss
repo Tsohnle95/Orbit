@@ -22,6 +22,38 @@
   margin-right: calc(var(--editor-right, 0px) + 10px);
 }
 
+/* OpenCodeFile renders a Pierre diff whose registered theme reads the OpenCode
+   presentation tokens (--syntax-diff-*, --syntax-*, --color-background-stronger).
+   Outside the agent panel those tokens are undefined, so Pierre falls back to
+   placeholder colors and additions/deletions lose their highlight. Bridge them
+   to Orbit's global semantic colors for this surface. */
+.changes-view {
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-family-mono--font-feature-settings: normal;
+  --font-size-small: 12px;
+  --color-background-stronger: var(--editor-surface);
+  --v2-background-bg-accent: var(--accent);
+  --syntax-diff-add: var(--green);
+  --syntax-diff-delete: var(--red);
+  --syntax-diff-unknown: var(--accent);
+  --syntax-comment: var(--text-faint);
+  --syntax-string: var(--green);
+  --syntax-keyword: var(--accent);
+  --syntax-primitive: var(--accent);
+  --syntax-type: var(--accent);
+  --syntax-constant: var(--yellow);
+  --syntax-property: var(--text);
+  --syntax-object: var(--text);
+  --syntax-variable: var(--text);
+  --syntax-regexp: var(--text);
+  --syntax-operator: var(--text-dim);
+  --syntax-punctuation: var(--text-dim);
+  --syntax-info: var(--accent);
+  --syntax-warning: var(--yellow);
+  --syntax-critical: var(--red);
+  --text-strong: var(--text);
+}
+
 .changes-toolbar {
   display: flex;
   align-items: center;
