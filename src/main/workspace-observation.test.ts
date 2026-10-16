@@ -112,6 +112,47 @@ it("preserves rename and move destination timing when a listener closes the acti
   expect(context.lastKnown.has("/workspace/moved")).toBe(false);
 });
 
+it("ignores filesystem events for a path while Orbit is writing it", async () => {
+  vi.useFakeTimers();
+  const context = observation.createContext("/workspace", "session", { id: "test", generation: 1 });
+  const session: WatchSession = { directory: context.root, watchContext: context, watcher: null };
+  active.set(context.workspace.id, session);
+  sessions.push(session);
+  const changed = vi.spyOn(observation, "onFsChanged").mockResolvedValue(undefined);
+  const schedule = (observation as unknown as {
+    scheduleWatch(context: typeof session.watchContext, abs: string, event: string): void;
+  }).scheduleWatch.bind(observation);
+  const file = path.join(context.root, "file.txt");
+
+  observation.beginWrite(context, file);
+  schedule(context, file, "change");
+  await vi.advanceTimersByTimeAsync(300);
+  expect(changed).not.toHaveBeenCalled();
+
+  observation.endWrite(context, file);
+  schedule(context, file, "change");
+  await vi.advanceTimersByTimeAsync(300);
+  expect(changed).toHaveBeenCalledExactlyOnceWith(context, file, "change");
+});
+
+it("ignores direct observation of a path while Orbit is writing it", async () => {
+  const context = observation.createContext("/workspace", "session", { id: "test", generation: 1 });
+  const session: WatchSession = { directory: context.root, watchContext: context, watcher: null };
+  active.set(context.workspace.id, session);
+  sessions.push(session);
+  const file = path.join(context.root, "file.txt");
+  context.lastKnown.set(file, "saved");
+  context.snapshots.set(file, { kind: "known", content: "saved" });
+
+  observation.beginWrite(context, file);
+  await observation.onFsChanged(context, file, "unlink");
+  expect(messages).toEqual([]);
+
+  observation.endWrite(context, file);
+  await observation.onFsChanged(context, file, "unlink");
+  expect(messages).toHaveLength(1);
+});
+
 it("coalesces at 200ms, suppresses imported destinations, and cancels pending callbacks on close", async () => {
   vi.useFakeTimers();
   const context = observation.createContext("/workspace", "session", { id: "test", generation: 1 });

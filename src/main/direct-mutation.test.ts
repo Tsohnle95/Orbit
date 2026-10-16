@@ -138,6 +138,35 @@ describe("direct mutation observed changes", () => {
     expect((await recoveryContents(root)).sort()).toEqual(["editor", "editor", "external-before-hold"].sort());
   });
 
+  it("does not surface its own save as an external change", async () => {
+    const holder: { backend?: OpenShellBackend } = {};
+    const { backend, root, messages } = await backendFixture(async (phase, _source, target) => {
+      if (phase !== "save:source-held" || !target) return;
+      const context = (holder.backend as unknown as { contexts: Map<string, SessionContext> })
+        .contexts.get(workspace.id)!.watchContext;
+      // OpenCode's filesystem.changed (and the local watcher) can observe the
+      // displaced file mid-save; that must not reach the renderer as an external change.
+      await observation(holder.backend!).onFsChanged(context, target, "rename");
+    });
+    holder.backend = backend;
+    const file = path.join(root, "save.txt");
+    await writeFile(file, "expected");
+    // Orbit has observed the file (e.g. it is open in the editor), so a missing
+    // path during the save would otherwise surface as an external deletion.
+    observation(backend).recordSnapshot(
+      (backend as unknown as { contexts: Map<string, SessionContext> }).contexts.get(workspace.id)!.watchContext,
+      file,
+      "expected"
+    );
+    messages.length = 0;
+
+    await backend.writeFile(workspace, "save.txt", "editor", writeIdentity("expected"));
+
+    expect(messages.flatMap((message) => (message.kind === "file-update" ? [message.file] : []))).toEqual([
+      expect.objectContaining({ path: "save.txt", content: "editor", deleted: false, write: expect.objectContaining({ id: "save-1" }) })
+    ]);
+  });
+
   it("preserves held, proposed, and concurrently recreated files after the hold", async () => {
     const { backend, root } = await backendFixture(async (phase, _holding, target) => {
       if (phase === "save:source-held") await writeFile(target, "external-after-hold", { flag: "wx" });

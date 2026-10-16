@@ -256,7 +256,10 @@ Internals:
   `onFsChanged(context, ...)` remain one recursive `fs.watch` and a 200ms
   debounced pipeline per open context, with the 2 MiB watched-file limit.
   Callbacks capture the same root/session/maps and retain current-context
-  checks around asynchronous work and emission.
+  checks around asynchronous work and emission. While Orbit is writing a path
+  (`beginWrite`/`endWrite`) its filesystem events are ignored, so a save's own
+  rename/link and OpenCode's `filesystem.changed` observation cannot surface as
+  an external change; only the save's echo (`recordSave`) reaches the renderer.
 - Opened workspace files retain their filesystem identity in the watch context.
   `onFsChanged` correlates an old missing path with a unique destination that
   has the same identity and emits `movedFrom`; ambiguous or unsupported

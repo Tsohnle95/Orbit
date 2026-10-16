@@ -25,6 +25,20 @@ export interface MutationSession extends WatchSession {
   workspace: WorkspaceIdentity;
 }
 
+function assertWriteIdentity(workspace: WorkspaceIdentity, write: FileWriteIdentity): void {
+  if (
+    !write ||
+    typeof write.id !== "string" ||
+    write.id.length < 1 ||
+    write.id.length > 128 ||
+    write.workspaceID !== workspace.id ||
+    !Number.isSafeInteger(write.revision) ||
+    write.revision < 0 ||
+    typeof write.expectedContent !== "string" ||
+    typeof write.overwrite !== "boolean"
+  ) throw new Error("invalid file write identity");
+}
+
 export class WorkspaceMutations<Session extends MutationSession> {
   constructor(
     private readonly mutations: WorkspaceOperationCoordinator,
@@ -151,17 +165,7 @@ export class WorkspaceMutations<Session extends MutationSession> {
     write: FileWriteIdentity
   ): Promise<void> {
     const cleanContent = fileContent(content);
-    if (
-      !write ||
-      typeof write.id !== "string" ||
-      write.id.length < 1 ||
-      write.id.length > 128 ||
-      write.workspaceID !== workspace.id ||
-      !Number.isSafeInteger(write.revision) ||
-      write.revision < 0 ||
-      typeof write.expectedContent !== "string" ||
-      typeof write.overwrite !== "boolean"
-    ) throw new Error("invalid file write identity");
+    assertWriteIdentity(workspace, write);
     const expectedContent = fileContent(write.expectedContent);
     await this.mutations.run(workspace, async () => {
       const root = this.workspaceRoot(workspace);
@@ -179,6 +183,9 @@ export class WorkspaceMutations<Session extends MutationSession> {
       const proposed = path.join(recovery.directory, "proposed");
       let sourceHeld = false;
       let targetInstalled = false;
+      // Orbit's own write must not be observed as an external change: block
+      // filesystem events for this path until the save (or its failure) settles.
+      this.observation.beginWrite(watchContext, abs);
       try {
         const temporaryHandle = await fsp.open(temporary, "wx", 0o600);
         try {
@@ -239,6 +246,7 @@ export class WorkspaceMutations<Session extends MutationSession> {
         recovery.transaction.reason = "save-failed";
         await this.recovery.writeRecoveryTransaction(recovery.directory, recovery.transaction).catch(() => {});
         const current = await fsp.readFile(abs, "utf8").catch(() => null);
+        this.observation.endWrite(watchContext, abs);
         this.observation.emitFileUpdate(watchContext, abs, current);
         await this.emitRecoveryFor(context);
         const detail = error instanceof Error ? error.message : String(error);
@@ -246,6 +254,7 @@ export class WorkspaceMutations<Session extends MutationSession> {
       }
       this.contextFor(workspace);
       this.observation.recordSave(watchContext, abs, cleanContent, expectedContent, write);
+      this.observation.endWrite(watchContext, abs);
       await this.emitRecoveryFor(context);
     });
   }

@@ -26,6 +26,8 @@ export interface WatchContext {
   recentMoves?: Map<string, number>;
   importing?: number;
   suppressedUntil?: Map<string, number>;
+  /** Absolute paths Orbit is writing; their filesystem events are not external changes. */
+  mutating?: Set<string>;
 }
 
 export interface WatchSession {
@@ -78,6 +80,14 @@ export class WorkspaceObservation<Session extends WatchSession> {
   recordReadIdentity(context: WatchContext, abs: string, stat: Awaited<ReturnType<typeof fsp.stat>> | null): void {
     const identity = stat?.isFile() ? this.fileIdentity(stat) : null;
     if (identity) (context.identities ??= new Map()).set(abs, identity);
+  }
+
+  beginWrite(context: WatchContext, abs: string): void {
+    (context.mutating ??= new Set()).add(abs);
+  }
+
+  endWrite(context: WatchContext, abs: string): void {
+    context.mutating?.delete(abs);
   }
 
   beginImport(context: Session): boolean {
@@ -220,14 +230,20 @@ export class WorkspaceObservation<Session extends WatchSession> {
     context.watcher = null;
   }
 
-  private scheduleWatch(context: WatchContext, abs: string, event: string): void {
-    if ((context.importing ?? 0) > 0) return;
+  private blocked(context: WatchContext, abs: string): boolean {
+    if ((context.importing ?? 0) > 0) return true;
+    if (context.mutating?.has(abs)) return true;
     const now = Date.now();
     const suppressedUntil = context.suppressedUntil ?? (context.suppressedUntil = new Map());
     for (const [prefix, until] of suppressedUntil) {
       if (until <= now) suppressedUntil.delete(prefix);
-      else if (abs === prefix || abs.startsWith(`${prefix}${path.sep}`)) return;
+      else if (abs === prefix || abs.startsWith(`${prefix}${path.sep}`)) return true;
     }
+    return false;
+  }
+
+  private scheduleWatch(context: WatchContext, abs: string, event: string): void {
+    if (this.blocked(context, abs)) return;
     const existing = context.timers.get(abs);
     if (existing) clearTimeout(existing);
     context.timers.set(
@@ -270,13 +286,7 @@ export class WorkspaceObservation<Session extends WatchSession> {
 
   async onFsChanged(context: WatchContext, abs: string, event: string): Promise<void> {
     if (!this.currentWatch(context)) return;
-    if ((context.importing ?? 0) > 0) return;
-    const now = Date.now();
-    const suppressedUntil = context.suppressedUntil ?? (context.suppressedUntil = new Map());
-    for (const [prefix, until] of suppressedUntil) {
-      if (until <= now) suppressedUntil.delete(prefix);
-      else if (abs === prefix || abs.startsWith(`${prefix}${path.sep}`)) return;
-    }
+    if (this.blocked(context, abs)) return;
     if (this.isGitMetadata(abs, context.root)) {
       await this.refreshGitBaselines(context);
       return;
