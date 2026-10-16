@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import Editor, { DiffEditor } from "@monaco-editor/react";
+import Editor from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { languageForPath } from "../monaco";
 import { wireEmmetKeys } from "../emmet-keys";
@@ -158,12 +158,9 @@ function BreadcrumbBar({
   onValidationComplete?: (report: ValidationReport) => void;
   actions?: ReactNode;
 }): ReactNode {
-  const { setTabMode, saveTab } = useStore();
+  const { saveTab } = useStore();
   const root = directory?.split(/[\\/]/).filter(Boolean).at(-1) ?? "workspace";
   const segments = tab.path.replace(/\\/g, "/").split("/").filter(Boolean);
-  const diffAvailable = tab.baseline?.kind === "known";
-  const diffUnknown = tab.baseline?.kind === "unknown";
-  const mode = tab.mode === "diff" && !diffAvailable ? "edit" : tab.mode;
 
   return (
     <div className="editor-breadcrumbs">
@@ -193,13 +190,6 @@ function BreadcrumbBar({
         )}
         {tab.stale && <span className="editor-stale">changed on disk</span>}
         {tab.deleted && <span className="editor-deleted">deleted on disk</span>}
-        {diffAvailable && (
-          <>
-            <button className={`toolbar-btn ${mode === "edit" ? "on" : ""}`} onClick={() => setTabMode(tab.path, "edit")}>Edit</button>
-            <button className={`toolbar-btn ${mode === "diff" ? "on" : ""}`} onClick={() => setTabMode(tab.path, "diff")}>Diff</button>
-          </>
-        )}
-        {diffUnknown && <button className="toolbar-btn" disabled title="Pre-change content was not observed">Diff unavailable</button>}
         {actions}
         <EditorStatusMenu tab={tab} editorStatus={editorStatus} onValidationComplete={onValidationComplete} />
       </div>
@@ -238,8 +228,6 @@ function EditorWithSave({
 
   const language = useMemo(() => languageForPath(tab.path), [tab.path]);
   const w3cFile = useMemo(() => /\.(?:html?|css)$/i.test(tab.path), [tab.path]);
-  const diffAvailable = tab.baseline?.kind === "known";
-  const mode = tab.mode === "diff" && !diffAvailable ? "edit" : tab.mode;
   const options = useMemo(() => ({ ...EDITOR_OPTIONS, overflowWidgetsDomNode: overflowWidgetsHost() }), []);
 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -277,14 +265,8 @@ function EditorWithSave({
   }, [tabPath, watchCursor, watchScroll]);
 
   useEffect(() => {
-    if (mode === "edit") return;
-    htmlQuoteListenerRef.current?.dispose();
-    htmlQuoteListenerRef.current = null;
-  }, [mode]);
-
-  useEffect(() => {
     const ed = editorRef.current;
-    if (!ed || mode !== "edit" || tab.dirty) return;
+    if (!ed || tab.dirty) return;
     const model = ed.getModel();
     if (!model || model.getValue() === tabContent) return;
     const selections = ed.getSelections();
@@ -303,7 +285,7 @@ function EditorWithSave({
     }
     ed.setScrollTop(scrollTop);
     ed.setScrollLeft(scrollLeft);
-  }, [tabContent, tab.dirty, mode]);
+  }, [tabContent, tab.dirty]);
 
   useEffect(() => {
     if (!w3cFile) return;
@@ -346,42 +328,15 @@ function EditorWithSave({
         </div>
       )}
 
-      {mode === "diff" ? (
-        <DiffEditor
-          theme={`orbit-${theme}`}
-          language={language}
-          original={tab.baseline?.kind === "known" ? tab.baseline.content : ""}
-          modified={tab.content}
-          onMount={(ed) => {
-            const modifiedEditor = ed.getModifiedEditor();
-            editorRef.current = modifiedEditor;
-            registerEditor(tab.path, modifiedEditor);
-            navigationListenerRef.current?.dispose();
-            navigationListenerRef.current = wireEditorNavigationKeys(modifiedEditor);
-            watchCursor(modifiedEditor);
-            watchScroll(modifiedEditor);
-          }}
-          options={{
-            ...options,
-            readOnly: true,
-            renderSideBySide: false,
-            ignoreTrimWhitespace: false,
-            enableSplitViewResizing: false,
-            renderOverviewRuler: false,
-            overviewRulerBorder: false
-          }}
-        />
-      ) : (
-        <Editor
-          theme={`orbit-${theme}`}
-          language={language}
-          path={tab.path}
-          defaultValue={tab.content}
-          onMount={handleMount}
-          options={options}
-          onChange={handleChange}
-        />
-      )}
+      <Editor
+        theme={`orbit-${theme}`}
+        language={language}
+        path={tab.path}
+        defaultValue={tab.content}
+        onMount={handleMount}
+        options={options}
+        onChange={handleChange}
+      />
     </div>
   );
 }

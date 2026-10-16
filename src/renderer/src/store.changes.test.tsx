@@ -124,7 +124,7 @@ describe("store dismiss changes", () => {
     await seedChanges();
     const errorsBefore = store.toasts.filter((toast) => toast.tone === "error").length;
 
-    await act(async () => store.openFile("gone.txt", { mode: "diff" }));
+    await act(async () => store.openFile("gone.txt"));
 
     const tab = store.tabs.find((t) => t.path === "gone.txt")!;
     expect(tab.deleted).toBe(true);

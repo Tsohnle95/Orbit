@@ -7,12 +7,11 @@ import { ThemeProvider } from "../theme";
 import { BrowserTabsProvider } from "../browser-tabs-context";
 
 const tab: Tab = {
-  path: "src/unknown.ts",
-  name: "unknown.ts",
+  path: "src/page.ts",
+  name: "page.ts",
   content: "after",
   saved: "after",
   baseline: { kind: "unknown" },
-  mode: "diff",
   dirty: false,
   stale: false,
   deleted: false,
@@ -47,12 +46,11 @@ const store = {
   updateBrowserTab: vi.fn(),
   setActive: vi.fn(),
   closeTab: vi.fn(),
-  setTabMode: vi.fn(),
   editContent: vi.fn(),
   saveTab: vi.fn(),
   reloadTab: vi.fn(),
   overwriteTab: vi.fn(),
-  mergeTab: vi.fn(),
+  mergeTab: vi.fn()
 };
 
 const ctxMenuApi = { ctxMenu: null, openCtxMenu: vi.fn(), closeCtxMenu: vi.fn() };
@@ -63,14 +61,7 @@ vi.mock("../store", () => ({
 }));
 vi.mock("../emmet-keys", () => ({ wireEmmetKeys: vi.fn() }));
 vi.mock("@monaco-editor/react", () => ({
-  default: () => <div data-testid="editor" />,
-  DiffEditor: ({ options }: { options?: { renderOverviewRuler?: boolean; scrollbar?: { verticalScrollbarSize?: number } } }) => (
-    <div
-      data-testid="diff-editor"
-      data-overview-ruler={String(options?.renderOverviewRuler)}
-      data-scrollbar-width={String(options?.scrollbar?.verticalScrollbarSize)}
-    />
-  )
+  default: () => <div data-testid="editor" />
 }));
 vi.mock("../monaco", () => ({
   languageForPath: () => "typescript",
@@ -82,7 +73,7 @@ vi.mock("../diagnostics", () => ({
   validateHtmlContent: () => []
 }));
 
-describe("unknown baseline presentation", () => {
+describe("editor surface", () => {
   let container: HTMLDivElement;
   let root: Root;
 
@@ -103,30 +94,33 @@ describe("unknown baseline presentation", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows Diff unavailable and does not mount a diff editor", () => {
-    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
+  const render = (): void => {
+    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane /></BrowserTabsProvider></ThemeProvider>));
+  };
+  const actionLabels = (): string[] =>
+    [...container.querySelectorAll<HTMLButtonElement>(".editor-breadcrumb-actions button")].map((button) => button.textContent?.trim() ?? "");
 
-    const unavailable = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Diff unavailable"));
-    expect(unavailable).toBeTruthy();
-    expect(unavailable?.hasAttribute("disabled")).toBe(true);
-    expect(container.querySelector(".tab-file-icon .si-icon")).toBeTruthy();
-    expect(container.querySelector(".editor-breadcrumbs")?.textContent).toContain("workspace");
-    expect(container.querySelector(".editor-breadcrumbs")?.textContent).toContain("unknown.ts");
+  it("opens a file in the edit surface without any diff toggle", () => {
+    render();
+
     expect(container.querySelector("[data-testid=editor]")).toBeTruthy();
     expect(container.querySelector("[data-testid=diff-editor]")).toBeNull();
+    expect(container.querySelector(".editor-breadcrumbs")?.textContent).toContain("workspace");
+    expect(container.querySelector(".editor-breadcrumbs")?.textContent).toContain("page.ts");
+    expect(actionLabels()).not.toContain("Edit");
+    expect(actionLabels()).not.toContain("Diff");
+    expect(actionLabels().some((label) => label.includes("Diff unavailable"))).toBe(false);
   });
 
-  it("disables the diff overview ruler for known baselines", () => {
-    const knownTab: Tab = {
-      ...tab,
-      baseline: { kind: "known", content: "before" }
-    };
+  it("keeps the edit surface for a tab with a known baseline", () => {
+    const knownTab: Tab = { ...tab, baseline: { kind: "known", content: "before" } };
     store.tabs = [knownTab];
     store.activePath = knownTab.path;
 
-    act(() => root.render(<ThemeProvider><BrowserTabsProvider><EditorPane  /></BrowserTabsProvider></ThemeProvider>));
+    render();
 
-    expect(container.querySelector("[data-testid=diff-editor]")?.getAttribute("data-overview-ruler")).toBe("false");
-    expect(container.querySelector("[data-testid=diff-editor]")?.getAttribute("data-scrollbar-width")).toBe("14");
+    expect(container.querySelector("[data-testid=editor]")).toBeTruthy();
+    expect(container.querySelector("[data-testid=diff-editor]")).toBeNull();
+    expect(actionLabels()).not.toContain("Diff");
   });
 });

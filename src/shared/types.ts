@@ -561,7 +561,6 @@ export interface Tab {
   stale: boolean;
   revision: number;
   conflict: FileConflict | null;
-  mode: "edit" | "diff";
   binary: boolean;
   standalone?: boolean;
 }

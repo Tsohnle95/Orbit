@@ -98,7 +98,7 @@ export function useWorkspaceEditor(host: EditorHost) {
     }
   }, [readFocusedSession, panelFor, onFileActivate]);
   const openFile = useCallback(
-    async (path: string, opts?: { mode?: "edit" | "diff" }, workspace?: WorkspaceIdentity) => {
+    async (path: string, workspace?: WorkspaceIdentity) => {
       const target = workspace ?? readFocusedSession()?.workspace;
       if (!target || !panelFor(target)) return;
       const focused = readFocusedSession()?.workspace;
@@ -108,9 +108,6 @@ export function useWorkspaceEditor(host: EditorHost) {
       if (existing) {
         if (!target) return;
         setActivePathFor(target.id, path);
-        if (opts?.mode && existing.mode !== opts.mode) {
-          setTabsFor(target.id, (prev) => prev.map((t) => (t.path === path ? { ...t, mode: opts.mode! } : t)));
-        }
         activateForegroundFile(target, foreground);
         return;
       }
@@ -143,7 +140,6 @@ export function useWorkspaceEditor(host: EditorHost) {
           stale: false,
           revision: 0,
           conflict: null,
-          mode: opts?.mode ?? "edit",
           binary: false
         };
         setTabsFor(target.id, (prev) => [...prev, tab]);
@@ -167,7 +163,7 @@ export function useWorkspaceEditor(host: EditorHost) {
         const result = await window.openshell.openExternal(target, absolutePath);
         if (!panelFor(target)) return null;
         if (result.kind === "relative") {
-          await openFile(result.rel, {}, target);
+          await openFile(result.rel, target);
           return result.rel;
         }
         const path = result.path;
@@ -200,7 +196,6 @@ export function useWorkspaceEditor(host: EditorHost) {
           stale: false,
           revision: 0,
           conflict: null,
-          mode: "edit",
           binary: false,
           standalone: true
         };
@@ -221,12 +216,6 @@ export function useWorkspaceEditor(host: EditorHost) {
     setActivePathFor(target.id, path);
     activateForegroundFile(target, true);
   }, [setActivePathFor, readFocusedSession, panelFor, activateForegroundFile]);
-
-  const setTabMode = useCallback((path: string, mode: "edit" | "diff") => {
-    const target = readFocusedSession()?.workspace;
-    if (!target) return;
-    setTabsFor(target.id, (prev) => prev.map((t) => (t.path === path ? { ...t, mode } : t)));
-  }, [setTabsFor]);
 
   const doSave = useCallback(
     async (snapshot: SaveSnapshot, allowConflict = false) => {
@@ -419,7 +408,6 @@ export function useWorkspaceEditor(host: EditorHost) {
         stale: false,
         revision: 0,
         conflict: null,
-        mode: "edit",
         binary: false
       };
       setTabsFor(target.id, (prev) => [...prev, tab]);
@@ -554,7 +542,7 @@ export function useWorkspaceEditor(host: EditorHost) {
     tabs, activePath: session ? readRenderedActivePath(session.workspace) : null,
     singleFile, unsavedEditorFiles, unsavedEditorFileCount: unsavedEditorFiles.length, readRenderedActivePath,
     dirtyTabsFor, doSaveRef,
-    openFile, openExternalPath, setActive, setTabMode, saveAllEditorFiles,
+    openFile, openExternalPath, setActive, saveAllEditorFiles,
     closeTab, saveTab, editContent, reloadTab, overwriteTab, mergeTab,
     setSingleFileFor, addCreatedFile, removePathTabs, removePathsTabs,
     renameTabs, movePathTabs, movePathsTabs, prepareFileUpdate, applyFileUpdate,

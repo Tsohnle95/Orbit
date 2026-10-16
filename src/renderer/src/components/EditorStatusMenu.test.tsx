@@ -17,7 +17,6 @@ const htmlTab: Tab = {
   stale: false,
   revision: 0,
   conflict: null,
-  mode: "edit",
   binary: false
 };
 const cssTab: Tab = { ...htmlTab, path: "styles.css", name: "styles.css", content: "body { color: red; }" };

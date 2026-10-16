@@ -86,7 +86,7 @@ interface LifecycleEditor {
   dirtyTabsFor: (workspaceID: string) => Tab[];
   saveCapturedSnapshot: (snapshot: SaveSnapshot) => Promise<boolean>;
   setSingleFileFor: (workspaceID: string, path: string) => void;
-  openFile: (path: string, opts?: { mode?: "edit" | "diff" }, workspace?: WorkspaceIdentity) => Promise<void>;
+  openFile: (path: string, workspace?: WorkspaceIdentity) => Promise<void>;
 }
 interface LifecycleCompletion {
   refreshInbox: (sessionID: string) => Promise<void>;
@@ -526,7 +526,7 @@ export function useSessionLifecycle(
       void loadModels(result.session.workspace);
       void loadAgents(result.session.workspace);
       void loadSessions();
-      await openFile(result.path, { mode: "edit" }, result.session.workspace);
+      await openFile(result.path, result.session.workspace);
       return result.session;
     },
     [replacePanels, setSingleFileFor, hydrateTranscript, loadRecovery, loadModels, loadAgents, loadSessions, openFile]

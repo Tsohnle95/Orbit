@@ -271,14 +271,6 @@
   margin-left: auto;
 }
 
-.tab-diff-badge {
-  font-size: 12px;
-  color: var(--accent);
-  padding: 0 3px;
-}
-
-.tab-diff-badge:hover { background: var(--bg-active); border-radius: var(--radius-sm); }
-
 .tab-close {
   display: grid;
   place-items: center;

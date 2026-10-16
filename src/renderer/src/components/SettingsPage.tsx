@@ -155,7 +155,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
       const openedPath = await openExternalPath(file.path, file.workspace);
       if (!openedPath) return;
     } else {
-      await openFile(file.path, undefined, file.workspace);
+      await openFile(file.path, file.workspace);
     }
     onClose();
   };

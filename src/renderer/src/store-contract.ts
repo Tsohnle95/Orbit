@@ -175,10 +175,9 @@ export interface Store {
   loadAgents: (workspace?: WorkspaceIdentity) => Promise<void>;
   switchAgent: (id: string, workspace?: WorkspaceIdentity) => Promise<void>;
   toggleApprovalMode: () => void;
-  openFile: (path: string, opts?: { mode?: "edit" | "diff"; source?: boolean }, workspace?: WorkspaceIdentity) => Promise<void>;
+  openFile: (path: string, workspace?: WorkspaceIdentity) => Promise<void>;
   closeTab: (path: string) => void;
   setActive: (path: string) => void;
-  setTabMode: (path: string, mode: "edit" | "diff") => void;
   editContent: (path: string, content: string) => void;
   saveTab: (path: string) => Promise<void>;
   saveAllEditorFiles: () => Promise<boolean>;

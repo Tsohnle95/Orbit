@@ -103,7 +103,7 @@ blocks, and provider metadata is retained instead of flattened away.
 ## UI state
 
 - `Tab` — `{ path, name, content, saved, baseline, deleted, dirty, stale,
-  revision, conflict, mode: "edit" \| "diff", binary, standalone? }`; `saved` is the last
+  revision, conflict, binary, standalone? }`; `saved` is the last
   persisted content, `revision` increases on every edit, and `conflict`
   retains external content while normal saving is blocked. `standalone: true`
   marks a tab whose `path` is an absolute filesystem path outside the

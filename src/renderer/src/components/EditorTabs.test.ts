@@ -40,8 +40,6 @@ describe("stripLayout", () => {
 });
 
 
-vi.mock("../store", () => ({ useStore: () => ({ setTabMode: vi.fn() }) }));
-
 describe("mixed tab overflow", () => {
   let root: Root;
   let container: HTMLDivElement;
@@ -70,7 +68,7 @@ describe("mixed tab overflow", () => {
 
   it("places the browser add button immediately after browser chips and omits it for file-only strips", () => {
     width = 1200;
-    const tabs = [{ path: "one.ts", name: "one.ts", content: "", saved: "", mode: "edit" }] as Tab[];
+    const tabs = [{ path: "one.ts", name: "one.ts", content: "", saved: "" }] as Tab[];
     const browsers = ["one", "two"].map(id => ({ id, url: "", title: id, loading: false, error: null, canGoBack: false, canGoForward: false }));
     const props = { tabs, activePath: "one.ts", ariaLabel: "Tabs", onSelect: vi.fn(), onClose: vi.fn(), onMoveTab: vi.fn(), onNewBrowser: vi.fn() };
     act(() => root.render(createElement(TabBar, { ...props, browsers })));
@@ -84,7 +82,7 @@ describe("mixed tab overflow", () => {
 
   it("keeps the browser add control next to a browser when files and browsers overflow together", () => {
     width = 280;
-    const tabs = Array.from({ length: 8 }, (_, index) => ({ path: `${index}.ts`, name: `${index}.ts`, content: "", saved: "", mode: "edit" })) as Tab[];
+    const tabs = Array.from({ length: 8 }, (_, index) => ({ path: `${index}.ts`, name: `${index}.ts`, content: "", saved: "" })) as Tab[];
     const browsers = ["one", "two"].map(id => ({ id, url: "", title: id, loading: false, error: null, canGoBack: false, canGoForward: false }));
     act(() => root.render(createElement(TabBar, { tabs, browsers, activePath: null, ariaLabel: "Tabs", onSelect: vi.fn(), onClose: vi.fn(), onMoveTab: vi.fn(), onNewBrowser: vi.fn() })));
     expect(container.querySelectorAll(".tab.browser")).toHaveLength(1);

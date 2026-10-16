@@ -200,8 +200,8 @@ metadata changes, then refreshes the effective Git baseline:
   registered.
 
 The renderer merges updates into tabs and removes clean file updates from
-Changes. A known baseline enables Monaco Diff;
-an unknown baseline stays in Changes as `observed` with Diff unavailable.
+Changes. A known baseline renders a diff in the Changes view; an unknown
+baseline stays in Changes as `observed` without one.
 
 This is observation, not attribution. Structured tool paths can be captured
 before execution, but arbitrary shell command strings are not parsed for paths,

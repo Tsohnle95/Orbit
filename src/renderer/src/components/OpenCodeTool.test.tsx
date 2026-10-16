@@ -44,7 +44,7 @@ describe("tool file activation ownership", () => {
     const path = kind === "edit" ? '[data-slot="message-part-title-filename"]' : '[data-slot="basic-tool-tool-subtitle"]';
     act(() => container.querySelector<HTMLElement>(path)!.click());
     expect(store.focusSession).toHaveBeenCalledExactlyOnceWith("session");
-    expect(store.openFile).toHaveBeenCalledExactlyOnceWith("src/file.ts", undefined, session.workspace);
+    expect(store.openFile).toHaveBeenCalledExactlyOnceWith("src/file.ts", session.workspace);
     expect(store.focusSession.mock.invocationCallOrder[0]).toBeLessThan(store.openFile.mock.invocationCallOrder[0]);
   });
 

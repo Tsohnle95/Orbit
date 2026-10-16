@@ -12,7 +12,6 @@ const firstTab: Tab = {
   content: "one",
   saved: "one",
   baseline: null,
-  mode: "edit",
   dirty: false,
   stale: false,
   deleted: false,
@@ -63,7 +62,6 @@ const store = {
   openPaths: vi.fn(),
   setActive: vi.fn(),
   closeTab: vi.fn(),
-  setTabMode: vi.fn(),
   editContent: vi.fn(),
   saveTab: vi.fn(),
   reloadTab: vi.fn(),
@@ -92,8 +90,7 @@ vi.mock("@monaco-editor/react", () => ({
       onDidScrollChange: () => ({ dispose: () => {} })
     }); }, [path]);
     return <div data-testid="editor" data-path={path} data-language={language} />;
-  },
-  DiffEditor: () => <div data-testid="diff-editor" />
+  }
 }));
 
 describe("EditorPane split groups", () => {

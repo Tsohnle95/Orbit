@@ -206,7 +206,7 @@ describe("OpenCodeTimeline chronology", () => {
     act(() => subtitle?.click());
 
     expect(storeState.focusSession).toHaveBeenCalledWith("session-read");
-    expect(storeState.openFile).toHaveBeenCalledWith("docs/README.md", undefined, session.workspace);
+    expect(storeState.openFile).toHaveBeenCalledWith("docs/README.md", session.workspace);
   });
 
   it("renders one thinking row while the first stream item is pending", async () => {

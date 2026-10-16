@@ -190,8 +190,6 @@ $codex: ':is([data-shell="codex"])';
   box-shadow: none;
 }
 
-#{$codex} .tab-diff-badge { color: var(--text-dim); }
-
 #{$codex} .editor-group-focused > .tabbar {
   background: transparent;
   border-bottom-color: transparent;

@@ -364,7 +364,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
   const {
     tabs, activePath, singleFile, unsavedEditorFiles, unsavedEditorFileCount,
     readRenderedActivePath, dirtyTabsFor, doSaveRef,
-    openFile, openExternalPath, setActive, setTabMode, saveAllEditorFiles,
+    openFile, openExternalPath, setActive, saveAllEditorFiles,
     closeTab, saveTab, editContent, reloadTab, overwriteTab, mergeTab,
     setSingleFileFor, addCreatedFile, removePathTabs, removePathsTabs,
     renameTabs, movePathTabs, movePathsTabs, prepareFileUpdate, applyFileUpdate,
@@ -584,7 +584,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
       const opened = await openSession(dir);
       if (!opened) return;
       const rel = path.slice(dir.length + 1) || path;
-      await openFile(rel, { mode: "edit" }, opened.workspace);
+      await openFile(rel, opened.workspace);
       requestReveal(rel, line);
     },
     [openSession, openFile, openExternalPath]
@@ -1157,7 +1157,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
       openFile,
       closeTab,
       setActive,
-      setTabMode,
       editContent,
       saveTab,
       saveAllEditorFiles,
@@ -1197,7 +1196,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
       models, availableModels, lastModel, currentModel, agents, currentAgent, approvalMode, messageQueue.followUpBehavior, setFollowUpBehavior, sessions, savedWorkspaces, saveWorkspace, removeWorkspace, activeSessions, panels, workspaceOnlyPanelIDs, panelViews, activeSessionID,
       focusSession, closePanel, openSession, addModelPanel, openWorkspacePanel, selectAddPanel, selectFolder, selectFile, openFileWorkspace, openExternalPath, importPaths, dropIntoExplorer, selectPanelDirectory, changePanelDirectory, reopenSession, loadSessions, sendPrompt, runCommand, stop, refreshProviderUsage, loadModels, switchModel,
       loadAgents, switchAgent, toggleApprovalMode,
-      openFile, closeTab, setActive, setTabMode, revealInFileManager,
+      openFile, closeTab, setActive, revealInFileManager,
       editContent, saveTab, saveAllEditorFiles, reloadTab, overwriteTab, mergeTab, toggleDir, prefetchDir, ensureRootOpen, replyPermission,
       startCreate, startRename, cancelPending, commitName, deleteEntry, deleteEntries, removeFromWorkspace, moveEntry, moveEntries, openRecovery, acknowledgeRecovery,
       removeQueuedMessage, popQueuedMessage, sendQueuedNow, reorderQueuedMessage,

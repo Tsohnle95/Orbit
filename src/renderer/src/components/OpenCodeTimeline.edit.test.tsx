@@ -165,7 +165,7 @@ describe("edit tool diff cards", () => {
     const subtitle = container.querySelector("[data-slot='message-part-title-filename']") as HTMLElement | null;
     act(() => subtitle?.click());
     expect(storeState.focusSession).toHaveBeenCalledWith("session-1");
-    expect(storeState.openFile).toHaveBeenCalledWith("src/app.ts", undefined, storeState.session.workspace);
+    expect(storeState.openFile).toHaveBeenCalledWith("src/app.ts", storeState.session.workspace);
   });
 
   it("renders one section per file when a part edits several files", () => {

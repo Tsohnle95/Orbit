@@ -88,7 +88,7 @@ describe("workspace editor authority", () => {
     window.openshell.readFile = async () => "binary\u0000";
     await act(async () => editor.openFile("binary"));
     window.openshell.readFile = async () => "background";
-    await act(async () => editor.openFile("background", {}, second.workspace));
+    await act(async () => editor.openFile("background", second.workspace));
     const read = deferred<string>();
     window.openshell.readFile = async () => read.promise;
     const opening = editor.openFile("late");

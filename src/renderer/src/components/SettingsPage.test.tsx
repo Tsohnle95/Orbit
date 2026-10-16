@@ -332,7 +332,7 @@ describe("SettingsPage", () => {
     await act(async () => open.click());
 
     expect(store.focusSession).toHaveBeenCalledWith("session-1");
-    expect(store.openFile).toHaveBeenCalledWith("src/first.ts", undefined, workspace);
+    expect(store.openFile).toHaveBeenCalledWith("src/first.ts", workspace);
     expect(onClose).toHaveBeenCalledOnce();
   });
 

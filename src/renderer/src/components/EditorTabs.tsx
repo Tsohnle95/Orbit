@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { useStore } from "../store";
 import { FileIcon } from "./FileIcons";
 import { IconAdd, IconGlobe } from "./icons";
 import { browserTabLabel, type BrowserTab } from "../use-browser-tabs";
@@ -52,9 +51,6 @@ function TabChip({
   onSelect: (path: string) => void;
   onClose: (path: string) => void;
 }): ReactNode {
-  const { setTabMode } = useStore();
-  const hasDiff =
-    tab.baseline?.kind === "known" && !tab.deleted && tab.baseline.content !== tab.content;
   return (
     <div
       role="tab"
@@ -74,19 +70,6 @@ function TabChip({
         {tab.name}
       </span>
       <span className="tab-actions">
-        {hasDiff && (
-          <span
-            className="tab-diff-badge"
-            title="Toggle diff view"
-            aria-label={`Toggle diff for ${tab.name}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setTabMode(tab.path, active && tab.mode === "diff" ? "edit" : "diff");
-            }}
-          >
-            ⇄
-          </span>
-        )}
         <button
           type="button"
           className="tab-close"

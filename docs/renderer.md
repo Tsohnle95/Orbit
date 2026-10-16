@@ -329,7 +329,7 @@ dialog), `reopenSession(id, silent)`
 `closePanel(id)`, `loadSessions`, `sendPrompt(text, files, workspace?)`, `stop(workspace?)`,
 `refreshProviderUsage`, `loadModels(workspace?)`, `switchModel(id, providerID, variant?, workspace?)`,
 `loadAgents(workspace?)`, `switchAgent(id, workspace?)`, `toggleApprovalMode`,
-`openFile(path, {mode}, workspace?)`, `closeTab`, `setActive`, `setTabMode`, `editContent`, `saveTab`, `saveAllEditorFiles`,
+`openFile(path, workspace?)`, `closeTab`, `setActive`, `editContent`, `saveTab`, `saveAllEditorFiles`,
 `reloadTab`, `overwriteTab`, `mergeTab`, `toggleDir`, `ensureRootOpen`,
 `replyPermission(requestID, reply, sessionID?)`,
 `reconcilePermissions` (polls `shell:list-permissions` per open panel workspace on a 3s interval and on
@@ -481,10 +481,11 @@ Key mechanisms:
   write already in flight cannot clear the newer conflict.
   External updates preserve edits and pause saving until explicit Reload,
   Overwrite, or Keep editing to merge followed by Save merged content.
-- **Diff wiring** — tabs carry the first established known/unknown `baseline`
-  from `agentFiles`; saves do not replace it. Known content enables Diff,
-  unknown content stays labeled as observed with Diff unavailable, and
-  `stale`/`deleted` flags surface external changes.
+- **Change baselines** — tabs carry the first established known/unknown
+  `baseline` from `agentFiles`, and saves do not replace it. File tabs are
+  always the edit surface; the baseline feeds the rail's Changes view, where
+  known content renders a diff and unknown content stays labeled `observed`
+  without one. `stale`/`deleted` flags surface external changes.
 
 - **V2 transcript replay** — reopened sessions accept OpenCode's flat
   `SessionMessageInfo[]` plus legacy `info`/`parts` projections and reconstruct
@@ -681,7 +682,7 @@ express a cross-component invariant or non-obvious state contract.
 | `SettingsPage` | `SettingsPage.tsx` | The independent Codex/Classic interface chooser and all appearance palettes, including Codex, Codex Dark, Kitty Glass and Original Dark, plugins, providers, safety, voice, default model and OpenCode sync, mobile, and About with a direct GitHub update action, separate status check, and clickable unsaved-file list |
 | `ProviderSettings` | `ProviderSettings.tsx` | Runtime-neutral provider connection/status UI; never owns provider secrets |
 | `SessionsPane` | `SessionsPane.tsx` | Mira header with session filter, Pinned/Projects/Recents inventory, saved workspaces, session open/close navigation |
-| `EditorPane` | `EditorPane.tsx` | Monaco editor/diff views with a Codex-style breadcrumb trail (text segments, chevron separators, ghost ancestors, current file emphasized) and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and up to four groups with independent tab membership, selection, and drag transfer; every group's file tabs share the titlebar strip (group blocks in panel order, separated by a hairline) so a split panel never grows a second strip inside itself, and selecting a tab there focuses its group; each group's split/close controls sit at the right end of its breadcrumb row beside the editor status menu (empty groups keep that row so they can still be split); new tabs route to the focused group ; browser tabs share that strip (chips after the file tabs, with their `+` immediately after the last visible browser chip; file-only strips omit it and the rail opens the first browser) and while one is showing the editor keeps its mount behind a concealed wrapper |
+| `EditorPane` | `EditorPane.tsx` | Monaco edit views (files always open in the edit surface; diff review lives in the rail's Changes view) with a Codex-style breadcrumb trail (text segments, chevron separators, ghost ancestors, current file emphasized) and unconditional line wrapping, manual save/conflict UI, editor validation entry points, and up to four groups with independent tab membership, selection, and drag transfer; every group's file tabs share the titlebar strip (group blocks in panel order, separated by a hairline) so a split panel never grows a second strip inside itself, and selecting a tab there focuses its group; each group's split/close controls sit at the right end of its breadcrumb row beside the editor status menu (empty groups keep that row so they can still be split); new tabs route to the focused group ; browser tabs share that strip (chips after the file tabs, with their `+` immediately after the last visible browser chip; file-only strips omit it and the rail opens the first browser) and while one is showing the editor keeps its mount behind a concealed wrapper |
 | `BrowserPane` | `BrowserPane.tsx`, `use-browser-guest.ts`, `use-browser-tabs.ts` | Browser tab surface: a navigation row (back / forward / reload-or-stop, "Search or enter a URL" field that turns bare hosts into `https:` and everything else into a search) over a `<webview>` guest in the `orbit-browser` partition. Guests are created lazily — a new tab is pure state with no guest at all — so opening one costs nothing, and a loading veil covers the frame until the page stops loading; `use-browser-guest` folds guest events into the browser slice |
 | `BrowserTabsProvider` | `browser-tabs-context.tsx`, `browser-store-provider.tsx` | Browser tab state lives outside the app store, split into a *state* context (tab list + active tab, consumed by the strip and panes) and a stable *actions* context (consumed by the rail, the editor and the store). That split is a responsiveness contract, not a detail: when the slices lived in the app store, opening or closing a tab re-rendered every store consumer (measured 644ms with nine editors open; 2ms after the split)
 | `EditorTabs` | `EditorTabs.tsx`, `editor-groups.ts` | Tab strip for the editor groups: tabs share the strip width (90px floor, 240px ceiling) and overflow past the floor moves into an "all open tabs" menu button; each tab resolves its owning group (drag source and selection target) through the strip's group lookup; owns the tab drag MIME and the editor-group identity helpers |

@@ -146,7 +146,7 @@ describe("Store lifecycle acquisition authority", () => {
     await mount({ readFile: async () => "original", writeFile, closeSession });
     await act(async () => store.addModelPanel("/dirty"));
     const workspace = store.session!.workspace;
-    await act(async () => store.openFile("notes.txt", { mode: "edit" }, workspace));
+    await act(async () => store.openFile("notes.txt", workspace));
     act(() => store.editContent("notes.txt", "first edit"));
     await act(async () => store.closePanel(store.session!.id));
     expect(writeFile).toHaveBeenCalledOnce();
@@ -162,7 +162,7 @@ describe("Store lifecycle acquisition authority", () => {
     const closeSession = vi.fn(async () => {});
     await mount({ readFile: async () => "original", writeFile: async () => { throw new Error("disk unavailable"); }, closeSession });
     await act(async () => store.addModelPanel("/dirty"));
-    await act(async () => store.openFile("notes.txt", { mode: "edit" }));
+    await act(async () => store.openFile("notes.txt"));
     act(() => store.editContent("notes.txt", "edited"));
     await act(async () => store.closePanel(store.session!.id));
     expect(store.panels).toHaveLength(1);
@@ -176,7 +176,7 @@ describe("Store lifecycle acquisition authority", () => {
     await mount({ readFile: async () => "original", writeFile, closeSession });
     await act(async () => store.addModelPanel("/conflict"));
     const panel = store.session!;
-    await act(async () => store.openFile("notes.txt", { mode: "edit" }));
+    await act(async () => store.openFile("notes.txt"));
     act(() => store.editContent("notes.txt", "local"));
     act(() => receive({ kind: "file-update", file: { workspace: panel.workspace, sessionID: panel.id, path: "notes.txt", baseline: { kind: "known", content: "original" }, content: "external", deleted: false } }));
     act(() => store.closePanel(panel.id));
@@ -251,7 +251,7 @@ describe("Store lifecycle acquisition authority", () => {
     await mount({ readFile: async () => "original", writeFile: () => write.promise, closeSession });
     await act(async () => store.addModelPanel("/closing"));
     const closing = store.session!;
-    await act(async () => store.openFile("notes.txt", { mode: "edit" }));
+    await act(async () => store.openFile("notes.txt"));
     act(() => store.editContent("notes.txt", "edited"));
     await act(async () => store.closePanel(closing.id));
     await act(async () => store.addModelPanel("/neighbor"));
@@ -269,7 +269,7 @@ describe("Store lifecycle acquisition authority", () => {
     await mount({ readFile: async () => "original", writeFile: () => { trace.push("save"); return write.promise; }, deleteSession: async () => { trace.push("delete"); }, closeSession });
     await act(async () => store.addModelPanel("/delete"));
     const closing = store.session!;
-    await act(async () => store.openFile("notes.txt", { mode: "edit" }));
+    await act(async () => store.openFile("notes.txt"));
     act(() => store.editContent("notes.txt", "edited"));
     vi.spyOn(window, "confirm").mockReturnValue(true);
     await act(async () => store.deleteSession(closing.id));

@@ -26,7 +26,7 @@ function useToolFileActivation(session: SessionInfo | null): (path: string) => v
     const target = workspaceFilePath(path, session);
     if (!target) return;
     if (session) focusSession?.(session.id);
-    void openFile(target, undefined, session?.workspace);
+    void openFile(target, session?.workspace);
   };
 }
 

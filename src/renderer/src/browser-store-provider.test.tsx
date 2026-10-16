@@ -121,7 +121,7 @@ describe("browser and Store integration", () => {
     await act(async () => store.openFile("missing.ts"));
     expect(browserState.activeBrowserTabID).toBe(id);
     expect(store.toasts.at(-1)?.text).toBe("Could not read missing.ts");
-    await act(async () => store.openFile("background.ts", undefined, background));
+    await act(async () => store.openFile("background.ts", background));
     expect(browserState.activeBrowserTabID).toBe(id);
     expect(store.session?.id).toBe(foreground.id);
     expect(store.tabs.some((tab) => tab.path === "background.ts")).toBe(false);
