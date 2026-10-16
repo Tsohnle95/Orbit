@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AgentFileState } from "@shared/types";
 import { useStore } from "../store";
 import { OpenCodeFile } from "./OpenCodeFile";
@@ -15,31 +15,71 @@ import {
 
 // The editor-area Changes review surface: a directory tree of observed file
 // changes beside stacked Pierre diffs, in the style of the reference app's
-// changes panel. Diffs mount only as their section approaches the viewport so a
-// large change set stays cheap.
+// changes panel. Per-file work (diff statistics and the Pierre diff itself) is
+// deferred until a section nears the viewport: a large change set must not diff
+// every file on mount, which previously froze the app when the panel opened.
 
 const VIEWPORT_MARGIN = "600px 0px";
 
-function useNearViewport(): { ref: React.RefObject<HTMLDivElement | null>; visible: boolean } {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+function togglePath(set: ReadonlySet<string>, value: string): Set<string> {
+  const next = new Set(set);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  return next;
+}
+
+/**
+ * One IntersectionObserver for the whole view, keyed by each section's
+ * `data-change-path`. Sections become permanently visible once they intersect,
+ * so scrolling back does not re-trigger work. Where IntersectionObserver is
+ * unavailable (tests/SSR) every section counts as visible.
+ */
+function useSectionVisibility(): {
+  isVisible: (path: string) => boolean;
+  observe: (element: HTMLElement) => void;
+  unobserve: (element: HTMLElement) => void;
+} {
+  const [visible, setVisible] = useState<ReadonlySet<string>>(() => new Set());
+  const supported = typeof IntersectionObserver !== "undefined";
+  const registry = useRef(new Set<HTMLElement>());
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
   useEffect(() => {
-    if (visible) return;
-    const element = ref.current;
-    if (!element || typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
-    }
+    if (!supported) return;
     const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) {
-        setVisible(true);
-        observer.disconnect();
+      const entered: string[] = [];
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        observer.unobserve(entry.target);
+        const path = (entry.target as HTMLElement).dataset.changePath;
+        if (path) entered.push(path);
       }
+      if (entered.length === 0) return;
+      setVisible((current) => {
+        let next: Set<string> | null = null;
+        for (const path of entered) {
+          if (current.has(path)) continue;
+          next ??= new Set(current);
+          next.add(path);
+        }
+        return next ?? current;
+      });
     }, { rootMargin: VIEWPORT_MARGIN });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [visible]);
-  return { ref, visible };
+    observerRef.current = observer;
+    for (const element of registry.current) observer.observe(element);
+    return () => { observer.disconnect(); observerRef.current = null; };
+  }, [supported]);
+
+  const observe = useCallback((element: HTMLElement): void => {
+    registry.current.add(element);
+    observerRef.current?.observe(element);
+  }, []);
+  const unobserve = useCallback((element: HTMLElement): void => {
+    registry.current.delete(element);
+    observerRef.current?.unobserve(element);
+  }, []);
+  const isVisible = useCallback((path: string): boolean => !supported || visible.has(path), [supported, visible]);
+  return { isVisible, observe, unobserve };
 }
 
 function changeStatusLabel(state: AgentFileState): string {
@@ -59,44 +99,49 @@ function ChangeStats({ state }: { state: AgentFileState }): ReactNode {
   );
 }
 
-function ChangeDiff({ file, wrap }: { file: ChangeFile; wrap: boolean }): ReactNode {
-  const { ref, visible } = useNearViewport();
+function ChangeDiff({ file, wrap, visible }: { file: ChangeFile; wrap: boolean; visible: boolean }): ReactNode {
   const state = file.state;
-  const available = state.baseline.kind === "known";
-  if (!available) {
+  if (state.baseline.kind !== "known") {
     return (
-      <div className="change-section-body" ref={ref}>
+      <div className="change-section-body">
         <p className="change-section-unavailable">
           Pre-change content wasn't observed for this file, so a diff isn't available.
         </p>
       </div>
     );
   }
-  const before = state.baseline.kind === "known" ? state.baseline.content : "";
   const after = state.deleted ? "" : state.content ?? "";
   return (
-    <div className="change-section-body" ref={ref}>
+    <div className="change-section-body">
       {visible
-        ? <OpenCodeFile mode="diff" file={file.path} before={before} after={after} overflow={wrap ? "wrap" : "scroll"} />
+        ? <OpenCodeFile mode="diff" file={file.path} before={state.baseline.content} after={after} overflow={wrap ? "wrap" : "scroll"} />
         : <div className="change-section-pending" aria-hidden="true" />}
     </div>
   );
 }
 
-function ChangeSection({ file, open, active, wrap, onToggle, onOpenInEditor, onDismiss, onRegister }: {
+function ChangeSection({ file, open, active, wrap, visible, onToggle, onOpenInEditor, onDismiss, onRegister, onUnregister }: {
   file: ChangeFile;
   open: boolean;
   active: boolean;
   wrap: boolean;
-  onToggle: () => void;
-  onOpenInEditor: () => void;
-  onDismiss: () => void;
-  onRegister: (element: HTMLDivElement | null) => void;
+  visible: boolean;
+  onToggle: (path: string) => void;
+  onOpenInEditor: (path: string) => void;
+  onDismiss: (path: string) => void;
+  onRegister: (path: string, element: HTMLDivElement) => void;
+  onUnregister: (path: string, element: HTMLDivElement) => void;
 }): ReactNode {
+  const path = file.path;
+  const setRef = useCallback((element: HTMLDivElement | null): (() => void) | void => {
+    if (!element) return;
+    onRegister(path, element);
+    return () => onUnregister(path, element);
+  }, [path, onRegister, onUnregister]);
   return (
-    <section className={`change-section${active ? " active" : ""}`} data-change-path={file.path} ref={onRegister}>
+    <section className={`change-section${active ? " active" : ""}`} data-change-path={path} ref={setRef}>
       <header className="change-section-header">
-        <button type="button" className="change-section-toggle" aria-expanded={open} onClick={onToggle}>
+        <button type="button" className="change-section-toggle" aria-expanded={open} onClick={() => onToggle(path)}>
           <span className={`change-section-chevron${open ? " open" : ""}`}><IconChevronRight /></span>
           <FileIcon name={file.name} isDir={false} />
           <span className="change-section-path">
@@ -104,24 +149,26 @@ function ChangeSection({ file, open, active, wrap, onToggle, onOpenInEditor, onD
             <span
               className="change-section-name"
               title="Open in editor"
-              onClick={(event) => { event.stopPropagation(); onOpenInEditor(); }}
+              onClick={(event) => { event.stopPropagation(); onOpenInEditor(path); }}
             >{file.name}</span>
           </span>
         </button>
         <span className="change-section-status">{changeStatusLabel(file.state)}</span>
-        <ChangeStats state={file.state} />
+        {visible && <ChangeStats state={file.state} />}
         <button
           type="button"
           className="change-section-action"
-          aria-label={`Clear ${file.path}`}
+          aria-label={`Clear ${path}`}
           title="Clear this change"
-          onClick={onDismiss}
+          onClick={() => onDismiss(path)}
         ><IconClose /></button>
       </header>
-      {open && <ChangeDiff file={file} wrap={wrap} />}
+      {open && <ChangeDiff file={file} wrap={wrap} visible={visible} />}
     </section>
   );
 }
+
+const ChangeSectionMemo = memo(ChangeSection);
 
 function ChangesTree({ rows, collapsed, selected, onToggleDirectory, onSelect }: {
   rows: ChangeTreeRow[];
@@ -207,29 +254,32 @@ export function ChangesView({ onClose }: { onClose: () => void }): ReactNode {
   const sections = useRef(new Map<string, HTMLDivElement>());
   const rows = useMemo(() => buildChangeTreeRows(files, collapsedDirs), [files, collapsedDirs]);
   const allCollapsed = files.length > 0 && files.every((file) => collapsedSections.has(file.path));
+  const { isVisible, observe, unobserve } = useSectionVisibility();
 
-  const registerSection = useCallback((path: string, element: HTMLDivElement | null): void => {
-    if (element) sections.current.set(path, element);
-    else sections.current.delete(path);
+  const registerSection = useCallback((path: string, element: HTMLDivElement): void => {
+    sections.current.set(path, element);
+    observe(element);
+  }, [observe]);
+
+  const unregisterSection = useCallback((path: string, element: HTMLDivElement): void => {
+    sections.current.delete(path);
+    unobserve(element);
+  }, [unobserve]);
+
+  const toggleSection = useCallback((path: string): void => {
+    setCollapsedSections((current) => togglePath(current, path));
   }, []);
-
-  const toggleSet = (set: ReadonlySet<string>, value: string): Set<string> => {
-    const next = new Set(set);
-    if (next.has(value)) next.delete(value);
-    else next.add(value);
-    return next;
-  };
 
   const reveal = (path: string): void => {
     setSelected(path);
-    setCollapsedSections((current) => current.has(path) ? toggleSet(current, path) : current);
+    setCollapsedSections((current) => current.has(path) ? togglePath(current, path) : current);
     requestAnimationFrame(() => sections.current.get(path)?.scrollIntoView({ block: "start" }));
   };
 
-  const openInEditor = (path: string): void => {
+  const openInEditor = useCallback((path: string): void => {
     onClose();
     void openFile(path);
-  };
+  }, [onClose, openFile]);
 
   if (files.length === 0) {
     return (
@@ -259,21 +309,23 @@ export function ChangesView({ onClose }: { onClose: () => void }): ReactNode {
           rows={rows}
           collapsed={collapsedDirs}
           selected={selected}
-          onToggleDirectory={(path) => setCollapsedDirs((current) => toggleSet(current, path))}
+          onToggleDirectory={(path) => setCollapsedDirs((current) => togglePath(current, path))}
           onSelect={reveal}
         />
         <div className="changes-diffs">
           {files.map((file) => (
-            <ChangeSection
+            <ChangeSectionMemo
               key={file.path}
               file={file}
               open={!collapsedSections.has(file.path)}
               active={selected === file.path}
               wrap={wrap}
-              onToggle={() => setCollapsedSections((current) => toggleSet(current, file.path))}
-              onOpenInEditor={() => openInEditor(file.path)}
-              onDismiss={() => dismissChange(file.path)}
-              onRegister={(element) => registerSection(file.path, element)}
+              visible={isVisible(file.path)}
+              onToggle={toggleSection}
+              onOpenInEditor={openInEditor}
+              onDismiss={dismissChange}
+              onRegister={registerSection}
+              onUnregister={unregisterSection}
             />
           ))}
         </div>
