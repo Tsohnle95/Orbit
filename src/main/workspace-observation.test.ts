@@ -122,7 +122,8 @@ it("coalesces at 200ms, suppresses imported destinations, and cancels pending ca
   const schedule = (observation as unknown as {
     scheduleWatch(context: typeof session.watchContext, abs: string, event: string): void;
   }).scheduleWatch.bind(observation);
-  const file = "/workspace/file.txt";
+  const file = path.join(context.root, "file.txt");
+  const imported = path.join(context.root, "imported");
   schedule(context, file, "rename");
   await vi.advanceTimersByTimeAsync(100);
   schedule(context, file, "change");
@@ -133,8 +134,8 @@ it("coalesces at 200ms, suppresses imported destinations, and cancels pending ca
   const restart = observation.beginImport(session);
   schedule(context, file, "change");
   expect(context.timers.size).toBe(0);
-  observation.endImport(session, "/workspace/imported", restart);
-  schedule(context, "/workspace/imported/file.txt", "change");
+  observation.endImport(session, imported, restart);
+  schedule(context, path.join(imported, "file.txt"), "change");
   expect(context.timers.size).toBe(0);
   schedule(context, file, "change");
   expect(context.timers.size).toBe(1);

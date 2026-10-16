@@ -6,11 +6,23 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { build } from "vite";
 import { SourceMapConsumer } from "source-map-js";
-import { editableCssSourceMaps } from "./editable-css-source-maps";
+import { editableCssSourceMaps, canonicalModuleId } from "./editable-css-source-maps";
 import { resolveAppSource } from "../src/main/source-resolver";
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
+
+describe("canonicalModuleId", () => {
+  it("matches a Vite id against native realpath output on Windows", () => {
+    expect(canonicalModuleId("D:/a/Orbit/main.scss", true)).toBe(canonicalModuleId("D:\\a\\Orbit\\main.scss", true));
+    expect(canonicalModuleId("/d:/a/orbit/MAIN.scss", true)).toBe(canonicalModuleId("D:\\a\\Orbit\\main.scss", true));
+  });
+
+  it("keeps POSIX ids case-sensitive", () => {
+    expect(canonicalModuleId("/Users/a/Main.scss", false)).toBe("/Users/a/Main.scss");
+    expect(canonicalModuleId("/Users/a/Main.scss", false)).not.toBe(canonicalModuleId("/Users/a/main.scss", false));
+  });
+});
 
 describe("editable compiled stylesheets", () => {
   it("maps extracted rules and declarations back to their owning Sass partial after concatenation and asset rewriting", async () => {

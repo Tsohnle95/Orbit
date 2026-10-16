@@ -9,6 +9,17 @@ import { APP_STYLES_START, APP_STYLES_END } from "../src/shared/app-styles";
 
 interface SourceLocation { source: string; line: number; column: number }
 
+/**
+ * Canonicalize a module id for comparison. Vite passes ids with POSIX
+ * separators (and can lead a Windows drive with a slash), while `realpathSync`
+ * returns host-native separators and casing; normalize both before matching so
+ * the transform still finds its entry on Windows.
+ */
+export function canonicalModuleId(value: string, caseInsensitive = process.platform === "win32"): string {
+  const posix = value.replace(/^\/+([A-Za-z]:)/, "$1").replace(/\\/g, "/");
+  return caseInsensitive ? posix.toLowerCase() : posix;
+}
+
 function nodeKey(node: postcss.ChildNode): string {
   if (node.type === "rule") return `rule:${node.selector}`;
   if (node.type === "decl") return `decl:${node.prop}`;
@@ -19,7 +30,8 @@ function nodeKey(node: postcss.ChildNode): string {
 // Vite 6 discards CSS maps during extraction. Carry locations through that
 // extraction as comments, then replace them with a map of the final asset.
 export function editableCssSourceMaps(entry: string): Plugin {
-  entry = realpathSync(entry);
+  const entryPath = realpathSync(entry);
+  const entryKey = canonicalModuleId(entryPath);
   const locations: SourceLocation[] = [];
   let outputDirectory = "";
   const marker = /\/\* orbit-css-source:(\d+) \*\//g;
@@ -29,9 +41,9 @@ export function editableCssSourceMaps(entry: string): Plugin {
     configResolved(config) { outputDirectory = path.resolve(config.root, config.build.outDir); },
     buildStart() { locations.length = 0; },
     transform(code, id) {
-      if (id !== entry) return;
-      const compiled = compile(entry, { sourceMap: true, style: "expanded" });
-      if (!compiled.sourceMap) this.error(`Missing Sass source map for ${entry}`);
+      if (canonicalModuleId(id) !== entryKey) return;
+      const compiled = compile(entryPath, { sourceMap: true, style: "expanded" });
+      if (!compiled.sourceMap) this.error(`Missing Sass source map for ${entryPath}`);
       const consumer = new SourceMapConsumer({ ...compiled.sourceMap, version: String(compiled.sourceMap.version) });
       const originals: postcss.ChildNode[] = [];
       postcss.parse(compiled.css).walk(node => { if (node.type !== "comment") originals.push(node); });
