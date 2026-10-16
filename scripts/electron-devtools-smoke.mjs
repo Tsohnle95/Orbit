@@ -33,13 +33,13 @@ const sourceRoot = FIXTURE;
 app.setPath("userData", PROFILE);
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const wait = async (predicate, label) => {
-  const deadline = Date.now() + 12000;
+  const deadline = Date.now() + 30000;
   while (!(await predicate())) {
     if (Date.now() > deadline) throw new Error("Timed out: " + label);
     await delay(50);
   }
 };
-const watchdog = setTimeout(() => app.exit(2), 60000);
+const watchdog = setTimeout(() => app.exit(2), 90000);
 (async () => {
   await app.whenReady();
   const session = { id: "devtools-smoke", directory: path.join(root, "design"), workspace: { id: "11111111-1111-4111-8111-111111111111", generation: 1 } };
@@ -74,7 +74,10 @@ const watchdog = setTimeout(() => app.exit(2), 60000);
     }
     return [];
   });
-  const win = new BrowserWindow({ show: false, width: 1280, height: 900, webPreferences: { preload: path.join(root, "out/preload/index.js"), contextIsolation: true, sandbox: true } });
+  // Keep rendering live while the window is hidden: Chromium throttles paint and
+  // rAF for backgrounded windows, which leaves Monaco's view lines unpainted (and
+  // times the smoke out) on slower CI runners.
+  const win = new BrowserWindow({ show: false, width: 1280, height: 900, webPreferences: { preload: path.join(root, "out/preload/index.js"), contextIsolation: true, sandbox: true, backgroundThrottling: false } });
   const wc = win.webContents;
   wc.on("console-message", (_event, level, message) => { if (level >= 2) console.error("renderer:", message); });
   assert.notEqual(app.getAppPath(), root, "The fixture must preserve the installed wrapper/check-out split");
@@ -174,7 +177,7 @@ try {
   let output = "";
   child.stdout.on("data", chunk => { output += chunk; process.stdout.write(chunk); });
   child.stderr.on("data", chunk => { output += chunk; process.stderr.write(chunk); });
-  const timeout = setTimeout(() => child.kill("SIGKILL"), 65000);
+  const timeout = setTimeout(() => child.kill("SIGKILL"), 95000);
   const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("exit", resolve); });
   clearTimeout(timeout);
   if (code !== 0 || !output.includes('"stylesLinkOpenedEditor":true')) throw new Error(`DevTools smoke failed with exit ${code}`);
