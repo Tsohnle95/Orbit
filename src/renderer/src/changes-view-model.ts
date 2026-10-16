@@ -48,6 +48,19 @@ export function changeList(agentFiles: Map<string, AgentFileState>): ChangeFile[
   return files.sort((left, right) => left.path.localeCompare(right.path));
 }
 
+/** True when a change path is itself hidden or lives under a hidden workspace path. */
+export function isHiddenChangePath(path: string, hidden: ReadonlySet<string>): boolean {
+  if (hidden.size === 0) return false;
+  let prefix = normalizePath(path);
+  while (prefix) {
+    if (hidden.has(prefix)) return true;
+    const slash = prefix.lastIndexOf("/");
+    if (slash < 0) break;
+    prefix = prefix.slice(0, slash);
+  }
+  return false;
+}
+
 /** Line counts for a file's observed change; null when no pre-change baseline exists. */
 export function changeDiffStats(state: AgentFileState): ChangeStats | null {
   if (state.baseline.kind !== "known") return null;

@@ -82,10 +82,6 @@ export function useWorkspaceFiles(host: WorkspaceFilesHost) {
       current[workspaceID] === records ? current : { ...current, [workspaceID]: records });
   }, []);
 
-  const resetVisibility = useCallback((workspace: WorkspaceIdentity): void => {
-    setHiddenPathsByWorkspace((current) => ({ ...current, [workspace.id]: new Set() }));
-  }, []);
-
   const hidePath = useCallback((workspace: WorkspaceIdentity, path: string): void => {
     setHiddenPathsByWorkspace((current) => {
       const next = new Set(current[workspace.id] ?? []);
@@ -377,7 +373,7 @@ export function useWorkspaceFiles(host: WorkspaceFilesHost) {
     agentFiles, tree, expanded, hiddenPaths, recoveryRecords,
     readAgentFile, isHiddenPath, toggleDir, prefetchDir, ensureRootOpen, refreshTree, unhidePath,
     dismissChange, dismissChanges, loadRecovery, openRecovery, acknowledgeRecovery,
-    resetVisibility, hidePath, restoreDetachedPath, hideNestedWorkspace, restoreNestedWorkspaceVisibility,
+    hidePath, restoreDetachedPath, hideNestedWorkspace, restoreNestedWorkspaceVisibility,
     expandParent, recordCreatedEntry, renameObservedPrefix, moveObservedPrefix, moveObservedPaths,
     receiveFileUpdate, receiveRecovery, scheduleFileRefresh
   };

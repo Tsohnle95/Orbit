@@ -8,13 +8,15 @@ const mocks = vi.hoisted(() => ({
   openFile: vi.fn(),
   dismissChange: vi.fn(),
   dismissChanges: vi.fn(),
-  files: new Map<string, AgentFileState>()
+  files: new Map<string, AgentFileState>(),
+  hidden: new Set<string>()
 }));
 
 vi.mock("../store", () => ({
   useStore: () => ({
     session: { id: "session", directory: "/workspace", workspace: { id: "ws", generation: 1 } },
     agentFiles: mocks.files,
+    hiddenPaths: mocks.hidden,
     openFile: mocks.openFile,
     dismissChange: mocks.dismissChange,
     dismissChanges: mocks.dismissChanges
@@ -43,6 +45,7 @@ describe("ChangesView", () => {
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     mocks.files.clear();
+    mocks.hidden.clear();
     vi.clearAllMocks();
     Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
     container = document.createElement("div");
@@ -105,6 +108,15 @@ describe("ChangesView", () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(mocks.openFile).toHaveBeenCalledWith("src/a.ts");
+  });
+
+  it("omits changes hidden for the workspace", () => {
+    seed();
+    mocks.hidden.add("src");
+    render();
+
+    const paths = [...container.querySelectorAll(".change-section")].map((section) => section.getAttribute("data-change-path"));
+    expect(paths).toEqual(["gone.ts", "unknown.ts"]);
   });
 
   it("collapses a section and collapses all from the toolbar", () => {

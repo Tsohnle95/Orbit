@@ -186,10 +186,6 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
     snapshotCompactionBaseline, removeClosedBaseline, applyBusyTodoFallback
   } = useSessionProgress({ panelForSession, protectedSessionIDs, notify: toast });
   useEffect(() => {
-    if (!session) return;
-    resetVisibility(session.workspace);
-  }, [session?.directory, session?.workspace.id]);
-  useEffect(() => {
     try {
       window.localStorage.removeItem("runtimeID");
     } catch {}
@@ -237,7 +233,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
     agentFiles, tree, expanded, hiddenPaths, recoveryRecords,
     readAgentFile, isHiddenPath, toggleDir, prefetchDir, ensureRootOpen, refreshTree, unhidePath,
     dismissChange, dismissChanges, loadRecovery, openRecovery, acknowledgeRecovery,
-    resetVisibility, hidePath, restoreDetachedPath, hideNestedWorkspace, restoreNestedWorkspaceVisibility,
+    hidePath, restoreDetachedPath, hideNestedWorkspace, restoreNestedWorkspaceVisibility,
     expandParent, recordCreatedEntry, renameObservedPrefix, moveObservedPrefix, moveObservedPaths,
     receiveFileUpdate, receiveRecovery, scheduleFileRefresh
   } = useWorkspaceFiles({ renderSession: session, readFocusedSession, panelFor, readPanels, notify: toast });

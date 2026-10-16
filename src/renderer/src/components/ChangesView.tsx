@@ -8,6 +8,7 @@ import {
   buildChangeTreeRows,
   changeDiffStats,
   changeList,
+  isHiddenChangePath,
   type ChangeFile,
   type ChangeTreeRow
 } from "../changes-view-model";
@@ -192,8 +193,13 @@ function ChangesToolbar({ count, allCollapsed, wrap, onToggleAll, onToggleWrap, 
 }
 
 export function ChangesView({ onClose }: { onClose: () => void }): ReactNode {
-  const { session, agentFiles, dismissChange, dismissChanges, openFile } = useStore();
-  const files = useMemo(() => changeList(agentFiles), [agentFiles]);
+  const { session, agentFiles, hiddenPaths, dismissChange, dismissChanges, openFile } = useStore();
+  const files = useMemo(() => {
+    const visible = changeList(agentFiles);
+    // Paths detached from this workspace, or owned by a nested workspace that is
+    // open separately, are hidden in the Explorer and must not resurface here.
+    return hiddenPaths.size === 0 ? visible : visible.filter((file) => !isHiddenChangePath(file.path, hiddenPaths));
+  }, [agentFiles, hiddenPaths]);
   const [collapsedDirs, setCollapsedDirs] = useState<ReadonlySet<string>>(() => new Set());
   const [collapsedSections, setCollapsedSections] = useState<ReadonlySet<string>>(() => new Set());
   const [wrap, setWrap] = useState(true);

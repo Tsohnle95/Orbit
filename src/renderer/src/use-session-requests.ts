@@ -109,7 +109,10 @@ export function useSessionRequests(host: RequestsHost, chat: RequestsChat) {
   const toggleApprovalMode = useCallback(() => {
     setApprovalMode((current) => {
       const next = current === "approve" ? "ask" : "approve";
-      approvalModeRef.current = next;
+      // Persist from the updater so each queued toggle writes its own value, but
+      // never mutate `approvalModeRef` here: the ref must keep tracking the last
+      // rendered mode so a permission event batched with pending toggles reads
+      // the rendered approval, not an updater that has not committed yet.
       window.localStorage.setItem("approvalMode", next);
       return next;
     });

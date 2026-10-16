@@ -1,10 +1,27 @@
 import { describe, expect, it } from "vitest";
 import type { AgentFileState } from "@shared/types";
-import { buildChangeTreeRows, changeDiffStats, changeList } from "./changes-view-model";
+import { buildChangeTreeRows, changeDiffStats, changeList, isHiddenChangePath } from "./changes-view-model";
 
 function state(overrides: Partial<AgentFileState> = {}): AgentFileState {
   return { baseline: { kind: "known", content: "old\n" }, content: "new\n", deleted: false, ...overrides };
 }
+
+describe("isHiddenChangePath", () => {
+  it("matches the path itself and anything beneath it", () => {
+    const hidden = new Set(["src/vendor", "docs/old.md"]);
+    expect(isHiddenChangePath("src/vendor", hidden)).toBe(true);
+    expect(isHiddenChangePath("src/vendor/deep/file.ts", hidden)).toBe(true);
+    expect(isHiddenChangePath("docs/old.md", hidden)).toBe(true);
+    expect(isHiddenChangePath("src/other.ts", hidden)).toBe(false);
+    // A similarly-prefixed sibling is not hidden.
+    expect(isHiddenChangePath("src/vendor-2/file.ts", hidden)).toBe(false);
+    expect(isHiddenChangePath("docs/old.md.bak", hidden)).toBe(false);
+  });
+
+  it("is a no-op for an empty hidden set", () => {
+    expect(isHiddenChangePath("anything.ts", new Set())).toBe(false);
+  });
+});
 
 describe("changeList", () => {
   it("sorts by path and splits directory from name", () => {
