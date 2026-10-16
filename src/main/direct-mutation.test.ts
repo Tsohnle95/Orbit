@@ -289,6 +289,10 @@ describe("direct mutation observed changes", () => {
     await backend.stop();
   });
 
+  it("does not reject when the workspace root is gone before the purge runs", async () => {
+    await expect(purgeExpired(path.join(tmpdir(), "orbit-missing-root"))).resolves.toBeUndefined();
+  });
+
   it("purges settled recovery transactions older than 24 hours on activation", async () => {
     const { backend, root } = await backendFixture();
     await writeFile(path.join(root, "save.txt"), "original");

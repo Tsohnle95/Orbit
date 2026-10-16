@@ -24,13 +24,15 @@ export interface RecoveryTransaction {
 
 export class RecoveryStorage {
   private async recoveryRoot(root: string): Promise<string> {
+    const rootStat = await fsp.stat(root).catch(() => null);
     const git = path.join(root, ".git");
     const gitStat = await fsp.lstat(git).catch(() => null);
-    if (gitStat?.isDirectory() && gitStat.dev === (await fsp.stat(root)).dev) {
+    if (rootStat && gitStat?.isDirectory() && gitStat.dev === rootStat.dev) {
       return path.join(git, RECOVERY_DIR.slice(1));
     }
     const parent = path.dirname(root);
-    if ((await fsp.stat(parent)).dev === (await fsp.stat(root)).dev) {
+    const parentStat = await fsp.stat(parent).catch(() => null);
+    if (rootStat && parentStat && parentStat.dev === rootStat.dev) {
       const key = createHash("sha256").update(root).digest("hex").slice(0, 16);
       return path.join(parent, `.orbit-recovery-${key}`);
     }
