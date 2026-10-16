@@ -11,6 +11,7 @@ const store = {
   ensureRootOpen: vi.fn(),
   agentFiles: new Map(),
   openFile: vi.fn(),
+  previewFile: vi.fn(),
   expanded: new Set([""]),
   hiddenPaths: new Set<string>(),
   pendingCreate: null,

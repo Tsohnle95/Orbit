@@ -17,7 +17,7 @@ vi.mock("../store", () => ({
     session: { id: "session", directory: "/workspace", workspace: { id: "ws", generation: 1 } },
     agentFiles: mocks.files,
     hiddenPaths: new Set<string>(),
-    openFile: vi.fn(),
+    previewFile: vi.fn(),
     dismissChange: vi.fn(),
     dismissChanges: vi.fn()
   })

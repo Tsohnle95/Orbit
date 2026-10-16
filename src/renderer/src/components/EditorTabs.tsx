@@ -55,7 +55,7 @@ function TabChip({
     <div
       role="tab"
       aria-selected={active}
-      className={"tab" + (active ? " active" : "")}
+      className={"tab" + (active ? " active" : "") + (tab.preview ? " preview" : "")}
       draggable
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = "move";

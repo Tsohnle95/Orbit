@@ -67,6 +67,34 @@ describe("workspace editor authority", () => {
     vi.unstubAllGlobals();
   });
 
+  it("replaces the transient preview tab on the next preview open", async () => {
+    await act(async () => editor.previewFile("one"));
+    expect(editor.tabs.map((tab) => [tab.path, tab.preview])).toEqual([["one", true]]);
+
+    await act(async () => editor.previewFile("two"));
+    expect(editor.tabs.map((tab) => [tab.path, tab.preview])).toEqual([["two", true]]);
+  });
+
+  it("anchors a preview when it is opened again, edited, or another file is pinned", async () => {
+    await act(async () => editor.previewFile("one"));
+    await act(async () => editor.openFile("one"));
+    expect(editor.tabs.map((tab) => [tab.path, tab.preview])).toEqual([["one", false]]);
+
+    await act(async () => editor.previewFile("two"));
+    act(() => editor.editContent("two", "dirty"));
+    expect(editor.tabs.map((tab) => [tab.path, tab.preview])).toEqual([["one", false], ["two", false]]);
+
+    // A pinned tab survives the next preview open.
+    await act(async () => editor.previewFile("three"));
+    expect(editor.tabs.map((tab) => [tab.path, tab.preview])).toEqual([["one", false], ["two", false], ["three", true]]);
+  });
+
+  it("re-activating an already open preview keeps it previewing", async () => {
+    await act(async () => editor.previewFile("one"));
+    await act(async () => editor.previewFile("one"));
+    expect(editor.tabs.map((tab) => [tab.path, tab.preview])).toEqual([["one", true]]);
+  });
+
   it("activates successful foreground files without changing existing dirty buffers", async () => {
     await act(async () => editor.openFile("file"));
     expect(onFileActivate).toHaveBeenCalledOnce();

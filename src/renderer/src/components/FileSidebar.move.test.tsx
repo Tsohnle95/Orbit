@@ -35,6 +35,7 @@ const store = {
   ensureRootOpen: vi.fn(),
   agentFiles: new Map(),
   openFile: vi.fn(),
+  previewFile: vi.fn(),
   expanded: initialExpanded,
   openCtxMenu: vi.fn(),
   pendingCreate: null,

@@ -5,7 +5,7 @@ import type { AgentFileState } from "@shared/types";
 import { ChangesView } from "./ChangesView";
 
 const mocks = vi.hoisted(() => ({
-  openFile: vi.fn(),
+  previewFile: vi.fn(),
   dismissChange: vi.fn(),
   dismissChanges: vi.fn(),
   files: new Map<string, AgentFileState>(),
@@ -17,7 +17,7 @@ vi.mock("../store", () => ({
     session: { id: "session", directory: "/workspace", workspace: { id: "ws", generation: 1 } },
     agentFiles: mocks.files,
     hiddenPaths: mocks.hidden,
-    openFile: mocks.openFile,
+    previewFile: mocks.previewFile,
     dismissChange: mocks.dismissChange,
     dismissChanges: mocks.dismissChanges
   })
@@ -107,7 +107,7 @@ describe("ChangesView", () => {
     act(() => name.click());
 
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(mocks.openFile).toHaveBeenCalledWith("src/a.ts");
+    expect(mocks.previewFile).toHaveBeenCalledWith("src/a.ts");
   });
 
   it("omits changes hidden for the workspace", () => {

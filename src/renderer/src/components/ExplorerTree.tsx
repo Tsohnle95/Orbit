@@ -177,7 +177,7 @@ export function FileNode({
   drag: DragHandlers;
   selection: SelectionHandlers;
 }): ReactNode {
-  const { openFile, activePath, tabs = [], agentFiles, pendingRename, commitName, cancelPending } =
+  const { openFile, previewFile, activePath, tabs = [], agentFiles, pendingRename, commitName, cancelPending } =
     useStore();
   const name = entry.path.split("/").pop() ?? entry.path;
   const changed = agentFiles.has(entry.path);
@@ -200,7 +200,8 @@ export function FileNode({
       className={`tree-row file ${active ? "active" : ""} ${selection.selectedPaths.has(entry.path) ? "selected" : ""}`}
       data-entry-path={entry.path}
       draggable
-      onClick={(e) => selection.onClick(e, entry.path, () => void openFile(entry.path))}
+      onClick={(e) => selection.onClick(e, entry.path, () => void previewFile(entry.path))}
+      onDoubleClick={() => void openFile(entry.path)}
       onContextMenu={(e) => selection.onContextMenu(e, entry)}
       onDragStart={(e) => drag.onDragStart(e, entry.path)}
       onDragEnd={drag.onDragEnd}

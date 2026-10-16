@@ -240,7 +240,7 @@ function ChangesToolbar({ count, allCollapsed, wrap, onToggleAll, onToggleWrap, 
 }
 
 export function ChangesView({ onClose }: { onClose: () => void }): ReactNode {
-  const { session, agentFiles, hiddenPaths, dismissChange, dismissChanges, openFile } = useStore();
+  const { session, agentFiles, hiddenPaths, dismissChange, dismissChanges, previewFile } = useStore();
   const files = useMemo(() => {
     const visible = changeList(agentFiles);
     // Paths detached from this workspace, or owned by a nested workspace that is
@@ -278,8 +278,8 @@ export function ChangesView({ onClose }: { onClose: () => void }): ReactNode {
 
   const openInEditor = useCallback((path: string): void => {
     onClose();
-    void openFile(path);
-  }, [onClose, openFile]);
+    void previewFile(path);
+  }, [onClose, previewFile]);
 
   if (files.length === 0) {
     return (

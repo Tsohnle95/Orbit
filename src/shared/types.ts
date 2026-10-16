@@ -562,6 +562,8 @@ export interface Tab {
   revision: number;
   conflict: FileConflict | null;
   binary: boolean;
+  /** Transient VS Code-style preview tab: replaced by the next preview open. */
+  preview?: boolean;
   standalone?: boolean;
 }
 

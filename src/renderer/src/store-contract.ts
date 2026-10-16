@@ -176,6 +176,7 @@ export interface Store {
   switchAgent: (id: string, workspace?: WorkspaceIdentity) => Promise<void>;
   toggleApprovalMode: () => void;
   openFile: (path: string, workspace?: WorkspaceIdentity) => Promise<void>;
+  previewFile: (path: string, workspace?: WorkspaceIdentity) => Promise<void>;
   closeTab: (path: string) => void;
   setActive: (path: string) => void;
   editContent: (path: string, content: string) => void;

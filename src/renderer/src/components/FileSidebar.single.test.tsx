@@ -31,6 +31,7 @@ const store: Record<string, unknown> = {
   agentFiles: new Map(),
   tabs: [],
   openFile: vi.fn(),
+  previewFile: vi.fn(),
   expanded: initialExpanded,
   openCtxMenu: vi.fn(),
   pendingCreate: null,

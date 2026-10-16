@@ -106,7 +106,8 @@ export function useWorkspaceEditor(host: EditorHost) {
       const currentTabs = target ? (tabsByWorkspaceRef.current[target.id] ?? []) : [];
       const existing = currentTabs.find((t) => t.path === path);
       if (existing) {
-        if (!target) return;
+        // Pinning an open preview promotes it in place.
+        if (existing.preview) setTabsFor(target.id, (prev) => prev.map((t) => (t.path === path ? { ...t, preview: false } : t)));
         setActivePathFor(target.id, path);
         activateForegroundFile(target, foreground);
         return;
@@ -216,6 +217,18 @@ export function useWorkspaceEditor(host: EditorHost) {
     setActivePathFor(target.id, path);
     activateForegroundFile(target, true);
   }, [setActivePathFor, readFocusedSession, panelFor, activateForegroundFile]);
+
+  // VS Code-style preview: opening a file with a single click keeps it in one
+  // transient tab that the next preview replaces; opening it again (or editing
+  // it) promotes it to a pinned tab.
+  const previewFile = useCallback(async (path: string, workspace?: WorkspaceIdentity) => {
+    const target = workspace ?? readFocusedSession()?.workspace;
+    if (!target) return;
+    if ((tabsByWorkspaceRef.current[target.id] ?? []).some((tab) => tab.path === path)) return setActive(path);
+    setTabsFor(target.id, (prev) => prev.filter((tab) => !tab.preview));
+    await openFile(path, target);
+    setTabsFor(target.id, (prev) => prev.map((tab) => (tab.path === path ? { ...tab, preview: true } : tab)));
+  }, [openFile, setActive, setTabsFor, readFocusedSession]);
 
   const doSave = useCallback(
     async (snapshot: SaveSnapshot, allowConflict = false) => {
@@ -339,7 +352,7 @@ export function useWorkspaceEditor(host: EditorHost) {
         : undefined;
       if (!target || !tab || tab.content === content) return;
       setTabsFor(target.id, (prev) => prev.map((candidate) => candidate.path === path
-        ? { ...candidate, content, revision: candidate.revision + 1, dirty: content !== candidate.saved }
+        ? { ...candidate, content, revision: candidate.revision + 1, dirty: content !== candidate.saved, preview: false }
         : candidate));
     },
     [setTabsFor]
@@ -542,7 +555,7 @@ export function useWorkspaceEditor(host: EditorHost) {
     tabs, activePath: session ? readRenderedActivePath(session.workspace) : null,
     singleFile, unsavedEditorFiles, unsavedEditorFileCount: unsavedEditorFiles.length, readRenderedActivePath,
     dirtyTabsFor, doSaveRef,
-    openFile, openExternalPath, setActive, saveAllEditorFiles,
+    openFile, previewFile, openExternalPath, setActive, saveAllEditorFiles,
     closeTab, saveTab, editContent, reloadTab, overwriteTab, mergeTab,
     setSingleFileFor, addCreatedFile, removePathTabs, removePathsTabs,
     renameTabs, movePathTabs, movePathsTabs, prepareFileUpdate, applyFileUpdate,

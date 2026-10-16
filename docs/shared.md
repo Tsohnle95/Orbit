@@ -103,9 +103,11 @@ blocks, and provider metadata is retained instead of flattened away.
 ## UI state
 
 - `Tab` — `{ path, name, content, saved, baseline, deleted, dirty, stale,
-  revision, conflict, binary, standalone? }`; `saved` is the last
+  revision, conflict, binary, preview?, standalone? }`; `saved` is the last
   persisted content, `revision` increases on every edit, and `conflict`
-  retains external content while normal saving is blocked. `standalone: true`
+  retains external content while normal saving is blocked. `preview: true`
+  marks a transient preview tab (a single Explorer click; the next preview
+  replaces it until it is opened again or edited). `standalone: true`
   marks a tab whose `path` is an absolute filesystem path outside the
   workspace root (a dragged/dropped or standalone file): its content is read
   and saved at that real path instead of through the workspace-relative read/write

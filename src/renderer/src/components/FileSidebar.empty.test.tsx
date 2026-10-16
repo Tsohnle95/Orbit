@@ -13,6 +13,7 @@ const store: Record<string, unknown> = {
   ensureRootOpen: vi.fn(),
   agentFiles: new Map(),
   openFile: vi.fn(),
+  previewFile: vi.fn(),
   expanded: new Set<string>(),
   pendingCreate: null,
   commitName: vi.fn(),

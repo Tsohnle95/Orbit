@@ -66,6 +66,17 @@ describe("mixed tab overflow", () => {
     vi.unstubAllGlobals();
   });
 
+  it("marks a preview tab so it reads as transient", () => {
+    width = 1200;
+    const tabs = [
+      { path: "one.ts", name: "one.ts", content: "", saved: "", preview: true },
+      { path: "two.ts", name: "two.ts", content: "", saved: "" }
+    ] as Tab[];
+    act(() => root.render(createElement(TabBar, { tabs, activePath: "one.ts", ariaLabel: "Tabs", onSelect: vi.fn(), onClose: vi.fn(), onMoveTab: vi.fn() })));
+    expect(container.querySelectorAll(".tab.preview")).toHaveLength(1);
+    expect(container.querySelector(".tab.preview .tab-name")?.textContent).toBe("one.ts");
+  });
+
   it("places the browser add button immediately after browser chips and omits it for file-only strips", () => {
     width = 1200;
     const tabs = [{ path: "one.ts", name: "one.ts", content: "", saved: "" }] as Tab[];

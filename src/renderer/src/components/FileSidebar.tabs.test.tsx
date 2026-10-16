@@ -27,6 +27,7 @@ const store = {
   ensureRootOpen: vi.fn(),
   agentFiles: new Map(),
   openFile: vi.fn(),
+  previewFile: vi.fn(),
   expanded: new Set([""]),
   openCtxMenu: vi.fn(),
   pendingCreate: null,
@@ -89,7 +90,7 @@ describe("FileSidebar tabs and sessions pane", () => {
     for (const mock of [
       store.focusSession, store.closePanel, store.reopenSession, store.openSession, store.selectFolder, store.selectFile,
       store.loadSessions, store.runCommand, store.selectPanelDirectory, store.saveWorkspace,
-      store.removeWorkspace
+      store.removeWorkspace, store.openFile, store.previewFile
     ]) {
       mock.mockClear();
     }
@@ -107,6 +108,24 @@ describe("FileSidebar tabs and sessions pane", () => {
     container.remove();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it("opens a file as a preview on a single click and pins it on a double click", async () => {
+    store.tree = { "": [{ path: "a.ts", type: "file" }] };
+    await act(async () =>
+      root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} initialTab="files" />)
+    );
+    await settle();
+    const row = container.querySelector<HTMLElement>('[data-entry-path="a.ts"]')!;
+    expect(row).toBeTruthy();
+
+    await act(async () => { row.click(); });
+    expect(store.previewFile).toHaveBeenCalledWith("a.ts");
+    expect(store.openFile).not.toHaveBeenCalled();
+
+    await act(async () => { row.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })); });
+    expect(store.openFile).toHaveBeenCalledWith("a.ts");
+    store.tree = {};
   });
 
   function render(): Promise<void> {
