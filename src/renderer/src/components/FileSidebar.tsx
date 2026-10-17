@@ -511,8 +511,12 @@ export function FileSidebar({
                   if (!event.metaKey && !event.ctrlKey && !event.shiftKey) activate();
                 },
                 onContextMenu: (event, entry) => {
+                  event.preventDefault();
+                  event.stopPropagation();
                   selectionWorkspace.current = panel.workspace.id;
-                  selection.onContextMenu(event, entry);
+                  setSelectedPaths([entry.path]);
+                  selectionAnchor.current = entry.path;
+                  openCtxMenu(event.clientX, event.clientY, entry);
                 }
               };
               const panelDrag = { ...drag, dropDir: dropWorkspace.current === panel.workspace.id ? dropDir : null };

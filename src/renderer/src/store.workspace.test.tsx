@@ -136,6 +136,25 @@ describe("store workspace continuations", () => {
     expect(container.textContent).not.toContain(secondFolder);
   });
 
+  it("does not carry a multi-selection into another workspace's context menu", async () => {
+    const deletePath = vi.fn(async () => {});
+    window.openshell = api({
+      deletePath,
+      listDir: async () => [{ path: "shared.txt", type: "file" }, { path: "other.txt", type: "file" }]
+    });
+    await act(async () => root.render(<StoreProvider><Probe /><FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openWorkspacePanel("/two"));
+    const second = store.session!;
+    const row = (directory: string, path: string) => container.querySelector<HTMLElement>(`[data-workspace-directory="${directory}"] [data-entry-path="${path}"]`)!;
+    await act(async () => row("/one", "shared.txt").click());
+    await act(async () => row("/one", "other.txt").dispatchEvent(new MouseEvent("click", { bubbles: true, ctrlKey: true })));
+    await act(async () => row("/two", "shared.txt").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true })));
+    const remove = [...document.body.querySelectorAll<HTMLButtonElement>(".ctx-item")].find((button) => button.textContent?.trim() === "Delete")!;
+    await act(async () => remove.click());
+    expect(deletePath).toHaveBeenCalledExactlyOnceWith(second.workspace, "shared.txt");
+  });
+
   it("explains that Cmd+R cannot update a stale main process's workspace IPC handler", async () => {
     window.openshell = api({
       savedWorkspaces: async () => {
