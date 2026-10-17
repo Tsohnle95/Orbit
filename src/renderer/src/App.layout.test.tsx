@@ -234,6 +234,25 @@ describe("Layout panel sizing", () => {
     expect(container.querySelector(".sidebar")).not.toBeNull();
   });
 
+  it("opens and closes the left panel from the titlebar control", async () => {
+    await act(async () => root.render(<App />));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+
+    const toggle = container.querySelector<HTMLButtonElement>('[data-panel-action="toggle-sidebar"]')!;
+    expect(toggle.getAttribute("aria-label")).toBe("Hide left panel");
+    expect(container.querySelector(".sidebar")).not.toBeNull();
+
+    await act(async () => toggle.click());
+    expect(toggle.getAttribute("aria-label")).toBe("Show left panel");
+    expect(container.querySelector(".main-row.sidebar-closed")).not.toBeNull();
+    expect(container.querySelector(".sidebar")).toBeNull();
+
+    await act(async () => toggle.click());
+    expect(toggle.getAttribute("aria-label")).toBe("Hide left panel");
+    expect(container.querySelector(".main-row.sidebar-closed")).toBeNull();
+    expect(container.querySelector(".sidebar")).not.toBeNull();
+  });
+
   it("opens the Changes review view from the activity rail", async () => {
     await act(async () => root.render(<App />));
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
