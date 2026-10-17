@@ -82,7 +82,7 @@ describe("per-panel workspace selection", () => {
     vi.restoreAllMocks();
   });
 
-  it("persists and removes Orbit workspace bookmarks without touching the folder", async () => {
+  it("persists and removes Mira workspace bookmarks without touching the folder", async () => {
     const selectDirectory = vi.fn(async () => "/saved/workspace");
     const saveSavedWorkspaces = vi.fn(async (workspaces: ProjectInfo[]) => workspaces);
     const deletePath = vi.fn(async () => {});
@@ -92,7 +92,7 @@ describe("per-panel workspace selection", () => {
 
     await act(async () => store.saveWorkspace());
     expect(store.savedWorkspaces).toEqual([{ directory: "/saved/workspace", name: "workspace" }]);
-    expect(JSON.parse(window.localStorage.getItem("orbit.savedWorkspaces") ?? "[]")).toEqual(store.savedWorkspaces);
+    expect(JSON.parse(window.localStorage.getItem("mira.savedWorkspaces") ?? "[]")).toEqual(store.savedWorkspaces);
     expect(window.openshell.saveSavedWorkspaces).toHaveBeenLastCalledWith(store.savedWorkspaces);
 
     await act(async () => store.removeWorkspace("/saved/workspace"));
@@ -105,7 +105,7 @@ describe("per-panel workspace selection", () => {
     const stored = deferred<{ workspaces: ProjectInfo[]; initialized: boolean }>();
     const saveSavedWorkspaces = vi.fn(async (workspaces: ProjectInfo[]) => workspaces);
     const projects = vi.fn(async () => [{ directory: "/opencode", name: "OpenCode" }]);
-    window.localStorage.setItem("orbit.savedWorkspaces", JSON.stringify([
+    window.localStorage.setItem("mira.savedWorkspaces", JSON.stringify([
       { directory: "/legacy", name: "Legacy" }
     ]));
     window.openshell = api({
@@ -125,13 +125,13 @@ describe("per-panel workspace selection", () => {
     const expected = [{ directory: "/durable", name: "Durable" }];
     expect(store.savedWorkspaces).toEqual(expected);
     expect(saveSavedWorkspaces).toHaveBeenLastCalledWith(expected);
-    expect(JSON.parse(window.localStorage.getItem("orbit.savedWorkspaces") ?? "[]")).toEqual(expected);
+    expect(JSON.parse(window.localStorage.getItem("mira.savedWorkspaces") ?? "[]")).toEqual(expected);
     expect(projects).not.toHaveBeenCalled();
   });
 
   it("keeps additions and removals made while durable storage is loading", async () => {
     const stored = deferred<{ workspaces: ProjectInfo[]; initialized: boolean }>();
-    window.localStorage.setItem("orbit.savedWorkspaces", JSON.stringify([{ directory: "/removed", name: "Removed" }]));
+    window.localStorage.setItem("mira.savedWorkspaces", JSON.stringify([{ directory: "/removed", name: "Removed" }]));
     window.openshell = api({
       savedWorkspaces: () => stored.promise,
       selectDirectory: async () => "/added"
@@ -147,11 +147,11 @@ describe("per-panel workspace selection", () => {
   });
 
   it("does not resurrect removed bookmarks from another renderer's old localStorage", async () => {
-    window.localStorage.setItem("orbit.savedWorkspaces", JSON.stringify([{ directory: "/removed", name: "Removed" }]));
+    window.localStorage.setItem("mira.savedWorkspaces", JSON.stringify([{ directory: "/removed", name: "Removed" }]));
     window.openshell = api({ savedWorkspaces: async () => ({ workspaces: [], initialized: true }) });
     await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
     expect(store.savedWorkspaces).toEqual([]);
-    expect(window.localStorage.getItem("orbit.savedWorkspaces")).toBe("[]");
+    expect(window.localStorage.getItem("mira.savedWorkspaces")).toBe("[]");
   });
 
   it("imports OpenCode projects on first use when no legacy bookmark list exists", async () => {

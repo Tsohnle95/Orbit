@@ -169,7 +169,7 @@ describe("store workspace continuations", () => {
     await act(async () => Promise.resolve());
 
     expect(store.toasts.at(-1)?.text).toBe(
-      "Orbit's app process is older than this window. Quit and reopen Orbit completely; Cmd+R only refreshes the window. Saved workspaces are still stored."
+      "Mira's app process is older than this window. Quit and reopen Mira completely; Cmd+R only refreshes the window. Saved workspaces are still stored."
     );
   });
 
@@ -564,7 +564,7 @@ describe("store workspace continuations", () => {
   });
 
   it("re-attaches live backend sessions on startup and drops stale persisted layout", async () => {
-    window.localStorage.setItem("orbit.sessionLayout", JSON.stringify({
+    window.localStorage.setItem("mira.sessionLayout", JSON.stringify({
       version: 1,
       panels: [{ sessionID: "stale", runtimeID: "opencode" }],
       activeSessionID: "stale"
@@ -587,7 +587,7 @@ describe("store workspace continuations", () => {
     expect(openSessionById.mock.calls.map((call) => call[2])).toEqual([undefined]);
     expect(store.panels.map((panel) => panel.id)).toEqual(["session-7"]);
     expect(store.session?.id).toBe("session-7");
-    expect(window.localStorage.getItem("orbit.sessionLayout")).toBeNull();
+    expect(window.localStorage.getItem("mira.sessionLayout")).toBeNull();
   });
 
   it("waits for backend readiness before re-attaching live sessions", async () => {
@@ -695,7 +695,7 @@ describe("store workspace continuations", () => {
     window.openshell = api({ closeSession, openSessionById });
     await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
     await act(async () => store.openSession("/luno"));
-    await act(async () => store.addModelPanel("/orbit"));
+    await act(async () => store.addModelPanel("/mira"));
     const previousSelected = store.panels[1];
 
     await act(async () => store.reopenSession("session-neptune"));
@@ -711,7 +711,7 @@ describe("store workspace continuations", () => {
     window.openshell = api();
     await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
     await act(async () => store.openSession("/luno"));
-    await act(async () => store.addModelPanel("/orbit"));
+    await act(async () => store.addModelPanel("/mira"));
     const first = store.panels[0];
     const refreshed = {
       ...first,
@@ -722,7 +722,7 @@ describe("store workspace continuations", () => {
     await act(async () => messageHandler!({ kind: "session", session: refreshed }));
 
     expect(store.panels.map((panel) => panel.id)).toEqual([first.id, store.panels[1].id]);
-    expect(store.panels.map((panel) => panel.directory)).toEqual(["/luno-renamed", "/orbit"]);
+    expect(store.panels.map((panel) => panel.directory)).toEqual(["/luno-renamed", "/mira"]);
   });
 
   it("closes a panel, tears down its backend context, and keeps the neighbor focused", async () => {

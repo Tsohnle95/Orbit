@@ -690,7 +690,7 @@
         "sha256": "a93e04aef0456740182008e10045e3859c6cdfa8e91fa1d355e8586af3cc7708"
       },
       {
-        "path": "src/renderer/src/components/OrbitMark.tsx",
+        "path": "src/renderer/src/components/MiraMark.tsx",
         "loc": 20,
         "rawLines": 21,
         "bytes": 820,
@@ -1886,7 +1886,7 @@
       "sha256": "86f9576a26d7f7e85cf8277b6c8bc04b9f91d865a7a49b4f188982c621b05cbc"
     },
     {
-      "path": "plugin/orbit-usage.ts",
+      "path": "plugin/mira-usage.ts",
       "category": "plugins",
       "loc": 143,
       "rawLines": 154,
@@ -4100,8 +4100,8 @@
     },
     {
       "file": "src/main/app-updater.ts",
-      "name": "createOrbitAppUpdater",
-      "identity": "createOrbitAppUpdater#1",
+      "name": "createMiraAppUpdater",
+      "identity": "createMiraAppUpdater#1",
       "line": 23,
       "endLine": 120,
       "physicalLines": 98,
@@ -4805,7 +4805,7 @@
     {
       "file": "src/main/app-updater.ts",
       "name": "update",
-      "identity": "createOrbitAppUpdater/update#1",
+      "identity": "createMiraAppUpdater/update#1",
       "line": 55,
       "endLine": 111,
       "physicalLines": 57,
@@ -6355,8 +6355,8 @@
     },
     {
       "file": "src/renderer/src/components/SettingsPage.tsx",
-      "name": "updateOrbit",
-      "identity": "SettingsPage/updateOrbit#1",
+      "name": "updateMira",
+      "identity": "SettingsPage/updateMira#1",
       "line": 125,
       "endLine": 154,
       "physicalLines": 30,
@@ -6652,8 +6652,8 @@
     },
     {
       "file": "src/main/provider-usage.ts",
-      "name": "readOrbitUsageSnapshot",
-      "identity": "readOrbitUsageSnapshot#1",
+      "name": "readMiraUsageSnapshot",
+      "identity": "readMiraUsageSnapshot#1",
       "line": 706,
       "endLine": 731,
       "physicalLines": 26,
@@ -7005,7 +7005,7 @@
     {
       "file": "src/main/app-updater.ts",
       "name": "check",
-      "identity": "createOrbitAppUpdater/check#1",
+      "identity": "createMiraAppUpdater/check#1",
       "line": 31,
       "endLine": 53,
       "physicalLines": 23,
@@ -8114,9 +8114,9 @@
       "cyclomatic": 6
     },
     {
-      "file": "src/renderer/src/components/OrbitMark.tsx",
-      "name": "OrbitMark",
-      "identity": "OrbitMark#1",
+      "file": "src/renderer/src/components/MiraMark.tsx",
+      "name": "MiraMark",
+      "identity": "MiraMark#1",
       "line": 3,
       "endLine": 21,
       "physicalLines": 19,
@@ -10117,8 +10117,8 @@
     },
     {
       "file": "src/renderer/src/components/SettingsPage.tsx",
-      "name": "checkOrbitUpdate",
-      "identity": "SettingsPage/checkOrbitUpdate#1",
+      "name": "checkMiraUpdate",
+      "identity": "SettingsPage/checkMiraUpdate#1",
       "line": 109,
       "endLine": 123,
       "physicalLines": 15,
@@ -11316,8 +11316,8 @@
     },
     {
       "file": "src/main/app-updater.ts",
-      "name": "createDisabledOrbitAppUpdater",
-      "identity": "createDisabledOrbitAppUpdater#1",
+      "name": "createDisabledMiraAppUpdater",
+      "identity": "createDisabledMiraAppUpdater#1",
       "line": 10,
       "endLine": 21,
       "physicalLines": 12,
@@ -14815,7 +14815,7 @@
     {
       "file": "src/main/app-updater.ts",
       "name": "reportDownloadProgress",
-      "identity": "createOrbitAppUpdater/update/reportDownloadProgress#1",
+      "identity": "createMiraAppUpdater/update/reportDownloadProgress#1",
       "line": 77,
       "endLine": 84,
       "physicalLines": 8,
@@ -15023,8 +15023,8 @@
     },
     {
       "file": "src/main/provider-usage.ts",
-      "name": "orbitUsageSnapshotCandidates",
-      "identity": "orbitUsageSnapshotCandidates#1",
+      "name": "miraUsageSnapshotCandidates",
+      "identity": "miraUsageSnapshotCandidates#1",
       "line": 697,
       "endLine": 704,
       "physicalLines": 8,
@@ -17135,8 +17135,8 @@
     },
     {
       "file": "src/renderer/src/components/SettingsPage.tsx",
-      "name": "orbitUpdateErrorMessage",
-      "identity": "orbitUpdateErrorMessage#1",
+      "name": "miraUpdateErrorMessage",
+      "identity": "miraUpdateErrorMessage#1",
       "line": 40,
       "endLine": 46,
       "physicalLines": 7,
@@ -24528,7 +24528,7 @@
     {
       "file": "src/main/app-updater.ts",
       "name": "check",
-      "identity": "createDisabledOrbitAppUpdater/check#1",
+      "identity": "createDisabledMiraAppUpdater/check#1",
       "line": 13,
       "endLine": 15,
       "physicalLines": 3,
@@ -24539,7 +24539,7 @@
     {
       "file": "src/main/app-updater.ts",
       "name": "update",
-      "identity": "createDisabledOrbitAppUpdater/update#1",
+      "identity": "createDisabledMiraAppUpdater/update#1",
       "line": 16,
       "endLine": 18,
       "physicalLines": 3,
@@ -24550,7 +24550,7 @@
     {
       "file": "src/main/app-updater.ts",
       "name": "installAndRestart",
-      "identity": "createOrbitAppUpdater/installAndRestart#1",
+      "identity": "createMiraAppUpdater/installAndRestart#1",
       "line": 116,
       "endLine": 118,
       "physicalLines": 3,
@@ -27938,7 +27938,7 @@
     {
       "file": "src/main/provider-usage.ts",
       "name": "usable",
-      "identity": "readOrbitUsageSnapshot/usable#1",
+      "identity": "readMiraUsageSnapshot/usable#1",
       "line": 722,
       "endLine": 723,
       "physicalLines": 2,
@@ -29257,8 +29257,8 @@
     },
     {
       "file": "src/main/app-update-controller.ts",
-      "name": "this.orbitAppUpdater.update callback",
-      "identity": "AppUpdateController/update/this.orbitAppUpdater.update callback#1",
+      "name": "this.miraAppUpdater.update callback",
+      "identity": "AppUpdateController/update/this.miraAppUpdater.update callback#1",
       "line": 126,
       "endLine": 126,
       "physicalLines": 1,
@@ -29268,8 +29268,8 @@
     },
     {
       "file": "src/main/app-updater-window.ts",
-      "name": "window.webContents.executeJavaScript(`window.setOrbitUpdaterStatus?.(${argument} callback",
-      "identity": "setAppUpdaterWindowStatus/window.webContents.executeJavaScript(`window.setOrbitUpdaterStatus?.(${argument} callback#1",
+      "name": "window.webContents.executeJavaScript(`window.setMiraUpdaterStatus?.(${argument} callback",
+      "identity": "setAppUpdaterWindowStatus/window.webContents.executeJavaScript(`window.setMiraUpdaterStatus?.(${argument} callback#1",
       "line": 81,
       "endLine": 81,
       "physicalLines": 1,
@@ -29280,7 +29280,7 @@
     {
       "file": "src/main/app-updater.ts",
       "name": "installAndRestart",
-      "identity": "createDisabledOrbitAppUpdater/installAndRestart#1",
+      "identity": "createDisabledMiraAppUpdater/installAndRestart#1",
       "line": 19,
       "endLine": 19,
       "physicalLines": 1,
@@ -40818,8 +40818,8 @@
     },
     {
       "file": "src/renderer/src/store.tsx",
-      "name": "event.orbitSessionIDs.filter callback",
-      "identity": "normalizeStreamEvent/event.orbitSessionIDs.filter callback#1",
+      "name": "event.miraSessionIDs.filter callback",
+      "identity": "normalizeStreamEvent/event.miraSessionIDs.filter callback#1",
       "line": 93,
       "endLine": 93,
       "physicalLines": 1,
@@ -45111,7 +45111,7 @@
     },
     {
       "from": "src/renderer/src/App.tsx",
-      "to": "src/renderer/src/components/OrbitMark.tsx",
+      "to": "src/renderer/src/components/MiraMark.tsx",
       "typeOnly": false
     },
     {
@@ -45356,7 +45356,7 @@
     },
     {
       "from": "src/renderer/src/components/AgentPanel.tsx",
-      "to": "src/renderer/src/components/OrbitMark.tsx",
+      "to": "src/renderer/src/components/MiraMark.tsx",
       "typeOnly": false
     },
     {
@@ -45481,7 +45481,7 @@
     },
     {
       "from": "src/renderer/src/components/EditorPane.tsx",
-      "to": "src/renderer/src/components/OrbitMark.tsx",
+      "to": "src/renderer/src/components/MiraMark.tsx",
       "typeOnly": false
     },
     {
@@ -45566,7 +45566,7 @@
     },
     {
       "from": "src/renderer/src/components/FileSidebar.tsx",
-      "to": "src/renderer/src/components/OrbitMark.tsx",
+      "to": "src/renderer/src/components/MiraMark.tsx",
       "typeOnly": false
     },
     {
@@ -45851,7 +45851,7 @@
     },
     {
       "from": "src/renderer/src/components/SettingsPage.tsx",
-      "to": "src/renderer/src/components/OrbitMark.tsx",
+      "to": "src/renderer/src/components/MiraMark.tsx",
       "typeOnly": false
     },
     {
@@ -47282,7 +47282,7 @@
       "typeOnly": false
     },
     {
-      "file": "src/renderer/src/components/OrbitMark.tsx",
+      "file": "src/renderer/src/components/MiraMark.tsx",
       "specifier": "react",
       "typeOnly": true
     },
@@ -48155,14 +48155,14 @@
     },
     {
       "file": "src/main/provider-usage.ts",
-      "export": "orbitUsageSnapshotCandidates",
+      "export": "miraUsageSnapshotCandidates",
       "line": 697,
       "productionConsumers": [],
       "testOrAuxiliaryConsumers": []
     },
     {
       "file": "src/main/provider-usage.ts",
-      "export": "readOrbitUsageSnapshot",
+      "export": "readMiraUsageSnapshot",
       "line": 706,
       "productionConsumers": [],
       "testOrAuxiliaryConsumers": [

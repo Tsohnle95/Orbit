@@ -65,7 +65,7 @@ function globalFormEvent(ownerSessionID: string): BackendMessage {
       id: "evt_form",
       type: "form.created",
       created: Date.now(),
-      orbitSessionIDs: [ownerSessionID],
+      miraSessionIDs: [ownerSessionID],
       data: { form: globalForm() }
     }
   };
@@ -137,7 +137,7 @@ describe("renderer form prompts", () => {
         id: "evt_external",
         type: "form.created",
         created: Date.now(),
-        orbitSessionIDs: [panel.id],
+        miraSessionIDs: [panel.id],
         data: { form: external }
       }
     }));

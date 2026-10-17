@@ -8,6 +8,12 @@ export interface RuntimeSessionRecord extends SessionSummary {
 }
 
 function defaultPath(): string {
+  if (process.platform === "darwin") return path.join(homedir(), "Library", "Application Support", "Mira", "runtime-sessions.json");
+  if (process.platform === "win32" && process.env.APPDATA) return path.join(process.env.APPDATA, "Mira", "runtime-sessions.json");
+  return path.join(process.env.XDG_STATE_HOME ?? path.join(homedir(), ".local", "state"), "mira", "runtime-sessions.json");
+}
+
+export function previousRuntimeSessionPath(): string {
   if (process.platform === "darwin") return path.join(homedir(), "Library", "Application Support", "Orbit", "runtime-sessions.json");
   if (process.platform === "win32" && process.env.APPDATA) return path.join(process.env.APPDATA, "Orbit", "runtime-sessions.json");
   return path.join(process.env.XDG_STATE_HOME ?? path.join(homedir(), ".local", "state"), "orbit", "runtime-sessions.json");
@@ -25,7 +31,7 @@ export class RuntimeSessionIndex {
   private records = new Map<string, RuntimeSessionRecord>();
   private pending = Promise.resolve();
 
-  constructor(private readonly file = defaultPath()) {}
+  constructor(private readonly file = defaultPath(), private readonly legacyFile?: string) {}
 
   async list(): Promise<RuntimeSessionRecord[]> {
     await this.load();
@@ -54,7 +60,9 @@ export class RuntimeSessionIndex {
   private async load(): Promise<void> {
     if (this.loaded) return;
     this.loaded = true;
-    const raw = await fsp.readFile(this.file, "utf8").catch(() => "[]");
+    const raw = await fsp.readFile(this.file, "utf8").catch(() =>
+      this.legacyFile ? fsp.readFile(this.legacyFile, "utf8").catch(() => "[]") : "[]"
+    );
     try {
       const parsed = JSON.parse(raw) as unknown;
       if (Array.isArray(parsed)) {

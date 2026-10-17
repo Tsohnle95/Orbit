@@ -1,5 +1,5 @@
-appId: app.orbit.desktop
-productName: Orbit
+appId: app.mira.desktop
+productName: Mira
 directories:
   output: release
 files:

@@ -58,11 +58,11 @@ describe("FileSidebar empty workspace state", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows an orbit-marked open-workspace CTA when no workspace is open", () => {
+  it("shows a Mira-marked open-workspace CTA when no workspace is open", () => {
     act(() => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} />));
 
     const cta = container.querySelector<HTMLButtonElement>(".tree-empty-workspace .btn");
-    expect(container.querySelector(".tree-empty-workspace .orbit-mark")).not.toBeNull();
+    expect(container.querySelector(".tree-empty-workspace .mira-mark")).not.toBeNull();
     expect(cta?.textContent).toBe("Open a workspace");
 
     act(() => {

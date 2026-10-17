@@ -2,7 +2,7 @@
 /**
  * Isolated OpenCode V2 service smoke.
  *
- * Verifies, against the installed `opencode` CLI, that Orbit's V2 contract
+ * Verifies, against the installed `opencode` CLI, that Mira's V2 contract
  * works end to end without touching the user's OpenCode data and without
  * sending a model prompt or using provider credentials:
  *
@@ -39,8 +39,8 @@ const freePort = await new Promise((resolve, reject) => {
   });
 });
 
-const home = await mkdtemp(path.join(tmpdir(), "orbit-opencode-smoke-"));
-const workspace = await mkdtemp(path.join(tmpdir(), "orbit-opencode-workspace-"));
+const home = await mkdtemp(path.join(tmpdir(), "mira-opencode-smoke-"));
+const workspace = await mkdtemp(path.join(tmpdir(), "mira-opencode-workspace-"));
 const env = {
   HOME: home,
   XDG_CONFIG_HOME: path.join(home, ".config"),

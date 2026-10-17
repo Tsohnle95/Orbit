@@ -38,7 +38,7 @@ afterEach(async () => {
 
 function recoveryRootFor(root: string): string {
   const key = createHash("sha256").update(root).digest("hex").slice(0, 16);
-  return path.join(path.dirname(root), `.orbit-recovery-${key}`);
+  return path.join(path.dirname(root), `.mira-recovery-${key}`);
 }
 
 async function backendFixture(
@@ -151,7 +151,7 @@ describe("direct mutation observed changes", () => {
     holder.backend = backend;
     const file = path.join(root, "save.txt");
     await writeFile(file, "expected");
-    // Orbit has observed the file (e.g. it is open in the editor), so a missing
+    // Mira has observed the file (e.g. it is open in the editor), so a missing
     // path during the save would otherwise surface as an external deletion.
     observation(backend).recordSnapshot(
       (backend as unknown as { contexts: Map<string, SessionContext> }).contexts.get(workspace.id)!.watchContext,
@@ -247,7 +247,7 @@ describe("direct mutation observed changes", () => {
 
     await backend.writeFile(workspace, "save.txt", "proposed", writeIdentity("original"));
 
-    expect(await readdir(path.join(root, ".git", "orbit-recovery"))).toHaveLength(1);
+    expect(await readdir(path.join(root, ".git", "mira-recovery"))).toHaveLength(1);
     expect(await readdir(root)).toEqual([".git", "save.txt"]);
     expect((await backend.listRecovery(workspace)).some((record) => record.originalPath === "save.txt")).toBe(true);
   });
@@ -290,7 +290,7 @@ describe("direct mutation observed changes", () => {
   });
 
   it("does not reject when the workspace root is gone before the purge runs", async () => {
-    await expect(purgeExpired(path.join(tmpdir(), "orbit-missing-root"))).resolves.toBeUndefined();
+    await expect(purgeExpired(path.join(tmpdir(), "mira-missing-root"))).resolves.toBeUndefined();
   });
 
   it("purges settled recovery transactions older than 24 hours on activation", async () => {
@@ -740,7 +740,7 @@ describe("direct mutation observed changes", () => {
     const { backend, root, messages } = await backendFixture();
     await mkdir(path.join(root, "docs"));
     await mkdir(path.join(root, ".openshell-recovery"));
-    await mkdir(path.join(root, ".orbit-recovery"));
+    await mkdir(path.join(root, ".mira-recovery"));
     await writeFile(path.join(root, "docs", "note.txt"), "x");
 
     await expect(backend.movePath(workspace, ".openshell-recovery", "docs"))
@@ -749,14 +749,14 @@ describe("direct mutation observed changes", () => {
       .rejects.toThrow("cannot move into the recovery directory");
     await expect(backend.movePath(workspace, "docs", ".openshell-recovery/archive"))
       .rejects.toThrow("cannot move into the recovery directory");
-    await expect(backend.movePath(workspace, ".orbit-recovery", "docs"))
+    await expect(backend.movePath(workspace, ".mira-recovery", "docs"))
       .rejects.toThrow("cannot move the recovery directory");
-    await expect(backend.movePath(workspace, "docs/note.txt", ".orbit-recovery"))
+    await expect(backend.movePath(workspace, "docs/note.txt", ".mira-recovery"))
       .rejects.toThrow("cannot move into the recovery directory");
 
     expect(await readFile(path.join(root, "docs", "note.txt"), "utf8")).toBe("x");
     expect(await readdir(path.join(root, ".openshell-recovery"))).toEqual([]);
-    expect(await readdir(path.join(root, ".orbit-recovery"))).toEqual([]);
+    expect(await readdir(path.join(root, ".mira-recovery"))).toEqual([]);
     expect(messages).toEqual([]);
   });
 

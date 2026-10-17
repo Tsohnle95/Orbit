@@ -4,7 +4,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { shell } from "electron";
 import type { FileWriteIdentity, ImportResult, WorkspaceIdentity } from "@shared/types";
-import { type RecoveryStorage, RECOVERY_DIR, LEGACY_RECOVERY_DIR } from "./recovery-storage";
+import { type RecoveryStorage, RECOVERY_DIR, LEGACY_RECOVERY_DIR, PREVIOUS_RECOVERY_DIR } from "./recovery-storage";
 import type { WorkspaceOperationCoordinator } from "./operation-coordinator";
 import { SKIP_DIRS, type WorkspaceObservation, type WatchContext, type WatchSession } from "./workspace-observation";
 import { confinedPath, fileContent, fileName, relativePath } from "./workspace-security";
@@ -183,7 +183,7 @@ export class WorkspaceMutations<Session extends MutationSession> {
       const proposed = path.join(recovery.directory, "proposed");
       let sourceHeld = false;
       let targetInstalled = false;
-      // Orbit's own write must not be observed as an external change: block
+      // Mira's own write must not be observed as an external change: block
       // filesystem events for this path until the save (or its failure) settles.
       this.observation.beginWrite(watchContext, abs);
       try {
@@ -307,7 +307,7 @@ export class WorkspaceMutations<Session extends MutationSession> {
       const watchContext = context.watchContext;
       if (!this.currentWatch(watchContext)) throw new Error("stale workspace");
       const abs = await confinedPath(root, relativePath(rel));
-      const detachedRoot = path.join(homedir(), ".orbit-detached");
+      const detachedRoot = path.join(homedir(), ".mira-detached");
       await fsp.mkdir(detachedRoot, { recursive: true });
       const target = path.join(detachedRoot, `${randomUUID()}-${path.basename(abs)}`);
       await fsp.rename(abs, target);
@@ -402,11 +402,11 @@ export class WorkspaceMutations<Session extends MutationSession> {
       const watchContext = context.watchContext;
       if (!this.currentWatch(watchContext)) throw new Error("stale workspace");
       const clean = relativePath(rel);
-      if ([RECOVERY_DIR, LEGACY_RECOVERY_DIR].some((dir) => clean === dir || clean.startsWith(`${dir}/`))) {
+      if ([RECOVERY_DIR, LEGACY_RECOVERY_DIR, PREVIOUS_RECOVERY_DIR].some((dir) => clean === dir || clean.startsWith(`${dir}/`))) {
         throw new Error("cannot move the recovery directory");
       }
       const parentRel = relativePath(newParent, true);
-      if ([RECOVERY_DIR, LEGACY_RECOVERY_DIR].some((dir) => parentRel === dir || parentRel.startsWith(`${dir}/`))) {
+      if ([RECOVERY_DIR, LEGACY_RECOVERY_DIR, PREVIOUS_RECOVERY_DIR].some((dir) => parentRel === dir || parentRel.startsWith(`${dir}/`))) {
         throw new Error("cannot move into the recovery directory");
       }
       if (parentRel === clean || parentRel.startsWith(`${clean}/`)) {

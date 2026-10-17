@@ -166,20 +166,20 @@ const treatments = [
 const sessions = {
   panel: {
     title: "Refine sessions panel",
-    meta: "orbit · just now",
+    meta: "mira · just now",
     time: "now",
     live: true,
     active: true
   },
   usage: {
     title: "Provider usage cleanup",
-    meta: "orbit · 18m ago",
+    meta: "mira · 18m ago",
     time: "18m",
     live: true
   },
   docs: {
     title: "Update runtime docs",
-    meta: "orbit · yesterday",
+    meta: "mira · yesterday",
     time: "1d"
   },
   notes: {
@@ -204,7 +204,7 @@ const sessions = {
   },
   queue: {
     title: "Tune message queue",
-    meta: "orbit · 32m ago",
+    meta: "mira · 32m ago",
     time: "32m",
     live: true
   }
@@ -275,7 +275,7 @@ const renderMirrorTree = (treatment) => section(
   "3",
   `
     <div class="panel-project">
-      ${projectRow("orbit", "3", true)}
+      ${projectRow("mira", "3", true)}
       <div class="panel-tree-children">
         ${sessionRow(sessions.panel)}
         ${sessionRow(sessions.usage)}
@@ -313,7 +313,7 @@ const renderQuietRecents = (treatment) => `
 
 const renderWorkspaceGroups = (treatment) => `
   ${section(
-    "orbit",
+    "mira",
     "4",
     sessionRow(sessions.panel, { icon: "file" }) + sessionRow(sessions.usage, { icon: "file" }) + sessionRow(sessions.queue, { icon: "file" }) + sessionRow(sessions.docs, { icon: "file" }),
     treatment,
@@ -365,12 +365,12 @@ const renderCompactIndex = (treatment) => section(
   `
     ${indexRow("I", sessions.search, "atlas-notes")}
     ${indexRow("P", sessions.notes, "atlas-notes")}
-    ${indexRow("P", sessions.usage, "orbit")}
-    ${indexRow("R", sessions.panel, "orbit")}
+    ${indexRow("P", sessions.usage, "mira")}
+    ${indexRow("R", sessions.panel, "mira")}
     ${indexRow("R", sessions.tokens, "quiet-web")}
     ${indexRow("S", sessions.landing, "quiet-web")}
-    ${indexRow("T", sessions.queue, "orbit")}
-    ${indexRow("U", sessions.docs, "orbit")}
+    ${indexRow("T", sessions.queue, "mira")}
+    ${indexRow("U", sessions.docs, "mira")}
   `,
   treatment,
   { action: true }
@@ -417,7 +417,7 @@ const renderProjectSwitcher = (treatment) => section(
   "3",
   `
     <div class="panel-project">
-      ${projectRow("orbit", "4", true)}
+      ${projectRow("mira", "4", true)}
       <div class="panel-tree-children">
         ${sessionRow(sessions.panel, { trailing: false })}
         ${sessionRow(sessions.usage, { trailing: false })}

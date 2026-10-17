@@ -262,7 +262,7 @@ html[data-theme="dark"] .review-copy h2 em { color: #a4d0ad; }
 .hero-product-sunrise { width: min(1210px, 94vw); margin: 56px auto 0; border-color: rgba(255,226,196,.52); }
 .hero-product-sunrise .product-caption { background: #322b39; }
 .sunrise-caption { position: absolute; right: 20px; bottom: 18px; display: flex; align-items: center; gap: 11px; min-width: 300px; padding: 12px 15px; border: 1px solid rgba(93,65,68,.15); border-radius: 8px; color: #34242c; background: #fff7e9; box-shadow: 0 12px 35px rgba(43,24,38,.19); }
-.caption-orbit { color: #915663; font-size: 21px; }
+.caption-mira { color: #915663; font-size: 21px; }
 .sunrise-caption > span:nth-child(2) { display: grid; gap: 4px; }
 .sunrise-caption strong { font-size: 9px; }
 .sunrise-caption small { color: #89766f; font-size: 8px; }

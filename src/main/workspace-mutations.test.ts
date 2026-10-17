@@ -32,9 +32,9 @@ function entry(root: string, identity: WorkspaceIdentity): SessionContext {
 }
 
 async function fixture(phase?: ConstructorParameters<typeof OpenShellBackend>[0]) {
-  const root = await fsp.realpath(await fsp.mkdtemp(path.join(tmpdir(), "orbit-mutation-owner-")));
+  const root = await fsp.realpath(await fsp.mkdtemp(path.join(tmpdir(), "mira-mutation-owner-")));
   const key = createHash("sha256").update(root).digest("hex").slice(0, 16);
-  roots.push(root, path.join(path.dirname(root), `.orbit-recovery-${key}`));
+  roots.push(root, path.join(path.dirname(root), `.mira-recovery-${key}`));
   const backend = new OpenShellBackend(phase);
   backends.push(backend);
   const state = backend as unknown as { contexts: Map<string, SessionContext>; mutations: { run: (workspace: WorkspaceIdentity, operation: () => Promise<unknown>) => Promise<unknown> } };

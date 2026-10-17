@@ -217,7 +217,7 @@ export const APPEARANCES: AppearanceProfile[] = [
   {
     id: "original",
     name: "Original Dark",
-    description: "Orbit's original warm charcoal and sage palette.",
+    description: "Mira's original warm charcoal and sage palette.",
     scheme: "dark",
     colors: {
       base: "#171412", top: "#171412", pane: "#262220", editor: "#262220", editorOpaque: "#262220", agent: "rgba(38,34,32,.92)", rail: "#171412", tab: "#201d1b", console: "#121317", status: "#171412",

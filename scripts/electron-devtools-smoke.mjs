@@ -10,7 +10,7 @@ if (process.platform !== "darwin") {
   process.exit(0);
 }
 const root = process.cwd();
-const temporary = await realpath(await mkdtemp(path.join(os.tmpdir(), "orbit-devtools-smoke-")));
+const temporary = await realpath(await mkdtemp(path.join(os.tmpdir(), "mira-devtools-smoke-")));
 const entry = path.join(temporary, "main.cjs");
 const fixture = path.join(temporary, "checkout");
 await symlink(path.join(root, "node_modules"), path.join(temporary, "node_modules"), "dir");

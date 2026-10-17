@@ -4,7 +4,12 @@
 
 `src/main/index.ts` (window + IPC wiring) and
 `src/main/opencode.ts` (the `OpenShellBackend` — all OpenCode traffic).
-Orbit's release updater lives in `src/main/app-updater.ts`; it checks published
+The desktop identity is Mira. Before Electron chooses its profile directory,
+main reuses an existing Orbit profile when present so Chromium state and local
+preferences survive the rename; an explicit `user-data-dir` override takes
+precedence. New renderer keys and named workspace artifacts use Mira names,
+with legacy keys/paths read where needed for continuity.
+Mira's release updater lives in `src/main/app-updater.ts`; it checks published
 GitHub releases and installs the packaged app through `electron-updater`. Local
 development/test builds disable this updater and never fetch or merge GitHub
 source. `src/main/app-update-controller.ts` owns the release progress-window
@@ -38,7 +43,7 @@ runtime identity records are not included in recent sessions.
 State:
 
 - `client` — `OpenCode.make()` result, null until connected
-- `serviceFile` — registration file used by the active shared service, retained so Settings sync replaces the service Orbit is attached to
+- `serviceFile` — registration file used by the active shared service, retained so Settings sync replaces the service Mira is attached to
 - `contexts` — a `Map<workspaceID, SessionContext>` of concurrently open
   sessions. Each `SessionContext` holds the immutable `WorkspaceIdentity`
   (`{id, generation}`), the session id, the canonical `directory`, the
@@ -67,7 +72,7 @@ Public methods (all used by IPC):
 | Method | Purpose |
 |---|---|
 | `connect()` | Probe `opencode --version` → V2 predicate (`MIN_SUPPORTED_SERVER_MAJOR = 2`) → `Service.discover()` / `Service.ensure({command:["opencode","serve","--service"]})` → `OpenCode.make` |
-| `syncOpenCode()` | Ensures the service Orbit is attached to reports the exact version of the installed CLI, then rebinds the event stream without clearing open workspace contexts |
+| `syncOpenCode()` | Ensures the service Mira is attached to reports the exact version of the installed CLI, then rebinds the event stream without clearing open workspace contexts |
 | `updateOpenCode()` | Runs the installed CLI's `opencode upgrade`, then performs the exact-version service sync |
 | `start()` | Start the SSE event loop if one is not already running; unexpected loop failures are forwarded as structured `global.error` events |
 | `stop()` | Abort and invalidate the active SSE loop lifecycle, then stop every context's fs watcher |
@@ -122,10 +127,10 @@ Public methods (all used by IPC):
 | `createFile(workspace, rel)` | Confined `mkdir -p` parents and empty exclusive write; emits `file-update` |
 | `createDir(workspace, rel)` | Confined `mkdir` (fails if exists); renderer re-lists after the call |
 | `deletePath(workspace, rel)` | Confined `shell.trashItem`; emits tracked deletion only after success and preserves Trash failures for the renderer |
-| `detachPath(workspace, rel)` | Confined move to the user-level `~/.orbit-detached` store; removes the entry from the workspace without deleting its contents. Older `~/.openshell-detached` contents remain where they were created. |
+| `detachPath(workspace, rel)` | Confined move to the user-level `~/.mira-detached` store; removes the entry from the workspace without deleting its contents. Older `~/.openshell-detached` contents remain where they were created. |
 | `renamePath(workspace, rel, newName)` | Confined same-folder rename; files use the durable no-replace recovery protocol, while directories use one atomic `fs.rename` after rejecting an occupied destination (the same portability tradeoff as directory move) |
 | `movePath(workspace, rel, newParent)` | Confined cross-folder move for files and directories via one atomic `fs.rename` (no recovery hold — see architecture); rejects self/descendant, missing, occupied, cross-filesystem, and recovery-directory source/destination paths; emits a tracked deletion at the source and, for files, an addition at the target |
-| `listRecovery(workspace)` | Lists validated durable recovery artifacts in Orbit's external storage and legacy workspace-local storage |
+| `listRecovery(workspace)` | Lists validated durable recovery artifacts in Mira's external storage and legacy workspace-local storage |
 | `openRecovery(workspace, id)` | Opens the validated artifact selected by opaque recovery record id; never accepts a renderer path |
 | `acknowledgeRecovery(workspace, id)` | Persists acknowledgment in the transaction manifest without deleting artifact bytes |
 | `listProjects()` | `project.list`, maps to `{directory, name}` |
@@ -143,7 +148,7 @@ Public methods (all used by IPC):
 | `runtimeManifests()` | Probes OpenCode and returns its protocol-versioned, secret-free capability manifest |
 
 Provider usage (`providerUsage()`): the opencode service exposes no
-provider plan/rate-limit API yet, so Orbit reads the credentials
+provider plan/rate-limit API yet, so Mira reads the credentials
 opencode persists — OAuth entries from `~/.local/share/opencode/auth.json`
 (plus the desktop-app location) and JSON-encoded credentials from the
 `account` / `credential` tables of `opencode.db` (V2 rows carry
@@ -222,7 +227,7 @@ Internals:
   materializing an empty conversation (which would block later rehydration).
 - Session history — `listSessions` pages newest first through up to 100 pages
   of OpenCode history and retains every titled or token-bearing conversation,
-  regardless of age. Orbit does not automatically delete sessions; permanent
+  regardless of age. Mira does not automatically delete sessions; permanent
   removal is available only through the user's explicit Delete Session action.
   Conversation-less sessions remain out of recents so empty workspace opens
   do not crowd the history list.
@@ -256,7 +261,7 @@ Internals:
   `onFsChanged(context, ...)` remain one recursive `fs.watch` and a 200ms
   debounced pipeline per open context, with the 2 MiB watched-file limit.
   Callbacks capture the same root/session/maps and retain current-context
-  checks around asynchronous work and emission. While Orbit is writing a path
+  checks around asynchronous work and emission. While Mira is writing a path
   (`beginWrite`/`endWrite`) its filesystem events are ignored, so a save's own
   rename/link and OpenCode's `filesystem.changed` observation cannot surface as
   an external change; only the save's echo (`recordSave`) reaches the renderer.
@@ -283,16 +288,16 @@ Internals:
   dependency. `WorkspaceMutations` preserves transaction/mutation sequencing;
   `OpenShellBackend` retains workspace authority, guarded recovery emissions,
   activation reconciliation, and OS artifact opening.
-  New recovery transactions live under `.git/orbit-recovery/<timestamp>-<uuid>`
+  New recovery transactions live under `.git/mira-recovery/<timestamp>-<uuid>`
   when `.git` is a directory on the workspace filesystem. Otherwise they use
   a workspace-specific hidden sibling directory on that filesystem. A non-Git
-  filesystem mount point uses workspace-local `.orbit-recovery`. Legacy
-  `.openshell-recovery` transactions remain readable.
+  filesystem mount point uses workspace-local `.mira-recovery`. Legacy
+  `.openshell-recovery` and `.orbit-recovery` transactions remain readable.
   Activation moves validated legacy transactions to the new storage when the
   destination is free, preserving their bytes and IDs.
   Atomically replaced, fsynced manifests record save/rename phase and
   acknowledgment state. Activation reconciles only `source-held` and
-  `held-validated` interrupted transactions, where Orbit is known to have
+  `held-validated` interrupted transactions, where Mira is known to have
   removed the canonical pathname, and hard-links the held original only when
   that pathname remains missing. Completed, failed, and acknowledged history
   never replays. After reconciliation, a best-effort retention purge removes
@@ -327,17 +332,17 @@ updates, preview, Sass and mobile coordination remain in `index.ts`.
 | `shell:fs-write-standalone` | `(file, content, expectedContent, overwrite) → void` — atomic standalone-file write for external tabs |
 | `shell:fs-import` | `(workspace, destDir, sources) → ImportResult[]` — copies external files/folders into the workspace at `destDir` (empty `destDir` is the workspace root) |
 | `shell:sessions` | `() → SessionSummary[]` |
-| `shell:saved-workspaces` | `() → SavedWorkspaceSnapshot` — reads and repairs Orbit's durable bookmarks and reports whether a saved list exists, falling back to the last good backup; unavailable runtime history does not block loading bookmarks |
+| `shell:saved-workspaces` | `() → SavedWorkspaceSnapshot` — reads and repairs Mira's durable bookmarks and reports whether a saved list exists, falling back to the last good backup; unavailable runtime history does not block loading bookmarks |
 | `shell:saved-workspaces-save` | `(ProjectInfo[]) → ProjectInfo[]` — normalizes and atomically saves bookmarks under Electron's user data directory, retaining a backup |
 | `shell:runtimes` | `() → RuntimeManifest[]` — installed status, native version, normalized protocol version, and capability bitmap |
 | `shell:sync-opencode` | `() → OpenCodeSyncResult` — restarts the attached shared OpenCode service only when needed to match the installed CLI version |
 | `shell:update-opencode` | `() → OpenCodeSyncResult` — runs OpenCode's updater, then syncs the shared service to the resulting CLI version |
-| `shell:app-update-check` | `() → OrbitAppUpdateStatus` — in release builds checks the latest published GitHub release against the installed app version; local development/test builds return disabled without network access |
+| `shell:app-update-check` | `() → MiraAppUpdateStatus` — in release builds checks the latest published GitHub release against the installed app version; local development/test builds return disabled without network access |
 | `shell:unsaved-editor-files` | `(string[]) → void` — records bounded display paths for dirty editor tabs so the close guard and updater can name them |
 | `shell:sass-watch-state` | `(workspace) → SassWatchState` — validates an open workspace, restores its directory preference, and returns its watcher state/logs |
 | `shell:sass-watch-set` | `(workspace, enabled) → SassWatchState` — toggles the selected workspace's app-owned local compiler; does not invoke workspace scripts or installers |
 | `shell:save-editor-files-result` | `(requestID, saved) → void` — trusted renderer reply to the pending Save All request; a failed or stale reply cannot approve closing |
-| `shell:app-update` | `() → OrbitAppUpdateResult` — release builds reject while editor files are unsaved; shows a reload-safe progress window while hiding Orbit's main window, downloads the published app update, then calls `autoUpdater.quitAndInstall()` to replace and relaunch the app; a failed check/download leaves Orbit open; local builds return disabled without network access |
+| `shell:app-update` | `() → MiraAppUpdateResult` — release builds reject while editor files are unsaved; shows a reload-safe progress window while hiding Mira's main window, downloads the published app update, then calls `autoUpdater.quitAndInstall()` to replace and relaunch the app; a failed check/download leaves Mira open; local builds return disabled without network access |
 | `shell:active-sessions` | `() → SessionInfo[]` — open backend sessions, most recently activated last |
 | `shell:close-session` | `(workspace) → void` — tears down the backend context when a panel closes; the opencode session remains reopenable |
 | `shell:open-session-id` | `(sessionID, generation, runtimeID?, allowWorkspaceRelink?) → ReopenedSession`; opens an OpenCode session and transcript. Explicit user opens may set `allowWorkspaceRelink` to prompt for a replacement folder if the saved path is missing; silent startup hydration never prompts. Legacy DeepSeek sessions cannot be reopened through the dormant adapter |
@@ -397,7 +402,7 @@ updates, preview, Sass and mobile coordination remain in `index.ts`.
 | `shell:session-revert-commit` | `(workspace) → void` — applies the staged revert |
 | `shell:session-revert-clear` | `(workspace) → void` — discards the staged revert |
 | `shell:provider-usage` | `() → ProviderUsageResult[]` |
-| `shell:provider-integrations` | `(workspace) → ProviderIntegration[]` — the runtime provider catalog filtered to Orbit's supported providers (OpenCode Go, Command Code, OpenAI) with secret-free connection metadata |
+| `shell:provider-integrations` | `(workspace) → ProviderIntegration[]` — the runtime provider catalog filtered to Mira's supported providers (OpenCode Go, Command Code, OpenAI) with secret-free connection metadata |
 | `shell:provider-key-connect` | `(workspace, integrationID, key, label, answers) → void` — validates and forwards a write-only provider key and bounded form answers |
 | `shell:provider-credential-remove` | `(workspace, credentialID) → void` — removes a stored credential by opaque id |
 | `shell:mobile-setup-status` | `() → MobileServerSetupStatus` — reports companion checkout, Node, and local server readiness without exposing its password |
@@ -405,7 +410,7 @@ updates, preview, Sass and mobile coordination remain in `index.ts`.
 | `shell:health` | `() → boolean` |
 | `shell:window-view` | `(view: "landing" \| "session") → void` — switches the window between the fixed landing size and the persisted session size (see Window sizing) |
 | `shell:set-appearance` | `(appearance: "dark" \| "light") → void` — sets `nativeTheme.themeSource` so window vibrancy and native chrome follow the selected color profile; the renderer reports it on boot and on every profile change |
-| `shell:install-app` | `() → {ok, message}`; macOS only — spawns `scripts/install-app.mjs` to build and package the app, then replaces `/Applications/Orbit.app` |
+| `shell:install-app` | `() → {ok, message}`; macOS only — spawns `scripts/install-app.mjs` to build and package the app, then replaces `/Applications/Mira.app` |
 | `shell:validate-w3c` | `(path, content) → W3cDiagnostic[]`; calls the Nu Html Checker for HTML and posts plain CSS as a form body to the W3C CSS Validator's SOAP 1.2 endpoint; preprocessor stylesheets (SCSS, LESS, Sass) return no diagnostics |
 | `shell:vite-toggle` | `(workspace, entryPath?) → ViteToggleResult` — starts a loopback Vite dev server for the resolved page and opens its verified URL, or stops the server already running for that same workspace/page; an active HTML entry is confined to the workspace and served from its containing directory; otherwise the root is served, or, when the root has no index.html, the shallowest HTML page in the workspace (skipping dependencies/VCS) is served from its folder; Vite resolves from either a self-contained package or the repository backing the installed live launcher |
 | `shell:vite-servers` | `() → ViteServerInfo[]` — lists every running Vite dev server across workspaces, each identified by its workspace, served directory and entry, URL and port |
@@ -447,29 +452,29 @@ renderer flips the view when the first panel opens and when the last one closes.
 
 The app icon (`resources/icon.svg` →
 rasterized via `npm run generate-icons` into
-`resources/icon.png` + `resources/icon.icns`, the paper-and-clay
-open-lid terminal mark with transparent rounded-rect margins) is set as the BrowserWindow `icon` on
+`resources/icon.png` + `resources/icon.icns`, a luminous star and sparkle on a
+dark blue rounded canvas) is set as the BrowserWindow `icon` on
 Windows/Linux and via `app.dock.setIcon` on macOS; the window flash
 background is the warm `#161410`. On macOS, `npm run dev` and `npm start`
 use `scripts/launch.mjs` to run
 `scripts/make-dev-app.mjs`, which copies
-`node_modules/electron/dist/Electron.app` to `dev/Orbit.app`
-(gitignored), patches its Info.plist (name "Orbit", icon.icns,
-`dev.openshell.app` id) and ad-hoc re-signs it. The launcher then
+`node_modules/electron/dist/Electron.app` to `dev/Mira.app`
+(gitignored), patches its Info.plist (name "Mira", icon.icns,
+`dev.mira.desktop` id) and ad-hoc re-signs it. The launcher then
 points electron-vite at that bundle via `ELECTRON_EXEC_PATH` so the dock
 shows the real name and icon instead of Electron's defaults. Linux and Windows
 skip bundle preparation and use plain Electron. Production packaging uses the
 same brand: `npm run pack` (or `npm run install-app`, which also installs into
 `/Applications`) runs `scripts/install-app.mjs`, which
-builds `out/`, packages `release/mac/Orbit.app` with electron-builder
+builds `out/`, packages `release/mac/Mira.app` with electron-builder
 (`electron-builder.yml`; `asar: false` keeps the unpacked `app/` layout so
 the trusted packaged document stays exactly
-`file://…/Orbit.app/Contents/Resources/app/out/renderer/index.html`),
+`file://…/Mira.app/Contents/Resources/app/out/renderer/index.html`),
 ad-hoc re-signs the bundle, and — for the install flow — replaces
-`/Applications/Orbit.app` with `cp -R`, preserving the signature. The
+`/Applications/Mira.app` with `cp -R`, preserving the signature. The
 packaged payload is then swapped for the live launcher
 (`scripts/live-launcher.cjs` plus a minimal `package.json` and a gitignored
-`.orbit-repo.json` recording the repository path and Node binary), so the
+`.mira-repo.json` recording the repository path and Node binary), so the
 installed
 app keeps its Electron runtime and icon but always runs the repository's
 latest build, silently auto-rebuilding first when sources are newer than
@@ -494,7 +499,7 @@ window close or app quit, the renderer cancels unload while any editor tab is
 dirty. `will-prevent-unload` offers Save All, Don't Save, and Cancel with the
 reported dirty file paths. Save All sends `shell:save-editor-files-request` to
 the trusted renderer and resumes the close or reload only after all buffers
-save successfully. Failed saves or a missing reply keep Orbit open; Don't Save
+save successfully. Failed saves or a missing reply keep Mira open; Don't Save
 approves discarding the buffers, while Cancel leaves the window open. The app
 updater also checks the same dirty-file list before starting.
 Backend and terminal shutdown starts only after the window has closed.
@@ -535,7 +540,7 @@ using a contained absolute pathname verbatim, e.g. Vite's absolute served paths)
 falling back to a basename search that skips `node_modules`, `out`,
 `dist`, etc. — both the direct and the searched resolution skip known
 build-output directories so a hashed bundle is never opened as if it
-were source. DevTools always inspects Orbit's own renderer, so resolution
+were source. DevTools always inspects Mira's own renderer, so resolution
 is confined to the canonical source root derived from the executing main
 module (`out/main`), and never searches the active user workspace. Electron
 `app.getAppPath()` can refer to an installed live-launcher wrapper rather than
@@ -556,7 +561,7 @@ owns a separate application-only watcher and serialized Sass worker, rooted at
 the executing checkout. Build markers delimit app CSS inside the extracted
 bundle; recompilation replaces that entire region while retaining vendor CSS.
 Asset URLs are resolved against their owning Sass source and the derived
-`out/renderer/assets/orbit-live.css` keeps a source map. Main publishes
+`out/renderer/assets/mira-live.css` keeps a source map. Main publishes
 `reload-app-styles` only after successful writes; compilation errors publish
 `app-styles-error` and preserve the last valid CSS. Shutdown cancels publication
 and releases the watcher/worker. Development-server windows retain Vite HMR;
@@ -588,15 +593,17 @@ parameter even for `mode: "none"`; omitting it makes Chromium reject
 the command and leaves the overlay stuck in search mode, flashing
 highlights forever.
 
-`MobileServer` (`src/main/mobile-server.ts`) owns the companion checkout and
-local service credentials. In development it checks for a sibling
-`orbit-mobile` checkout before `~/coding-projects/orbit-mobile`; packaged
-installations use that historical default unless `ORBIT_MOBILE_HOME` is set.
-The `shell:mobile-setup-status` response contains only status/path/port. Pairing
-uses the password from the mode-0600 local `desktop-status.json` only inside
-main to obtain an authenticated UI session and ask the server for a one-time
-pairing URI; neither the UI password nor a reusable mobile token crosses IPC.
-The renderer generates a QR image from that URI.
+`MobileServer` (`src/main/mobile-server.ts`) owns the OpenChamber-family
+companion server lifecycle and local service credentials. Development checks
+for a sibling `openchamber` checkout, then the `code-repositories` and
+`coding-projects` folders under the home directory; `MIRA_MOBILE_HOME` can
+override that search. Packaged builds load the bundled server from
+`Resources/mobile-server`. The `shell:mobile-setup-status` response contains
+only status/path/port. Pairing creates an authenticated UI session inside main
+and asks the server for a one-time pairing URI; neither the UI password nor a
+reusable mobile token crosses IPC. The renderer generates a QR image from that
+URI. The URI retains the `orbit://` scheme until the released mobile companion
+supports Mira's scheme.
 
 Startup (`app.whenReady`): `start()` → register backend and terminal forwarders
 → register IPC → `createWindow()` → begin asynchronous `connect()`. On
@@ -622,7 +629,7 @@ session's tray manages its own PTYs.
 application renderer loads. `browser-policy.ts` admits credential-free HTTP(S)
 and exact `about:blank`; it strips preload and session overrides, disables Node
 in frames/workers and nested guests, and forces sandbox, context isolation and
-web security. The `orbit-browser` partition is nonpersistent and denies
+web security. The `mira-browser` partition is nonpersistent and denies
 permission requests, permission checks and device grants before attachment.
 Guest navigation/frame navigation/redirects remain restricted; popups are denied
 and only the existing safe HTTPS external-link policy may open an OS browser.

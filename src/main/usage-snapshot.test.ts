@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { readOrbitUsageSnapshot } from "./provider-usage";
+import { readMiraUsageSnapshot } from "./provider-usage";
 
 const result = {
   provider: "openai",
@@ -13,15 +13,15 @@ const result = {
 };
 
 async function inTemp(): Promise<string> {
-  return mkdtemp(path.join(tmpdir(), "orbit-usage-"));
+  return mkdtemp(path.join(tmpdir(), "mira-usage-"));
 }
 
-describe("orbit usage snapshot", () => {
+describe("mira usage snapshot", () => {
   it("accepts a fresh snapshot with results", async () => {
     const dir = await inTemp();
-    const file = path.join(dir, "orbit-usage.json");
+    const file = path.join(dir, "mira-usage.json");
     await writeFile(file, JSON.stringify({ generatedAt: Date.now() - 1000, results: [result] }));
-    const read = await readOrbitUsageSnapshot([file]);
+    const read = await readMiraUsageSnapshot([file]);
     expect(read).toHaveLength(1);
     expect(read[0].provider).toBe("openai");
     await rm(dir, { recursive: true, force: true });
@@ -33,7 +33,7 @@ describe("orbit usage snapshot", () => {
     const fresh = path.join(dir, "fresh.json");
     await writeFile(stale, JSON.stringify({ generatedAt: Date.now() - 60 * 60 * 1000, results: [result] }));
     await writeFile(fresh, JSON.stringify({ generatedAt: Date.now() - 1000, results: [{ ...result, provider: "anthropic" }] }));
-    const read = await readOrbitUsageSnapshot([stale, fresh]);
+    const read = await readMiraUsageSnapshot([stale, fresh]);
     expect(read[0].provider).toBe("anthropic");
     await rm(dir, { recursive: true, force: true });
   });
@@ -43,7 +43,7 @@ describe("orbit usage snapshot", () => {
     const missing = path.join(dir, "missing.json");
     const garbage = path.join(dir, "garbage.json");
     await writeFile(garbage, "not json");
-    expect(await readOrbitUsageSnapshot([missing, garbage])).toEqual([]);
+    expect(await readMiraUsageSnapshot([missing, garbage])).toEqual([]);
     await rm(dir, { recursive: true, force: true });
   });
 });

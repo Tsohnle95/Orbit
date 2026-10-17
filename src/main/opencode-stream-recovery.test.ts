@@ -55,10 +55,10 @@ describe("OpenShellBackend stream recovery", () => {
   });
 
   it("reports each outage as a structured global error", () => {
-    internals.handleStreamError("[ORBIT_STREAM_FAILED] Live event stream failed");
+    internals.handleStreamError("[MIRA_STREAM_FAILED] Live event stream failed");
 
     const error = messages.find((msg) => msg.type === "global.error");
-    expect(error?.data?.error?.code).toBe("ORBIT_STREAM_FAILED");
+    expect(error?.data?.error?.code).toBe("MIRA_STREAM_FAILED");
     expect(error?.data?.error?.message).toBe("Live event stream failed");
   });
 

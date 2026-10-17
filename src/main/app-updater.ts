@@ -1,13 +1,13 @@
 import type { AppUpdater } from "electron-updater";
-import type { OrbitAppUpdateResult, OrbitAppUpdateStatus } from "@shared/types";
+import type { MiraAppUpdateResult, MiraAppUpdateStatus } from "@shared/types";
 
-export interface OrbitAppUpdater {
-  check(): Promise<OrbitAppUpdateStatus>;
-  update(onProgress?: (message: string) => void): Promise<OrbitAppUpdateResult>;
+export interface MiraAppUpdater {
+  check(): Promise<MiraAppUpdateStatus>;
+  update(onProgress?: (message: string) => void): Promise<MiraAppUpdateResult>;
   installAndRestart(): void;
 }
 
-export function createDisabledOrbitAppUpdater(currentVersion: string): OrbitAppUpdater {
+export function createDisabledMiraAppUpdater(currentVersion: string): MiraAppUpdater {
   const message = "GitHub release updates are disabled in local development and test builds.";
   return {
     async check() {
@@ -20,7 +20,7 @@ export function createDisabledOrbitAppUpdater(currentVersion: string): OrbitAppU
   };
 }
 
-export function createOrbitAppUpdater(updater: AppUpdater, currentVersion: string): OrbitAppUpdater {
+export function createMiraAppUpdater(updater: AppUpdater, currentVersion: string): MiraAppUpdater {
   updater.autoDownload = false;
   updater.autoInstallOnAppQuit = false;
   updater.allowPrerelease = false;
@@ -28,14 +28,14 @@ export function createOrbitAppUpdater(updater: AppUpdater, currentVersion: strin
 
   let updateInProgress = false;
 
-  async function check(): Promise<OrbitAppUpdateStatus> {
+  async function check(): Promise<MiraAppUpdateStatus> {
     try {
       const result = await updater.checkForUpdates();
       if (!result) {
         return {
           state: "blocked",
           currentVersion,
-          message: "Orbit could not check GitHub Releases because this app has no release update feed."
+          message: "Mira could not check GitHub Releases because this app has no release update feed."
         };
       }
       const latestVersion = result.updateInfo.version;
@@ -47,18 +47,18 @@ export function createOrbitAppUpdater(updater: AppUpdater, currentVersion: strin
       return {
         state: "blocked",
         currentVersion,
-        message: `Could not check GitHub Releases for Orbit updates: ${detail}`
+        message: `Could not check GitHub Releases for Mira updates: ${detail}`
       };
     }
   }
 
-  async function update(onProgress?: (message: string) => void): Promise<OrbitAppUpdateResult> {
+  async function update(onProgress?: (message: string) => void): Promise<MiraAppUpdateResult> {
     if (updateInProgress) {
-      return { ok: false, updated: false, currentVersion, message: "An Orbit update is already running." };
+      return { ok: false, updated: false, currentVersion, message: "A Mira update is already running." };
     }
     updateInProgress = true;
     try {
-      onProgress?.("Checking GitHub Releases for an Orbit update…");
+      onProgress?.("Checking GitHub Releases for a Mira update…");
       const status = await check();
       if (status.state === "blocked" || status.state === "disabled") {
         return { ok: false, updated: false, currentVersion, message: status.message };
@@ -69,18 +69,18 @@ export function createOrbitAppUpdater(updater: AppUpdater, currentVersion: strin
           updated: false,
           currentVersion,
           latestVersion: status.latestVersion,
-          message: `Orbit ${currentVersion} is the latest published release.`
+          message: `Mira ${currentVersion} is the latest published release.`
         };
       }
 
-      onProgress?.(`Downloading Orbit ${status.latestVersion} from GitHub Releases…`);
+      onProgress?.(`Downloading Mira ${status.latestVersion} from GitHub Releases…`);
       const reportDownloadProgress = (progress: { percent: number }): void => {
         const percent = Number.isFinite(progress.percent)
           ? Math.max(0, Math.min(100, Math.floor(progress.percent)))
           : null;
         onProgress?.(percent === null
-          ? `Downloading Orbit ${status.latestVersion} from GitHub Releases…`
-          : `Downloading Orbit ${status.latestVersion} from GitHub Releases (${percent}%)…`);
+          ? `Downloading Mira ${status.latestVersion} from GitHub Releases…`
+          : `Downloading Mira ${status.latestVersion} from GitHub Releases (${percent}%)…`);
       };
       updater.on("download-progress", reportDownloadProgress);
       try {
@@ -89,13 +89,13 @@ export function createOrbitAppUpdater(updater: AppUpdater, currentVersion: strin
         updater.removeListener("download-progress", reportDownloadProgress);
       }
 
-      onProgress?.("Release downloaded. Installing it and restarting Orbit…");
+      onProgress?.("Release downloaded. Installing it and restarting Mira…");
       return {
         ok: true,
         updated: true,
         currentVersion,
         latestVersion: status.latestVersion,
-        message: `Orbit ${status.latestVersion} is downloaded and ready to install.`
+        message: `Mira ${status.latestVersion} is downloaded and ready to install.`
       };
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
@@ -103,7 +103,7 @@ export function createOrbitAppUpdater(updater: AppUpdater, currentVersion: strin
         ok: false,
         updated: false,
         currentVersion,
-        message: `Orbit could not download the release update. ${detail}`
+        message: `Mira could not download the release update. ${detail}`
       };
     } finally {
       updateInProgress = false;

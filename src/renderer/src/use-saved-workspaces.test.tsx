@@ -43,13 +43,13 @@ describe("saved workspace lifecycle", () => {
   });
 
   it("keeps failed reads untouched even when local bookmarks change", async () => {
-    window.localStorage.setItem("orbit.savedWorkspaces", JSON.stringify([{ directory: "/legacy", name: "Legacy" }]));
+    window.localStorage.setItem("mira.savedWorkspaces", JSON.stringify([{ directory: "/legacy", name: "Legacy" }]));
     window.openshell.savedWorkspaces = vi.fn(async () => { throw new Error("unavailable"); });
     await act(async () => root.render(<Probe connected={false} />));
     await act(async () => bookmarks.saveWorkspace());
     expect(bookmarks.savedWorkspaces.map((item) => item.directory)).toEqual(["/legacy", "/selected"]);
     expect(save).not.toHaveBeenCalled();
-    expect(JSON.parse(window.localStorage.getItem("orbit.savedWorkspaces")!)).toEqual([{ directory: "/legacy", name: "Legacy" }]);
+    expect(JSON.parse(window.localStorage.getItem("mira.savedWorkspaces")!)).toEqual([{ directory: "/legacy", name: "Legacy" }]);
     expect(notify).toHaveBeenCalledWith(expect.stringContaining("stored data was left untouched"), "error");
   });
 
@@ -84,7 +84,7 @@ describe("saved workspace lifecycle", () => {
   it("reports missing bridge and write failures without changing bookmark authority", async () => {
     window.openshell.savedWorkspaces = undefined as unknown as OpenShellApi["savedWorkspaces"];
     await act(async () => root.render(<Probe connected={false} />));
-    expect(notify).toHaveBeenCalledWith("Restart Orbit to load saved workspaces from app storage.", "error");
+    expect(notify).toHaveBeenCalledWith("Restart Mira to load saved workspaces from app storage.", "error");
     expect(save).not.toHaveBeenCalled();
     window.openshell.savedWorkspaces = async () => ({ initialized: true, workspaces: [{ directory: "/durable", name: "Durable" }] });
     save.mockRejectedValue(new Error("write failed"));
@@ -94,7 +94,7 @@ describe("saved workspace lifecycle", () => {
   });
 
   it("keeps legacy data when the app process lacks the saved-workspace handler", async () => {
-    window.localStorage.setItem("orbit.savedWorkspaces", JSON.stringify([{ directory: "/legacy", name: "Legacy" }]));
+    window.localStorage.setItem("mira.savedWorkspaces", JSON.stringify([{ directory: "/legacy", name: "Legacy" }]));
     window.openshell.savedWorkspaces = async () => { throw new Error("No handler registered for 'shell:saved-workspaces'"); };
     await act(async () => root.render(<Probe connected={false} />));
     expect(bookmarks.savedWorkspaces).toEqual([{ directory: "/legacy", name: "Legacy" }]);

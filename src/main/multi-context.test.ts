@@ -165,7 +165,7 @@ describe("concurrent session contexts", () => {
 
   it("repairs a session directory after its project folder is renamed", async () => {
     const parent = await realpath(await mkdtemp(path.join(tmpdir(), "openshell-multi-renamed-")));
-    const current = path.join(parent, "orbit");
+    const current = path.join(parent, "mira");
     const previous = path.join(parent, "openshell");
     await mkdir(current);
     roots.push(parent);
@@ -401,7 +401,7 @@ describe("concurrent session contexts", () => {
   });
 
   it("refuses to delete DeepSeek sessions without a delete RPC", async () => {
-    const dir = await realpath(await mkdtemp(path.join(tmpdir(), "orbit-runtime-sessions-")));
+    const dir = await realpath(await mkdtemp(path.join(tmpdir(), "mira-runtime-sessions-")));
     roots.push(dir);
     const { RuntimeSessionIndex } = await import("./runtimes/runtime-session-index");
     const { backend } = await fixture();

@@ -14,10 +14,10 @@ vi.mock("electron", () => ({ app: { getPath: () => tmpdir() }, shell: { trashIte
 vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
 vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
-it.skipIf(process.env.ORBIT_MUTATION_BENCHMARK !== "1")("measures identical durable native mutation workflows", async () => {
-  const root = await fsp.realpath(await fsp.mkdtemp(path.join(tmpdir(), "orbit-mutation-benchmark-")));
+it.skipIf(process.env.MIRA_MUTATION_BENCHMARK !== "1")("measures identical durable native mutation workflows", async () => {
+  const root = await fsp.realpath(await fsp.mkdtemp(path.join(tmpdir(), "mira-mutation-benchmark-")));
   const rootKey = createHash("sha256").update(root).digest("hex").slice(0, 16);
-  const recoveryRoot = path.join(path.dirname(root), `.orbit-recovery-${rootKey}`);
+  const recoveryRoot = path.join(path.dirname(root), `.mira-recovery-${rootKey}`);
   const phases: Record<string, number> = {};
   const backend = new OpenShellBackend((phase) => { phases[phase] = (phases[phase] ?? 0) + 1; });
   const workspace = { id: "11111111-1111-4111-8111-111111111111", generation: 1 };
@@ -74,8 +74,8 @@ it.skipIf(process.env.ORBIT_MUTATION_BENCHMARK !== "1")("measures identical dura
     expect(phases["save:temporary-ready"]).toBe(27);
     expect(manifests).toEqual({ "save:complete:saved": 27, "rename:complete:renamed": 27 });
     expect(await fsp.readdir(root)).toEqual([]);
-    console.log(`ORBIT_MUTATION_RESULT ${JSON.stringify({
-      variant: process.env.ORBIT_BENCHMARK_VARIANT ?? "current",
+    console.log(`MIRA_MUTATION_RESULT ${JSON.stringify({
+      variant: process.env.MIRA_BENCHMARK_VARIANT ?? "current",
       implementation: state.workspaceMutations ? "WorkspaceMutations" : "OpenShellBackend",
       workload: { roundsPerSample: 3, operationsPerRound: ["save", "rename", "create", "delete-renamed", "delete-created"], warmups: 1, samples: 8 },
       fixture: { beforeBytes: Buffer.byteLength(before), beforeSha256: digest(before), afterBytes: Buffer.byteLength(after), afterSha256: digest(after) },

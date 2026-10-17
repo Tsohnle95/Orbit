@@ -39,7 +39,7 @@ describe("theme and UI shell", () => {
     expect(ctx.uiShell).toBe("codex");
     expect(document.documentElement.dataset.shell).toBe("codex");
     expect(document.documentElement.dataset.theme).toBe("codex");
-    expect(window.localStorage.getItem("orbit.ui")).toBe("codex");
+    expect(window.localStorage.getItem("mira.ui")).toBe("codex");
   });
 
   it("switches shells without touching the palette, and restores both", async () => {

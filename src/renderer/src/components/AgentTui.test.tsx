@@ -120,7 +120,7 @@ describe("AgentTui", () => {
   });
 
   it("keeps Kitty's embedded terminal transparent across appearance changes", async () => {
-    window.localStorage.setItem("orbit.theme", "kitty");
+    window.localStorage.setItem("mira.theme", "kitty");
     const { AgentTui } = await import("./AgentTui");
     function SwitchTheme() {
       const { setTheme } = useTheme();

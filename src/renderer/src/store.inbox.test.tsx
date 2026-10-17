@@ -175,10 +175,10 @@ describe("Store inbox and local queue authority", () => {
     { name: "valid", queue: '{"followUpBehavior":"steer","queuedMessages":{}}', saved: '[]', denied: "", expected: "steer" },
     { name: "malformed", queue: '{invalid', saved: '{invalid', denied: "", expected: "queue" },
     { name: "queue read denied", queue: '{"followUpBehavior":"steer"}', saved: '[]', denied: "messageQueue", expected: "queue" },
-    { name: "saved-workspace read denied", queue: '{"followUpBehavior":"steer"}', saved: '[]', denied: "orbit.savedWorkspaces", expected: "steer" }
+    { name: "saved-workspace read denied", queue: '{"followUpBehavior":"steer"}', saved: '[]', denied: "mira.savedWorkspaces", expected: "steer" }
   ])("initializes independent storage keys before hydration effects ($name)", async ({ queue, saved, denied, expected }) => {
     window.localStorage.setItem("messageQueue", queue);
-    window.localStorage.setItem("orbit.savedWorkspaces", saved);
+    window.localStorage.setItem("mira.savedWorkspaces", saved);
     const trace: string[] = [];
     const original = window.localStorage.getItem.bind(window.localStorage);
     vi.spyOn(window.localStorage, "getItem").mockImplementation((key) => {
@@ -189,7 +189,7 @@ describe("Store inbox and local queue authority", () => {
     await open({ savedWorkspaces: async () => { trace.push("hydrate:saved"); return { workspaces: [], initialized: true }; } });
     expect(store.followUpBehavior).toBe(expected);
     expect(trace.indexOf("read:messageQueue")).toBeLessThan(trace.indexOf("hydrate:saved"));
-    expect(trace.indexOf("read:orbit.savedWorkspaces")).toBeLessThan(trace.indexOf("hydrate:saved"));
+    expect(trace.indexOf("read:mira.savedWorkspaces")).toBeLessThan(trace.indexOf("hydrate:saved"));
   });
 
 });

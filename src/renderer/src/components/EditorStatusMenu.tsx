@@ -192,7 +192,7 @@ function SassWatchItem(): ReactNode {
   const title = !session
     ? "Open a workspace to watch Sass"
     : !sass.available
-      ? "Restart Orbit to enable Sass watching"
+      ? "Restart Mira to enable Sass watching"
       : sass.state?.error
         ? `${sass.state.error}\nSee Sass Output in the terminal panel. Click to ${sass.state.enabled ? "stop watching" : "retry starting"}.`
         : `${sass.state?.enabled ? "Stop" : "Start"} Sass watching in ${session.directory}; saved Sass files compile to CSS on disk`;

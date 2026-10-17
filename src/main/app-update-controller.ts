@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from "electron";
-import type { OrbitAppUpdateResult } from "@shared/types";
-import type { OrbitAppUpdater } from "./app-updater";
+import type { MiraAppUpdateResult } from "@shared/types";
+import type { MiraAppUpdater } from "./app-updater";
 import {
   briefFilePath,
   appUpdaterWindowUrl,
@@ -15,8 +15,8 @@ export class AppUpdateController {
   private appUpdateRunning = false;
 
   constructor(
-    private readonly orbitAppUpdater: OrbitAppUpdater,
-    private readonly isOrbitReleaseBuild: boolean,
+    private readonly miraAppUpdater: MiraAppUpdater,
+    private readonly isMiraReleaseBuild: boolean,
     private readonly appIconPath: string,
     private readonly getWindow: () => BrowserWindow | null,
     private readonly getUnsavedFiles: () => readonly string[]
@@ -29,8 +29,8 @@ export class AppUpdateController {
     return this.getUnsavedFiles();
   }
 
-  async update(): Promise<OrbitAppUpdateResult> {
-    if (!this.isOrbitReleaseBuild) {
+  async update(): Promise<MiraAppUpdateResult> {
+    if (!this.isMiraReleaseBuild) {
       return {
         ok: false,
         updated: false,
@@ -44,10 +44,10 @@ export class AppUpdateController {
       return {
         ok: false,
         updated: false,
-        message: `Save unsaved files before updating Orbit: ${files}${remaining}.`
+        message: `Save unsaved files before updating Mira: ${files}${remaining}.`
       };
     }
-    if (this.appUpdateRunning) return { ok: false, updated: false, message: "An Orbit update is already running." };
+    if (this.appUpdateRunning) return { ok: false, updated: false, message: "A Mira update is already running." };
     this.appUpdateRunning = true;
 
     if (this.appUpdaterWindow && !this.appUpdaterWindow.isDestroyed()) {
@@ -62,7 +62,7 @@ export class AppUpdateController {
       minHeight: 270,
       maxWidth: 460,
       maxHeight: 270,
-      title: "Updating Orbit",
+      title: "Updating Mira",
       icon: this.appIconPath,
       show: false,
       resizable: false,
@@ -99,7 +99,7 @@ export class AppUpdateController {
       if (shouldBlockAppUpdaterReload(input)) event.preventDefault();
     });
     popup.webContents.on("did-navigate-in-page", (_event, url, _isInPlace, isMainFrame) => {
-      if (isMainFrame && url.endsWith("#return-to-orbit") && this.appUpdaterWindowCanClose) popup.close();
+      if (isMainFrame && url.endsWith("#return-to-mira") && this.appUpdaterWindowCanClose) popup.close();
     });
 
     const report = (title: string, message: string, tone: "progress" | "success" | "error" = "progress"): void => {
@@ -119,17 +119,17 @@ export class AppUpdateController {
       if (this.appUpdaterWindow === popup) this.appUpdaterWindow = null;
       this.appUpdateRunning = false;
       const detail = error instanceof Error ? error.message : String(error);
-      return { ok: false, updated: false, message: "Orbit could not open its update window. " + detail };
+      return { ok: false, updated: false, message: "Mira could not open its update window. " + detail };
     }
 
     try {
-      const result = await this.orbitAppUpdater.update((message) => report("Updating Orbit", message));
+      const result = await this.miraAppUpdater.update((message) => report("Updating Mira", message));
       if (result.updated) {
-        report("Update downloaded", `${result.message} Orbit will close to install the release and reopen shortly.`, "success");
+        report("Update downloaded", `${result.message} Mira will close to install the release and reopen shortly.`, "success");
         setTimeout(() => {
           try {
             this.appUpdaterWindowCanClose = true;
-            this.orbitAppUpdater.installAndRestart();
+            this.miraAppUpdater.installAndRestart();
           } catch (error) {
             const detail = error instanceof Error ? error.message : String(error);
             report("Update could not be installed", detail, "error");

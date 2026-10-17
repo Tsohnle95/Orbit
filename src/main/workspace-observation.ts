@@ -6,7 +6,7 @@ import { knownBaseline, observedBaseline, preserveBaseline, unknownBaseline } fr
 
 export const SKIP_DIRS: ReadonlySet<string> = new Set([
   ".git", "node_modules", ".next", ".venv", "__pycache__", ".cache", ".turbo", ".nx",
-  ".svn", ".hg", ".idea", ".vscode", ".openshell-recovery", ".orbit-recovery", "dist", "out", "build", "target", "coverage", ".pytest_cache",
+  ".svn", ".hg", ".idea", ".vscode", ".openshell-recovery", ".mira-recovery", ".orbit-recovery", "dist", "out", "build", "target", "coverage", ".pytest_cache",
   ".opencode", ".claude", ".cursor", ".aider", ".windsurf", ".codeium", ".roo", ".gemini", ".kilocode", ".continue"
 ]);
 
@@ -26,7 +26,7 @@ export interface WatchContext {
   recentMoves?: Map<string, number>;
   importing?: number;
   suppressedUntil?: Map<string, number>;
-  /** Absolute paths Orbit is writing; their filesystem events are not external changes. */
+  /** Absolute paths Mira is writing; their filesystem events are not external changes. */
   mutating?: Set<string>;
 }
 
@@ -216,10 +216,10 @@ export class WorkspaceObservation<Session extends WatchSession> {
         if (this.shouldSkip(abs, context.directory)) return;
         this.scheduleWatch(context.watchContext, abs, event);
       });
-      context.watcher.on("error", (err) => console.error("[orbit] watcher error:", err));
-      console.log("[orbit] watching", context.directory);
+      context.watcher.on("error", (err) => console.error("[mira] watcher error:", err));
+      console.log("[mira] watching", context.directory);
     } catch (err) {
-      console.error("[orbit] fs.watch unavailable, live updates disabled:", err);
+      console.error("[mira] fs.watch unavailable, live updates disabled:", err);
     }
   }
 

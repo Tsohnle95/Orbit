@@ -1,44 +1,35 @@
 # 08 — Icons & Brand
 
-> **Sources:** `src/renderer/src/components/OrbitMark.tsx:3`, `resources/icon.svg:1`, `src/renderer/src/components/icons.tsx:1` (custom), `src/renderer/src/components/FileIcons.tsx:1`, `@vscode/codicons` `package.json:28`, `_foundation.scss:163`, `redesign/logo.html:1`, `_welcome.scss:51`, `_settings.scss:26`
+> **Sources:** `src/renderer/src/components/MiraMark.tsx:3`, `resources/icon.svg:1`, `src/renderer/src/components/icons.tsx:1` (custom), `src/renderer/src/components/FileIcons.tsx:1`, `@vscode/codicons` `package.json:28`, `_foundation.scss:163`, `redesign/logo.html:1`, `_welcome.scss:51`, `_settings.scss:26`
 
 Iconography is intentionally sparse — a thin monoline set on a soft surface. Almost every stroke glyph is a 1–1.5 px outline; filled glyphs appear only for badge state (live dot, dirty dot, provider monogram).
 
 ---
 
-## 1. The mark — `OrbitMark`
+## 1. The mark — `MiraMark`
 
-### 1.1 React component `OrbitMark` `src/renderer/src/components/OrbitMark.tsx:3`
+### 1.1 React component `MiraMark` `src/renderer/src/components/MiraMark.tsx:3`
 
 ```tsx
-const SAGE = "#617a68";
-const SAGE_LIGHT = "#9eb4a1";
-const SAGE_DEEP = "#46584b";
-
-function OrbitMark({ size = 46 }) {
+function MiraMark({ size = 46 }) {
   return (
-    <svg viewBox="0 0 96 96" className="orbit-mark" …>
-      <g fill="none" strokeLinecap="round">
-        <ellipse rx36 ry15 rotate(24)  stroke={SAGE_LIGHT} strokeWidth={4.5} />
-        <ellipse rx36 ry15 rotate(-24) stroke={SAGE} strokeWidth={5} />
-        <circle cx48 cy48 r9  fill={SAGE_DEEP} />
-        <circle cx62.1 cy28.3 r6 fill={SAGE_LIGHT} />
-      </g>
+    <svg viewBox="0 0 96 96" className="mira-mark" …>
+      <path d="M48 10 … 48 10Z" fill="color-mix(in srgb, var(--accent) 72%, var(--text))" />
+      <path d="M70 12 … 70 12Z" fill="var(--accent)" opacity=".75" />
     </svg>
   );
 }
 ```
 
-Semantics: **orchestration as physics** — a deep-sage core (the coordinator) carried on a bold primary orbit, crossed by a quiet light-sage counter-orbit, with one electron (the agent) riding the primary. Distilled as the `Orbit Standard` finalist in `design/logo-final/marks.mjs:131`.
-
-Strokes are `4.5–5` on the 96 grid with round caps — chunky enough to scan at 16 px in the titlebar, rounded so it stays calm. Unlike the codicons, the mark uses **fixed sage hexes** (not `currentColor`) so it renders identically over any surface; the dark-theme light-sage doubles as the light counter-orbit.
+The mark pairs a four-point star with a smaller sparkle. Its two fills use the
+active accent and text colors, so it adapts to the selected appearance.
 
 ### 1.2 Where it appears
 
 | Host | Wrapper / overrides | Size | Colours |
 |---|---|---|---|
-| Titlebar `.titlebar-title .orbit-mark` `_layout.scss:75` | bare, beside the `Orbit` word | `16` | fixed sage hexes |
-| Welcome frame `.welcome-mark` `_welcome.scss:51` | `58×58 radius16 28% accent border`; `.orbit-mark` adds `drop-shadow 14 accent35%` `_welcome.scss:68` | `46` (default) | fixed sage hexes |
+| Titlebar `.titlebar-title .mira-mark` `_layout.scss:75` | bare, beside the `Mira` word | `16` | fixed sage hexes |
+| Welcome frame `.welcome-mark` `_welcome.scss:51` | `58×58 radius16 28% accent border`; `.mira-mark` adds `drop-shadow 14 accent35%` `_welcome.scss:68` | `46` (default) | fixed sage hexes |
 | Settings page `.settings-page-brand` `_settings.scss:26` | `54×54 radius-lg bg-panel border-strong shadow-sm` | `34` | fixed sage hexes |
 | Settings about `.settings-about` `_settings.scss:217` | bare, beside the version text | `72` | fixed sage hexes |
 | Editor empty state `.editor-empty-icon` `_editor.scss:213` | bare | `40` | fixed sage hexes |
@@ -49,22 +40,22 @@ A rule: **never recolour the mark by reaching into its `<path>` elements** — o
 
 ```svg
 <svg viewBox="0 0 1024 1024">
-  <linearGradient id="paper" from #fffaf0→#eee5d4 />   <!-- square miter -->
-  <radialGradient id="glow"  radial 0.55 at 0.5,0.42, 14% 617a68→transparent />
-  <rect x="88" y="88" width="848" height="848" rx="194" fill="url(#paper)" fill="url(#glow)" />
-  <rect … stroke="#2b2119 12%" strokeWidth≈1 />                  <!-- inner hairline -->
-  <g transform="translate(214.4 214.4) scale(6.2)">              <!-- Orbit Standard on the 96 grid -->
-    <ellipse rx36 ry15 rotate(24)  stroke="#9eb4a1" w4.5 />      <!-- counter-orbit, light sage -->
-    <ellipse rx36 ry15 rotate(-24) stroke="#617a68" w5 />        <!-- primary orbit, sage -->
-    <circle cx48 cy48 r9  fill="#46584b" />                      <!-- core, deep sage -->
-    <circle cx62.1 cy28.3 r6 fill="#9eb4a1" />                   <!-- electron -->
-  </g>
+  <rect x="88" y="88" width="848" height="848" rx="194" fill="url(#midnight)" />
+  <rect … fill="url(#atmosphere)" stroke="#8da3c0" strokeOpacity=".18" />
+  <path d="…" fill="url(#mira-star)" filter="url(#mark-shadow)" />
+  <path d="…" fill="url(#star-core)" />
 </svg>
 ```
 
-The OS icon now carries the **`OrbitMark` orbit glyph** (the `Orbit Standard` finalist from `design/logo-final/`) in the sage palette — `#617a68 / #9eb4a1 / #46584b` on the same warm-parchment squircle, so dock and app read as one product. The raised inner 1 px hairline + rounded 194 px squircle matches Apple's guidance for the canvas. The viewBox `1024` is the electron-builder requirement (`electron-builder.yml`). Rebuild pipeline: `qlmanage -t -s 1024` render → `sips` size ladder → `iconutil -c icns`.
+The OS icon carries a luminous four-point star and smaller sparkle on a deep
+blue gradient, within the rounded 848 px canvas. `resources/icon.svg` is the
+source of truth; `npm run generate-icons` renders the PNG sizes and rebuilds
+`icon.icns` with `iconutil`.
 
-> `resources/icon.svg` remains the single source of truth for `icon.icns` + `icon.png`. Do not update `OrbitMark.tsx` without exporting through `icon.svg` (and rebuilding the derived assets) — the two will visibly diverge at 16×16.
+> The in-app mark and OS icon are separate compositions. Update `MiraMark.tsx`,
+> `resources/logo/mira-mark.svg`, and `resources/logo/mira-lockup.svg` together
+> when the product mark changes; update `resources/icon.svg` and regenerate
+> the derived OS icon files independently.
 
 ### 1.4 Assets outside `src`
 
@@ -100,7 +91,7 @@ Representative members (the set grows organically — grep `export function Icon
 | `IconCheck` | `65` | `L` tick |
 | `IconChevronDown` | `73` | caret `4.5 6.2 → 8 9.8` |
 
-Surface usage: small leading/pairing glyphs (add, chevron, refresh, check, panel affords). Size is typically the line-height `0.85–1 em` where used; tree rows pin at `16×16` exactly (`_sidebar.scss:502`). Custom icons always sit beside type (never alone as a landmark) — the only standalone glyph roles are the `OrbitMark` and the agent-status dots.
+Surface usage: small leading/pairing glyphs (add, chevron, refresh, check, panel affords). Size is typically the line-height `0.85–1 em` where used; tree rows pin at `16×16` exactly (`_sidebar.scss:502`). Custom icons always sit beside type (never alone as a landmark) — the only standalone glyph roles are the `MiraMark` and the agent-status dots.
 
 Global icon sizing rule `_foundation.scss:163`:
 
@@ -138,7 +129,7 @@ The file-icon callsite never adds its own fill — recolour is always assigned v
 | `agent-dot.live / panel-status-dot.live` | `green dot + alpha glow 6 rgba(accent 45%)` — no animation; static state glow | `_opencode-chat.scss:968` / `pulse-ring 1.8 ease infinite` on idle? `_agent.scss:42` → expand rings on `.agent-dot.busy` |
 | `spinner` | `spin 0.7 linear` thin ring (`border 2 border-strong + top accent`) `11×11` | `_agent.scss:618` |
 | `Icon*` chevrons / toggles | `transform 120(var(--ease)) rotate 90/180` per open | `_sidebar.scss:407` / `_sessions.scss:230` |
-| `welcome-mark .orbit-mark` | `filter drop-shadow 0 0 14 accent35%` | `_welcome.scss:68` |
+| `welcome-mark .mira-mark` | `filter drop-shadow 0 0 14 accent35%` | `_welcome.scss:68` |
 
 Keep dot pulses infrequent — at most one pulsing dot per row (`agent-dot.live` alone) so the sidebar never looks like a loading kaleidoscope.
 
@@ -156,9 +147,7 @@ Keep dot pulses infrequent — at most one pulsing dot per row (`agent-dot.live`
 ## 7. Quick reference
 
 ```
-OrbitMark orbit+      rx36 ry15 rotate(-24) stroke #617a68 w5 (primary, sage)
-OrbitMark orbit−      rx36 ry15 rotate(24)  stroke #9eb4a1 w4.5 (counter, light sage)
-OrbitMark core/e      r9 #46584b core · electron r6 #9eb4a1 at (62.1,28.3)
+MiraMark             four-point star + smaller sparkle, active appearance-token fills
 
 custom icons          16×16  stroke 1.5  round  currentColor
 tree icon             16×16  actual size   os-icon·codicon

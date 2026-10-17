@@ -29,7 +29,7 @@ function api(overrides: Partial<OpenShellApi> = {}): OpenShellApi {
   } as OpenShellApi;
 }
 function event(type: string, data: Record<string, unknown>, ownerIDs?: string[]) {
-  receive({ kind: "event", type, data: { id: `event-${type}`, type, created: 1, ...(ownerIDs ? { orbitSessionIDs: ownerIDs } : {}), data } });
+  receive({ kind: "event", type, data: { id: `event-${type}`, type, created: 1, ...(ownerIDs ? { miraSessionIDs: ownerIDs } : {}), data } });
 }
 class Boundary extends Component<{ children: ReactNode; failed: (error: Error) => void }, { failed: boolean }> {
   state = { failed: false };

@@ -4,7 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import assert from "node:assert/strict";
 
-const root = await mkdtemp(path.join(os.tmpdir(), "orbit-sass-worker-"));
+const root = await mkdtemp(path.join(os.tmpdir(), "mira-sass-worker-"));
 const worker = new Worker(path.resolve("out/main/sass-worker.js"));
 try {
   await writeFile(path.join(root, "_tone.scss"), "$color: red;");

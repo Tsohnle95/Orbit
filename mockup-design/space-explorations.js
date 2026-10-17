@@ -1,4 +1,4 @@
-const orbitSpaceExplorations = [
+const miraSpaceExplorations = [
   {
     id: "04-nocturne-eclipse", family: "04", lineage: "nocturne", name: "Eclipse", motif: "eclipsed moon / alpine night", note: "A luminous corona above layered midnight peaks.",
     title: "Find your way through the code.", lede: "The repository stays your point of reference while the agent follows the work into the dark.", section: "Every path has a source.", message: "The project remains your north star.",
@@ -11,7 +11,7 @@ const orbitSpaceExplorations = [
   },
   {
     id: "04-nocturne-pulsar", family: "04", lineage: "nocturne", name: "Pulsar", motif: "light pulse / distant mountains", note: "A single distant signal cuts across a still night landscape.",
-    title: "Stay close to the signal.", lede: "Orbit keeps the repo in focus while the agent follows a question from file to answer.", section: "Less noise. More context.", message: "Follow the signal back to source.",
+    title: "Stay close to the signal.", lede: "Mira keeps the repo in focus while the agent follows a question from file to answer.", section: "Less noise. More context.", message: "Follow the signal back to source.",
     scene: "nocturne-pulsar", form: "floating", type: "sans", sky: "#161528", horizon: "#43385f", foreground: "#141b30", glow: "#d8a9c4", ink: "#faf2f4", accent: "#edc3d0", light: false
   },
   {
@@ -46,7 +46,7 @@ const orbitSpaceExplorations = [
   },
   {
     id: "04-ridge-halo", family: "04", lineage: "ridge", name: "Halo Ridge", motif: "orbital halo / evergreen peaks", note: "A bright orbital arc curves around a mountain summit.",
-    title: "Keep your bearings.", lede: "Every question can lead somewhere new. Orbit keeps the source of the work close.", section: "Stay anchored in the project.", message: "Everything comes back around.",
+    title: "Keep your bearings.", lede: "Every question can lead somewhere new. Mira keeps the source of the work close.", section: "Stay anchored in the project.", message: "Everything comes back around.",
     scene: "ridge-halo", form: "diagram", type: "sans", sky: "#dce5dc", horizon: "#9bb8a0", foreground: "#305148", glow: "#e9f3d0", ink: "#28453d", accent: "#487a61", light: true
   },
   {
@@ -61,7 +61,7 @@ const orbitSpaceExplorations = [
   },
   {
     id: "04-mist-starfield", family: "04", lineage: "mist", name: "Starfield", motif: "faint stars / morning fog", note: "A barely-there constellation through translucent cloud.",
-    title: "See the connections form.", lede: "Orbit keeps files, questions, and changes visible while the work takes shape.", section: "A place for everything to connect.", message: "Even small signals make a pattern.",
+    title: "See the connections form.", lede: "Mira keeps files, questions, and changes visible while the work takes shape.", section: "A place for everything to connect.", message: "Even small signals make a pattern.",
     scene: "mist-starfield", form: "diagram", type: "mono", sky: "#e6eeec", horizon: "#b4cdca", foreground: "#4c7770", glow: "#f6f5e0", ink: "#294e49", accent: "#417b70", light: true
   },
   {
@@ -75,9 +75,9 @@ const orbitSpaceExplorations = [
     scene: "mist-afterglow", form: "grounded", type: "sans", sky: "#e7ebe5", horizon: "#b5cbbd", foreground: "#4a6862", glow: "#f6f1d9", ink: "#2e4840", accent: "#4f7e6c", light: true
   },
   {
-    id: "10-dusk-orbit", family: "10", lineage: "dusk", name: "Night Orbit", motif: "planetary ring / city lights", note: "An orbital ring rises over a quiet working skyline.",
-    title: "A home for every orbit.", lede: "Your tools revolve around the project, not the other way around.", section: "Everything in its place.", message: "A desk for the whole journey.",
-    scene: "dusk-orbit", form: "grounded", type: "serif", sky: "#151d35", horizon: "#4c5878", foreground: "#111a2c", glow: "#f0a88d", ink: "#f6f1ef", accent: "#edbca9", light: false
+    id: "10-dusk-mira", family: "10", lineage: "dusk", name: "Night Mira", motif: "planetary ring / city lights", note: "An orbital ring rises over a quiet working skyline.",
+    title: "A home for every Mira.", lede: "Your tools revolve around the project, not the other way around.", section: "Everything in its place.", message: "A desk for the whole journey.",
+    scene: "dusk-mira", form: "grounded", type: "serif", sky: "#151d35", horizon: "#4c5878", foreground: "#111a2c", glow: "#f0a88d", ink: "#f6f1ef", accent: "#edbca9", light: false
   },
   {
     id: "10-dusk-nebula", family: "10", lineage: "dusk", name: "Nebula Desk", motif: "nebula / city silhouette", note: "Colorful atmospheric light glows over a late-night desk.",
@@ -101,4 +101,4 @@ const orbitSpaceExplorations = [
   }
 ];
 
-orbitExplorations.push(...orbitSpaceExplorations);
+miraExplorations.push(...miraSpaceExplorations);

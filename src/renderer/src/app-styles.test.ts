@@ -1,8 +1,8 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { reloadAppStylesheet } from "./app-styles";
 
-const originalURL = "file:///orbit/out/renderer/assets/index-built.css";
-const url = "file:///orbit/out/renderer/assets/orbit-live.css";
+const originalURL = "file:///mira/out/renderer/assets/index-built.css";
+const url = "file:///mira/out/renderer/assets/mira-live.css";
 afterEach(() => document.head.querySelectorAll("link").forEach(link => link.remove()));
 function original() {
   const link = document.createElement("link");

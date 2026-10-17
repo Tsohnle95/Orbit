@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import type { CommandOption, McpServerOption, OrbitAppUpdateStatus, PluginOption, SkillOption } from "@shared/types";
+import type { CommandOption, McpServerOption, MiraAppUpdateStatus, PluginOption, SkillOption } from "@shared/types";
 import { useStore } from "../store";
 import type { UnsavedEditorFile } from "../store";
 import { useTheme } from "../theme";
 import { AppearanceSettings } from "./AppearanceSettings";
-import { OrbitMark } from "./OrbitMark";
+import { MiraMark } from "./MiraMark";
 import { ProviderSettings } from "./ProviderSettings";
 import { ServerSettings } from "./ServerSettings";
 import { MobileSetup } from "./MobileSetup";
@@ -12,14 +12,14 @@ import type { SettingsSection } from "./SettingsSidebar";
 
 
 const sectionCopy: Record<SettingsSection, { title: string; description: string }> = {
-  appearance: { title: "Appearance", description: "Choose how Orbit looks and how code is presented." },
+  appearance: { title: "Appearance", description: "Choose how Mira looks and how code is presented." },
   plugins: { title: "Plugins", description: "Review commands and skills available in the current workspace." },
   providers: { title: "Providers", description: "Connect model services supported by OpenCode." },
   safety: { title: "Safety", description: "Set permission and follow-up defaults for agent behavior." },
   voice: { title: "Voice", description: "Configure voice input preferences and review availability." },
   model: { title: "Model", description: "Choose the model used by the current workspace." },
   servers: { title: "Servers", description: "See and stop the Vite preview servers running in this app." },
-  mobile: { title: "Mobile Setup", description: "Prepare secure access to Orbit from another device." },
+  mobile: { title: "Mobile Setup", description: "Prepare secure access to Mira from another device." },
   about: { title: "About", description: "Version and product information for this installation." }
 };
 
@@ -32,10 +32,10 @@ function SettingRow({ title, detail, control }: { title: string; detail: string;
   );
 }
 
-function orbitUpdateErrorMessage(error: unknown): string {
+function miraUpdateErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (/No handler registered for ['"]?shell:app-update(?:-check)?['"]?/.test(message)) {
-    return "The updater is not available in this running Orbit process. Quit Orbit completely and reopen it, then check again.";
+    return "The updater is not available in this running Mira process. Quit Mira completely and reopen it, then check again.";
   }
   return message;
 }
@@ -68,10 +68,10 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   const [skills, setSkills] = useState<SkillOption[]>([]);
   const [openCodeAction, setOpenCodeAction] = useState<"sync" | "update" | null>(null);
   const [openCodeFeedback, setOpenCodeFeedback] = useState("");
-  const [orbitUpdateStatus, setOrbitUpdateStatus] = useState<OrbitAppUpdateStatus | null>(null);
-  const [orbitUpdateAction, setOrbitUpdateAction] = useState<"check" | "update" | null>(null);
-  const [orbitUpdateFeedback, setOrbitUpdateFeedback] = useState("");
-  const orbitUpdateOperationRef = useRef(0);
+  const [miraUpdateStatus, setMiraUpdateStatus] = useState<MiraAppUpdateStatus | null>(null);
+  const [miraUpdateAction, setMiraUpdateAction] = useState<"check" | "update" | null>(null);
+  const [miraUpdateFeedback, setMiraUpdateFeedback] = useState("");
+  const miraUpdateOperationRef = useRef(0);
   const copy = sectionCopy[section];
   const runtime = (runtimes ?? []).find((item) => item.id === (session?.runtimeID ?? "opencode"));
   const openCodeRuntime = (runtimes ?? []).find((item) => item.id === "opencode");
@@ -79,9 +79,9 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   const runOpenCodeAction = async (action: "sync" | "update"): Promise<void> => {
     if (openCodeAction) return;
     const intent = action === "update"
-      ? "OpenCode will update its global CLI using its own updater. Orbit will then restart the shared OpenCode service to match."
-      : "Orbit will restart the shared OpenCode service so it matches the installed CLI.";
-    if (!window.confirm(`${intent}\n\nActive agent runs in Orbit or other OpenCode apps may be interrupted. Continue?`)) return;
+      ? "OpenCode will update its global CLI using its own updater. Mira will then restart the shared OpenCode service to match."
+      : "Mira will restart the shared OpenCode service so it matches the installed CLI.";
+    if (!window.confirm(`${intent}\n\nActive agent runs in Mira or other OpenCode apps may be interrupted. Continue?`)) return;
     setOpenCodeAction(action);
     setOpenCodeFeedback("");
     try {
@@ -91,9 +91,9 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
       await refreshRuntimes().catch(() => []);
       setOpenCodeFeedback(action === "update"
         ? result.cliUpdated
-          ? `Updated OpenCode from ${result.previousVersion} to ${result.version}. Orbit is synced.`
-          : `OpenCode ${result.version} is already current. Orbit is synced.`
-        : `Orbit is synced to OpenCode ${result.version}.`);
+          ? `Updated OpenCode from ${result.previousVersion} to ${result.version}. Mira is synced.`
+          : `OpenCode ${result.version} is already current. Mira is synced.`
+        : `Mira is synced to OpenCode ${result.version}.`);
     } catch (error) {
       setOpenCodeFeedback(error instanceof Error ? error.message : String(error));
     } finally {
@@ -101,50 +101,50 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
     }
   };
 
-  const checkOrbitUpdate = async (): Promise<void> => {
+  const checkMiraUpdate = async (): Promise<void> => {
     if (!window.openshell.isReleaseBuild) return;
-    if (orbitUpdateAction) return;
-    const operation = ++orbitUpdateOperationRef.current;
-    setOrbitUpdateAction("check");
-    setOrbitUpdateFeedback("");
+    if (miraUpdateAction) return;
+    const operation = ++miraUpdateOperationRef.current;
+    setMiraUpdateAction("check");
+    setMiraUpdateFeedback("");
     try {
       const status = await window.openshell.checkAppUpdate();
-      if (orbitUpdateOperationRef.current === operation) setOrbitUpdateStatus(status);
+      if (miraUpdateOperationRef.current === operation) setMiraUpdateStatus(status);
     } catch (error) {
-      if (orbitUpdateOperationRef.current === operation) setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
+      if (miraUpdateOperationRef.current === operation) setMiraUpdateFeedback(miraUpdateErrorMessage(error));
     } finally {
-      if (orbitUpdateOperationRef.current === operation) setOrbitUpdateAction(null);
+      if (miraUpdateOperationRef.current === operation) setMiraUpdateAction(null);
     }
   };
 
-  const updateOrbit = async (): Promise<void> => {
+  const updateMira = async (): Promise<void> => {
     if (!window.openshell.isReleaseBuild) return;
-    if (orbitUpdateAction === "update") return;
+    if (miraUpdateAction === "update") return;
     if (unsavedEditorFileCount > 0) {
-      setOrbitUpdateFeedback(`Save ${unsavedEditorFileCount} unsaved file${unsavedEditorFileCount === 1 ? "" : "s"} before Orbit installs the release and relaunches. Select a file below to return to it.`);
+      setMiraUpdateFeedback(`Save ${unsavedEditorFileCount} unsaved file${unsavedEditorFileCount === 1 ? "" : "s"} before Mira installs the release and relaunches. Select a file below to return to it.`);
       return;
     }
-    const operation = ++orbitUpdateOperationRef.current;
-    setOrbitUpdateAction("update");
-    setOrbitUpdateFeedback("");
+    const operation = ++miraUpdateOperationRef.current;
+    setMiraUpdateAction("update");
+    setMiraUpdateFeedback("");
     try {
       const result = await window.openshell.updateApp();
-      if (orbitUpdateOperationRef.current !== operation) return;
-      setOrbitUpdateFeedback(result.message);
+      if (miraUpdateOperationRef.current !== operation) return;
+      setMiraUpdateFeedback(result.message);
       if (result.updated && result.latestVersion) {
-        setOrbitUpdateStatus({
+        setMiraUpdateStatus({
           state: "current",
           currentVersion: result.latestVersion,
           latestVersion: result.latestVersion
         });
       } else {
         const status = await window.openshell.checkAppUpdate();
-        if (orbitUpdateOperationRef.current === operation) setOrbitUpdateStatus(status);
+        if (miraUpdateOperationRef.current === operation) setMiraUpdateStatus(status);
       }
     } catch (error) {
-      if (orbitUpdateOperationRef.current === operation) setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
+      if (miraUpdateOperationRef.current === operation) setMiraUpdateFeedback(miraUpdateErrorMessage(error));
     } finally {
-      if (orbitUpdateOperationRef.current === operation) setOrbitUpdateAction(null);
+      if (miraUpdateOperationRef.current === operation) setMiraUpdateAction(null);
     }
   };
 
@@ -163,19 +163,19 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   useEffect(() => {
     if (section !== "about" || !window.openshell.isReleaseBuild) return;
     let cancelled = false;
-    const operation = ++orbitUpdateOperationRef.current;
-    setOrbitUpdateAction("check");
-    setOrbitUpdateFeedback("");
+    const operation = ++miraUpdateOperationRef.current;
+    setMiraUpdateAction("check");
+    setMiraUpdateFeedback("");
     void window.openshell.checkAppUpdate().then((status) => {
-      if (!cancelled && orbitUpdateOperationRef.current === operation) setOrbitUpdateStatus(status);
+      if (!cancelled && miraUpdateOperationRef.current === operation) setMiraUpdateStatus(status);
     }).catch((error: unknown) => {
-      if (!cancelled && orbitUpdateOperationRef.current === operation) setOrbitUpdateFeedback(orbitUpdateErrorMessage(error));
+      if (!cancelled && miraUpdateOperationRef.current === operation) setMiraUpdateFeedback(miraUpdateErrorMessage(error));
     }).finally(() => {
-      if (!cancelled && orbitUpdateOperationRef.current === operation) setOrbitUpdateAction(null);
+      if (!cancelled && miraUpdateOperationRef.current === operation) setMiraUpdateAction(null);
     });
     return () => {
       cancelled = true;
-      if (orbitUpdateOperationRef.current === operation) orbitUpdateOperationRef.current++;
+      if (miraUpdateOperationRef.current === operation) miraUpdateOperationRef.current++;
     };
   }, [section]);
 
@@ -207,9 +207,9 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
   return (
     <main className="settings-page">
       <header className="settings-page-header">
-        <div className="settings-page-brand"><OrbitMark size={34} /></div>
+        <div className="settings-page-brand"><MiraMark size={34} /></div>
         <div>
-          <p className="settings-page-kicker">Orbit preferences</p>
+          <p className="settings-page-kicker">Mira preferences</p>
           <h1>{copy.title}</h1>
           <p>{copy.description}</p>
         </div>
@@ -246,7 +246,7 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
 
       {section === "providers" && <section className="settings-section">
         {runtime && !runtime.capabilities.providerCredentials
-          ? <div className="settings-callout"><strong>Managed by {runtime.name}</strong><p>This runtime does not expose provider credential editing through Orbit. Configure credentials in the runtime, then refresh its model list here.</p></div>
+          ? <div className="settings-callout"><strong>Managed by {runtime.name}</strong><p>This runtime does not expose provider credential editing through Mira. Configure credentials in the runtime, then refresh its model list here.</p></div>
           : <ProviderSettings workspace={session?.workspace ?? null} usage={providerUsage} refreshModels={() => loadModels(session?.workspace)} />}
       </section>}
 
@@ -283,11 +283,11 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
           />
         </div>
         <h2 className="settings-group-title">OpenCode</h2>
-        <div className="settings-callout"><strong>Orbit uses the global OpenCode CLI.</strong><p>Sync and update restart the shared OpenCode service. Active runs in Orbit or other OpenCode apps may be interrupted.</p></div>
+        <div className="settings-callout"><strong>Mira uses the global OpenCode CLI.</strong><p>Sync and update restart the shared OpenCode service. Active runs in Mira or other OpenCode apps may be interrupted.</p></div>
         <div className="settings-list">
           <SettingRow
             title="Installed CLI"
-            detail="The version resolved from Orbit's PATH."
+            detail="The version resolved from Mira's PATH."
             control={<span className="settings-badge">{openCodeRuntime?.version ?? "Not found"}</span>}
           />
           <SettingRow
@@ -309,39 +309,39 @@ export function SettingsPage({ section, onClose }: { section: SettingsSection; o
       {section === "mobile" && <MobileSetup />}
 
       {section === "about" && <section className="settings-section">
-        <div className="settings-about"><OrbitMark size={72} /><div><h2>Orbit</h2><p>Version {window.openshell.appVersion} · {window.openshell.isReleaseBuild ? "Release build" : "Development/test build"}</p><small>A native desktop cockpit for coding agents.</small></div></div>
+        <div className="settings-about"><MiraMark size={72} /><div><h2>Mira</h2><p>Version {window.openshell.appVersion} · {window.openshell.isReleaseBuild ? "Release build" : "Development/test build"}</p><small>A native desktop cockpit for coding agents.</small></div></div>
         <h2 className="settings-group-title">App updates</h2>
         <div className="settings-list">
           <SettingRow
             title={window.openshell.isReleaseBuild ? "GitHub Releases" : "Development build"}
             detail={window.openshell.isReleaseBuild
-              ? "Checks published Orbit releases only. GitHub commits become app updates after a release is published. Update downloads and installs that release, then restarts Orbit."
+              ? "Checks published Mira releases only. GitHub commits become app updates after a release is published. Update downloads and installs that release, then restarts Mira."
               : "GitHub app updates are disabled here. Develop and test this local checkout; source edits do not update the installed app through the release updater."}
             control={window.openshell.isReleaseBuild
               ? <div className="settings-update-actions">
                 <button
                   className="settings-action-button primary"
-                  disabled={orbitUpdateAction === "update"}
-                  onClick={() => void updateOrbit()}
-                >{orbitUpdateAction === "update" ? "Downloading…" : "Update Orbit"}</button>
+                  disabled={miraUpdateAction === "update"}
+                  onClick={() => void updateMira()}
+                >{miraUpdateAction === "update" ? "Downloading…" : "Update Mira"}</button>
                 <button
                   className="settings-action-button"
-                  disabled={orbitUpdateAction !== null}
-                  onClick={() => void checkOrbitUpdate()}
-                >{orbitUpdateAction === "check" ? "Checking…" : "Check for updates"}</button>
+                  disabled={miraUpdateAction !== null}
+                  onClick={() => void checkMiraUpdate()}
+                >{miraUpdateAction === "check" ? "Checking…" : "Check for updates"}</button>
               </div>
               : <small>Updater disabled</small>}
           />
         </div>
-        {window.openshell.isReleaseBuild && (orbitUpdateFeedback || orbitUpdateStatus) && <p className="settings-action-feedback" role="status" aria-live="polite">
-          {orbitUpdateFeedback || (orbitUpdateStatus?.state === "available"
-            ? `Orbit ${orbitUpdateStatus.currentVersion} is installed · release ${orbitUpdateStatus.latestVersion} is available. Click Update Orbit to download and install it, then Orbit will restart.`
-            : orbitUpdateStatus?.state === "current"
-              ? `Orbit ${orbitUpdateStatus.currentVersion} is up to date with the latest published release (${orbitUpdateStatus.latestVersion}). New commits are available after a release is published.`
-              : orbitUpdateStatus?.message)}
+        {window.openshell.isReleaseBuild && (miraUpdateFeedback || miraUpdateStatus) && <p className="settings-action-feedback" role="status" aria-live="polite">
+          {miraUpdateFeedback || (miraUpdateStatus?.state === "available"
+            ? `Mira ${miraUpdateStatus.currentVersion} is installed · release ${miraUpdateStatus.latestVersion} is available. Click Update Mira to download and install it, then Mira will restart.`
+            : miraUpdateStatus?.state === "current"
+              ? `Mira ${miraUpdateStatus.currentVersion} is up to date with the latest published release (${miraUpdateStatus.latestVersion}). New commits are available after a release is published.`
+              : miraUpdateStatus?.message)}
         </p>}
         {unsavedEditorFileCount > 0 && <div className="settings-unsaved-files" role="alert">
-          <strong>Save these files before closing or updating Orbit.</strong>
+          <strong>Save these files before closing or updating Mira.</strong>
           <ul>
             {unsavedEditorFiles.map((file) => <li key={`${file.workspaceID}:${file.path}`}>
               <button

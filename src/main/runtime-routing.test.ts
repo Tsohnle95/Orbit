@@ -55,7 +55,7 @@ function adapter(directory: string): RuntimeAdapter {
 
 describe("runtime routing", () => {
   it("keeps DeepSeek disabled in the application backend", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "orbit-disabled-runtime-"));
+    const directory = await mkdtemp(path.join(os.tmpdir(), "mira-disabled-runtime-"));
     roots.push(directory);
     const runtimeIndex = new RuntimeSessionIndex(path.join(directory, "runtime-sessions.json"));
     await runtimeIndex.put({
@@ -76,7 +76,7 @@ describe("runtime routing", () => {
   });
 
   it("keeps workspace services in core and routes agent operations by session runtime", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "orbit-runtime-"));
+    const directory = await mkdtemp(path.join(os.tmpdir(), "mira-runtime-"));
     roots.push(directory);
     const runtime = adapter(directory);
     const backend = new OpenShellBackend(() => {}, () => runtime, new RuntimeSessionIndex(path.join(directory, "runtime-sessions.json")));
@@ -104,7 +104,7 @@ describe("runtime routing", () => {
   });
 
   it("remaps a cold-reopened session to the selected runtime on the same directory", async () => {
-    const directory = await realpath(await mkdtemp(path.join(os.tmpdir(), "orbit-runtime-remap-")));
+    const directory = await realpath(await mkdtemp(path.join(os.tmpdir(), "mira-runtime-remap-")));
     roots.push(directory);
     const client = {
       session: {

@@ -2,7 +2,7 @@ import { readdir, readFile, lstat } from "node:fs/promises";
 import path from "node:path";
 import JSON5 from "json5";
 
-export const SASS_IGNORES = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", ".openshell-recovery", ".orbit-recovery", "coverage", "out", "vendor"]);
+export const SASS_IGNORES = new Set(["node_modules", ".git", "dist", "build", ".next", ".cache", ".openshell-recovery", ".mira-recovery", ".orbit-recovery", "coverage", "out", "vendor"]);
 export const isSassSource = (file: string): boolean => /\.(scss|sass)$/i.test(file);
 export const isSassPartial = (file: string): boolean => path.basename(file).startsWith("_");
 export function insideRoot(root: string, file: string): boolean {
@@ -47,25 +47,34 @@ export async function sassEntrypoints(root: string): Promise<string[]> {
   return files.sort();
 }
 
+async function explicitConfig(root: string): Promise<{ name: string; config: Record<string, any> | null }> {
+  const currentName = "mira-sass.json";
+  const current = await jsonFile(root, currentName);
+  if (current) return { name: currentName, config: current };
+  const previousName = "orbit-sass.json";
+  const previous = await jsonFile(root, previousName);
+  return { name: previous ? previousName : currentName, config: previous };
+}
+
 export async function sassPlan(root: string): Promise<SassPlan> {
   const sources = await sassEntrypoints(root);
   const base: SassCompileOptions = { style: "expanded", loadPaths: [root, path.join(root, "node_modules")], sourceMap: false };
-  const explicit = await jsonFile(root, "orbit-sass.json");
+  const { name: explicitName, config: explicit } = await explicitConfig(root);
   const mappings: Array<[string, string]> = [];
   let convention = "CSS beside source";
   if (explicit) {
-    if (explicit.style !== undefined && !["expanded", "compressed"].includes(explicit.style)) throw new Error("orbit-sass.json: style must be expanded or compressed");
+    if (explicit.style !== undefined && !["expanded", "compressed"].includes(explicit.style)) throw new Error(`${explicitName}: style must be expanded or compressed`);
     base.style = explicit.style ?? "expanded";
     base.sourceMap = explicit.sourceMap === true;
     if (explicit.loadPaths !== undefined) {
-      if (!Array.isArray(explicit.loadPaths)) throw new Error("orbit-sass.json: loadPaths must be an array");
+      if (!Array.isArray(explicit.loadPaths)) throw new Error(`${explicitName}: loadPaths must be an array`);
       base.loadPaths.push(...explicit.loadPaths.map((value: unknown) => localPath(root, value)));
     }
     if (explicit.entries !== undefined) {
-      if (!explicit.entries || typeof explicit.entries !== "object" || Array.isArray(explicit.entries)) throw new Error("orbit-sass.json: entries must map inputs to CSS outputs");
+      if (!explicit.entries || typeof explicit.entries !== "object" || Array.isArray(explicit.entries)) throw new Error(`${explicitName}: entries must map inputs to CSS outputs`);
       for (const [input, output] of Object.entries(explicit.entries)) mappings.push([localPath(root, input), localPath(root, output)]);
     }
-    convention = "orbit-sass.json";
+    convention = explicitName;
   }
   const settings = explicit ? null : await jsonFile(root, ".vscode/settings.json");
   const formats = settings?.["liveSassCompile.settings.formats"];

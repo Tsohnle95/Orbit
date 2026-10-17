@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AppUpdater } from "electron-updater";
-import { createDisabledOrbitAppUpdater, createOrbitAppUpdater } from "./app-updater";
+import { createDisabledMiraAppUpdater, createMiraAppUpdater } from "./app-updater";
 
 class FakeReleaseUpdater extends EventEmitter {
   autoDownload = true;
@@ -24,7 +24,7 @@ class FakeReleaseUpdater extends EventEmitter {
   downloadUpdate = vi.fn(async () => {
     if (this.downloadError) throw this.downloadError;
     this.emit("download-progress", { percent: 43.8, total: 100, transferred: 43, delta: 43, bytesPerSecond: 1024 });
-    return ["/tmp/orbit-release.zip"];
+    return ["/tmp/mira-release.zip"];
   });
   quitAndInstall = vi.fn();
 }
@@ -42,15 +42,15 @@ function makeUpdater(overrides: {
   if (overrides.downloadError) client.downloadError = overrides.downloadError;
   return {
     client,
-    updater: createOrbitAppUpdater(client as unknown as AppUpdater, "0.1.0")
+    updater: createMiraAppUpdater(client as unknown as AppUpdater, "0.1.0")
   };
 }
 
 afterEach(() => vi.clearAllMocks());
 
-describe("Orbit app updater", () => {
+describe("Mira app updater", () => {
   it("disables GitHub updater work in local development and test builds", async () => {
-    const updater = createDisabledOrbitAppUpdater("0.1.0");
+    const updater = createDisabledMiraAppUpdater("0.1.0");
 
     await expect(updater.check()).resolves.toEqual({
       state: "disabled",
@@ -92,7 +92,7 @@ describe("Orbit app updater", () => {
     await expect(updater.check()).resolves.toMatchObject({
       state: "blocked",
       currentVersion: "0.1.0",
-      message: "Could not check GitHub Releases for Orbit updates: GitHub is unreachable"
+      message: "Could not check GitHub Releases for Mira updates: GitHub is unreachable"
     });
     expect(client.downloadUpdate).not.toHaveBeenCalled();
     expect(client.quitAndInstall).not.toHaveBeenCalled();
@@ -107,7 +107,7 @@ describe("Orbit app updater", () => {
       updated: true,
       currentVersion: "0.1.0",
       latestVersion: "0.2.0",
-      message: "Orbit 0.2.0 is downloaded and ready to install."
+      message: "Mira 0.2.0 is downloaded and ready to install."
     });
 
     expect(client.checkForUpdates).toHaveBeenCalledOnce();
@@ -115,10 +115,10 @@ describe("Orbit app updater", () => {
     expect(client.listenerCount("download-progress")).toBe(0);
     expect(client.quitAndInstall).not.toHaveBeenCalled();
     expect(progress).toEqual([
-      "Checking GitHub Releases for an Orbit update…",
-      "Downloading Orbit 0.2.0 from GitHub Releases…",
-      "Downloading Orbit 0.2.0 from GitHub Releases (43%)…",
-      "Release downloaded. Installing it and restarting Orbit…"
+      "Checking GitHub Releases for a Mira update…",
+      "Downloading Mira 0.2.0 from GitHub Releases…",
+      "Downloading Mira 0.2.0 from GitHub Releases (43%)…",
+      "Release downloaded. Installing it and restarting Mira…"
     ]);
 
     updater.installAndRestart();
@@ -133,19 +133,19 @@ describe("Orbit app updater", () => {
       updated: false,
       currentVersion: "0.1.0",
       latestVersion: "0.1.0",
-      message: "Orbit 0.1.0 is the latest published release."
+      message: "Mira 0.1.0 is the latest published release."
     });
     expect(client.downloadUpdate).not.toHaveBeenCalled();
     expect(client.quitAndInstall).not.toHaveBeenCalled();
   });
 
-  it("keeps Orbit open and reports a release download failure", async () => {
+  it("keeps Mira open and reports a release download failure", async () => {
     const { client, updater } = makeUpdater({ downloadError: new Error("download interrupted") });
 
     await expect(updater.update()).resolves.toMatchObject({
       ok: false,
       updated: false,
-      message: "Orbit could not download the release update. download interrupted"
+      message: "Mira could not download the release update. download interrupted"
     });
     expect(client.listenerCount("download-progress")).toBe(0);
     expect(client.quitAndInstall).not.toHaveBeenCalled();

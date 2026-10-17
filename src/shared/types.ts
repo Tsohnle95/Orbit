@@ -28,13 +28,13 @@ export interface OpenCodeSyncResult {
   cliUpdated: boolean;
 }
 
-export type OrbitAppUpdateStatus =
+export type MiraAppUpdateStatus =
   | { state: "available"; currentVersion: string; latestVersion: string }
   | { state: "current"; currentVersion: string; latestVersion: string }
   | { state: "disabled"; currentVersion: string; message: string }
   | { state: "blocked"; message: string; currentVersion?: string };
 
-export interface OrbitAppUpdateResult {
+export interface MiraAppUpdateResult {
   ok: boolean;
   updated: boolean;
   currentVersion?: string;
@@ -97,7 +97,7 @@ export interface MobileServerSetupStatus {
 }
 
 export interface MobilePairingQr {
-  /** Versioned, one-time Orbit connection URI; never a reusable password/token. */
+  /** Versioned, one-time Mira connection URI; never a reusable password/token. */
   connectionUrl: string;
   expiresAt: string;
   serverLabel: string;

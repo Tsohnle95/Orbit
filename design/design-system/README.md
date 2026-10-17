@@ -1,8 +1,8 @@
-# Orbit Design System
+# Mira Design System
 
 > **Source version:** `src/renderer/src/styles/_foundation.scss:1` + `main.scss:1` (5328 lines across 16 partials)
-> **Themes:** `original` (dark) + `paper` (light, default) — toggled via `src/renderer/src/theme.tsx:10` (`document.documentElement.dataset.theme`, persisted as `orbit.theme` in localStorage)
-> **Brand mark:** `src/renderer/src/components/OrbitMark.tsx:3`
+> **Themes:** `original` (dark) + `paper` (light, default) — toggled via `src/renderer/src/theme.tsx:10` (`document.documentElement.dataset.theme`, persisted as `mira.theme` in localStorage)
+> **Brand mark:** `src/renderer/src/components/MiraMark.tsx:3`
 
 This folder is the authoritative field guide to the current calm design language. Every token, component, and rule below is traced to its source file and line. The system is informally called **Paper / Calm** — warm parchment surfaces, muted sage, no harsh contrasts, generous radius, soft shadows, system type.
 
@@ -57,7 +57,7 @@ This folder is the authoritative field guide to the current calm design language
 | [05 — Chat & Transcript](05-chat-and-transcript.md) | Timeline, turns, user/assistant messages, markdown, code, thinking, tools, todos, dock prompt. |
 | [06 — Composer & Input](06-composer-and-input.md) | Composer anatomy, inputs, attachments, chips, menus, pills, send states. |
 | [07 — Overlays & Feedback](07-overlays-and-feedback.md) | Modals, popups (usage, plugin menu, composer menus), toasts, recovery notice, error boundary, statusbar. |
-| [08 — Icons & Brand](08-icons-and-brand.md) | `OrbitMark`, codicons, `icons.tsx` custom icons, `FileIcons.tsx`, resource `icon.svg`. |
+| [08 — Icons & Brand](08-icons-and-brand.md) | `MiraMark`, codicons, `icons.tsx` custom icons, `FileIcons.tsx`, resource `icon.svg`. |
 | [09 — Motion, Elevation & Interaction](09-motion-elevation-interaction.md) | Transitions, hover/focus/active patterns, elevation model, drag & resize handles, focus rings. |
 
 A companion [change log / audit appendix](10-audit.md) notes where the live product diverges from older redesign explorations (`redesign/rebrand.md`, `resources/icon.svg`).
@@ -88,7 +88,7 @@ The full tables live in `01-tokens.md`.
 
 ```tsx
 // src/renderer/src/theme.tsx:10
-export type ThemeId = "original" | "paper";          // stored as "orbit.theme"
+export type ThemeId = "original" | "paper";          // stored as "mira.theme"
 document.documentElement.dataset.theme = theme;       // :root[data-theme="paper"] overrides :root
 ```
 

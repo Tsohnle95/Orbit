@@ -5,7 +5,7 @@
 > invariants. If this walkthrough conflicts with a canonical owner, fix the
 > walkthrough rather than creating a second truth.
 
-This is the moving-picture map of Orbit. It intentionally stays concise: its
+This is the moving-picture map of Mira. It intentionally stays concise: its
 job is to route an unfamiliar agent to the correct connection points and source,
 not to restate every invariant already owned by `architecture.md`, `main.md`,
 `renderer.md`, `preload.md`, and `events.md`.
@@ -122,7 +122,7 @@ Read next: `events.md` for event semantics; `renderer.md` for chat/stream state.
 
 ## File changes and Diff
 
-Observed workspace changes enter through tool pre-snapshots, Git fallback, Orbit
+Observed workspace changes enter through tool pre-snapshots, Git fallback, Mira
 mutations, and filesystem watching. Main owns the baseline and emits an
 identity-bound `file-update`; renderer merges that into the Changes list and any
 open tab.
@@ -176,7 +176,7 @@ Read next: `events.md`, `renderer.md`, `main.md`.
 Runtime selection enters at workspace/session opening and becomes part of the
 session's runtime identity. Runtime-owned operations (prompt/history/model/etc.)
 route through the retained adapter; core workspace editing/watching remains in
-Orbit.
+Mira.
 
 Model/agent catalogs and selections are session-scoped. UI controls depend on
 the active runtime capability manifest; unsupported capabilities should be
@@ -224,7 +224,7 @@ while main remains alive, active backend contexts can be restored into the new
 renderer.
 
 Main also owns the DevTools integration and CSS-source navigation. Source links
-are resolved only against Orbit's canonical application root and then opened
+are resolved only against Mira's canonical application root and then opened
 through the normal external-file workflow; they never search whichever user
 workspace happens to be active.
 

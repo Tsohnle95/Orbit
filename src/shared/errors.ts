@@ -27,7 +27,7 @@ function normalizeCode(value: string): string {
 
 export function normalizeFailure(
   error: unknown,
-  fallbackCode = "ORBIT_UNKNOWN_FAILURE",
+  fallbackCode = "MIRA_UNKNOWN_FAILURE",
   fallbackMessage = "Operation failed"
 ): FailureInfo {
   const source = record(error);
@@ -54,7 +54,7 @@ export function normalizeFailure(
 
 export function formatFailure(
   error: unknown,
-  fallbackCode = "ORBIT_UNKNOWN_FAILURE",
+  fallbackCode = "MIRA_UNKNOWN_FAILURE",
   fallbackMessage = "Operation failed"
 ): string {
   const failure = normalizeFailure(error, fallbackCode, fallbackMessage);

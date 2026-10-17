@@ -8,7 +8,7 @@ import { wireEditorNavigationKeys } from "../editor-navigation";
 import { wireHtmlAttributeQuotes } from "../editor-language-input";
 import { clearW3cMarkers } from "../w3c-validation";
 import { useStore } from "../store";
-import { OrbitMark } from "./OrbitMark";
+import { MiraMark } from "./MiraMark";
 import { useTheme } from "../theme";
 import { registerEditor, unregisterEditor } from "../reveal";
 import { droppedFilePaths, isExternalFileDrag } from "../drop";
@@ -64,11 +64,11 @@ const EDITOR_OPTIONS = {
 };
 
 function overflowWidgetsHost(): HTMLElement {
-  let host = document.getElementById("orbit-monaco-overflow");
+  let host = document.getElementById("mira-monaco-overflow");
   if (!host) {
     host = document.createElement("div");
-    host.id = "orbit-monaco-overflow";
-    host.className = "monaco-editor orbit-monaco-overflow-host";
+    host.id = "mira-monaco-overflow";
+    host.className = "monaco-editor mira-monaco-overflow-host";
     document.body.append(host);
   }
   return host;
@@ -313,8 +313,8 @@ function EditorWithSave({
         <div className="conflict-banner">
           <span>
             {tab.conflict.deleted
-              ? "This file was deleted outside Orbit. Your edits are safe and saving is paused."
-              : "This file changed outside Orbit. Your edits are safe and saving is paused."}
+              ? "This file was deleted outside Mira. Your edits are safe and saving is paused."
+              : "This file changed outside Mira. Your edits are safe and saving is paused."}
           </span>
           <div className="conflict-actions">
             <button onClick={() => reloadTab(tab.path)}>Reload disk version</button>
@@ -329,7 +329,7 @@ function EditorWithSave({
       )}
 
       <Editor
-        theme={`orbit-${theme}`}
+        theme={`mira-${theme}`}
         language={language}
         path={tab.path}
         defaultValue={tab.content}
@@ -414,7 +414,7 @@ function EditorGroupActions({
         type="button"
         className="editor-group-action"
         aria-label={splitLabel}
-        title={groupCount >= EDITOR_GROUP_IDS.length ? "Orbit supports up to four editor groups" : splitLabel}
+        title={groupCount >= EDITOR_GROUP_IDS.length ? "Mira supports up to four editor groups" : splitLabel}
         disabled={groupCount >= EDITOR_GROUP_IDS.length}
         onClick={() => onSplit(id)}
       ><SplitRightIcon /></button>
@@ -436,7 +436,7 @@ function EmptyEditorGroup({ actions }: { actions: ReactNode }): ReactNode {
         <div className="editor-breadcrumb-actions">{actions}</div>
       </div>
       <div className="editor-group-empty">
-        <OrbitMark size={30} />
+        <MiraMark size={30} />
         <strong>Empty editor group</strong>
         <span>Open a file from the Explorer to show it here.</span>
       </div>
@@ -547,7 +547,7 @@ function EditorGroup({
 function EditorEmptyState({ session }: { session: SessionInfo | null | undefined }): ReactNode {
   return (
     <div className="editor-empty">
-      <div className="editor-empty-icon"><OrbitMark size={40} /></div>
+      <div className="editor-empty-icon"><MiraMark size={40} /></div>
       {session ? <p>Select a file from the explorer to view or edit it.</p> : <>
         <p>No workspace open.</p>
         <p className="editor-empty-sub">Open a workspace from the explorer to get started.</p>

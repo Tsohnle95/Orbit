@@ -20,15 +20,15 @@ automatically.
 | `appVersion` | `string` — version reported by the running Electron app, passed to the trusted preload as a startup argument |
 | `onMessage(cb)` | `(msg: BackendMessage) => void`, returns unsubscribe |
 | `selectFolder(generation, runtimeID?)` | `Promise<SessionInfo \| null>` — native dialog; opens through OpenCode, and the caller decides mounting (replace panels, add a model panel, or swap an existing panel's directory) |
-| `selectDirectory()` | `Promise<string \| null>` — native directory dialog that returns a canonical folder path without creating a runtime session; used only to save an Orbit workspace bookmark |
+| `selectDirectory()` | `Promise<string \| null>` — native directory dialog that returns a canonical folder path without creating a runtime session; used only to save a Mira workspace bookmark |
 | `selectFile(generation, runtimeID?)` | `Promise<OpenFileWorkspaceResult \| null>` — native single-file dialog; opens the file's parent folder through OpenCode and reports which file to open |
 | `openFileWorkspace(file, generation, runtimeID?)` | `Promise<OpenFileWorkspaceResult>` — opens an absolute path as a single-file workspace backed by OpenCode (parent folder session + the file to open), no dialog |
 | `openSession(dir, generation, runtimeID?)` | `Promise<SessionInfo>` — creates an OpenCode session; non-OpenCode runtime ids are rejected |
 | `runtimes()` | `Promise<RuntimeManifest[]>` — OpenCode's version and normalized capability manifest; DeepSeek is currently dormant |
-| `syncOpenCode()` | `Promise<OpenCodeSyncResult>` — syncs the attached shared service to the exact version resolved from Orbit's PATH |
+| `syncOpenCode()` | `Promise<OpenCodeSyncResult>` — syncs the attached shared service to the exact version resolved from Mira's PATH |
 | `updateOpenCode()` | `Promise<OpenCodeSyncResult>` — runs OpenCode's own updater, then syncs the attached service |
-| `checkAppUpdate()` | `Promise<OrbitAppUpdateStatus>` — release builds check the latest published Orbit release; local builds return disabled without network access |
-| `updateApp()` | `Promise<OrbitAppUpdateResult>` — downloads the published app update in release builds and starts the popup; main enforces the unsaved-file guard; local builds return disabled |
+| `checkAppUpdate()` | `Promise<MiraAppUpdateStatus>` — release builds check the latest published Mira release; local builds return disabled without network access |
+| `updateApp()` | `Promise<MiraAppUpdateResult>` — downloads the published app update in release builds and starts the popup; main enforces the unsaved-file guard; local builds return disabled |
 | `reportUnsavedEditorFiles(paths)` | `Promise<void>` — reports display paths for currently dirty editor tabs so main can block close/update and identify the affected files |
 | `sassWatchState(workspace)` | `Promise<SassWatchState>` — restores and reads an opened workspace's Sass watcher state and logs |
 | `setSassWatch(workspace, enabled)` | `Promise<SassWatchState>` — starts or stops local disk compilation for the captured workspace identity |
@@ -36,7 +36,7 @@ automatically.
 | `sessions()` | `Promise<SessionSummary[]>` — recent session list |
 | `activeSessions()` | `Promise<SessionInfo[]>` — currently open backend sessions in activation order; the last element is the most recently activated (used for startup restore) |
 | `closeSession(workspace)` | `Promise<void>` — tears down the backend context when a panel closes; the opencode session remains reopenable |
-| `openSessionById(sessionID, generation, runtimeID?, allowWorkspaceRelink?)` | `Promise<ReopenedSession>` (session + replayed transcript + cumulative `usage`); idempotent for already-open OpenCode sessions. Set `allowWorkspaceRelink` only for an explicit user action to let Orbit ask for the replacement folder when the previous one is missing; startup hydration leaves it false. Legacy DeepSeek sessions cannot be reopened by the dormant adapter |
+| `openSessionById(sessionID, generation, runtimeID?, allowWorkspaceRelink?)` | `Promise<ReopenedSession>` (session + replayed transcript + cumulative `usage`); idempotent for already-open OpenCode sessions. Set `allowWorkspaceRelink` only for an explicit user action to let Mira ask for the replacement folder when the previous one is missing; startup hydration leaves it false. Legacy DeepSeek sessions cannot be reopened by the dormant adapter |
 | `deleteSession(sessionID)` | `Promise<void>` — permanently destroys the OpenCode session server-side (`client.session.remove`) and closes its panel |
 | `sessionTranscript(sessionID)` | `Promise<{transcript, todos}>` — authoritative message replay used to materialize incomplete stream snapshots |
 | `sessionUsage(sessionID)` | `Promise<SessionUsage \| null>` — normalized `cost`/`tokens` for the addressed session; used after `session.compaction` to refresh the context-window display |
@@ -107,7 +107,7 @@ automatically.
 | `connectProviderKey(workspace, integrationID, key, label, answers)` | `Promise<void>` — sends a write-only key and provider-specific form answers; the key is never returned to the renderer |
 | `removeProviderCredential(workspace, credentialID)` | `Promise<void>` — removes one stored credential by opaque id |
 | `mobileSetupStatus()` | `Promise<MobileServerSetupStatus>` — reports the local companion server state without returning its UI password |
-| `mobilePairingQr()` | `Promise<MobilePairingQr>` — returns only a short-lived one-time Orbit pairing URI for rendering in Desktop Mobile Setup |
+| `mobilePairingQr()` | `Promise<MobilePairingQr>` — returns only a short-lived one-time Mira pairing URI for rendering in Desktop Mobile Setup |
 | `health()` | `Promise<boolean>` |
 | `windowView(view)` | `Promise<void>` — asks the main process to switch between the `"landing"` and `"session"` window profiles |
 | `setAppearance(appearance)` | `Promise<void>` — reports the selected color profile's native appearance (`"dark"` or `"light"`) so window vibrancy and native chrome follow its color scheme |

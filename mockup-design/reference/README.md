@@ -1,6 +1,6 @@
 # Frozen website references
 
-These files are a byte-for-byte snapshot of the selected Orbit mockup pages at
+These files are a byte-for-byte snapshot of the selected Mira mockup pages at
 commit `cdea7ab`. Keep this folder unchanged; build new visual explorations in
 the parent folder.
 

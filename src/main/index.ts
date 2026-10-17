@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { OpenShellBackend, SessionWorkspaceNotFoundError } from "./opencode";
 import { attachBrowserGuards } from "./browser-guards";
-import { createDisabledOrbitAppUpdater, createOrbitAppUpdater } from "./app-updater";
+import { createDisabledMiraAppUpdater, createMiraAppUpdater } from "./app-updater";
 import { briefFilePath } from "./app-updater-window";
 import { AppUpdateController } from "./app-update-controller";
 import { TerminalManager } from "./terminal";
@@ -61,15 +61,29 @@ import { registerFilesIpc } from "./ipc/files";
 import { registerAgentIpc } from "./ipc/agent";
 import { registerTerminalIpc } from "./ipc/terminal";
 import { applyExecPath } from "./exec-path";
+import { RuntimeSessionIndex, previousRuntimeSessionPath } from "./runtimes/runtime-session-index";
 
-declare const __ORBIT_RELEASE_BUILD__: boolean;
+declare const __MIRA_RELEASE_BUILD__: boolean;
+
+app.setName("Mira");
+const customUserDataPath = app.commandLine.getSwitchValue("user-data-dir");
+const legacyUserDataPath = ["Orbit", "orbit"]
+  .map((name) => path.join(app.getPath("appData"), name))
+  .find((candidate) => existsSync(candidate));
+if (!customUserDataPath && legacyUserDataPath) {
+  app.setPath("userData", legacyUserDataPath);
+}
 
 // Must run before the first runtime probe or PTY spawn: GUI-launched builds do
 // not inherit the user's shell PATH (see exec-path.ts).
 applyExecPath();
 
 const savedWorkspaceStore = new SavedWorkspaceStore(path.join(app.getPath("userData"), "saved-workspaces.json"));
-const backend = new OpenShellBackend(undefined, undefined, undefined, savedWorkspaceStore);
+const runtimeSessionIndex = new RuntimeSessionIndex(
+  path.join(app.getPath("userData"), "runtime-sessions.json"),
+  customUserDataPath ? undefined : previousRuntimeSessionPath()
+);
+const backend = new OpenShellBackend(undefined, undefined, runtimeSessionIndex, savedWorkspaceStore);
 const terminals = new TerminalManager();
 const mobileServer = new MobileServer({ cwd: app.getAppPath() });
 let mobileServerStartup: Promise<void> = Promise.resolve();
@@ -88,12 +102,12 @@ const sassWatchers = new SassWatchManager(new SassPreferences(path.join(app.getP
 
 const pendingOpenPaths = new PendingOpenPaths();
 
-const isOrbitReleaseBuild = app.isPackaged && __ORBIT_RELEASE_BUILD__;
-const orbitAppUpdater = isOrbitReleaseBuild
-  ? createOrbitAppUpdater(autoUpdater, app.getVersion())
-  : createDisabledOrbitAppUpdater(app.getVersion());
-if (isOrbitReleaseBuild) {
-  autoUpdater.on("error", (error) => console.error("[orbit] release updater error:", error.message));
+const isMiraReleaseBuild = app.isPackaged && __MIRA_RELEASE_BUILD__;
+const miraAppUpdater = isMiraReleaseBuild
+  ? createMiraAppUpdater(autoUpdater, app.getVersion())
+  : createDisabledMiraAppUpdater(app.getVersion());
+if (isMiraReleaseBuild) {
+  autoUpdater.on("error", (error) => console.error("[mira] release updater error:", error.message));
 }
 
 function flushOpenPaths(): void {
@@ -110,7 +124,7 @@ const appIconPath = (() => {
   const fromOut = path.join(__dirname, "../../resources/icon.png");
   return existsSync(fromApp) ? fromApp : fromOut;
 })();
-const appUpdate = new AppUpdateController(orbitAppUpdater, isOrbitReleaseBuild, appIconPath, () => win, () => unsavedEditorFileNames);
+const appUpdate = new AppUpdateController(miraAppUpdater, isMiraReleaseBuild, appIconPath, () => win, () => unsavedEditorFileNames);
 const devTools = new DevToolsController((file, title) => resolveRunningAppSource(__dirname, file, title));
 const appStyles = new AppStylesController(path.resolve(__dirname, "../.."),
   data => { if (win && !win.isDestroyed()) win.webContents.send("shell:message", { kind: "ui-command", command: "reload-app-styles", data }); },
@@ -189,7 +203,7 @@ function createWindow(show = true): BrowserWindow {
     height: LANDING_HEIGHT,
     minWidth: 200,
     minHeight: 200,
-    title: "Orbit",
+    title: "Mira",
     icon: appIconPath,
     transparent: true,
     backgroundColor: "#00000000",
@@ -210,8 +224,8 @@ function createWindow(show = true): BrowserWindow {
       backgroundThrottling: false,
       additionalArguments: [
         ...(app.isPackaged ? ["--openshell-packaged"] : []),
-        `--orbit-app-version=${app.getVersion()}`,
-        ...(isOrbitReleaseBuild ? ["--orbit-release-build"] : [])
+        `--mira-app-version=${app.getVersion()}`,
+        ...(isMiraReleaseBuild ? ["--mira-release-build"] : [])
       ]
     }
   });
@@ -230,7 +244,7 @@ function createWindow(show = true): BrowserWindow {
     const choice = dialog.showMessageBoxSync(newWin, {
       type: "warning",
       title: "Unsaved Changes",
-      message: `Do you want to save your changes before ${action} Orbit?`,
+      message: `Do you want to save your changes before ${action} Mira?`,
       detail: `${files.map((file) => `• ${file}`).join("\n")}${unsavedEditorFileNames.length > files.length ? `\n• and ${unsavedEditorFileNames.length - files.length} more` : ""}`,
       buttons: ["Save All", "Don't Save", "Cancel"],
       defaultId: 0,
@@ -262,7 +276,7 @@ function createWindow(show = true): BrowserWindow {
         appQuitRequested = false;
         void dialog.showMessageBox(newWin, {
           type: "error", title: "Files could not be saved",
-          message: "Orbit stayed open because some files could not be saved.",
+          message: "Mira stayed open because some files could not be saved.",
           detail: "Your edits are still in the editor. Check the save error before trying again.", buttons: ["OK"]
         });
         return;
@@ -277,10 +291,10 @@ function createWindow(show = true): BrowserWindow {
   wc.on("console-message", (event) => {
     console.log(`[renderer:${event.level}] ${event.message} (${event.sourceId}:${event.lineNumber})`);
   });
-  newWin.on("unresponsive", () => console.warn("[orbit] renderer is unresponsive"));
+  newWin.on("unresponsive", () => console.warn("[mira] renderer is unresponsive"));
   let lastRendererReload = 0;
   wc.on("render-process-gone", (_event, details) => {
-    console.error("[orbit] renderer process gone:", details.reason, details.exitCode);
+    console.error("[mira] renderer process gone:", details.reason, details.exitCode);
     if (newWin.isDestroyed() || Date.now() - lastRendererReload < 10_000) return;
     lastRendererReload = Date.now();
     wc.reload();
@@ -320,7 +334,7 @@ function createWindow(show = true): BrowserWindow {
   newWin.webContents.on("before-input-event", (event, input) => {
     const mod = process.platform === "darwin" ? input.meta : input.control;
     if (input.type === "keyDown" && mod && !input.alt && !input.shift && input.key.toLowerCase() === "w") {
-      // Preserve the shortcut so it cannot close Orbit; editor wrapping is always on.
+      // Preserve the shortcut so it cannot close Mira; editor wrapping is always on.
       event.preventDefault();
       return;
     }
@@ -383,7 +397,7 @@ async function runTrustBoundarySmoke(): Promise<void> {
 
 async function installApplication(): Promise<{ ok: boolean; message: string }> {
   if (process.platform !== "darwin") return { ok: false, message: "Install app is macOS-only" };
-  if (app.isPackaged) return { ok: false, message: "Orbit is already running as a packaged app" };
+  if (app.isPackaged) return { ok: false, message: "Mira is already running as a packaged app" };
   const script = path.join(app.getAppPath(), "scripts", "install-app.mjs");
   const run = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
     const child = spawn(process.execPath, [script], {
@@ -448,14 +462,14 @@ async function chooseWorkspaceDirectory(missingDirectory: string): Promise<strin
   const result = await (win && !win.isDestroyed()
     ? dialog.showOpenDialog(win, {
         title: "Locate workspace folder",
-        message: `Orbit could not find this workspace. Choose its current folder to continue.\n\n${missingDirectory}`,
+        message: `Mira could not find this workspace. Choose its current folder to continue.\n\n${missingDirectory}`,
         buttonLabel: "Use this folder",
         defaultPath,
         properties: ["openDirectory"]
       })
     : dialog.showOpenDialog({
         title: "Locate workspace folder",
-        message: `Orbit could not find this workspace. Choose its current folder to continue.\n\n${missingDirectory}`,
+        message: `Mira could not find this workspace. Choose its current folder to continue.\n\n${missingDirectory}`,
         buttonLabel: "Use this folder",
         defaultPath,
         properties: ["openDirectory"]
@@ -506,7 +520,7 @@ function registerIpc(): void {
   handleTrusted("shell:select-directory", async (e) => {
     const parent = BrowserWindow.fromWebContents(e.sender);
     const result = await dialog.showOpenDialog(parent ?? win!, {
-      title: "Save a workspace in Orbit",
+      title: "Save a workspace in Mira",
       properties: ["openDirectory"]
     });
     if (result.canceled || result.filePaths.length === 0) return null;
@@ -599,7 +613,7 @@ function registerIpc(): void {
 
   handleTrusted("shell:update-opencode", async () => backend.updateOpenCode());
 
-  handleTrusted("shell:app-update-check", async () => orbitAppUpdater.check());
+  handleTrusted("shell:app-update-check", async () => miraAppUpdater.check());
 
   handleTrusted("shell:unsaved-editor-files", async (_e, paths: unknown) => {
     unsavedEditorFileNames = Array.isArray(paths)
@@ -723,7 +737,7 @@ function registerIpc(): void {
 }
 
 if (!app.requestSingleInstanceLock()) {
-  console.log("[orbit] another instance is already running — exiting; the running instance will open or focus its window");
+  console.log("[mira] another instance is already running — exiting; the running instance will open or focus its window");
   app.quit();
 } else {
   process.on("uncaughtException", (err) => {
@@ -759,7 +773,6 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(() => {
-    app.setName("Orbit");
     // Window vibrancy and native chrome follow the native appearance, so pin
     // the dark default before any window exists; the renderer reports the
     // persisted theme through `shell:set-appearance` right after boot.
@@ -834,7 +847,7 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.on("window-all-closed", () => {
-  // macOS would normally keep the app alive with no window; Orbit must not
+  // macOS would normally keep the app alive with no window; Mira must not
   // linger invisibly in the background (macOS then files it as a background
   // task), so closing the last window quits on every platform. The backend,
   // terminals, Vite servers and mobile server are stopped in `before-quit`.

@@ -98,7 +98,7 @@ export function useSessionInbox(host: InboxHost, transcript: InboxTranscript, se
       setInboxBySession((current) => ({ ...current, [sessionID]: entries }));
     } catch (error) {
       if (panelForSession(sessionID)) {
-        toast(formatFailure(error, "ORBIT_INBOX_REFRESH_FAILED", "Queued prompts could not be refreshed"), "error");
+        toast(formatFailure(error, "MIRA_INBOX_REFRESH_FAILED", "Queued prompts could not be refreshed"), "error");
       }
     }
   }, [panelForSession, toast]);
@@ -112,7 +112,7 @@ export function useSessionInbox(host: InboxHost, transcript: InboxTranscript, se
         await window.openshell.inboxSteer(workspace, messageID);
       } catch (err) {
         void refreshInbox(panel.id);
-        const failure = formatFailure(err, "ORBIT_INBOX_STEER_FAILED", "Queued prompt could not be sent");
+        const failure = formatFailure(err, "MIRA_INBOX_STEER_FAILED", "Queued prompt could not be sent");
         appendUniqueTranscriptItem(panel.id, { kind: "status", id: `queued-steer-error-${messageID}`, text: failure, tone: "error" });
         if (panelFor(workspace)) toast(failure, "error");
       }
@@ -139,7 +139,7 @@ export function useSessionInbox(host: InboxHost, transcript: InboxTranscript, se
     try {
       await window.openshell.prompt(workspace, promptText, popped.attachments ?? []);
     } catch (err) {
-      const failure = formatFailure(err, "ORBIT_PROMPT_FAILED", "Queued prompt failed");
+      const failure = formatFailure(err, "MIRA_PROMPT_FAILED", "Queued prompt failed");
       const queueTarget = createMessageQueueTarget(panel.id, panel.workspace.id);
       if (queueTarget) commitQueue(addToQueue(messageQueueRef.current, queueTarget, {
         content: promptText,

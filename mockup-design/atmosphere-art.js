@@ -1,6 +1,6 @@
 // The four independently moving planes remain in the same SVG coordinate space.
 // This keeps the landscape aligned when the hero, index card, and interlude crop it differently.
-function orbitAtmosphere(config, instance = "hero") {
+function miraAtmosphere(config, instance = "hero") {
   const id = `${config.id}-${instance}`;
   let seed = [...id].reduce((value, char) => (value * 33 + char.charCodeAt(0)) >>> 0, 5381);
   const random = () => ((seed = (1664525 * seed + 1013904223) >>> 0) / 4294967296);

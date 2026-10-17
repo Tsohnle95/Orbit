@@ -371,8 +371,8 @@ export function SessionsPane(): ReactNode {
           <button
             className="sessions-workspace-add"
             type="button"
-            title="Save a workspace in Orbit"
-            aria-label="Save a workspace in Orbit"
+            title="Save a workspace in Mira"
+            aria-label="Save a workspace in Mira"
             onClick={(event) => {
               event.stopPropagation();
               void saveWorkspace();
@@ -489,7 +489,7 @@ export function SessionsPane(): ReactNode {
               setWorkspaceMenu(null);
             }}
           >
-            Remove from Orbit
+            Remove from Mira
           </button>
         </div>
       )}

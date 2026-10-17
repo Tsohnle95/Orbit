@@ -4,8 +4,9 @@ import { createHash, randomUUID } from "node:crypto";
 import type { RecoveryRecord } from "@shared/types";
 import { confinedPath, relativePath } from "./workspace-security";
 
-export const RECOVERY_DIR = ".orbit-recovery";
+export const RECOVERY_DIR = ".mira-recovery";
 export const LEGACY_RECOVERY_DIR = ".openshell-recovery";
+export const PREVIOUS_RECOVERY_DIR = ".orbit-recovery";
 
 const RECOVERY_SETTLED_RETENTION_MS = 24 * 60 * 60 * 1000;
 const RECOVERY_INTERRUPTED_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -34,9 +35,15 @@ export class RecoveryStorage {
     const parentStat = await fsp.stat(parent).catch(() => null);
     if (rootStat && parentStat && parentStat.dev === rootStat.dev) {
       const key = createHash("sha256").update(root).digest("hex").slice(0, 16);
-      return path.join(parent, `.orbit-recovery-${key}`);
+      return path.join(parent, `.mira-recovery-${key}`);
     }
     return path.join(root, RECOVERY_DIR);
+  }
+
+  private async recoveryLocations(root: string): Promise<string[]> {
+    const current = await this.recoveryRoot(root);
+    const previous = current.replace(/mira-recovery/g, "orbit-recovery");
+    return [...new Set([current, previous, path.join(root, PREVIOUS_RECOVERY_DIR), path.join(root, LEGACY_RECOVERY_DIR)])];
   }
 
   private async checkedRecoveryRoot(root: string, create = false, location?: string): Promise<string> {
@@ -137,7 +144,7 @@ export class RecoveryStorage {
     directory: string;
     transaction: RecoveryTransaction;
   }>> {
-    const locations = [await this.recoveryRoot(root), path.join(root, LEGACY_RECOVERY_DIR)];
+    const locations = await this.recoveryLocations(root);
     const transactions = await Promise.all(locations.map(async (location) => {
       const recoveryRoot = await this.checkedRecoveryRoot(root, false, location);
       const entries = await fsp.readdir(recoveryRoot, { withFileTypes: true }).catch(() => []);
@@ -227,20 +234,23 @@ export class RecoveryStorage {
   }
 
   async migrateLegacyRecovery(root: string, current: () => boolean): Promise<void> {
-    const legacyRoot = path.join(root, LEGACY_RECOVERY_DIR);
-    const legacy = (await this.readRecoveryTransactions(root))
-      .filter(({ directory }) => path.dirname(directory) === legacyRoot);
-    if (legacy.length === 0) return;
     const destination = await this.checkedRecoveryRoot(root, true);
-    for (const { directory, transaction } of legacy) {
-      if (!current()) return;
-      const target = await confinedPath(destination, transaction.id);
-      if (await fsp.lstat(target).catch(() => null)) continue;
-      await fsp.rename(directory, target).catch(() => {});
+    const locations = await this.recoveryLocations(root);
+    const currentRoot = await this.recoveryRoot(root);
+    const legacyLocations = locations.filter((location) => location !== currentRoot);
+    const transactions = await this.readRecoveryTransactions(root);
+    for (const legacyRoot of legacyLocations) {
+      const legacy = transactions.filter(({ directory }) => path.dirname(directory) === legacyRoot);
+      for (const { directory, transaction } of legacy) {
+        if (!current()) return;
+        const target = await confinedPath(destination, transaction.id);
+        if (await fsp.lstat(target).catch(() => null)) continue;
+        await fsp.rename(directory, target).catch(() => {});
+      }
+      await this.syncDirectory(legacyRoot).catch(() => {});
+      await fsp.rmdir(legacyRoot).catch(() => {});
     }
     await this.syncDirectory(destination).catch(() => {});
-    await this.syncDirectory(legacyRoot).catch(() => {});
-    await fsp.rmdir(legacyRoot).catch(() => {});
   }
 
   async purgeExpiredRecovery(root: string, current: () => boolean): Promise<void> {
@@ -255,7 +265,7 @@ export class RecoveryStorage {
       if (now - transaction.createdAt < retention) continue;
       await fsp.rm(directory, { recursive: true, force: true }).catch(() => {});
     }
-    for (const location of [await this.recoveryRoot(root), path.join(root, LEGACY_RECOVERY_DIR)]) {
+    for (const location of await this.recoveryLocations(root)) {
       await this.syncDirectory(location).catch(() => {});
     }
   }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useCtxMenu, useStore } from "../store";
-import { OrbitMark } from "./OrbitMark";
+import { MiraMark } from "./MiraMark";
 import { FileIcon } from "./FileIcons";
 import { droppedFilePaths, isExternalFileDrag } from "../drop";
 import { compactExplorerSelection, movableExplorerPaths } from "../explorer-selection";
@@ -20,7 +20,7 @@ import {
 export type SidebarTab = "sessions" | "files";
 
 const EMPTY_HIDDEN_PATHS = new Set<string>();
-const EXPLORER_PATHS_MIME = "application/x-orbit-explorer-paths";
+const EXPLORER_PATHS_MIME = "application/x-mira-explorer-paths";
 
 function explorerPathsFromDrag(e: React.DragEvent): string[] {
   try {
@@ -50,7 +50,7 @@ function NoWorkspaceEmpty(): ReactNode {
   const { selectFolder } = useStore();
   return (
     <div className="tree-empty-workspace">
-      <OrbitMark size={36} />
+      <MiraMark size={36} />
       <p className="tree-empty-workspace-text">No workspace open</p>
       <button
         type="button"

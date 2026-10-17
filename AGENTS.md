@@ -1,6 +1,6 @@
-# Orbit — Agent Guide
+# Mira — Agent Guide
 
-Orbit is a VS Code-style desktop GUI for coding agents: an Electron + React +
+Mira is a VS Code-style desktop GUI for coding agents: an Electron + React +
 Monaco app that opens a repository, routes prompts through capability-aware
 runtime adapters, streams agent progress, and shows live per-file diffs of
 workspace changes observed during the active session. OpenCode V2 is the only
@@ -19,7 +19,7 @@ npm run typecheck      # tsc --noEmit for node + web configs
 npm test               # Vitest unit/component tests in jsdom
 npm run build          # compile then launch the production app
 npm run build:compile  # compile only -> out/
-npm run pack           # build + package installable Orbit.app (macOS)
+npm run pack           # build + package installable Mira.app (macOS)
 npm run check          # canonical verification gate
 npm start              # run the existing production build
 ```

@@ -100,7 +100,7 @@
     "src/renderer/src/components/OpenCodeTimeline.tsx",
     "src/renderer/src/components/OpenCodeTodoDock.tsx",
     "src/renderer/src/components/OpenCodeTool.tsx",
-    "src/renderer/src/components/OrbitMark.tsx",
+    "src/renderer/src/components/MiraMark.tsx",
     "src/renderer/src/components/ProviderSettings.tsx",
     "src/renderer/src/components/QueuedMessageChips.tsx",
     "src/renderer/src/components/RecoveryNotice.tsx",
@@ -654,7 +654,7 @@
       "codeLines": 128,
       "cyclomatic": 20,
       "nesting": 5,
-      "origin": "src/main/index.ts:updateOrbitApp#1",
+      "origin": "src/main/index.ts:updateMiraApp#1",
       "reason": "Moved release progress-window workflow byte-equivalent after receiver qualification; preserves timer, close gate, dynamic main/unsaved reads and failure cleanup. Original128-line ceiling; cannot grow."
     },
     "src/renderer/src/use-workspace-editor.ts:useWorkspaceEditor#1": {

@@ -1,6 +1,6 @@
-# Orbit — App Logo Study (Iteration 4)
+# Mira — App Logo Study (Iteration 4)
 
-300 **living** marks for **Orbit** in the calm **paper** theme. The brief
+300 **living** marks for **Mira** in the calm **paper** theme. The brief
 for this iteration: stop repeating flat geometric SVG, add life. The
 shortlisted DNA (hex cells, honeycomb pyramids, crossed planes, vitals
 pulses, omega tiles) is kept — but rendered with organic blobs, tapered
@@ -37,7 +37,7 @@ script holding both the 300-entry dataset and the gallery runtime).
 | 3 | **Ribbon Flow** | Tapered bezier ribbons weaving, looping, pouring. |
 | 4 | **Living Cells** | Organic blobs — mitosis, buds, vacuoles, colonies. |
 | 5 | **Pulse Rivers** | Round Vitals grown into rivers of signal. |
-| 6 | **Orbit Systems** | Moons, shepherds, slingshots, terminators. |
+| 6 | **Mira Systems** | Moons, shepherds, slingshots, terminators. |
 | 7 | **Brush Omega** | The omega hand-brushed — blobs, drips, whisk tails. |
 | 8 | **Agent Creatures** | Charming blob characters with eyes and moods. |
 | 9 | **Vine Networks** | Nodes linked by stems, tendrils, and leaves. |

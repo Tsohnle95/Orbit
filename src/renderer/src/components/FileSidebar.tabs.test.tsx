@@ -168,7 +168,7 @@ describe("FileSidebar tabs and sessions pane", () => {
 
   it("keeps the redundant file-sidebar folder control removed with multiple panels open", async () => {
     const first = { ...session, id: "first", directory: "/luno", workspace: { id: "first-workspace", generation: 1 } };
-    const second = { ...session, id: "second", directory: "/orbit", workspace: { id: "second-workspace", generation: 2 } };
+    const second = { ...session, id: "second", directory: "/mira", workspace: { id: "second-workspace", generation: 2 } };
     store.panels = [first, second];
     store.session = second;
     store.activeSessionID = second.id;

@@ -12,8 +12,8 @@ vi.mock("electron", () => ({ app: { getPath: () => tmpdir() }, shell: {} }));
 vi.mock("@opencode/client", () => ({ OpenCode: { make: vi.fn() } }));
 vi.mock("@opencode/client/service", () => ({ Service: {} }));
 
-it.skipIf(process.env.ORBIT_OBSERVATION_BENCHMARK !== "1")("measures identical native observation workloads", async () => {
-  const root = await fsp.realpath(await fsp.mkdtemp(path.join(tmpdir(), "orbit-observation-bench-")));
+it.skipIf(process.env.MIRA_OBSERVATION_BENCHMARK !== "1")("measures identical native observation workloads", async () => {
+  const root = await fsp.realpath(await fsp.mkdtemp(path.join(tmpdir(), "mira-observation-bench-")));
   const backend = new OpenShellBackend();
   const workspace = { id: "11111111-1111-4111-8111-111111111111", generation: 1 };
   const context: SessionContext["watchContext"] = {
@@ -49,8 +49,8 @@ it.skipIf(process.env.ORBIT_OBSERVATION_BENCHMARK !== "1")("measures identical n
     }
     expect(emissions).toBe(20);
     expect(context.snapshots.size).toBe(20);
-    console.log(`ORBIT_OBSERVATION_RESULT ${JSON.stringify({
-      variant: process.env.ORBIT_BENCHMARK_VARIANT ?? "current",
+    console.log(`MIRA_OBSERVATION_RESULT ${JSON.stringify({
+      variant: process.env.MIRA_BENCHMARK_VARIANT ?? "current",
       implementation: state.observation ? "WorkspaceObservation" : "OpenShellBackend",
       workload: { files: files.length, eventsPerSample: 200, warmups: 1, samples: 8 },
       fixture: { bytesPerFile: Buffer.byteLength(content), sha256: createHash("sha256").update(content).digest("hex") },

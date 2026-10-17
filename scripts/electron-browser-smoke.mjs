@@ -11,7 +11,7 @@ if (process.platform !== "darwin") {
   process.exit(0);
 }
 
-const temporary = await mkdtemp(path.join(os.tmpdir(), "orbit-browser-smoke-"));
+const temporary = await mkdtemp(path.join(os.tmpdir(), "mira-browser-smoke-"));
 const entry = path.join(temporary, "main.cjs");
 const maliciousPreload = path.join(temporary, "malicious.cjs");
 await writeFile(maliciousPreload, 'require("electron").contextBridge.exposeInMainWorld("openshell", { compromised: true });');
@@ -87,7 +87,7 @@ let watchdog = setTimeout(() => { console.error("Browser smoke overall timeout")
     attached.on("did-create-window", () => { throw new Error("Guest created a popup"); });
   });
   await host.loadURL(origin + "/host");
-  await host.webContents.executeJavaScript('document.body.innerHTML = ""; const invalid = document.createElement("webview"); invalid.src = "file:///tmp/orbit-browser-forbidden.html"; document.body.append(invalid);');
+  await host.webContents.executeJavaScript('document.body.innerHTML = ""; const invalid = document.createElement("webview"); invalid.src = "file:///tmp/mira-browser-forbidden.html"; document.body.append(invalid);');
   await wait(() => forbiddenAttach, "blocked initial file URL");
   assert.equal(guest, undefined);
   await host.webContents.executeJavaScript('document.body.innerHTML = ""; const view = document.createElement("webview"); view.setAttribute("partition", "persist:attacker"); view.setAttribute("preload", ' + JSON.stringify(maliciousPreload) + '); view.setAttribute("nodeintegration", ""); view.setAttribute("nodeintegrationinsubframes", ""); view.setAttribute("allowpopups", ""); view.setAttribute("webpreferences", "nodeIntegrationInWorker=yes,contextIsolation=no,sandbox=no,webSecurity=no,allowRunningInsecureContent=yes,webviewTag=yes"); view.src = ' + JSON.stringify(origin + "/guest") + '; document.body.append(view);');

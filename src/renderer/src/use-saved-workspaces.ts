@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProjectInfo } from "@shared/types";
 
-const SAVED_WORKSPACES_KEY = "orbit.savedWorkspaces";
+const SAVED_WORKSPACES_KEY = "mira.savedWorkspaces";
+const LEGACY_SAVED_WORKSPACES_KEY = "orbit.savedWorkspaces";
 
 function workspaceName(directory: string): string {
   return directory.split(/[\\/]/).filter(Boolean).pop() ?? directory;
@@ -9,7 +10,7 @@ function workspaceName(directory: string): string {
 
 function readSavedWorkspaceData(): { workspaces: ProjectInfo[]; present: boolean } {
   try {
-    const raw = window.localStorage.getItem(SAVED_WORKSPACES_KEY);
+    const raw = window.localStorage.getItem(SAVED_WORKSPACES_KEY) ?? window.localStorage.getItem(LEGACY_SAVED_WORKSPACES_KEY);
     if (raw === null) return { workspaces: [], present: false };
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return { workspaces: [], present: false };
@@ -87,7 +88,7 @@ export function useSavedWorkspaces(connected: boolean, notify: (text: string, to
     const revision = workspaceRevisionRef.current;
     const storedWorkspaces = window.openshell.savedWorkspaces?.();
     if (!storedWorkspaces) {
-      notify("Restart Orbit to load saved workspaces from app storage.", "error");
+      notify("Restart Mira to load saved workspaces from app storage.", "error");
       return () => { cancelled = true; };
     }
     void storedWorkspaces
@@ -110,7 +111,7 @@ export function useSavedWorkspaces(connected: boolean, notify: (text: string, to
         if (cancelled) return;
         const detail = error instanceof Error ? error.message : String(error);
         if (/No handler registered for ['"]?shell:saved-workspaces['"]?/i.test(detail)) {
-          notify("Orbit's app process is older than this window. Quit and reopen Orbit completely; Cmd+R only refreshes the window. Saved workspaces are still stored.", "error");
+          notify("Mira's app process is older than this window. Quit and reopen Mira completely; Cmd+R only refreshes the window. Saved workspaces are still stored.", "error");
           return;
         }
         notify(`Saved workspaces could not be loaded; their stored data was left untouched. ${detail}`, "error");

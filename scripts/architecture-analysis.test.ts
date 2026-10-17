@@ -167,7 +167,7 @@ export { type A, value } from "./b";`, ts.ScriptTarget.Latest, true);
   });
 
   it("measures the current production tree and resolves imports into untracked excluded implementation", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "orbit-architecture-test-"));
+    const root = await mkdtemp(path.join(tmpdir(), "mira-architecture-test-"));
     try {
       await mkdir(path.join(root, "src/main"), { recursive: true });
       await mkdir(path.join(root, "scripts"));

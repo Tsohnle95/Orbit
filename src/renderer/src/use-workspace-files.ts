@@ -14,7 +14,7 @@ interface WorkspaceFilesHost {
 }
 
 const HIDDEN_DIRS = new Set([
-  ".git", "node_modules", ".next", ".venv", "__pycache__", ".cache", ".turbo", ".svn", ".hg", ".nx", ".openshell-recovery", ".orbit-recovery"
+  ".git", "node_modules", ".next", ".venv", "__pycache__", ".cache", ".turbo", ".svn", ".hg", ".nx", ".openshell-recovery", ".mira-recovery", ".orbit-recovery"
 ]);
 
 function orderedEntries(entries: TreeEntry[]): TreeEntry[] {

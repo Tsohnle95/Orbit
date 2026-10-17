@@ -2,7 +2,7 @@
 
 > **Document role:** canonical owner for cross-process architecture and durable architectural invariants. Module docs may summarize or route here but should not redefine these invariants.
 
-Orbit is an Electron app built with **electron-vite** (three build
+Mira is an Electron app built with **electron-vite** (three build
 targets: `main`, `preload`, `renderer`). It is a GUI for the OpenCode
 agent: you open a repository, send a prompt, and watch the agent stream
 its work while live diffs of changed files appear in the editor.
@@ -57,7 +57,7 @@ its work while live diffs of changed files appear in the editor.
 ## Runtime adapter boundary
 
 The normalized adapter contract starts in
-`src/main/runtimes/runtime-adapter.ts`. `RuntimeManifest` uses Orbit
+`src/main/runtimes/runtime-adapter.ts`. `RuntimeManifest` uses Mira
 protocol version 1, a stable runtime id, runtime version, availability, and an
 explicit capability bitmap. OpenCode V2 is the only runtime registered or
 selectable by the app. The Settings page reports its capability manifest but
@@ -97,7 +97,7 @@ Renderer→main is synchronous invoke over `shell:*` channels; the full
 table is in `docs/main.md`.
 
 Prompt failures are normalized through `src/shared/errors.ts`. Submission
-rejections preserve native codes when available or receive a stable `ORBIT_*`
+rejections preserve native codes when available or receive a stable `MIRA_*`
 code; runtime, stream, malformed-event, and event-handler failures are forwarded
 as structured session/global events so the renderer can retain both the message
 and code.
@@ -151,7 +151,7 @@ custom schemes, malformed targets, and insecure HTTP targets are rejected.
 7. `window-all-closed` quits on every platform. `before-quit` aborts the active
    SDK SSE subscription, stops every context watcher, and tears down terminals.
    A renderer reload does not close the backend process; the renderer merges
-   its versioned `orbit.sessionLayout` restart hints with `activeSessions()`,
+   its versioned `mira.sessionLayout` restart hints with `activeSessions()`,
    reopens panels silently through the existing session-by-id path, and focuses
    the saved panel when it remains valid and the user has not acted. A full
    process restart has no live backend contexts, so the renderer uses the same
@@ -180,7 +180,7 @@ metadata changes, then refreshes the effective Git baseline:
   content, represents an existing file.
 - **unknown fallback**: first-observed non-git changes have an explicit unknown
   baseline because the watcher only has post-change bytes.
-- **Orbit mutations**: saves and creates establish a known baseline only
+- **Mira mutations**: saves and creates establish a known baseline only
   when none exists. Delete and rename preserve the established baseline.
 - **Live watching**: one recursive `fs.watch(directory, { recursive: true })`
   per open context captures the activation root/session/identity and
@@ -214,7 +214,7 @@ prevent observation or recovery of pre-change content.
 
 The server now owns undo checkpoints: `session.revert.stage` stages a rollback
 at a message (optionally including file changes), `commit` applies it, and
-`clear` discards the stage; Orbit surfaces this as a hover "Revert from here"
+`clear` discards the stage; Mira surfaces this as a hover "Revert from here"
 action on completed assistant turns plus a staged-undo dock card. The v2
 contract also exposes `vcs.get`, `vcs.status`, and `vcs.diff` per location.
 These are candidates to replace the local `git show HEAD:` baseline heuristic
@@ -234,10 +234,10 @@ updates preserve local edits and pause saving until explicit reload, overwrite,
 or keep-editing then save-merged resolution. Lifecycle changes invalidate
 timers and stale completions; external updates advance a conflict generation so
 an already-started completion cannot clear a newer conflict. Writes create a
-transaction under `.git/orbit-recovery` for ordinary Git repositories, or a
+transaction under `.git/mira-recovery` for ordinary Git repositories, or a
 workspace-specific hidden sibling directory on the same filesystem. A non-Git
-workspace at a filesystem mount point uses workspace-local `.orbit-recovery`
-to preserve same-filesystem atomic operations. Orbit then copies proposed bytes
+workspace at a filesystem mount point uses workspace-local `.mira-recovery`
+to preserve same-filesystem atomic operations. Mira then copies proposed bytes
 into a second durable artifact, move the current target inode into the
 transaction, validate the held bytes, and install the temporary inode with a
 no-replace hard link. The original pathname is briefly unavailable between the
@@ -261,7 +261,7 @@ endpoint — the server sees the change via its own file watching. The
 explorer also supports create/rename/delete through `shell:fs-create-*`,
 `shell:fs-rename`, `shell:fs-delete` (delete moves to Trash). File rename uses
 same-filesystem no-replace hard-link/unlink semantics. Directory rename follows
-the directory-move policy: Orbit rejects an already occupied destination and
+the directory-move policy: Mira rejects an already occupied destination and
 then performs one atomic `fs.rename`, avoiding recursive copy/delete while
 accepting the portable API's destination race limitation. File rename moves the
 source into a durable hold before linking the no-replace destination. Rollback
@@ -283,7 +283,7 @@ an addition carrying the captured baseline at the target; files inside a
 moved directory surface through the fs watcher, and the renderer
 re-lists both the old parent and the destination. The source/target
 confinement rules are identical to the other mutations, and
-legacy `.openshell-recovery` and `.orbit-recovery` are rejected as both source and destination.
+legacy `.openshell-recovery` and `.mira-recovery` are rejected as both source and destination.
 
 Every workspace filesystem call carries the expected workspace UUID and main
 rejects stale generations. Paths are bounded strict relative paths and no
@@ -313,7 +313,7 @@ from `client.model.default()` per panel and updated live by
 Switching calls `client.session.switchModel({ sessionID, model })`, including
 `model.variant` when a model exposes response-strength variants.
 Provider settings are adapter-backed rather than OpenCode-specific UI. The
-current adapter filters `integration.list` down to Orbit's supported provider
+current adapter filters `integration.list` down to Mira's supported provider
 set (`opencode-go`, `command-code`/`commandcode`, `openai`) and maps the
 survivors into secret-free shared types; write-only keys go through
 `integration.connect.key`, and credential changes refresh the workspace model
@@ -322,7 +322,7 @@ Agents come from `client.agent.list()`; the selection is updated live by
 `session.agent.selected` and switched via
 `client.session.switchAgent({ sessionID, agent })`. Both choices are
 session-scoped only: a new session starts on opencode's configured defaults
-(`default_agent` / default model), and Orbit never writes preferences of
+(`default_agent` / default model), and Mira never writes preferences of
 its own. The composer
 also opens a native multi-file picker; the main process converts selected
 files to `file://` URIs for the prompt API. Its approval toggle is local UI

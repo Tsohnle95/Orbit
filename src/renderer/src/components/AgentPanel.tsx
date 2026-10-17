@@ -18,13 +18,18 @@ type PanelMode = "gui" | "tui";
 
 
 function panelModeStorageKey(sessionID: string): string {
+  return `mira.agent-panel-mode.${sessionID}`;
+}
+
+function legacyPanelModeStorageKey(sessionID: string): string {
   return `orbit.agent-panel-mode.${sessionID}`;
 }
 
 function readPanelMode(sessionID: string | undefined): PanelMode {
   if (!sessionID) return "gui";
   try {
-    return window.localStorage.getItem(panelModeStorageKey(sessionID)) === "tui" ? "tui" : "gui";
+    const mode = window.localStorage.getItem(panelModeStorageKey(sessionID)) ?? window.localStorage.getItem(legacyPanelModeStorageKey(sessionID));
+    return mode === "tui" ? "tui" : "gui";
   } catch {
     return "gui";
   }
@@ -329,7 +334,7 @@ function AgentPanelOptionsMenu({
             onClick={() => onChoosePanelMode("gui")}
           >
             <span>GUI</span>
-            <small>Orbit agent panel</small>
+            <small>Mira agent panel</small>
           </button>
           <button
             role="menuitemradio"

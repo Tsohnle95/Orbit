@@ -24,8 +24,8 @@ npm test         # Vitest unit/component tests in jsdom
 npm run test:platform # native launcher, PTY, trust and filesystem lifecycle checks
 npm run build    # compile then launch the production app (one command)
 npm run build:compile # compile only -> out/ (no launch)
-npm run pack     # build + package a real macOS app -> release/mac/Orbit.app
-npm run install-app # build + package + install Orbit.app into /Applications (macOS)
+npm run pack     # build + package a real macOS app -> release/mac/Mira.app
+npm run install-app # build + package + install Mira.app into /Applications (macOS)
 npm run check    # typecheck, tests, docs check, and compile-only build
 npm run smoke:opencode # isolated V2 service + session/event smoke (temp HOME)
 npm start        # launch the existing production build with electron-vite preview
@@ -41,7 +41,7 @@ syntax. After a manual build you can also launch with `npx electron .`.
 `scripts/install-app.mjs`, which builds `out/`, packages the app with
 electron-builder (`electron-builder.yml`, `asar: false`, unpacked
 `Contents/Resources/app` layout), and ad-hoc re-signs the bundle;
-`install-app` then replaces `/Applications/Orbit.app` (removing any
+`install-app` then replaces `/Applications/Mira.app` (removing any
 existing copy first, `cp -R` preserving the signature). The installed bundle is
 a live launcher: `scripts/install-app.mjs` strips the packaged `out/`,
 `node_modules/`, and `resources/` payload and replaces it with
@@ -53,30 +53,28 @@ known good build after confirming). On macOS,
 `npm run install-app` drives the same script over the
 `shell:install-app` channel. These local development/test builds have GitHub
 release updates disabled. They keep loading this checkout's `out/`, which lets
-you build and test local edits without the Orbit updater fetching or changing
+you build and test local edits without the Mira updater fetching or changing
 your source checkout. `release/` and `build/` are gitignored builder outputs.
 
 Downloaded releases use a separate update path. Push a tag whose name matches
 the app version (`v<package.json version>`, for example `v0.1.0`) to run
 `.github/workflows/release.yml`. CI builds both macOS architectures, creates a
-DMG and ZIP, signs and notarizes them, then publishes them to the Orbit GitHub
-release with electron-builder's update metadata. Settings → About in a release
+DMG and ZIP, signs and notarizes them, then publishes them to the existing
+GitHub release repository with electron-builder's update metadata. Settings → About in a release
 build checks the latest published stable release; a commit pushed to `main`
 does not become an app update until it is included in a published release.
-**Update Orbit** downloads that release, shows progress in a standalone window,
-then closes Orbit while electron-updater installs the bundle and restarts the
-app. This release updater never fetches, merges, builds, or writes to an Orbit
+**Update Mira** downloads that release, shows progress in a standalone window,
+then closes Mira while electron-updater installs the bundle and restarts the
+app. This release updater never fetches, merges, builds, or writes to a Mira
 source checkout or a user's workspace. It remains blocked while editor files
 are unsaved. On failure the current app remains available and the popup offers
-a Return to Orbit action.
+a Return to Mira action.
 
-The release workflow requires these repository Actions secrets: a base64
-encoded Developer ID Application `.p12` certificate
-(`ORBIT_MAC_CERTIFICATE_P12`), the exact Developer ID certificate name from
-Keychain (`ORBIT_MAC_CERTIFICATE_NAME`), its password
-(`ORBIT_MAC_CERTIFICATE_PASSWORD`), a base64 encoded App Store Connect API key
-(`ORBIT_APPLE_API_KEY_P8_BASE64`), the key ID (`ORBIT_APPLE_API_KEY_ID`), and
-issuer ID (`ORBIT_APPLE_API_ISSUER`). Without them CI stops before publishing.
+The release workflow accepts the Mira-prefixed repository Actions secrets for
+a base64 encoded Developer ID Application `.p12` certificate, certificate
+name and password, App Store Connect API key, key ID, and issuer ID. It falls
+back to the existing ORBIT-prefixed values so current release credentials keep
+working until they are renamed.
 The app's release update feed is configured in `electron-builder.release.yml`;
 local packaging remains in `electron-builder.yml`.
 `npm run test:platform` also opts into the real workspace-observation
@@ -142,7 +140,7 @@ It never blesses new violations. An unavoidable exception needs a specific
 rationale and independent diff review; keep it confined to the existing
 responsibility and remove it when that debt is resolved.
 
-`npm run architecture:measure -- --output /private/tmp/orbit-architecture.json`
+`npm run architecture:measure -- --output /private/tmp/mira-architecture.json`
 records the exact source inventory, token-bearing noncomment production lines,
 function hotspots, dependencies, clone groups, unused-export candidates, and
 logical bytes under `out/`. Build first to refresh the build-size measurement.
@@ -167,7 +165,7 @@ child process tree on timeout, and the macOS trust check has a 30-second
 watchdog. The GitHub Actions platform-smoke job also has a 10-minute job
 timeout so a native-process failure cannot leave CI running indefinitely.
 
-Orbit is macOS-first with supported development/runtime launch on macOS,
+Mira is macOS-first with supported development/runtime launch on macOS,
 Linux, and Windows. CI runs launcher configuration tests and a real
 Electron-hosted `node-pty` input/output/exit smoke on all three. This verifies
 the native module and shell path but is not a GUI smoke test; window behavior
@@ -191,20 +189,20 @@ cadence — and before adopting any new protocol feature — to compare the pin
 against the published `latest` tag; it exits nonzero when a newer stable
 release exists.
 
-The runtime binary is not pinned. Orbit probes `opencode --version` on its
+The runtime binary is not pinned. Mira probes `opencode --version` on its
 augmented PATH, accepts a registered V2 service during ordinary connection,
 and otherwise asks `Service.ensure` to start a compatible daemon. In Settings
 → Model, **Sync installed version** asks `Service.ensure` for the exact version
-of the CLI Orbit resolves, then reconnects the event stream. This replaces a
-stale same-major daemon when needed, including one upgraded outside Orbit.
+of the CLI Mira resolves, then reconnects the event stream. This replaces a
+stale same-major daemon when needed, including one upgraded outside Mira.
 
 **Update to latest** runs OpenCode's own `opencode upgrade` command, then
 performs the same exact-version sync. OpenCode chooses the install method it
-recognizes, so Orbit does not duplicate its installer logic. Installations
+recognizes, so Mira does not duplicate its installer logic. Installations
 managed by a package manager that OpenCode does not recognize must be updated
 through that package manager. Both Settings actions restart the shared
-OpenCode service when its version differs; active agent runs in Orbit or other
-OpenCode clients may be interrupted, so Orbit confirms before proceeding.
+OpenCode service when its version differs; active agent runs in Mira or other
+OpenCode clients may be interrupted, so Mira confirms before proceeding.
 
 When the event contract moves to a new V2 major line, raise
 `MIN_SUPPORTED_SERVER_MAJOR` in `src/main/opencode.ts` so discovery and
@@ -229,13 +227,13 @@ commit:
 
 ## Usage data plugin (prototype)
 
-`plugin/orbit-usage.ts` is an OpenCode plugin that runs inside the OpenCode
+`plugin/mira-usage.ts` is an OpenCode plugin that runs inside the OpenCode
 server process. It resolves active provider connections through the supported
-integration API (`ctx.integration.connection.active/resolve`) instead of Orbit
+integration API (`ctx.integration.connection.active/resolve`) instead of Mira
 reading OpenCode's credential storage directly, fetches ChatGPT and Claude
 usage, and writes `{generatedAt, results}` — `results` matching
-`ProviderUsageResult[]` — to `${XDG_DATA_HOME ?? ~/.local/share}/opencode/orbit-usage.json`
-(override with `ORBIT_USAGE_SNAPSHOT`). `fetchProviderUsage()` in
+`ProviderUsageResult[]` — to `${XDG_DATA_HOME ?? ~/.local/share}/opencode/mira-usage.json`
+(override with `MIRA_USAGE_SNAPSHOT`). `fetchProviderUsage()` in
 `src/main/provider-usage.ts` always requests live data for credentials it can
 resolve and uses a snapshot younger than 15 minutes only as a per-provider
 fallback. This keeps explicit refreshes live without losing plugin-supplied
@@ -286,61 +284,59 @@ median or jsdom timing as a cross-machine browser benchmark.
 
 1. `which opencode` — binary present.
 2. `npm run build` (compiles then launches) with output captured to a log:
-   `nohup npm run build > /tmp/orbit-smoke.log 2>&1 &`
-3. After ~10s check the log for `[orbit]` console.error lines
-   (`[orbit] event loop error:` means the SSE subscription failed).
+   `nohup npm run build > /tmp/mira-smoke.log 2>&1 &`
+3. After ~10s check the log for `[mira]` console.error lines
+   (`[mira] event loop error:` means the SSE subscription failed).
 4. Verify the backend spawned its service:
    `pgrep -fl "opencode serve"` and
    `lsof -nP -iTCP -sTCP:LISTEN | grep -i opencode`.
 5. On macOS, verify the Electron window is alive:
-   `pgrep -f "Orbit.app/Contents/MacOS/Electron"`. Use Task Manager or the
+   `pgrep -f "Mira.app/Contents/MacOS/Electron"`. Use Task Manager or the
    platform process monitor on Windows/Linux.
 6. GUI pass (needs a human): open a folder, send a prompt, confirm the
    agent dot turns green / titlebar says "working", text streams, tool
    cards appear with names and elapsed timers, and a file the agent
    touches shows a diff.
 
-## Connecting Orbit Mobile
+## Connecting the mobile companion
 
-1. Keep Orbit Desktop open and open **Settings → Mobile Setup**.
+1. Keep Mira Desktop open and open **Settings → Mobile Setup**.
 2. Follow the three on-screen steps, then choose **Generate pairing QR**.
-3. Open Orbit Mobile on the phone, choose **Scan QR code**, and scan the code shown by Orbit Desktop.
+3. Open the mobile companion app on the phone, choose **Scan QR code**, and scan the code shown by Mira Desktop.
 
 The pairing QR is single-use and expires after 10 minutes. It advertises a
-reachable direct address and an Orbit Relay route when available; use a network
+reachable direct address and a relay route when available; use a network
 path that both devices can reach (for example, the same Wi-Fi or a shared
-Tailnet). Keep Orbit Desktop open while using the phone. When Orbit can attach
+Tailnet). Keep Mira Desktop open while using the phone. When Mira can attach
 the companion server to its shared OpenCode service, desktop and phone use the
 same sessions.
 
 If Mobile Setup reports that the companion checkout is missing, a source
-checkout looks first for `../orbit-mobile` beside the Orbit checkout, then for
-`~/code-repositories/orbit-mobile` and `~/coding-projects/orbit-mobile`. A
-packaged installation checks those two home locations in that order. Set
-`ORBIT_MOBILE_HOME` to the `orbit-mobile` repository containing
-`scripts/desktop-service.mjs` and restart Orbit to use another location. If it
-reports missing Node.js, install Node 22 or set `ORBIT_NODE_BIN` before
-launching Orbit. An offline status includes the companion folder and server log
-path; restart Orbit after correcting the setup. If QR generation says the
-companion server is out of date, quit and reopen Orbit Desktop so it restarts
-the service from the current companion checkout.
+checkout looks for the OpenChamber repository beside Mira or in the usual
+`code-repositories` and `coding-projects` folders. Set `MIRA_MOBILE_HOME` to
+the checkout containing `packages/web` and restart Mira to use another
+location. An offline status includes the companion folder and server log path;
+restart Mira after correcting the setup. If QR generation reports a pairing
+error, quit and reopen Mira Desktop so it restarts the service from the current
+companion checkout.
 
-The manual URL/password flow remains available in Orbit Mobile for standalone
+The manual URL/password flow remains available in the mobile companion for standalone
 server deployments. Do not use `localhost` as the phone's server address.
 
 ## Manual recovery
 
-Orbit stores new save and file-rename transactions under
-`<workspace>/.git/orbit-recovery/` for ordinary Git repositories, or a hidden
-`.orbit-recovery-<path-hash>` directory beside the workspace on the same
+Mira stores new save and file-rename transactions under
+`<workspace>/.git/mira-recovery/` for ordinary Git repositories, or a hidden
+`.mira-recovery-<path-hash>` directory beside the workspace on the same
 filesystem. A non-Git workspace at a filesystem mount point uses
-`<workspace>/.orbit-recovery/` for same-filesystem durability. Legacy
-`<workspace>/.openshell-recovery/` transactions remain
-readable and are hidden from Explorer and file watching. Orbit moves each
+`<workspace>/.mira-recovery/` for same-filesystem durability. Legacy
+`<workspace>/.openshell-recovery/` and `<workspace>/.orbit-recovery/`
+transactions remain readable and are hidden from Explorer and file watching.
+Mira moves each
 validated legacy transaction to new storage on workspace activation when its
 destination is free. Each transaction contains `manifest.json` plus one or more
 artifacts named `original`, `temporary`, `proposed`, or `source`. On
-activation, Orbit purges settled transactions (`complete`, `failed`,
+activation, Mira purges settled transactions (`complete`, `failed`,
 acknowledged) older than 24 hours and interrupted ones (`source-held`,
 `held-validated`) older than 7 days. Younger artifacts are never removed
 automatically, and Acknowledge never deletes bytes on its own.
@@ -357,7 +353,7 @@ automatically, and Acknowledge never deletes bytes on its own.
 
 Activation may hard-link a held original back to a missing canonical path only
 for an interrupted `source-held` or `held-validated` transaction, where
-Orbit is known to have removed that path. It never overwrites an existing
+Mira is known to have removed that path. It never overwrites an existing
 path and never replays completed, failed, or acknowledged history. If both
 canonical and recovery versions exist, manual comparison is required. Normal
 successful transactions retain their bytes but are acknowledged automatically,
@@ -423,7 +419,7 @@ call "should work" but something fails — probe the raw API.
 - Endpoints: `GET /api/model`, `GET /api/model/default`,
   `GET /api/fs/list?<query>`.
 - **Query-serialization gotcha**: nested params use bracket notation —
-  `location[directory]=/Users/ty/orbit`. A JSON-stringified
+  `location[directory]=/Users/ty/mira`. A JSON-stringified
   `location={"directory":...}` is rejected with
   `Expected object | undefined, got string at ["location"]`. The
   `@opencode/client` does this correctly itself
@@ -462,7 +458,7 @@ shim next to `opencode`; older clients that still spawn
 ## Local Sass worker verification
 
 After `npm run build:compile`, run `npm run test:sass-worker` to exercise the
-emitted worker with Orbit's production Sass dependency in a disposable root.
+emitted worker with Mira's production Sass dependency in a disposable root.
 It never installs workspace packages or contacts the network. For footer and
 workspace-lifecycle verification use isolated mirror apps as described in
 [the Sass service guide](sass.md).

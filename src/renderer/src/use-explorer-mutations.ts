@@ -61,7 +61,7 @@ export function useExplorerMutations(host: ExplorerHost, files: ExplorerFiles, e
   const removeFromWorkspace = useCallback((path: string) => {
     const target = readFocusedSession()?.workspace;
     if (!target) return;
-    const confirmed = window.confirm(`Remove "${path}" from Orbit? The item will remain on disk.`);
+    const confirmed = window.confirm(`Remove "${path}" from Mira? The item will remain on disk.`);
     if (!confirmed) return;
     closeCtxMenu();
     hidePath(target, path);

@@ -17,8 +17,10 @@ interface ThemeContextValue {
   setUiShell: (shell: UiShell) => void;
 }
 
-const THEME_KEY = "orbit.theme";
-const SHELL_KEY = "orbit.ui";
+const THEME_KEY = "mira.theme";
+const SHELL_KEY = "mira.ui";
+const LEGACY_THEME_KEY = "orbit.theme";
+const LEGACY_SHELL_KEY = "orbit.ui";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 // File-tree glyph colours for dark schemes; the light set is the foundation
@@ -40,11 +42,11 @@ const DARK_TREE_ICONS: Record<string, string> = {
 };
 
 function storedShell(): UiShell {
-  return window.localStorage.getItem(SHELL_KEY) === "classic" ? "classic" : "codex";
+  return (window.localStorage.getItem(SHELL_KEY) ?? window.localStorage.getItem(LEGACY_SHELL_KEY)) === "classic" ? "classic" : "codex";
 }
 
 function storedTheme(): ThemeId {
-  const value = window.localStorage.getItem(THEME_KEY);
+  const value = window.localStorage.getItem(THEME_KEY) ?? window.localStorage.getItem(LEGACY_THEME_KEY);
   const stored = APPEARANCES.find((appearance) => appearance.id === value);
   if (stored) return stored.id;
   if (value === "paper") return "papertrail";

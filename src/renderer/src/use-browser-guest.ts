@@ -34,7 +34,7 @@ export function isBrowserTarget(value: string): boolean {
 function createBrowserView(url: string, onState: (patch: BrowserPatch) => void, onURL: (url: string) => void): WebviewElement {
   const view = document.createElement("webview") as WebviewElement;
   view.className = "browser-frame";
-  view.setAttribute("partition", "orbit-browser");
+  view.setAttribute("partition", "mira-browser");
   let failed = false;
   const settle = (next?: string): void => {
     const current = next ?? view.getURL?.() ?? url;

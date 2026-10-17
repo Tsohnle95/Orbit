@@ -176,7 +176,7 @@ describe("backend forms", () => {
 
     const forms = messages.filter((message) => message.kind === "event" && message.type === "form.created");
     expect(forms).toHaveLength(1);
-    expect((forms[0] as { data: { orbitSessionIDs?: string[] } }).data.orbitSessionIDs).toEqual(["session"]);
+    expect((forms[0] as { data: { miraSessionIDs?: string[] } }).data.miraSessionIDs).toEqual(["session"]);
   });
 
   it("drops forms from sessions outside every open workspace", async () => {

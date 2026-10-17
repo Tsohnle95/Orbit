@@ -89,23 +89,23 @@ function normalizeStreamEvent(msg: BackendMessage): ChatStreamEvent | null {  if
     type,
     created: Number(event?.created ?? Date.now()),
     data,
-    ...(Array.isArray(event?.orbitSessionIDs)
-      ? { ownerSessionIDs: event.orbitSessionIDs.filter((value: unknown): value is string => typeof value === "string") }
+    ...(Array.isArray(event?.miraSessionIDs)
+      ? { ownerSessionIDs: event.miraSessionIDs.filter((value: unknown): value is string => typeof value === "string") }
       : {})
   };
 }
 
 function failureForStreamEvent(type: string, data: Record<string, any>): { error: unknown; code: string; message: string } | null {
-  if (type === "session.step.failed") return { error: data.error, code: "ORBIT_STEP_FAILED", message: "Step failed" };
-  if (type === "session.execution.failed") return { error: data.error, code: "ORBIT_EXECUTION_FAILED", message: "Execution failed" };
-  if (type === "session.tool.failed") return { error: data.error, code: "ORBIT_TOOL_FAILED", message: "Tool failed" };
-  if (type === "session.retry.scheduled") return { error: data.error, code: "ORBIT_RETRY_SCHEDULED", message: "Retry scheduled" };
-  if (type === "message.updated" && data.info?.error) return { error: data.info.error, code: "ORBIT_ASSISTANT_FAILED", message: "Assistant failed" };
+  if (type === "session.step.failed") return { error: data.error, code: "MIRA_STEP_FAILED", message: "Step failed" };
+  if (type === "session.execution.failed") return { error: data.error, code: "MIRA_EXECUTION_FAILED", message: "Execution failed" };
+  if (type === "session.tool.failed") return { error: data.error, code: "MIRA_TOOL_FAILED", message: "Tool failed" };
+  if (type === "session.retry.scheduled") return { error: data.error, code: "MIRA_RETRY_SCHEDULED", message: "Retry scheduled" };
+  if (type === "message.updated" && data.info?.error) return { error: data.info.error, code: "MIRA_ASSISTANT_FAILED", message: "Assistant failed" };
   if (type === "message.part.updated") {
     const part = (data.part ?? data) as Record<string, any>;
     const state = part.state as Record<string, any> | undefined;
     if (["error", "failed", "aborted", "timeout", "cancelled"].includes(String(state?.status))) {
-      return { error: state?.error, code: "ORBIT_TOOL_FAILED", message: "Tool failed" };
+      return { error: state?.error, code: "MIRA_TOOL_FAILED", message: "Tool failed" };
     }
   }
   return null;
@@ -113,7 +113,8 @@ function failureForStreamEvent(type: string, data: Record<string, any>): { error
 
 let toastId = 0;
 
-const STALE_SESSION_LAYOUT_KEY = "orbit.sessionLayout";
+const STALE_SESSION_LAYOUT_KEY = "mira.sessionLayout";
+const LEGACY_STALE_SESSION_LAYOUT_KEY = "orbit.sessionLayout";
 
 export function StoreProvider({ children, onFileActivate }: { children: ReactNode; onFileActivate?: () => void }): ReactNode {
   const [ctxMenu, setCtxMenu] = useState<CtxMenuState | null>(null);
@@ -287,7 +288,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
       if (aborted || !trailing || trailing.completed) setSessionBusy(sessionID, false);
     } catch (error) {
       if (panelForSession(sessionID)) {
-        toast(formatFailure(error, "ORBIT_SESSION_MATERIALIZE_FAILED", "Session state could not be refreshed"), "error");
+        toast(formatFailure(error, "MIRA_SESSION_MATERIALIZE_FAILED", "Session state could not be refreshed"), "error");
       }
     } finally {
       materializingRef.current.delete(sessionID);
@@ -313,7 +314,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
         }
       } catch (err) {
         if (panelForSession(sessionID)) {
-          toast(formatFailure(err, "ORBIT_SESSION_OPEN_FAILED", "Session could not be opened"), "error");
+          toast(formatFailure(err, "MIRA_SESSION_OPEN_FAILED", "Session could not be opened"), "error");
         }
       }
     },
@@ -426,12 +427,12 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
       const target = workspace ?? readFocusedSession()?.workspace;
       const panel = target ? panelFor(target) : null;
       if (!panel || !target) {
-        toast("[ORBIT_PROMPT_NO_SESSION] No active session is available for this prompt", "error");
+        toast("[MIRA_PROMPT_NO_SESSION] No active session is available for this prompt", "error");
         return;
       }
       const t = text.trim();
       if (!t && files.length === 0) {
-        toast("[ORBIT_PROMPT_EMPTY] Enter a prompt or attach a file", "error");
+        toast("[MIRA_PROMPT_EMPTY] Enter a prompt or attach a file", "error");
         return;
       }
       const promptText = t || "Review the attached files.";
@@ -482,7 +483,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
           reconcileDeliveredPrompt(panel.id, promptText);
         }
       } catch (err) {
-        const failure = normalizeFailure(err, "ORBIT_PROMPT_FAILED", "Prompt failed");
+        const failure = normalizeFailure(err, "MIRA_PROMPT_FAILED", "Prompt failed");
         const failureText = formatFailure(failure);
         const failureID = `prompt-error-${userItem.id}`;
         appendUniqueTranscriptItem(panel.id, { kind: "status", id: failureID, text: failureText, tone: "error" });
@@ -562,7 +563,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
     syncStreaming(panel.id, previous);
     setSessionBusy(panel.id, false);
     await window.openshell.interrupt(target).catch((error) => {
-      toast(formatFailure(error, "ORBIT_INTERRUPT_FAILED", "The prompt could not be interrupted"), "error");
+      toast(formatFailure(error, "MIRA_INTERRUPT_FAILED", "The prompt could not be interrupted"), "error");
     });
   }, [setSessionBusy, panelFor, toast, snapshotSession, reduceSessionEvent, applyProjection, syncStreaming, beginLocalAbort]);
 
@@ -667,7 +668,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
         ? data.sessionID as string
         : (altSessionID ?? formSessionID);
       const formEvent = type === "form.created" || type === "form.replied" || type === "form.cancelled";
-      // Main attaches `orbitSessionIDs` when a form belongs to a session Orbit
+      // Main attaches `miraSessionIDs` when a form belongs to a session Mira
       // does not own directly (a location-global form, a delegated child, or an
       // external `opencode` TUI sharing the directory). Route those to the open
       // panels for the location; keep the form's true sessionID so replies and
@@ -679,7 +680,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
       // The global SSE stream includes external `opencode` terminal
       // sessions and child/subagent streams. Interactive prompts must never
       // be misattributed to the focused panel: only route forms,
-      // permissions, and inbox items for sessions Orbit has open, unless a
+      // permissions, and inbox items for sessions Mira has open, unless a
       // form was explicitly attributed to this location by main.
       if ((formEvent ||
         type === "permission.asked" || type === "permission.replied" ||
@@ -800,7 +801,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
           break;
         }
         case "global.error": {
-          toast(formatFailure(data.error, "ORBIT_GLOBAL_FAILURE", "Background operation failed"), "error");
+          toast(formatFailure(data.error, "MIRA_GLOBAL_FAILURE", "Background operation failed"), "error");
           break;
         }
         case "session.created": {
@@ -851,9 +852,9 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
           const ok = type === "session.execution.succeeded";
           if (!ok && targetSessionID) {
             const errorText = type === "session.execution.failed"
-              ? formatFailure(data.error, "ORBIT_EXECUTION_FAILED", "Execution failed")
+              ? formatFailure(data.error, "MIRA_EXECUTION_FAILED", "Execution failed")
               : data.error
-                ? formatFailure(data.error, "ORBIT_EXECUTION_INTERRUPTED", "Execution interrupted")
+                ? formatFailure(data.error, "MIRA_EXECUTION_INTERRUPTED", "Execution interrupted")
                 : "Interrupted";
             replaceTranscriptItemAtTail(targetSessionID, {
                 kind: "status",
@@ -875,7 +876,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
         case "session.error": {
           if (targetSessionID) {
             finishExecution(targetSessionID, streamEvent);
-            const errorText = formatFailure(data.error, "ORBIT_SESSION_ERROR", "Session failed");
+            const errorText = formatFailure(data.error, "MIRA_SESSION_ERROR", "Session failed");
             appendUniqueTranscriptItem(targetSessionID, { kind: "status", id: `${streamEvent.id}-error`, text: errorText, tone: "error" });
           }
           break;
@@ -960,7 +961,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
         await window.openshell.health().catch(() => false);
         if (cancelled) return;
         try {
-          window.localStorage.removeItem(STALE_SESSION_LAYOUT_KEY);
+          [STALE_SESSION_LAYOUT_KEY, LEGACY_STALE_SESSION_LAYOUT_KEY].forEach((key) => window.localStorage.removeItem(key));
         } catch {}
         // Fresh launches start on the Welcome screen: only live backend
         // contexts (e.g. after a renderer reload) are re-attached. Sessions

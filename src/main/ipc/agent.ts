@@ -20,7 +20,7 @@ export function registerAgentIpc(handleTrusted: TrustedIpcRegistrar, backend: Op
       const payload = promptPayload(workspace, text, files);
       return await backend.prompt(payload.workspace, payload.text, payload.files, delivery);
     } catch (error) {
-      const failure = normalizeFailure(error, "ORBIT_PROMPT_FAILED", "Prompt failed");
+      const failure = normalizeFailure(error, "MIRA_PROMPT_FAILED", "Prompt failed");
       const reported = new Error(formatFailure(failure));
       reported.name = failure.code;
       Object.assign(reported, failure);

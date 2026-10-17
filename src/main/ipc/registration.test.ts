@@ -45,7 +45,7 @@ describe("domain IPC registration", () => {
     const prompt = vi.fn();
     const { invoke } = handlers({ readFile, prompt });
     await expect(invoke("shell:fs-read", workspace, "../escape")).rejects.toThrow("invalid workspace path");
-    await expect(invoke("shell:prompt", workspace, 42)).rejects.toMatchObject({ name: "ORBIT_PROMPT_FAILED" });
+    await expect(invoke("shell:prompt", workspace, 42)).rejects.toMatchObject({ name: "MIRA_PROMPT_FAILED" });
     expect(readFile).not.toHaveBeenCalled();
     expect(prompt).not.toHaveBeenCalled();
   });
@@ -70,7 +70,7 @@ describe("domain IPC registration", () => {
   });
 
   it("keeps terminal defaults and stops a started PTY when its captured workspace becomes stale", async () => {
-    const root = await mkdtemp(path.join(tmpdir(), "orbit-ipc-"));
+    const root = await mkdtemp(path.join(tmpdir(), "mira-ipc-"));
     roots.push(root);
     const workspaceDirectory = vi.fn().mockResolvedValueOnce(root).mockRejectedValueOnce(new Error("stale workspace"));
     const start = vi.fn().mockResolvedValue(undefined);

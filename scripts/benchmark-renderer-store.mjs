@@ -154,7 +154,7 @@ async function sample() {
     if (operation === "session-requests") {
       const previousRenders = renders;
       const emit = (type, data, id) => handler({ kind: "event", type,
-        data: { id: `${type}-${id}`, created: 1, orbitSessionIDs: [session.id], data: { sessionID: session.id, ...data } } });
+        data: { id: `${type}-${id}`, created: 1, miraSessionIDs: [session.id], data: { sessionID: session.id, ...data } } });
       start = performance.now();
       for (let index = 0; index < 100; index++) {
         const id = `form-${index}`;

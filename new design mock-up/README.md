@@ -1,9 +1,9 @@
-# Orbit design study
+# Mira design study
 
 Open index.html in a browser. Select a direction from the left or use **Next
 direction** to inspect each workspace at full size. The sample workspace is
 illustrative; this is a standalone visual exploration and does not change
-Orbit's production UI.
+Mira's production UI.
 
 ## Directions
 

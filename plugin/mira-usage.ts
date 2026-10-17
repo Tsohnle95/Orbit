@@ -54,9 +54,10 @@ function usageWindow(raw: unknown): UsageWindow | null {
 }
 
 function snapshotPath(): string {
-  if (process.env.ORBIT_USAGE_SNAPSHOT) return process.env.ORBIT_USAGE_SNAPSHOT
+  const override = process.env.MIRA_USAGE_SNAPSHOT ?? process.env.ORBIT_USAGE_SNAPSHOT
+  if (override) return override
   const data = process.env.XDG_DATA_HOME ?? path.join(homedir(), ".local", "share")
-  return path.join(data, "opencode", "orbit-usage.json")
+  return path.join(data, "opencode", "mira-usage.json")
 }
 
 async function resolvedToken(ctx: Plugin.Context, integrationID: string): Promise<string | null> {
@@ -126,7 +127,7 @@ async function claudeUsage(token: string): Promise<UsageResult> {
 }
 
 export default Plugin.define({
-  id: "orbit-usage",
+  id: "mira-usage",
   async setup(ctx) {
     let running = false
     const collect = async (): Promise<void> => {
