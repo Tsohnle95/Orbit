@@ -450,10 +450,9 @@ landing → session grow keeps the saved session size centered instead of
 extending down-right from the landing corner. The app boots centered at the landing size; the
 renderer flips the view when the first panel opens and when the last one closes.
 
-The app icon (`resources/icon.svg` →
-rasterized via `npm run generate-icons` into
-`resources/icon.png` + `resources/icon.icns`, a luminous star and sparkle on a
-dark blue rounded canvas) is set as the BrowserWindow `icon` on
+The app icon uses `resources/icon.png` as its source; `npm run generate-icons`
+creates the macOS `resources/icon.icns` with `sips` and `iconutil`. The supplied
+cube-and-orbit mark is set as the BrowserWindow `icon` on
 Windows/Linux and via `app.dock.setIcon` on macOS; the window flash
 background is the warm `#161410`. On macOS, `npm run dev` and `npm start`
 use `scripts/launch.mjs` to run

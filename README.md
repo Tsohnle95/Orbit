@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="resources/icon.svg" width="88" alt="Mira">
+  <img src="resources/icon.png" width="88" alt="Mira">
   <h1>Mira</h1>
   <p><strong>Agent Development Environment</strong></p>
   <p>Your repository, editor, terminal, agent, and change review—together on one desktop.</p>

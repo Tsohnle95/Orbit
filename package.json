@@ -22,7 +22,7 @@
     "architecture:check": "node scripts/check-architecture.mjs",
     "architecture:ratchet": "node scripts/check-architecture.mjs --ratchet",
     "architecture:measure": "node scripts/architecture-analysis.mjs",
-    "generate-icons": "electron scripts/generate-icons.mjs",
+    "generate-icons": "node scripts/generate-icons.mjs",
     "client:drift": "node scripts/check-client-drift.mjs",
     "smoke:opencode": "node scripts/opencode-v2-smoke.mjs",
     "check": "npm run typecheck && npm test && npm run docs:check && npm run architecture:check && npm run build:compile",

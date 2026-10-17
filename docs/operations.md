@@ -24,6 +24,7 @@ npm test         # Vitest unit/component tests in jsdom
 npm run test:platform # native launcher, PTY, trust and filesystem lifecycle checks
 npm run build    # compile then launch the production app (one command)
 npm run build:compile # compile only -> out/ (no launch)
+npm run generate-icons # regenerate the macOS ICNS from resources/icon.png
 npm run pack     # build + package a real macOS app -> release/mac/Mira.app
 npm run install-app # build + package + install Mira.app into /Applications (macOS)
 npm run check    # typecheck, tests, docs check, and compile-only build
