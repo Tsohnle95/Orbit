@@ -122,6 +122,7 @@ export interface Store {
   activePath: string | null;
   singleFile: string | null;
   agentFiles: Map<string, AgentFileState>;
+  workspaceFiles: (workspace: WorkspaceIdentity) => Pick<Store, "tree" | "expanded" | "hiddenPaths" | "agentFiles">;
   tree: Record<string, TreeEntry[]>;
   expanded: Set<string>;
   hiddenPaths: Set<string>;
@@ -185,9 +186,9 @@ export interface Store {
   reloadTab: (path: string) => void;
   overwriteTab: (path: string) => Promise<void>;
   mergeTab: (path: string) => void;
-  toggleDir: (path: string) => Promise<void>;
-  prefetchDir: (path: string) => void;
-  ensureRootOpen: () => Promise<void>;
+  toggleDir: (path: string, workspace?: WorkspaceIdentity) => Promise<void>;
+  prefetchDir: (path: string, workspace?: WorkspaceIdentity) => void;
+  ensureRootOpen: (workspace?: WorkspaceIdentity) => Promise<void>;
   revealInFileManager: (path: string) => Promise<void>;
   replyPermission: (requestID: string, reply: PermissionReply, sessionID?: string) => Promise<void>;
   removeQueuedMessage: (workspace: WorkspaceIdentity, messageID: string) => void;

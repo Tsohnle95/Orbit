@@ -245,8 +245,8 @@ export function useWorkspaceFiles(host: WorkspaceFilesHost) {
   }, [toast, panelFor, receiveRecovery]);
 
   const toggleDir = useCallback(
-    async (path: string) => {
-      const target = readFocusedSession()?.workspace;
+    async (path: string, workspace?: WorkspaceIdentity) => {
+      const target = workspace ?? readFocusedSession()?.workspace;
       if (!target) return;
       const current = expandedByWorkspaceRef.current[target.id] ?? new Set<string>();
       const isOpen = current.has(path);
@@ -269,8 +269,8 @@ export function useWorkspaceFiles(host: WorkspaceFilesHost) {
     [treeByWorkspace, toast, readFocusedSession, setExpandedFor, applyDirectoryListing]
   );
 
-  const prefetchDir = useCallback((path: string): void => {
-    const target = readFocusedSession()?.workspace;
+  const prefetchDir = useCallback((path: string, workspace?: WorkspaceIdentity): void => {
+    const target = workspace ?? readFocusedSession()?.workspace;
     if (!mountedRef.current || !target || !panelFor(target) || treeByWorkspace[target.id]?.[path]) return;
     const key = JSON.stringify([target.id, target.generation, path]);
     if (prefetchingRef.current.has(key)) return;
@@ -283,16 +283,12 @@ export function useWorkspaceFiles(host: WorkspaceFilesHost) {
   }, [readFocusedSession, panelFor, treeByWorkspace, setTreeFor]);
 
   const ensureRootOpen = useCallback(
-    async (): Promise<void> => {
-      const target = readFocusedSession()?.workspace;
+    async (workspace?: WorkspaceIdentity): Promise<void> => {
+      const target = workspace ?? readFocusedSession()?.workspace;
       if (!target) return;
       const current = expandedByWorkspaceRef.current[target.id] ?? new Set<string>();
       const wasOpen = current.has("");
-      if (!wasOpen) {
-        const next = new Set(current);
-        next.add("");
-        setExpandedFor(target.id, next);
-      }
+      if (!wasOpen) setExpandedFor(target.id, new Set([...current, ""]));
       if (wasOpen || !treeByWorkspace[target.id]?.[""]) {
         try {
           const entries = await window.openshell.listDir(target, "");
@@ -369,8 +365,15 @@ export function useWorkspaceFiles(host: WorkspaceFilesHost) {
     }
   }, [toast, readFocusedSession]);
 
+  const workspaceFiles = useCallback((workspace: WorkspaceIdentity) => ({
+    tree: treeByWorkspace[workspace.id] ?? EMPTY_TREE,
+    expanded: expandedByWorkspace[workspace.id] ?? EMPTY_EXPANDED,
+    hiddenPaths: hiddenPathsByWorkspace[workspace.id] ?? EMPTY_EXPANDED,
+    agentFiles: agentFilesByWorkspace[workspace.id] ?? EMPTY_AGENT_FILES
+  }), [treeByWorkspace, expandedByWorkspace, hiddenPathsByWorkspace, agentFilesByWorkspace]);
+
   return {
-    agentFiles, tree, expanded, hiddenPaths, recoveryRecords,
+    workspaceFiles, agentFiles, tree, expanded, hiddenPaths, recoveryRecords,
     readAgentFile, isHiddenPath, toggleDir, prefetchDir, ensureRootOpen, refreshTree, unhidePath,
     dismissChange, dismissChanges, loadRecovery, openRecovery, acknowledgeRecovery,
     hidePath, restoreDetachedPath, hideNestedWorkspace, restoreNestedWorkspaceVisibility,

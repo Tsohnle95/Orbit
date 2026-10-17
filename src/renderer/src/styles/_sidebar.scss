@@ -396,7 +396,7 @@
   flex-direction: column;
 }
 
-.tree-workspace.expanded { flex: 1 0 auto; }
+.tree-workspace.expanded { flex: 0 0 auto; }
 .tree-workspace > :not(.tree-drop-space) { flex-shrink: 0; }
 
 .tree-empty {

@@ -1,8 +1,15 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { TreeEntry } from "@shared/types";
 import { useCtxMenu, useStore } from "../store";
 import { EllipsisIcon, FilePlusIcon, FolderPlusIcon, PencilIcon, TrashIcon, TreeFileGlyph } from "./FileIcons";
+
+// Each root projects its own file state while actions retain the store's ownership.
+export const ExplorerStoreContext = createContext<ReturnType<typeof useStore> | null>(null);
+function useExplorerStore(): ReturnType<typeof useStore> {
+  const store = useStore();
+  return useContext(ExplorerStoreContext) ?? store;
+}
 
 export interface DragHandlers {
   dragPaths: string[] | null;
@@ -21,7 +28,7 @@ export interface SelectionHandlers {
 }
 
 export function RowActions({ entry, allowFile = false, allowDir = false }: { entry: TreeEntry; allowFile?: boolean; allowDir?: boolean }): ReactNode {
-  const { startCreate } = useStore();
+  const { startCreate } = useExplorerStore();
   const { openCtxMenu } = useCtxMenu();
   const parent =
     entry.type === "directory"
@@ -104,7 +111,7 @@ export function DirNode({
     pendingCreate,
     commitName,
     cancelPending
-  } = useStore();
+  } = useExplorerStore();
   const isOpen = expanded.has(entry.path);
   const hasChanges = entry.path.split("/").some((_, i) => {
     const prefix = entry.path.split("/").slice(0, i + 1).join("/");
@@ -178,7 +185,7 @@ export function FileNode({
   selection: SelectionHandlers;
 }): ReactNode {
   const { openFile, previewFile, activePath, tabs = [], agentFiles, pendingRename, commitName, cancelPending } =
-    useStore();
+    useExplorerStore();
   const name = entry.path.split("/").pop() ?? entry.path;
   const changed = agentFiles.has(entry.path);
   const unsaved = tabs.some((tab) => tab.path === entry.path && tab.dirty);
@@ -265,7 +272,7 @@ export function ExplorerMenu({
   selectedPaths?: string[];
   onDeleteSelection?: (paths: string[]) => void;
 }): ReactNode {
-  const { session, startCreate, startRename, revealInFileManager, deleteEntry, removeFromWorkspace, closePanel } = useStore();
+  const { session, startCreate, startRename, revealInFileManager, deleteEntry, removeFromWorkspace, closePanel } = useExplorerStore();
   const { ctxMenu, closeCtxMenu } = useCtxMenu();
   const menuRef = useRef<HTMLDivElement>(null);
 

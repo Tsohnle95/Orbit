@@ -73,7 +73,7 @@ Exposed state:
 | `activeSessions` | `SessionInfo[]` | backend-owned open contexts, reconciled every second independently of visible panels; drives the complete **Open now** inventory |
 | `savedWorkspaces` | `ProjectInfo[]` | Orbit-owned workspace bookmarks stored in the main process under Electron user data with an atomic backup; startup imports the legacy `localStorage` key only when app storage is uninitialized, or OpenCode's validated project catalog on first use without that key; initialized app storage is authoritative. User additions/removals during hydration are replayed over that snapshot; a failed read never overwrites it with an empty value |
 | `panelViews` | `Record<workspaceID, PanelView>` | per-panel scoped projection (`session`, `busy`, `transcript`, `todos`, `sessionUsage`, `models`, `currentModel`, `agents`, `currentAgent`) consumed through `usePanel(workspace)` |
-| `activeSessionID` | `string \| null` | focused session id; the editor, sidebar, tree, and terminal tray bind to the focused panel while every panel keeps streaming |
+| `activeSessionID` | `string \| null` | focused session id; the editor and terminal tray bind to the focused panel while the Explorer retains every open workspace tree and every panel keeps streaming |
 | `connected` | `boolean` | from `health()` on mount |
 | `busy` | `boolean` | active-session projection of the per-session busy map |
 | `todos` | `TodoItem[]` | structured OpenCode todo state shown as persistent agent steps in the prompt dock |
@@ -83,7 +83,7 @@ Exposed state:
 | `providerUsageLoading` | `boolean` | true while `refreshProviderUsage()` is in flight (refetch happens each time the usage popup opens) |
 | `tabs` | `Tab[]` | open editor tabs for the focused workspace (per-workspace record; each session restores its own tabs on focus) |
 | `activePath` | `string \| null` | active tab path for the focused workspace |
-| `singleFile` | `string \| null` | the active workspace's single-file path (set when a file was opened as the workspace via `selectFile`/`openFileWorkspace`); non-null makes the sidebar render true single-file mode (file name, one file row, no folder tree) |
+| `singleFile` | `string \| null` | the active workspace's single-file path (set when a file was opened as the workspace via `selectFile`/`openFileWorkspace`); non-null with only one panel makes the sidebar render true single-file mode (file name, one file row, no folder tree) |
 | `agentFiles` | `Map<path, AgentFileState>` | `{baseline, content, deleted}` for observed files still differing from their effective baseline; drives Changes and known/unknown diff state; per workspace |
 | `tree` | `Record<relPath, TreeEntry[]>` | lazy-loaded explorer cache warmed by hover prefetch; per workspace |
 | `expanded` | `Set<relPath>` | open tree directories; per workspace |
@@ -631,7 +631,13 @@ Key mechanisms:
   Successful moves remap `tabs`, `activePath`, and `agentFiles` for that
   workspace.
   `FileSidebar.tsx` owns selection state, drag routing, root composition and
-  sidebar navigation. Its internal `ExplorerTree.tsx` owns recursive directory
+  sidebar navigation. Every open panel retains its own expandable root and
+  cached tree in the same scrolling area. `workspaceFiles(workspace)` projects
+  file state for each root; directory loading accepts an explicit workspace.
+  Tree rows consume a root-local `ExplorerStoreContext` projection, and gestures
+  focus the owning panel before invoking focus-based mutation actions. Internal
+  moves across workspace roots are rejected because their paths are relative.
+  Its internal `ExplorerTree.tsx` owns recursive directory
   and file rows, row actions, inline name input and the context-menu portal.
   Rows receive the sidebar's drag/selection callbacks and consume the existing
   Store/context-menu facade for editor and filesystem actions. Keep gesture

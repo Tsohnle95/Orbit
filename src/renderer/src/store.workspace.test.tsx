@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenShellApi } from "../../preload";
 import type { BackendMessage, RecoveryRecord, RuntimeID, SessionInfo, WorkspaceIdentity } from "@shared/types";
 import { StoreProvider, useStore } from "./store";
+import { FileSidebar } from "./components/FileSidebar";
 
 type Store = ReturnType<typeof useStore>;
 
@@ -79,6 +80,60 @@ describe("store workspace continuations", () => {
     container.remove();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it("keeps both workspace trees visible when adding, switching and removing a root", async () => {
+    const readFile = vi.fn(async () => "content");
+    const movePath = vi.fn();
+    window.openshell = api({
+      readFile, movePath,
+      listDir: async (workspace, path) => path === ""
+        ? [{ path: `folder-${workspace.generation}`, type: "directory" }, { path: "shared.txt", type: "file" }]
+        : [{ path: `${path}/child.txt`, type: "file" }]
+    });
+    await act(async () => root.render(<StoreProvider><Probe /><FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} /></StoreProvider>));
+    await act(async () => store.openSession("/one"));
+    await act(async () => store.openWorkspacePanel("/two"));
+    const [first, second] = store.panels;
+    const firstFolder = `folder-${first.workspace.generation}`;
+    const secondFolder = `folder-${second.workspace.generation}`;
+    const workspace = (directory: string) => container.querySelector<HTMLElement>(`[data-workspace-directory="${directory}"]`)!;
+    expect(container.textContent).toContain(firstFolder);
+    expect(container.textContent).toContain(secondFolder);
+    expect(workspace("/one")).toBeTruthy();
+    expect(workspace("/two")).toBeTruthy();
+    await act(async () => workspace("/two").querySelector<HTMLElement>(".workspace-root")!.click());
+    expect(workspace("/two").textContent).not.toContain(secondFolder);
+    expect(workspace("/one").textContent).toContain(firstFolder);
+    await act(async () => workspace("/two").querySelector<HTMLElement>(".workspace-root")!.click());
+    await act(async () => workspace("/one").querySelector<HTMLElement>('[data-entry-path="shared.txt"]')!.click());
+    expect(readFile).toHaveBeenLastCalledWith(first.workspace, "shared.txt");
+    expect(workspace("/one").querySelector('[data-entry-path="shared.txt"]')?.classList.contains("selected")).toBe(true);
+    const transfer = { setData: vi.fn(), getData: () => "", types: [], effectAllowed: "", dropEffect: "" };
+    const drag = (element: HTMLElement, type: string) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "dataTransfer", { value: transfer });
+      element.dispatchEvent(event);
+    };
+    const source = workspace("/one").querySelector<HTMLElement>('[data-entry-path="shared.txt"]')!;
+    await act(async () => drag(source, "dragstart"));
+    await act(async () => drag(workspace("/two").querySelector<HTMLElement>(`[data-entry-path="${secondFolder}"]`)!, "drop"));
+    expect(movePath).not.toHaveBeenCalled();
+    expect(transfer.dropEffect).toBe("none");
+    await act(async () => drag(source, "dragend"));
+    expect(store.session?.id).toBe(first.id);
+    expect(workspace("/two").textContent).toContain(secondFolder);
+    await act(async () => workspace("/two").querySelector<HTMLElement>(`[data-entry-path="${secondFolder}"]`)!.click());
+    expect(workspace("/two").textContent).toContain("child.txt");
+    expect(workspace("/one").textContent).toContain(firstFolder);
+    await act(async () => store.openWorkspacePanel("/three"));
+    const third = store.panels[2];
+    expect(workspace("/one").textContent).toContain(firstFolder);
+    expect(workspace("/two").textContent).toContain(secondFolder);
+    expect(workspace("/three").textContent).toContain(`folder-${third.workspace.generation}`);
+    await act(async () => store.closePanel(second.id));
+    expect(container.textContent).toContain(firstFolder);
+    expect(container.textContent).not.toContain(secondFolder);
   });
 
   it("explains that Cmd+R cannot update a stale main process's workspace IPC handler", async () => {

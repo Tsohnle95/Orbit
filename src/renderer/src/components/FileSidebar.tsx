@@ -4,10 +4,11 @@ import { OrbitMark } from "./OrbitMark";
 import { FileIcon } from "./FileIcons";
 import { droppedFilePaths, isExternalFileDrag } from "../drop";
 import { compactExplorerSelection, movableExplorerPaths } from "../explorer-selection";
-import type { TreeEntry } from "@shared/types";
+import type { SessionInfo, TreeEntry } from "@shared/types";
 import { SessionsPane } from "./SessionsPane";
 import {
   DirNode,
+  ExplorerStoreContext,
   ExplorerMenu,
   FileNode,
   RowActions,
@@ -28,6 +29,21 @@ function explorerPathsFromDrag(e: React.DragEvent): string[] {
   } catch {
     return [];
   }
+}
+
+function explorerStoreFor(store: ReturnType<typeof useStore>, panel: SessionInfo): ReturnType<typeof useStore> {
+  const focused = panel.id === store.session?.id;
+  const view = store.workspaceFiles?.(panel.workspace) ?? store;
+  return {
+    ...store, ...view, session: panel,
+    hiddenPaths: view.hiddenPaths ?? EMPTY_HIDDEN_PATHS,
+    pendingCreate: focused ? store.pendingCreate : null,
+    pendingRename: focused ? store.pendingRename : null,
+    activePath: focused ? store.activePath : null,
+    tabs: focused ? store.tabs : [],
+    toggleDir: (path) => store.toggleDir(path, panel.workspace),
+    prefetchDir: (path) => store.prefetchDir(path, panel.workspace)
+  };
 }
 
 function NoWorkspaceEmpty(): ReactNode {
@@ -63,11 +79,11 @@ export function FileSidebar({
   onOpenTerminal?: (directory: string) => void;
 }): ReactNode {
   void onCollapse;
+  const store = useStore();
   const {
     session,
     panels = [],
     focusSession,
-    tree,
     toggleDir,
     ensureRootOpen,
     openFile,
@@ -84,30 +100,34 @@ export function FileSidebar({
     singleFile,
     importPaths,
     dropIntoExplorer,
-    openWorkspacePanel,
-    hiddenPaths = EMPTY_HIDDEN_PATHS
-  } = useStore();
+    openWorkspacePanel
+  } = store;
   const { openCtxMenu } = useCtxMenu();
   const [fallbackTab] = useState<SidebarTab>(initialTab);
   const activeTab = tab ?? fallbackTab;
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const selectionAnchor = useRef<string | null>(null);
+  const selectionWorkspace = useRef<string | null>(null);
   const treeRef = useRef<HTMLDivElement>(null);
   const [dragPaths, setDragPaths] = useState<string[] | null>(null);
   const dragPathsRef = useRef<string[] | null>(null);
   const [dropDir, setDropDir] = useState<string | null>(null);
   const [externalDrop, setExternalDrop] = useState(false);
   const [blankMoveDrop, setBlankMoveDrop] = useState(false);
-  const root = tree[""] ?? [];
+  const multiRoot = panels.length > 1;
   const orderedPanels = panels.length > 0 ? panels : session ? [session] : [];
   const rootName = session?.directory.split("/").filter(Boolean).pop() ?? "workspace";
   const rootOpen = expanded.has("");
   const blankDropImports = Boolean(session && !singleFile && rootOpen);
   const blankDropLabel = blankDropImports ? `Add to ${rootName}` : "Open as new workspace";
-  const loadedSessionKey = useRef<string | null>(null);
+  const loadedRoots = useRef(new Set<string>());
+  const dragWorkspace = useRef<string | null>(null);
+  const dropWorkspace = useRef<string | null>(null);
   const selectedPathSet = new Set(selectedPaths);
 
   useEffect(() => {
+    if (selectionWorkspace.current === session?.workspace.id) return;
+    selectionWorkspace.current = session?.workspace.id ?? null;
     setSelectedPaths([]);
     selectionAnchor.current = null;
   }, [session?.workspace.id]);
@@ -197,14 +217,14 @@ export function FileSidebar({
   };
 
   useEffect(() => {
-    const key = session ? `${session.id}::${session.directory}` : null;
-    if (key && loadedSessionKey.current !== key) {
-      loadedSessionKey.current = key;
-      void ensureRootOpen();
-    } else if (!key) {
-      loadedSessionKey.current = null;
+    const keys = new Set<string>();
+    for (const panel of orderedPanels) {
+      const key = `${panel.id}::${panel.directory}`;
+      keys.add(key);
+      if (!loadedRoots.current.has(key)) void ensureRootOpen(panel.workspace);
     }
-  }, [session, ensureRootOpen]);
+    loadedRoots.current = keys;
+  }, [panels, session, ensureRootOpen]);
 
   const drag: DragHandlers = {
     dragPaths,
@@ -215,7 +235,7 @@ export function FileSidebar({
         e.preventDefault();
         return;
       }
-      const paths = compactExplorerSelection(selectedPathSet.has(path) ? selectedPaths : [path]);
+      const paths = compactExplorerSelection(dragWorkspace.current === session?.workspace.id && selectedPathSet.has(path) ? selectedPaths : [path]);
       e.dataTransfer.setData("text/plain", paths[0] ?? path);
       e.dataTransfer.setData(EXPLORER_PATHS_MIME, JSON.stringify(paths));
       e.dataTransfer.effectAllowed = "move";
@@ -223,6 +243,7 @@ export function FileSidebar({
       setDragPaths(paths);
     },
     onDragEnd: () => {
+      dragWorkspace.current = null;
       setBlankMoveDrop(false);
       dragPathsRef.current = null;
       setDragPaths(null);
@@ -358,7 +379,7 @@ export function FileSidebar({
     return null;
   }
 
-  if (singleFile && session) {
+  if (singleFile && session && !multiRoot) {
     const name = singleFile.split("/").pop() ?? singleFile;
     const singleFileUnsaved = tabs.some((tab) => tab.path === singleFile && tab.dirty);
     return (
@@ -413,7 +434,7 @@ export function FileSidebar({
             <span className="sidebar-brand">Mira</span>
           </div>
 
-       <div
+       {!multiRoot && <div
          className={`section-trigger with-actions explorer-trigger ${rootOpen ? "open" : ""} ${dropDir === "" ? "drop-target" : ""}`}
          data-explorer-root=""
          title={session?.directory}
@@ -448,7 +469,7 @@ export function FileSidebar({
            <span className="explorer-root-name">{rootName}</span>
          </button>
          {session && <RowActions entry={{ path: "", type: "directory" }} allowFile allowDir />}
-       </div>
+       </div>}
         <div className="sidebar-section explorer">
           <div
              ref={treeRef}
@@ -468,42 +489,83 @@ export function FileSidebar({
             {orderedPanels.length === 0 && (
               session ? <div className="tree-empty">Loading…</div> : <NoWorkspaceEmpty />
             )}
-            {orderedPanels.map((panel, index) => panel.id !== session?.id ? (
-              <div
-                key={panel.id}
-                 className={`tree-row dir workspace-root ${index > 0 ? "workspace-root-secondary" : ""}`}
-                onClick={() => focusSession(panel.id)}
-                onContextMenu={(event) => {
-                  event.preventDefault();
+            {orderedPanels.map((panel) => {
+              const focused = panel.id === session?.id;
+              const view = explorerStoreFor(store, panel);
+              const panelOpen = view.expanded.has("");
+              const focus = (): void => { if (!focused) focusSession(panel.id); };
+              const rejectCrossRootMove = (event: React.DragEvent): void => {
+                if (dragWorkspace.current && dragWorkspace.current !== panel.workspace.id && !drag.isExternalDrop(event)) {
                   event.stopPropagation();
-                  openCtxMenu(event.clientX, event.clientY, { path: "", type: "directory" }, panel.id);
-                }}
-                title={panel.directory}
-              >
-                <span className="tree-chevron empty" aria-hidden="true" />
-                <span className="tree-name">{panel.directory.split("/").filter(Boolean).pop() ?? "workspace"}</span>
-              </div>
-            ) : (
-              <div key={panel.id} className={`tree-workspace ${rootOpen ? "expanded" : ""}`}>
-                {(!session || (root.length === 0 && !rootOpen)) && <div className="tree-empty">Loading…</div>}
-                {rootOpen && root.filter((child) => !hiddenPaths.has(child.path)).map((child) =>
-                  child.type === "directory" ? (
-                    <DirNode key={child.path} entry={child} depth={0} drag={drag} hiddenPaths={hiddenPaths} selection={selection} />
-                  ) : (
-                    <FileNode key={child.path} entry={child} depth={0} drag={drag} selection={selection} />
-                  )
-                )}
-                {pendingCreate?.parent === "" && (
-                  <TreeNameInput
+                  event.dataTransfer.dropEffect = "none";
+                }
+              };
+              const panelSelection: SelectionHandlers = focused ? selection : {
+                ...selection,
+                selectedPaths: new Set(),
+                onClick: (event, path, activate) => {
+                  selectionWorkspace.current = panel.workspace.id;
+                  setSelectedPaths([path]);
+                  selectionAnchor.current = path;
+                  focusTree();
+                  if (!event.metaKey && !event.ctrlKey && !event.shiftKey) activate();
+                },
+                onContextMenu: (event, entry) => {
+                  selectionWorkspace.current = panel.workspace.id;
+                  selection.onContextMenu(event, entry);
+                }
+              };
+              const panelDrag = { ...drag, dropDir: dropWorkspace.current === panel.workspace.id ? dropDir : null };
+              return <ExplorerStoreContext.Provider key={panel.id} value={view}>
+                <div
+                  className={`tree-workspace ${panelOpen ? "expanded" : ""}`}
+                  data-workspace-directory={panel.directory}
+                  onClickCapture={focus}
+                  onContextMenuCapture={focus}
+                  onDragStartCapture={() => { focus(); dragWorkspace.current = panel.workspace.id; }}
+                  onDragOverCapture={(event) => { dropWorkspace.current = panel.workspace.id; rejectCrossRootMove(event); }}
+                  onDropCapture={(event) => { rejectCrossRootMove(event); if (!event.isPropagationStopped()) focus(); }}
+                >
+                  {multiRoot && <div
+                    className={`tree-row dir workspace-root ${panelOpen ? "open" : ""} ${panelDrag.dropDir === "" ? "drop-target" : ""}`}
+                    title={panel.directory}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={panelOpen}
+                    onKeyDown={(event) => {
+                      if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                        event.preventDefault(); event.stopPropagation(); focus();
+                        void toggleDir("", panel.workspace);
+                      }
+                    }}
+                    onClick={() => void toggleDir("", panel.workspace)}
+                    onContextMenu={(event) => {
+                      event.preventDefault(); event.stopPropagation();
+                      openCtxMenu(event.clientX, event.clientY, { path: "", type: "directory" }, panel.id);
+                    }}
+                    onDragOver={(event) => drag.onDirDragOver(event, "")}
+                    onDrop={(event) => drag.onDirDrop(event, "")}
+                  >
+                    <span className={`tree-chevron ${panelOpen ? "open" : ""}`} aria-hidden="true"><i className="codicon codicon-chevron-right" /></span>
+                    <span className="tree-name explorer-root-name">{panel.directory.split("/").filter(Boolean).pop() ?? "workspace"}</span>
+                    <RowActions entry={{ path: "", type: "directory" }} allowFile allowDir />
+                  </div>}
+                  {panelOpen && (view.tree[""] ?? []).filter((child) => !view.hiddenPaths.has(child.path)).map((child) =>
+                    child.type === "directory" ? (
+                      <DirNode key={child.path} entry={child} depth={0} drag={panelDrag} hiddenPaths={view.hiddenPaths} selection={panelSelection} />
+                    ) : (
+                      <FileNode key={child.path} entry={child} depth={0} drag={panelDrag} selection={panelSelection} />
+                    )
+                  )}
+                  {focused && pendingCreate?.parent === "" && <TreeNameInput
                     initial={pendingCreate.kind === "file" ? "untitled.txt" : "untitled folder"}
                     isDir={pendingCreate.kind === "dir"}
-                    onCommit={(v) => void commitName(v)}
-                    onCancel={cancelPending}
-                  />
-                )}
-                {blankDropImports && dropSpace}
-              </div>
-            ))}
+                    onCommit={(value) => void commitName(value)} onCancel={cancelPending}
+                  />}
+                  {focused && blankDropImports && dropSpace}
+                </div>
+              </ExplorerStoreContext.Provider>;
+            })}
             {!blankDropImports && dropSpace}
           </div>
         </div>

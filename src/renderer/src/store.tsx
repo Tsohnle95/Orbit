@@ -230,7 +230,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
   }, [refreshActiveSessions]);
 
   const {
-    agentFiles, tree, expanded, hiddenPaths, recoveryRecords,
+    workspaceFiles, agentFiles, tree, expanded, hiddenPaths, recoveryRecords,
     readAgentFile, isHiddenPath, toggleDir, prefetchDir, ensureRootOpen, refreshTree, unhidePath,
     dismissChange, dismissChanges, loadRecovery, openRecovery, acknowledgeRecovery,
     hidePath, restoreDetachedPath, hideNestedWorkspace, restoreNestedWorkspaceVisibility,
@@ -1101,7 +1101,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
       unsavedEditorFiles,
       activePath,
       singleFile,
-      agentFiles,
+      agentFiles, workspaceFiles,
       tree,
       expanded,
       hiddenPaths,
@@ -1198,7 +1198,7 @@ const StoreBody = memo(function StoreBody({ children, closeCtxMenu, onFileActiva
       focusSession, closePanel, openSession, addModelPanel, openWorkspacePanel, selectAddPanel, selectFolder, selectFile, openFileWorkspace, openExternalPath, importPaths, dropIntoExplorer, selectPanelDirectory, changePanelDirectory, reopenSession, loadSessions, sendPrompt, runCommand, stop, refreshProviderUsage, loadModels, switchModel,
       loadAgents, switchAgent, toggleApprovalMode,
       openFile, previewFile, closeTab, setActive, revealInFileManager,
-      editContent, saveTab, saveAllEditorFiles, reloadTab, overwriteTab, mergeTab, toggleDir, prefetchDir, ensureRootOpen, replyPermission,
+      editContent, saveTab, saveAllEditorFiles, reloadTab, overwriteTab, mergeTab, workspaceFiles, toggleDir, prefetchDir, ensureRootOpen, replyPermission,
       startCreate, startRename, cancelPending, commitName, deleteEntry, deleteEntries, removeFromWorkspace, moveEntry, moveEntries, openRecovery, acknowledgeRecovery,
       removeQueuedMessage, popQueuedMessage, sendQueuedNow, reorderQueuedMessage,
       submitForm, dismissForm,
