@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useStore } from "../store";
 import type { SessionSummary } from "@shared/types";
 import { ChevronIcon, PlusIcon } from "./FileIcons";
-import { IconClose, IconFolder, IconSearch, IconSquarePen, IconStarFilled } from "./icons";
+import { IconClose, IconSearch, IconSquarePen, IconStarFilled } from "./icons";
 
 const PINNED_KEY = "openshell.pinnedSessions";
 
@@ -419,7 +419,6 @@ export function SessionsPane(): ReactNode {
                       }}
                       title={workspace.directory}
                     >
-                      <IconFolder className="sessions-row-icon" />
                       <span className="sessions-row-title">{workspaceDisplayName}</span>
                       <span className="sessions-project-count">{workspaceSessions.length}</span>
                     </button>
