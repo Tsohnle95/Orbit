@@ -197,6 +197,7 @@ export function SessionsPane(): ReactNode {
     reopenSession,
     deleteSession,
     openSession,
+    openWorkspacePanel,
     selectFolder,
     sessions,
     savedWorkspaces,
@@ -415,7 +416,7 @@ export function SessionsPane(): ReactNode {
                       aria-label={`Open workspace ${workspaceDisplayName}`}
                       onClick={(event) => {
                         event.stopPropagation();
-                        void openSession(workspace.directory);
+                        void openWorkspacePanel(workspace.directory);
                       }}
                       title={workspace.directory}
                     >

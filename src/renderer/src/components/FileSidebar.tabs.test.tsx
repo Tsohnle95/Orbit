@@ -90,7 +90,7 @@ describe("FileSidebar tabs and sessions pane", () => {
     for (const mock of [
       store.focusSession, store.closePanel, store.reopenSession, store.openSession, store.selectFolder, store.selectFile,
       store.loadSessions, store.runCommand, store.selectPanelDirectory, store.saveWorkspace,
-      store.removeWorkspace, store.openFile, store.previewFile
+      store.removeWorkspace, store.openFile, store.previewFile, store.openWorkspacePanel
     ]) {
       mock.mockClear();
     }
@@ -126,6 +126,21 @@ describe("FileSidebar tabs and sessions pane", () => {
     await act(async () => { row.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })); });
     expect(store.openFile).toHaveBeenCalledWith("a.ts");
     store.tree = {};
+  });
+
+  it("keeps all open workspaces and their file roots visible together", async () => {
+    const first = { ...session, id: "first", directory: "/first", workspace: { id: "first-workspace", generation: 1 } };
+    const second = { ...session, id: "second", directory: "/second", workspace: { id: "second-workspace", generation: 2 } };
+    store.panels = [first, second];
+    store.session = second;
+    store.expanded = new Set([""]);
+    store.tree = { "": [{ path: "index.ts", type: "file" as const }] };
+
+    await act(async () => root.render(<FileSidebar collapsed={false} onCollapse={() => {}} onDrag={() => {}} tab="files" />));
+
+    expect([...container.querySelectorAll<HTMLElement>(".tree-workspace")].map((workspace) => workspace.dataset.workspaceDirectory))
+      .toEqual(["/first", "/second"]);
+    expect(container.querySelectorAll('[data-entry-path="index.ts"]')).toHaveLength(2);
   });
 
   function render(): Promise<void> {
@@ -251,8 +266,10 @@ describe("FileSidebar tabs and sessions pane", () => {
     const workspaces = section("Projects");
     const project = workspaces.querySelector<HTMLButtonElement>(".sessions-project-open")!;
     expect(project.textContent).toContain("Workspace");
+    expect(project.querySelector("svg, i, [role='img']")).toBeNull();
     await act(async () => project.click());
-    expect(store.openSession).toHaveBeenCalledWith("/workspace");
+    expect(store.openWorkspacePanel).toHaveBeenCalledWith("/workspace");
+    expect(store.openSession).not.toHaveBeenCalled();
 
     const disclosure = workspaces.querySelector<HTMLButtonElement>(".sessions-project-disclosure")!;
     await act(async () => disclosure.click());

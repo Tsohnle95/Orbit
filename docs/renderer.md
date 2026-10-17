@@ -309,7 +309,8 @@ snapshot/window/credit/error metadata; existing public presentation identity
 and payloads remain compatible.
 
 Actions: `openSession` / `selectFolder` (replace the current panels with one fresh
-panel and automatically save its directory as a workspace), `saveWorkspace`
+panel and automatically save its directory as a workspace), `openWorkspacePanel(dir)`
+(add a saved or dropped workspace beside existing file roots), `saveWorkspace`
 (bookmark a directory from the native folder picker), `addModelPanel(dir)`
 (explicit model-mode addition to a directory and bookmark it),
 `selectAddPanel` (model-mode addition from the native folder picker, so each
@@ -389,9 +390,9 @@ validation/canonicalization path, and the last one is focused only if the
 user hasn't already acted, so deleted or moved workspaces, unavailable
 runtimes, and individual reopen failures are skipped without blocking
 launch. Past sessions stay reachable through recents and the **Open now**
-inventory. A saved workspace's main row opens a new session; its disclosure
-control expands that workspace's session history. Explicitly reopening a recent
-session can ask the user to locate a replacement folder when its saved location
+inventory. A saved workspace's main row adds its file root beside existing open
+workspaces; its disclosure control expands that workspace's session history.
+Explicitly reopening a recent session can ask the user to locate a replacement folder when its saved location
 has disappeared, then updates Mira's saved workspace bookmark. Silent startup
 hydration never opens a folder picker. A renderer reload still restores live
 backend contexts; editor tabs, changes, terminals,

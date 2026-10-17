@@ -185,6 +185,27 @@ describe("per-panel workspace selection", () => {
     expect(store.session?.directory).toBe("/picked");
   });
 
+  it("keeps an existing file root visible when a saved workspace is added, then restores focus when it is closed", async () => {
+    const closeSession = vi.fn(async () => {});
+    window.openshell = api({ closeSession });
+    await act(async () => root.render(<StoreProvider><Probe /></StoreProvider>));
+    await act(async () => store.openSession("/first"));
+    const first = store.panels[0];
+
+    await act(async () => store.openWorkspacePanel("/second"));
+
+    const second = store.panels[1];
+    expect(store.panels.map((panel) => panel.directory)).toEqual(["/first", "/second"]);
+    expect(store.workspaceOnlyPanelIDs.has(second.id)).toBe(true);
+    expect(store.session?.directory).toBe("/second");
+
+    await act(async () => store.closePanel(second.id));
+
+    expect(closeSession).toHaveBeenCalledWith(second.workspace);
+    expect(store.panels.map((panel) => panel.directory)).toEqual(["/first"]);
+    expect(store.session?.id).toBe(first.id);
+  });
+
   it("swaps one panel to a picked folder and detaches its context into Open now", async () => {
     const closeSession = vi.fn(async () => {});
     const picked = info("/picked", 4);
